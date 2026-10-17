@@ -19,6 +19,7 @@ from pathlib import Path
 from harness import RedRogueHarness
 from source_constants import parse_map_constants, parse_rgbds_constants
 from audit_facility_stranded_quadrants import BLOCKSET, ENTRANCE, passable
+from audit_facility_pad_sites import FIRST_PAD_WARP, PAD_NONE
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -147,6 +148,11 @@ class FacilitySpinnerRoomTest(unittest.TestCase):
         ex, ey, ew, eh = h.read_sram_bytes("sProcFacilityGenScratch", 72)[66:70]
         blocked |= {(x, y) for y in range(2 * (ey - 1), 2 * (ey + eh + 1))
                     for x in range(2 * (ex - 1), 2 * (ex + ew + 1))}
+        # An armed warp pad (a site pair or the subroom pad) teleports whoever
+        # steps on it, so its tile is a wall for walking (PFacPadSiteValid).
+        warps = h.read_bytes("wWarpEntries", 4 * h.read8("wNumberOfWarps"))
+        blocked |= {(warps[i + 1], warps[i]) for i in range(4 * FIRST_PAD_WARP, len(warps), 4)
+                    if warps[i] != PAD_NONE}
 
         # Stand beside the ball: whichever neighbour the route reaches first.
         targets = [(ball_world[0] + dx, ball_world[1] + dy, face) for (dx, dy), face in

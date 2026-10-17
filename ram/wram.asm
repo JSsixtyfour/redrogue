@@ -1361,7 +1361,9 @@ wStatusScreenHPBarColor:: db
 wSpinnerTileFrameCount:: db
 ; 1 more B from this pad (2026-09-25): EvolveMonByLevel's Eevee branch pick,
 ; handed to the next RogueRollFormForSpecies. Transient, so unsaved is correct.
-; Bit 7 = pending, bits 2-3 = species - FLAREON, bits 0-1 = form.
+; Bit 7 = pending, bits 0-1 = form. Bit 6 clear (Eevee): bits 2-3 = species -
+; FLAREON. Bit 6 set: a base list's FORM entry (Cubone -> Alolan Marowak); the
+; form belongs to whatever species EvolveMonByLevel chose.
 wPendingEeveeForm:: db
 	ds 3
 

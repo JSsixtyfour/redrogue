@@ -25,7 +25,7 @@
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   \
 	     WATER_GUN,    HYPER_BEAM,   PAY_DAY,      RAGE,         THUNDERBOLT,  \
 	     THUNDER,      MIMIC,        DOUBLE_TEAM,  BIDE,         SWORDS_DANCE, \
-	     SKULL_BASH,   REST,         SUBSTITUTE,   ROCK_SLIDE
+	     SKULL_BASH,   REST,         SUBSTITUTE,   ROCK_SLIDE,   DIG
 	; end
 
 	db BANK(PerrserkerPicFront) ; pic bank

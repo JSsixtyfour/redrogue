@@ -285,18 +285,8 @@ RogueRollFormForSpecies::
 	bit 7, a
 	jr z, .none
 	ld c, a
-	bit 6, a                    ; regional branch: bits 2-3 index the pair table
-	jr z, .eevee
-	and %1100
-	rrca                        ; pair offset = index * 2
-	push de
-	ld e, a
-	ld d, 0
-	ld hl, RegionalStoneBranches + 1
-	add hl, de
-	ld a, [hl]
-	pop de
-	jr .matchSpecies
+	bit 6, a                    ; a base list's FORM entry (EvolveMonByLevel): the
+	jr nz, .takeForm            ; form belongs to the species that entry just named
 .eevee
 	ld a, c
 	rrca
@@ -306,6 +296,7 @@ RogueRollFormForSpecies::
 .matchSpecies
 	cp b
 	jr nz, .none
+.takeForm
 	ld a, c
 	and %11
 	ld e, a
@@ -411,7 +402,7 @@ RollAllowedEeveeBranch:
 
 ; ---------------------------------------------------------------------------
 ; RogueRollEeveeIndexFar
-; The Mist Stone's Eevee pick (bridge_effects.asm MistStoneChooseEvolution): a
+; The Mist Stone's Eevee pick (engine/pokemon/mist_stone_chooser.asm MistStoneChooseEvolution): a
 ; uniform pick over the branches whose form is unlocked this run. It used to be
 ; an unconditional 0-7, which handed out Espeon/Glaceon/etc. with their group
 ; locked. EeveeMistStones is in EeveeBranches' order, so the index carries over.
@@ -465,7 +456,7 @@ IsFormRecordedFar::
 
 EeveeBranches:
 ; Same eight outcomes as EeveeEvosMoves' stone entries plus evos_moves.asm's
-; EvoStoneForms, in the Mist Stone's order (bridge_effects.asm EeveeMistStones).
+; EvoStoneForms, in the Mist Stone's order (engine/pokemon/mist_stone_chooser.asm EeveeMistStones).
 	db FLAREON,  0 ; FIRE_STONE
 	db JOLTEON,  0 ; THUNDER_STONE
 	db VAPOREON, 0 ; WATER_STONE
@@ -569,32 +560,114 @@ EvolvePoolMon::
 	ld [wPendingEeveeForm], a
 	ld a, d
 	ld [wCurPartySpecies], a
-	push de
-	farcall IsFormNoEvolveFar
-	pop de
-	ret c
-	push de
+	ld a, e
+	and a
+	jr z, .baseForm
+; A FORM evolves through its OWN list, exactly as the player's does
+; (FORM_EVOLUTION_LISTS_PLAN.md): an A-Rattata's entry names RATICATE form 1,
+; and an empty list (a paradox form) never evolves. This replaced "evolve the
+; species, then keep the form if the target has one".
+	call EvolveFormMonByLevel
+	ld a, d
+	ld [wCurPartySpecies], a
+	ld a, e
+	and a
+	ret nz                      ; still a form
+; The line reached a plain species (Galarian Farfetch'd -> Sirfetch'd): any
+; further stage is that species' own list.
+.baseForm
 	call EvolveMonByLevel
-	pop de
 	ld a, [wCurPartySpecies]
 	ld d, a
+	ld e, 0
 	ld a, [wPendingEeveeForm]
 	bit 7, a
-	jr z, .preserveForm
+	ret z
 	ld e, d
 	farcall RogueRollFormForSpecies ; consumes the exact Eevee evolution choice
 	ld a, [wCurPartySpecies]
 	ld d, a
 	ret
-.preserveForm
+
+; Evolves a FORM mon along its own list as far as wCurEnemyLevel allows, with
+; the same rules EvolveMonByLevel applies to a species: stone and trade entries
+; need level 35, a level entry its own level, every target must pass the
+; species-group gate, and eligible entries are sampled uniformly. A form's entry
+; carries its own form forward, which is never gated (as for the player).
+; IN:  d = species, e = form (1..NUM_FORM_SLOTS)
+; OUT: d = species, e = form at the end of the line; e = 0 once a plain entry
+;      is taken (the caller continues on that species' list)
+; CLOBBERS: af, bc, hl
+EvolveFormMonByLevel:
 	ld a, e
 	and a
 	ret z
+	push de                     ; the answer if nothing is eligible
+	farcall CopyEvoListForMonFar ; this form's own list -> wEvoDataBuffer
+	ld hl, wEvoDataBuffer
+	ld b, 0                     ; b = eligible count; d/e = the sampled target
+.scan
+	ld a, [hli]
+	and a
+	jr z, .scanned
+	ld c, 0                     ; c = this entry's target form
+	cp EVOLVE_LEVEL_FORM
+	jr c, .gotForm
+	ld c, [hl]                  ; a FORM entry: the form follows the type byte
+	inc hl
+	sub EVOLVE_FORM_TYPE_DELTA
+.gotForm
+	cp EVOLVE_LEVEL
+	jr z, .level
+	cp EVOLVE_TRADE
+	jr z, .floor
+	inc hl                      ; an item entry: past the item id
+.floor
+	ld a, [wCurEnemyLevel]
+	cp 35                       ; the shared generated stone/trade floor
+	jr nc, .level
+	inc hl                      ; past [level]
+	jr .nextEntry
+.level
+	ld a, [wCurEnemyLevel]
+	cp [hl]                     ; carry = below the entry's level
+	inc hl                      ; inc rr leaves the flags alone
+	jr c, .nextEntry
+	push hl
+	push bc
 	push de
-	farcall IsFormRecordedFar
+	ld e, [hl]                  ; target species; e, not a, crosses the farcall
+	farcall RogueIsSpeciesEvolutionAllowedFar
+	pop de                      ; pops leave the carry alone
+	pop bc
+	pop hl
+	jr nc, .nextEntry
+	inc b                       ; reservoir sampling, as EvolveMonByLevel does
+	ld a, b
+	cp 1
+	jr z, .take
+	push bc
+	ld c, b
+	call Rangerandom
+	pop bc
+	and a
+	jr nz, .nextEntry
+.take
+	ld d, [hl]
+	ld e, c
+.nextEntry
+	inc hl                      ; past [species]
+	jr .scan
+.scanned
+	ld a, b
+	and a
+	jr z, .none
+	pop af                      ; drop the saved answer
+	ld a, d
+	ld [wCurPartySpecies], a
+	jr EvolveFormMonByLevel     ; the next stage, from the new species and form
+.none
 	pop de
-	ret c
-	ld e, 0                     ; e.g. Galarian Farfetch'd -> ordinary Sirfetch'd
 	ret
 
 ; Pokemon needs to be in d. Evolves it as many times as wCurEnemyLevel
@@ -603,43 +676,6 @@ EvolvePoolMon::
 EvolveMonByLevel:
 	xor a
 	ld [wPendingEeveeForm], a     ; stone branches may leave an exact form pending
-	ld a, [wCurEnemyLevel]
-	cp 35                       ; shared generated stone-evolution floor
-	jr c, .loadList
-	ld hl, RegionalStoneBranches
-	ld b, 0                     ; pair offset; packed into pending bits 2-3
-.regionalScan
-	ld a, [hli]
-	and a
-	jr z, .loadList
-	cp d
-	jr z, .regionalMatch
-	inc hl
-	inc b
-	inc b
-	jr .regionalScan
-.regionalMatch
-	ld c, [hl]                  ; target species
-	ld d, c
-	ld e, 1
-	push bc
-	call IsFormUnlockedFar      ; same-bank call, gates the Alolan form
-	ld e, 0                     ; regular evolution if Time Warp is unavailable
-	jr nc, .regionalChosen
-	call Random
-	and 1                       ; equal probability for the two eligible outcomes
-	ld e, a
-.regionalChosen
-	pop bc
-	ld a, b
-	add a                       ; pair offset -> pending species index bits 2-3
-	or e
-	or $c0                      ; pending + regional tag + exact form
-	ld [wPendingEeveeForm], a
-	ld a, c
-	ld [wCurPartySpecies], a
-	ld d, a
-	ret
 .loadList
 ; d must survive the load: .lvl_evolve's EEVEE test reads it. LoadEvoListForSpecies
 ; ends with de pointing past wEvoDataBuffer, so without this push the test compared
@@ -654,6 +690,18 @@ EvolveMonByLevel:
 	ld a, [hli]
 	and a
 	jr z, .chooseEvolution
+; A FORM entry in a base list (Cubone's Dusk Stone -> Alolan Marowak) carries
+; its target form after the type byte: e holds it for the rest of the entry, and
+; the entry is otherwise read as its plain twin. Sampled with the other entries,
+; it makes the generated choice "either target form, uniformly", which replaced
+; the RegionalStoneBranches table (FORM_EVOLUTION_LISTS_PLAN.md, Phase 3).
+	ld e, 0
+	cp EVOLVE_LEVEL_FORM
+	jr c, .plainEvoEntry
+	ld e, [hl]
+	inc hl
+	sub EVOLVE_FORM_TYPE_DELTA
+.plainEvoEntry
 	cp EVOLVE_LEVEL
 	jr z, .lvl_evolve
 	cp EVOLVE_TRADE
@@ -687,10 +735,9 @@ EvolveMonByLevel:
 	ld a, d
 	cp EEVEE	;deal with eevee separately
 	jr z, .handleeevee
-	ld a, [hli]
-	ld e, a
 	ld a, [wCurEnemyLevel]
-	cp e
+	cp [hl]                     ; carry = below the entry's level
+	inc hl                      ; inc rr leaves the flags alone
 	jr c, .tooLowForThisEntry
 ; SPECIES GROUPS. The player's evolution path has gated on this since Phase 2
 ; (engine/pokemon/evos_moves.asm's .doEvolution) so a Kanto-locked run cannot
@@ -714,6 +761,21 @@ EvolveMonByLevel:
 	pop bc
 	pop hl              ; carry still set = this group is active
 	jr nc, .tooLowForThisEntry
+; A FORM entry also needs its form unlocked (Alolan/Galarian forms ride on Time
+; Warp), exactly as the player's stone evolution asks (IsEvoStoneFormAllowed).
+	ld a, e
+	and a
+	jr z, .formUnlocked
+	push hl
+	push bc
+	push de
+	ld d, [hl]          ; d = target species, e = form
+	call IsFormUnlockedFar ; same bank
+	pop de
+	pop bc
+	pop hl
+	jr nc, .tooLowForThisEntry
+.formUnlocked
 ; Reservoir sampling: eligible entry n replaces the saved target with
 ; probability 1/n. Rangerandom is unbiased and preserves hl/de/bc.
 ; A single eligible entry needs no RNG draw.
@@ -729,6 +791,12 @@ EvolveMonByLevel:
 	jr nz, .tooLowForThisEntry
 .takeEvolution
 	ld c, [hl]
+	ld a, e             ; publish the sampled entry's form (0 = none pending)
+	and a
+	jr z, .publishForm
+	or $c0              ; pending + base-list FORM entry + exact form
+.publishForm
+	ld [wPendingEeveeForm], a
 .tooLowForThisEntry
 ; Scan every entry before committing, so table order cannot prefer a branch.
 	inc hl
@@ -740,6 +808,10 @@ EvolveMonByLevel:
 	ld a, c
 	ld [wCurPartySpecies], a
 	ld d, a
+	ld a, [wPendingEeveeForm]
+	and a
+	ret nz                      ; a FORM was chosen: a form evolves on its own
+	                            ; list, never on this species path
 	jp EvolveMonByLevel         ; repeat for the chosen species' next stage
 
 ; Reached only at level 35+ (every Eevee entry is EVOLVE_ITEM, so the item floor
@@ -762,17 +834,6 @@ EvolveMonByLevel:
 	or $80                        ; pending
 	ld [wPendingEeveeForm], a
 	ret
-
-; Two equally eligible generated outcomes at level 35+: target forms 0 and 1.
-; The player uses the authored stone entries; this table identifies pool branches.
-RegionalStoneBranches:
-	db CUBONE, MAROWAK
-	db PIKACHU, RAICHU
-	db EXEGGCUTE, EXEGGUTOR
-	db KOFFING, WEEZING
-RegionalStoneBranchesEnd:
-ASSERT RegionalStoneBranchesEnd - RegionalStoneBranches == 4 * 2
-	db 0
 
 ; d = species. Copies its evolution list (from EvosMovesPointerTable's bank)
 ; into wEvoDataBuffer and returns hl = wEvoDataBuffer. CLOBBERS af, bc, de.
@@ -865,6 +926,11 @@ AllSpeciesCheckFar::
 	ld a, [hli]
 	and a
 	jr z, .next
+	cp EVOLVE_LEVEL_FORM          ; a FORM entry: skip the form byte, then parse plain
+	jr c, .plainType
+	inc hl
+	sub EVOLVE_FORM_TYPE_DELTA
+.plainType
 	cp EVOLVE_ITEM
 	jr nz, .noItem
 	inc hl                        ; [method][item][level][species]

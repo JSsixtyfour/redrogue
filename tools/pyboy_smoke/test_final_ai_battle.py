@@ -310,14 +310,21 @@ class FinalAITest(HarnessTestCase):
         self.assertEqual(h.read8("wMonHFormSpecies"), primary)
 
         # Reloading, including the animation restoration seam, is idempotent.
+        # Park before EVERY hijack here: an unparked call_routine can land in a
+        # VBlank copy, whose SP points into the tilemap it is copying, and the
+        # hijack then runs on that "stack" (measured 2026-10-17: SP=$C46E, a
+        # CrashScreen that came and went with unrelated layout changes).
+        h.park_before_hijack()
         h.call_routine("MergeFinalAIFusionFrontPic")
         self.assertEqual(h.read_bytes("vFrontPic", 49 * 16), expected)
         # The normal animation restoration entry merges; Transform deliberately
         # bypasses it before TRANSFORMED has been set by TransformEffect_.
         h.write8("hWhoseTurn", 1)
+        h.park_before_hijack()
         h.call_routine("AnimationFlashMonPic")
         self.assertEqual(h.read_bytes("vFrontPic", 49 * 16), expected)
         merge_hook = h.hook_flag("MergeFinalAIFusionFrontPic")
+        h.park_before_hijack()
         h.call_routine("AnimationTransformMon")
         self.assertEqual(merge_hook["count"], 0)
         # Switching to an ordinary slot replaces the entire composite.

@@ -44,6 +44,7 @@ Runs on Python 3.7+ (Git Bash's `py` is 3.7, and only it can read K:).
 """
 import argparse
 import difflib
+import glob
 import os
 import re
 import sys
@@ -445,15 +446,24 @@ def load_rarity_groups():
 def load_evolution_targets():
     """Every species something else evolves INTO."""
     out = set()
-    with open(EVOS_ASM, encoding="utf-8", errors="replace") as f:
-        for line in f:
-            m = re.match(r"^\s+db\s+EVOLVE_(?:LEVEL|TRADE),\s*[^,]+,\s*([A-Z_][A-Z0-9_]*)", line)
-            if m:
-                out.add(m.group(1))
-                continue
-            m = re.match(r"^\s+db\s+EVOLVE_ITEM,\s*[^,]+,\s*[^,]+,\s*([A-Z_][A-Z0-9_]*)", line)
-            if m:
-                out.add(m.group(1))
+    # Base lists AND the form blocks: Galarian Farfetch'd's list is now the only
+    # thing that names Sirfetch'd (plain Farfetch'd's list is empty).
+    files = [EVOS_ASM] + sorted(glob.glob(os.path.join(os.path.dirname(EVOS_ASM), "form_evos_moves", "*.asm")))
+    lines = (line for path in files for line in open(path, encoding="utf-8", errors="replace"))
+    for line in lines:
+        m = re.match(r"^\s+db\s+EVOLVE_(?:LEVEL|TRADE),\s*[^,]+,\s*([A-Z_][A-Z0-9_]*)", line)
+        if m:
+            out.add(m.group(1))
+            continue
+        m = re.match(r"^\s+db\s+EVOLVE_ITEM,\s*[^,]+,\s*[^,]+,\s*([A-Z_][A-Z0-9_]*)", line)
+        if m:
+            out.add(m.group(1))
+            continue
+        # FORM entries: evo_level_form / evo_trade_form <form>, <level>, <target>
+        # and evo_item_form <form>, <item>, <level>, <target>
+        m = re.match(r"^\s+evo_(?:level|trade|item)_form\s+(?:[^,]+,\s*){2,3}([A-Z_][A-Z0-9_]*)", line)
+        if m:
+            out.add(m.group(1))
     return out
 
 

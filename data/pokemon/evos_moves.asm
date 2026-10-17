@@ -553,7 +553,7 @@ LickitungEvosMoves:
 ExeggcuteEvosMoves:
 ; Evolutions
 	db EVOLVE_ITEM, LEAF_STONE, 1, EXEGGUTOR
-	db EVOLVE_ITEM, MOON_STONE, 1, EXEGGUTOR ; Alolan Exeggutor
+	evo_item_form 1, MOON_STONE, 1, EXEGGUTOR ; Alolan Exeggutor
 	db 0
 ; Learnset
     db 8, ABSORB
@@ -665,7 +665,7 @@ NidoqueenEvosMoves:
 CuboneEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 28, MAROWAK
-	db EVOLVE_ITEM, DUSK_STONE, 1, MAROWAK ; Alolan Marowak
+	evo_item_form 1, DUSK_STONE, 1, MAROWAK ; Alolan Marowak
 	db 0
 ; Learnset
 	db 5, LEER
@@ -1496,7 +1496,7 @@ MagnetonEvosMoves:
 KoffingEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 35, WEEZING
-	db EVOLVE_ITEM, MOON_STONE, 1, WEEZING ; Galarian Weezing
+	evo_item_form 1, MOON_STONE, 1, WEEZING ; Galarian Weezing
 	db 0
 ; Learnset
 	db 23, ACID
@@ -1660,7 +1660,8 @@ FarfetchdEvosMoves:
 ; express any of that, so a plain level threshold is used instead (KEP's
 ; own fallback level for this species, 24, though KEP's own target name
 ; there was a copy-paste error - Sirfetch'd is the correct target).
-	db EVOLVE_LEVEL, 24, SIRFETCHD
+; The level entry now lives on GALARIAN Farfetch'd's own list
+; (form_evos_moves/gfarfetchd.asm); plain Farfetch'd never evolves.
 	db 0
 ; Learnset
 	db 7, LEER
@@ -1991,7 +1992,7 @@ NinetalesEvosMoves:
 PikachuEvosMoves:
 ; Evolutions
 	db EVOLVE_ITEM, THUNDER_STONE, 1, RAICHU
-	db EVOLVE_ITEM, MOON_STONE, 1, RAICHU ; Alolan Raichu
+	evo_item_form 1, MOON_STONE, 1, RAICHU ; Alolan Raichu
 	db 0
 ; Learnset
 	db 6, QUICK_ATTACK

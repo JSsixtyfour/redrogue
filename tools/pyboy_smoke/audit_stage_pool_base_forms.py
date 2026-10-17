@@ -61,8 +61,11 @@ WILD_AREA_MAP = parse_map_constants(
 
 def evolution_targets():
     """Every species that something else evolves INTO."""
-    text = (REPO_ROOT / "data" / "pokemon" / "evos_moves.asm").read_text(
-        encoding="utf-8", errors="replace")
+    # Base lists AND the form blocks: Galarian Farfetch'd's list is now the only
+    # thing that names Sirfetch'd (plain Farfetch'd's list is empty).
+    data = REPO_ROOT / "data" / "pokemon"
+    text = "\n".join(p.read_text(encoding="utf-8", errors="replace")
+                     for p in [data / "evos_moves.asm", *sorted((data / "form_evos_moves").glob("*.asm"))])
     out = set()
     for line in text.splitlines():
         m = re.match(r"^\s+db\s+EVOLVE_(LEVEL|TRADE),\s*[^,]+,\s*([A-Z_][A-Z0-9_]*)", line)
@@ -70,6 +73,12 @@ def evolution_targets():
             out.add(m.group(2))
             continue
         m = re.match(r"^\s+db\s+EVOLVE_ITEM,\s*[^,]+,\s*[^,]+,\s*([A-Z_][A-Z0-9_]*)", line)
+        if m:
+            out.add(m.group(1))
+            continue
+        # FORM entries: evo_level_form / evo_trade_form <form>, <level>, <target>
+        # and evo_item_form <form>, <item>, <level>, <target>
+        m = re.match(r"^\s+evo_(?:level|trade|item)_form\s+(?:[^,]+,\s*){2,3}([A-Z_][A-Z0-9_]*)", line)
         if m:
             out.add(m.group(1))
     return out

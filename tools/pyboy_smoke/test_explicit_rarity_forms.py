@@ -34,6 +34,36 @@ class ExplicitRarityFormsTest(unittest.TestCase):
         self.state.seek(0)
         self.h.load_state(self.state)
 
+    def run_direct(self, label, **regs_in):
+        """Run one routine to its `ret` with a `jr @` return stub and IE masked
+        (reference_pyboy_direct_stub_executor). call_routine decides a call has
+        returned by matching SP at Bankswitch.Return, so a nested farcall at the
+        wrong depth ends it early and the parked game runs off: EvolvePoolMon's
+        form gate (a farcall three pushes deep) hung this test that way, while
+        the routine itself returns cleanly with a balanced stack. Returns the
+        registers like last_call_registers."""
+        h = self.h
+        regs, mem = h.pyboy.register_file, h.pyboy.memory
+        stub = h.address('wStringBuffer') + 16
+        mem[stub], mem[stub + 1] = 0x18, 0xFE  # jr @
+        mem[0xFFFF] = 0
+        bank, addr = h.symbols.get(label)
+        h.write8('hLoadedROMBank', bank)
+        mem[0x2000] = bank
+        sp = (regs.SP - 2) & 0xFFFF
+        mem[sp], mem[sp + 1] = stub & 0xFF, stub >> 8
+        regs.SP = sp
+        for name, value in regs_in.items():
+            setattr(regs, name, value)
+        regs.PC = addr
+        for _ in range(20):
+            h.pyboy.tick()
+            if regs.PC == stub:
+                break
+        self.assertEqual(regs.PC, stub, f'{label} did not return')
+        self.assertEqual(regs.SP, (sp + 2) & 0xFFFF, f'{label} unbalanced the stack')
+        return {name: getattr(regs, name) for name in ('A', 'D', 'E')}
+
     def rom_bytes(self, label, count):
         bank, addr = self.h.symbols.get(label)
         offset = bank * 0x4000 + addr - (0x4000 if bank else 0)
@@ -204,10 +234,7 @@ class ExplicitRarityFormsTest(unittest.TestCase):
                         self.h.seed_rng((seed, seed ^ 0xa5, 3, 7))
                         self.h.write8('wCurEnemyLevel', level)
                         self.h.write8('wSpawnForm', 3)
-                        self.h.pyboy.register_file.D = SPECIES[source]
-                        self.h.pyboy.register_file.E = 0
-                        self.h.call_routine('EvolvePoolMon')
-                        regs = self.h.last_call_registers
+                        regs = self.run_direct('EvolvePoolMon', D=SPECIES[source], E=0)
                         self.assertEqual(regs['D'], SPECIES[source if level < 35 else target])
                         seen.add(regs['E'])
                         self.assertEqual(self.h.read8('wPendingEeveeForm'), 0)

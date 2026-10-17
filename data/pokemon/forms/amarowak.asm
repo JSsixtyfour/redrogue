@@ -27,7 +27,7 @@
 	     HYPER_BEAM,   SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         \
 	     EARTHQUAKE,   FISSURE,      DIG,          MIMIC,        DOUBLE_TEAM,  \
 	     BIDE,         FIRE_BLAST,   SKULL_BASH,   REST,         SUBSTITUTE,   \
-	     STRENGTH,     FLAMETHROWER
+	     STRENGTH,     FLAMETHROWER, THUNDERBOLT,  THUNDER,      DREAM_EATER,  \
 	; end
 
 	db BANK(AMarowakPicFront) ; pic bank

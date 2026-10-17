@@ -549,20 +549,25 @@ PartyGenBuildSlot:
 ; This also turns its form spec back into an ordinary one for ResolveForm.
 	call PartyGenTakeKeepFlag
 	jr c, .noEvolve
-; Forms that never evolve (FormNoEvolve: paradoxes, plain Farfetch'd) stay put,
-; or a Sandy Shocks fodder entry came out as a Magnezone. wSpawnForm is the
-; entry's form spec; a POOL_FORM_ROLL entry is judged as its base form, since
-; its form is only rolled after this.
+; wSpawnForm is the entry's form spec. A PINNED form (a literal 1..3) evolves
+; through its OWN list, exactly as the player's does (FORM_EVOLUTION_LISTS_PLAN.md):
+; an empty list - Sandy Shocks, Scream Tail - stays put, and the form the line
+; ends on is written back as the literal spec PartyGenResolveForm passes through.
+; A POOL_FORM_ROLL or POOL_FORM_BASE entry evolves as its base species (a rolled
+; form is only chosen after this); plain Farfetch'd's list is empty, so it stays.
 	ld a, [wSpawnForm]
 	cp POOL_FORM_ROLL
-	jr nz, .formKnown
-	xor a
-.formKnown
+	jr z, .baseSpeciesLine
+	and a
+	jr z, .baseSpeciesLine
 	ld e, a
 	ld a, [wCurPartySpecies]
 	ld d, a
-	farcall IsFormNoEvolveFar
-	jr c, .noEvolve
+	farcall EvolvePoolMon          ; d/e out; publishes wCurPartySpecies
+	ld a, e
+	ld [wSpawnForm], a             ; a literal index again, 0 if it left the form
+	jr .noEvolve
+.baseSpeciesLine
 	ld a, [wCurPartySpecies]
 	ld d, a
 	farcall ScaleTrainer_evolution ; d = species in; publishes the promoted one

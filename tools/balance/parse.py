@@ -228,9 +228,20 @@ def load_species() -> dict[str, Species]:
             current, reading = m.group(1), True
             evos_by_label[current] = []
             continue
-        if not (current and reading and code.startswith("db ")):
+        if not (current and reading and code.startswith(("db ", "evo_"))):
             continue
-        parts = [p.strip() for p in code[3:].split(",")]
+        if code.startswith("evo_"):
+            # A FORM entry (macros/data.asm): `evo_<kind>_form <form>, <as the plain
+            # entry>`. The balance model is species-level, so it reads the same
+            # (method, level, target) as the plain twin and drops the form index.
+            name, _, args = code.partition(" ")
+            kind = {"evo_level_form": "EVOLVE_LEVEL", "evo_item_form": "EVOLVE_ITEM",
+                    "evo_trade_form": "EVOLVE_TRADE"}.get(name)
+            if kind is None:
+                raise ValueError(f"evos_moves.asm: unknown evolution macro under {current}: {code!r}")
+            parts = [kind] + [p.strip() for p in args.split(",")][1:]
+        else:
+            parts = [p.strip() for p in code[3:].split(",")]
         if parts == ["0"]:
             reading = False
         elif parts[0] == "EVOLVE_LEVEL":

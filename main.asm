@@ -493,6 +493,8 @@ INCLUDE "engine/battle/draw_hud_pokeball_gfx.asm"
 ; this file is bank-independent.
 SECTION "Evos Moves", ROMX
 INCLUDE "engine/pokemon/evos_moves.asm"
+; Walks the evolution lists with plain in-bank reads; ASSERTed in the file.
+INCLUDE "engine/pokemon/mist_stone_chooser.asm"
 ; Must share this bank with EvosMovesPointerTable, which it walks with plain
 ; [hli] reads; a link-time ASSERT in the file enforces it.
 INCLUDE "engine/pokemon/get_levelup_moves.asm"

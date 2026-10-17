@@ -14,8 +14,15 @@ form had under those rules, so behaviour is unchanged:
   * FormEvoStones: a (species, form) answers to a different stone;
   * FormNoEvolve: a (species, form >= 1) row means an empty list.
 
-The three tables are read from engine/pokemon/evos_moves.asm, so this script
+The three tables were read from engine/pokemon/evos_moves.asm, so this script
 has no copy of them to drift.
+
+PHASE 2 (2026-10-17): FormEvoStones and FormNoEvolve are DELETED (Alolan Vulpix's
+own list names ICE_STONE; an empty list means "never evolves"), and EvoStoneForms
+holds only Eevee's five rows (the other four became evo_item_form entries in
+their base lists). Every block is now authored, so this script has nothing left
+to write; it stays as the shared parser library test_form_evolution_lists uses,
+and --check still proves no block is waiting on the old comment.
 
 SAFE TO RE-RUN. A block that already holds any entry is hand-authored and left
 alone; only empty blocks (a lone `db 0`) are written. --check reports what it
@@ -44,10 +51,12 @@ AUTHORED_RE = re.compile(r"^\s*(db\s+EVOLVE_|evo_\w+_form\b)")
 POINTER_RE = re.compile(r"^\s*db\s+([A-Z_][A-Z0-9_]*)\s*,\s*(\d+)\s*$")
 DW_RE = re.compile(r"^\s*dw\s+(\w+)\s*$")
 OLD_COMMENT_FIRST = "; Evolutions - never read through this record."
+NEW_COMMENT_FIRST = "; Evolutions - this FORM's own list"
 
 
-def table_rows(label, width):
-    """Rows of a `db a, b, c` table that follows `label:` in evos_moves.asm."""
+def table_rows(label, width, required=True):
+    """Rows of a `db a, b, c` table that follows `label:` in evos_moves.asm.
+    A table that no longer exists is an error unless required=False."""
     rows, inside = [], False
     for line in ENGINE_FILE.read_text(encoding="utf-8").splitlines():
         if line.startswith(label + ":"):
@@ -65,7 +74,7 @@ def table_rows(label, width):
             break
         assert len(fields) == width, (label, line)
         rows.append(tuple(fields))
-    if not rows:
+    if not rows and required:
         sys.exit(f"FATAL: no rows under {label}:")
     return rows
 
@@ -88,6 +97,8 @@ def base_lists():
         e = ENTRY_RE.match(line)
         if e:
             lists[current].append((e.group(1), *[p.strip() for p in e.group(2).split(",")]))
+        elif AUTHORED_RE.match(line) and line.lstrip().startswith("evo_"):
+            continue  # a FORM entry already migrated into a base list (Phase 2): not seeded from
         elif "EVOLVE_" in line.split(";")[0]:
             sys.exit(f"FATAL: unparsed evolution line under {current}: {line!r}")
     return lists
@@ -151,8 +162,8 @@ def main():
     lists = base_lists()
     recs = form_records()
     stone_forms = table_rows("EvoStoneForms", 3)
-    form_stones = table_rows("FormEvoStones", 3)
-    no_evolve = set(table_rows("FormNoEvolve", 2))
+    form_stones = table_rows("FormEvoStones", 3, required=False)  # deleted in Phase 2
+    no_evolve = set(table_rows("FormNoEvolve", 2, required=False))  # deleted in Phase 2
     pointers = pointer_table()
 
     pending, kept = 0, 0
@@ -164,7 +175,9 @@ def main():
         base_label = label_of[species]
         zero = next(i for i, l in enumerate(lines) if ZERO_RE.match(l))
         block = lines[1:zero]
-        if any(AUTHORED_RE.match(l) for l in block):
+        # Already seeded (new comment) or hand-authored: with the old tables gone,
+        # an empty seeded block is a DECISION (never evolves), not a gap to refill.
+        if any(AUTHORED_RE.match(l) for l in block) or NEW_COMMENT_FIRST in text:
             kept += 1
             continue
         entries = seed_entries(species, form, lists[base_label], recs,

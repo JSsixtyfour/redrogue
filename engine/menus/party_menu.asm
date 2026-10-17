@@ -113,29 +113,16 @@ RedrawPartyMenu_::
 	db "NOT ABLE@"
 .evolutionStoneMenu
 	push hl
-	farcall IsPartyMonEvoBlocked ; hWhichPokemon = this entry
-	ld de, .notAbleToEvolveText
-	jr c, .placeEvolutionStoneString
-	ld hl, EvosMovesPointerTable
-	ld b, 0
+	; this mon's OWN list (its form's block for a form), copied into wEvoDataBuffer
+	ld a, [wLoadedMonCatchRate]
+	and FORM_MASK
+	rlca ; bits 5-6 -> 0..3
+	rlca
+	rlca
+	ld e, a
 	ld a, [wLoadedMonSpecies]
-	dec a
-	add a
-	rl b
-	ld c, a
-	add hl, bc
-	ld de, wEvoDataBuffer
-	ld a, BANK(EvosMovesPointerTable)
-	ld bc, 2
-	call FarCopyData
-	ld hl, wEvoDataBuffer
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a
-	ld de, wEvoDataBuffer
-	ld a, BANK(EvosMovesPointerTable)
-	ld bc, wEvoDataBufferEnd - wEvoDataBuffer
-	call FarCopyData
+	ld d, a
+	farcall CopyEvoListForMonFar
 	ld hl, wEvoDataBuffer
 	ld de, .notAbleToEvolveText
 ; loop through the pokemon's evolution entries
@@ -148,6 +135,13 @@ RedrawPartyMenu_::
 	cp MIST_STONE
 	ld a, b
 	jr z, .mistStoneAble
+	; a FORM entry carries its target form after the type byte: skip it and parse
+	; the rest as an ordinary entry (see EvoEntryTakeForm)
+	cp EVOLVE_LEVEL_FORM
+	jr c, .plainEntry
+	inc hl
+	sub EVOLVE_FORM_TYPE_DELTA
+.plainEntry
 	inc hl
 	inc hl
 	cp EVOLVE_ITEM
@@ -159,13 +153,10 @@ RedrawPartyMenu_::
 	inc hl
 	inc hl
 	inc hl
-	push hl
-	ld e, a ; the entry's stone (only d/e cross a farcall)
-	; does the player's stone match? A form may need a different stone than
-	; the entry names (Alolan Vulpix: Ice), so ask the evolution parser's check.
-	farcall EvoStoneMatchesUsed
-	pop hl
-	ld de, .notAbleToEvolveText ; the farcall input clobbered it; ld keeps flags
+	ld b, a ; the entry's stone; a form's own list names the stone it needs
+	ld a, [wEvoStoneItemID]
+	cp b ; does the player's stone match?
+	ld de, .notAbleToEvolveText ; ld keeps flags
 	jr nz, .checkEvolutionsLoop
 ; if it does match
 	ld de, .ableToEvolveText

@@ -112,21 +112,24 @@ class EeveeFormGateTest(unittest.TestCase):
             for name, value in saved.items():
                 setattr(regs, name, value)
 
-    def stone_allowed(self, stone: int, species: int) -> bool:
+    def stone_allowed(self, stone: int, species: int, entry_form: int = PLAIN_ENTRY) -> bool:
         self.h.write8("wEvoStoneItemID", stone)
-        # As the evolution loop leaves it for a PLAIN entry (EvoEntryTakeForm):
-        # these rows all come from base species' lists.
-        self.h.write8("wEvoNewForm", PLAIN_ENTRY)
+        # As the evolution loop leaves it (EvoEntryTakeForm): PLAIN_ENTRY for a
+        # plain entry, the entry's form for an evo_item_form entry. The Eevee rows
+        # are EvoStoneForms rows read through PLAIN_ENTRY; the four regional stone
+        # evolutions are form entries in their base species' lists.
+        self.h.write8("wEvoNewForm", entry_form)
+        self.h.pyboy.memory[self.h.address("wLoadedMon") + MON_CATCH_RATE] = 0
         out = self.run_routine("IsEvoStoneFormAllowed", C=species)
         return bool(out["F"] & FLAG_C)
 
     def test_stone_evolution_checks_the_form_group(self) -> None:
         for enabled in (KANTO, KANTO | JOHTO, KANTO | WARP, KANTO | JOHTO | WARP):
             self.set_groups(enabled)
-            self.assertEqual(self.stone_allowed(ITEMS['DUSK_STONE'], SPECIES['MAROWAK']),
+            self.assertEqual(self.stone_allowed(ITEMS['DUSK_STONE'], SPECIES['MAROWAK'], 1),
                              bool(enabled & WARP))
             for target in ('RAICHU', 'EXEGGUTOR', 'WEEZING'):
-                self.assertEqual(self.stone_allowed(ITEMS['MOON_STONE'], SPECIES[target]),
+                self.assertEqual(self.stone_allowed(ITEMS['MOON_STONE'], SPECIES[target], 1),
                                  bool(enabled & WARP))
             for stone, target, needs in FORM_EVOLUTIONS:
                 with self.subTest(enabled=enabled, stone=stone):
@@ -142,9 +145,11 @@ class EeveeFormGateTest(unittest.TestCase):
 
     def test_cubone_stone_sets_alolan_form_only(self) -> None:
         self.h.pyboy.memory[self.h.address('wLoadedMon') + MON_CATCH_RATE] = 0
-        for stone, expected in ((ITEMS['DUSK_STONE'], 1), (0, 0)):
+        # Cubone's Dusk Stone entry is `evo_item_form 1, ...`: it names its form.
+        # A plain (level) entry into Marowak stays form 0.
+        for stone, entry_form, expected in ((ITEMS['DUSK_STONE'], 1, 1), (0, PLAIN_ENTRY, 0)):
             self.h.write8('wEvoStoneItemID', stone)
-            self.h.write8('wEvoNewForm', PLAIN_ENTRY)
+            self.h.write8('wEvoNewForm', entry_form)
             out = self.run_routine('GetEvolvedForm', C=SPECIES['MAROWAK'])
             self.assertEqual(out['A'], expected)
 
@@ -152,9 +157,9 @@ class EeveeFormGateTest(unittest.TestCase):
         self.h.pyboy.memory[self.h.address('wLoadedMon') + MON_CATCH_RATE] = 0
         for target, normal_stone in (('RAICHU', 'THUNDER_STONE'),
                                      ('EXEGGUTOR', 'LEAF_STONE'), ('WEEZING', None)):
-            for stone, expected in (('MOON_STONE', 1), (normal_stone, 0)):
+            for stone, entry_form, expected in (('MOON_STONE', 1, 1), (normal_stone, PLAIN_ENTRY, 0)):
                 self.h.write8('wEvoStoneItemID', ITEMS[stone] if stone else 0)
-                self.h.write8('wEvoNewForm', PLAIN_ENTRY)
+                self.h.write8('wEvoNewForm', entry_form)
                 out = self.run_routine('GetEvolvedForm', C=SPECIES[target])
                 self.assertEqual(out['A'], expected, (target, stone))
 

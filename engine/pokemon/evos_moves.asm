@@ -61,9 +61,6 @@ Evolution_PartyMonLoop: ; loop over party mons
 	farcall GetSpecialFormCaps
 	bit SF_NO_EVOLVE, e
 	jp nz, Evolution_PartyMonLoop
-	; Paradox forms and plain Farfetch'd never evolve (FormNoEvolve).
-	call IsPartyMonEvoBlocked
-	jp c, Evolution_PartyMonLoop
 	ldh a, [hWhichPokemon]
 	ld c, a
 	ld hl, wCanEvolveFlags
@@ -156,9 +153,10 @@ Evolution_PartyMonLoop: ; loop over party mons
 	ld a, [wForceEvolution]
 	and a
 	jp z, .nextEvoEntry1
-	; wCurItem aliases the species; use the stable stone-menu item ID. A form
-	; may need a different stone than the entry names (Alolan Vulpix: Ice).
-	call EvoStoneMatchesUsed ; was the evolution item in this entry used?
+	; wCurItem aliases the species; use the stable stone-menu item ID. A form's
+	; own list names the stone it needs (Alolan Vulpix's: Ice).
+	ld a, [wEvoStoneItemID]
+	cp e ; was the evolution item in this entry used?
 	jp nz, .nextEvoEntry1 ; if not, go to the next evolution entry
 .checkLevel
 	ld a, [hli] ; level requirement
@@ -1120,6 +1118,21 @@ GetEvoListForMon::
 NoEvolutionsList:
 	db 0
 
+; GetEvoListForMon for readers in OTHER banks, which cannot follow its in-bank
+; pointer: copies the (d, e) mon's list into wEvoDataBuffer.
+; IN:  d = species, e = form. OUT: the list in wEvoDataBuffer; d/e PRESERVED.
+; hl does not survive a farcall's return, so the caller reloads wEvoDataBuffer.
+; The copy is the buffer's full size, which may run past a short list's
+; terminator into the next record; readers stop at the terminator.
+CopyEvoListForMonFar::
+	call GetEvoListForMon
+	push de
+	ld de, wEvoDataBuffer
+	ld bc, wEvoDataBufferEnd - wEvoDataBuffer
+	call CopyData
+	pop de
+	ret
+
 ; IN:  c = species being evolved into, wEvoStoneItemID
 ; OUT: carry SET, a = form index (1..NUM_FORM_SLOTS) if this stone evolution SETS
 ;      a form (EvoStoneForms hit); carry CLEAR otherwise (level/trade evolution,
@@ -1187,126 +1200,13 @@ IsEvoStoneFormAllowed:
 	ret                        ; flags survive the Bankswitch return
 
 EvoStoneForms:
+; EEVEE ONLY. Every other stone-set form is an evo_item_form entry in its base
+; species' own list. Eevee's five would make a 38-byte list, which does not fit
+; wEvoDataBuffer (NUM_EVOS_IN_BUFFER * 4 + 1 = 33 bytes), so they stay here.
 ; db <stone>, <target species>, <form index>
-	db DUSK_STONE,  MAROWAK,  1 ; Alolan Marowak
-	db MOON_STONE,  RAICHU,   1 ; Alolan Raichu
-	db MOON_STONE,  EXEGGUTOR, 1 ; Alolan Exeggutor
-	db MOON_STONE,  WEEZING,  1 ; Galarian Weezing
 	db LEAF_STONE,  FLAREON,  1 ; Leafeon
 	db SUN_STONE,   JOLTEON,  1 ; Espeon
 	db DUSK_STONE,  JOLTEON,  2 ; Umbreon
 	db ICE_STONE,   VAPOREON, 1 ; Glaceon
 	db MOON_STONE,  VAPOREON, 2 ; Sylveon
-	db 0 ; terminator
-
-; Is the stone the player used the one THIS mon needs for an EVOLVE_ITEM entry?
-; Usually that is the entry's own stone, but a form listed in FormEvoStones
-; swaps it: Alolan Vulpix keeps VulpixEvosMoves' single FIRE_STONE -> NINETALES
-; entry and answers to ICE_STONE instead. Swapping the stone, rather than adding
-; a second NINETALES entry, keeps a plain Vulpix off the Ice Stone and keeps the
-; Mist Stone chooser from offering NINETALES twice. Evolution preserves the form,
-; so the result is Alolan Ninetales with no EvoStoneForms entry.
-;
-; Farcall-safe: the stone goes in e and the answer comes back in the flags,
-; which survive the Bankswitch return.
-; IN:  e = the stone an EVOLVE_ITEM entry names; wLoadedMon = the evolving mon
-; OUT: z SET if wEvoStoneItemID is the stone this mon needs for that entry
-; CLOBBERS: af, e  (bc, d, hl PRESERVED - the evolution parser's hl is live)
-EvoStoneMatchesUsed::
-	push bc
-	push hl
-	ld a, [wLoadedMon + MON_CATCH_RATE]
-	and FORM_MASK
-	rlca                       ; bits 5-6 -> 0-3
-	rlca
-	rlca
-	ld c, a                    ; c = the mon's form
-	ld a, [wLoadedMonSpecies]
-	ld b, a                    ; b = the mon's species
-	ld hl, FormEvoStones
-.loop
-	ld a, [hli]
-	and a
-	jr z, .compare             ; terminator: the entry's stone stands
-	cp b
-	jr nz, .skipForm
-	ld a, [hli]
-	cp c
-	jr nz, .skipStone
-	ld e, [hl]                 ; this form's stone replaces the entry's
-	jr .compare
-.skipForm
-	inc hl
-.skipStone
-	inc hl
-	jr .loop
-.compare
-	ld a, [wEvoStoneItemID]
-	cp e
-	pop hl                     ; pops do not disturb the flags
-	pop bc
-	ret
-
-FormEvoStones:
-; db <species>, <form index>, <stone that replaces the EVOLVE_ITEM entry's>
-	db VULPIX, 1, ICE_STONE ; Alolan Vulpix -> Alolan Ninetales
-	db 0 ; terminator
-
-; Does the party mon in slot hWhichPokemon belong to a (species, form) that never
-; evolves? Checked once per mon at the top of the evolution loop, so it blocks
-; every method (level, stone, Mist Stone, trade, Rare Candy); the party menu's
-; ABLE/NOT ABLE and the Mist Stone chooser ask too, so neither offers one.
-; Reads the party struct, not wLoadedMon: the Mist Stone chooser runs after the
-; party menu, when wLoadedMon holds whichever mon was drawn last.
-; IN:  hWhichPokemon = party slot
-; OUT: carry SET = this mon never evolves (flags survive a farcall return)
-; CLOBBERS: af, bc, hl (de PRESERVED)
-IsPartyMonEvoBlocked::
-	ldh a, [hWhichPokemon]
-	ld hl, wPartyMons
-	ld bc, PARTYMON_STRUCT_LENGTH
-	call AddNTimes
-	ld a, [hl]                 ; species
-	push af
-	ld bc, MON_CATCH_RATE
-	add hl, bc
-	ld a, [hl]
-	and FORM_MASK
-	rlca                       ; bits 5-6 -> 0-3
-	rlca
-	rlca
-	ld c, a                    ; c = form
-	pop af
-	ld b, a                    ; b = species
-	jr IsFormNoEvolve
-
-; The same question for a mon that is not in the party yet: the trainer party
-; builder asks it before ScaleTrainer_evolution, with the pool entry's form.
-; IN:  d = species, e = form index
-; OUT: carry SET = never evolves (flags survive the farcall return)
-; CLOBBERS: af, bc, hl (de PRESERVED)
-IsFormNoEvolveFar::
-	ld b, d
-	ld c, e
-	; fall through
-; IN: b = species, c = form. OUT/CLOBBERS as above.
-IsFormNoEvolve:
-	ld hl, FormNoEvolve
-.loop
-	ld a, [hli]
-	and a                      ; clears carry
-	ret z                      ; terminator: evolves normally
-	cp b
-	ld a, [hli]                ; loads do not disturb the flags
-	jr nz, .loop
-	cp c
-	jr nz, .loop
-	scf
-	ret
-
-FormNoEvolve:
-; db <species>, <form index>
-	db JIGGLYPUFF, 1 ; Scream Tail: paradox
-	db MAGNETON,   1 ; Sandy Shocks: paradox
-	db FARFETCHD,  0 ; plain Farfetch'd: only Galarian Farfetch'd -> Sirfetch'd
 	db 0 ; terminator
