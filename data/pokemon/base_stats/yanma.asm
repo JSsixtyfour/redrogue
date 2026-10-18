@@ -10,7 +10,7 @@
 	INCBIN "gfx/pokemon/front/yanma.dim" ; sprite dimensions
 	dw YanmaPicFront, YanmaPicBack
 
-	db TACKLE, DISABLE, NO_MOVE, NO_MOVE ; level 1 learnset - FORESIGHT filled with METRONOME
+	db TACKLE, DISABLE, NO_MOVE, NO_MOVE ; level 1 learnset - FORESIGHT replaced with DISABLE
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset

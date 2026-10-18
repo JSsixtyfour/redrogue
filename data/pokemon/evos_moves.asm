@@ -1368,8 +1368,8 @@ BayleefEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 32, MEGANIUM
 	db 0
-; Learnset - canon Gen 2 levels; SYNTHESIS/SAFEGUARD filled with METRONOME
-; (see ChikoritaEvosMoves). RAZOR_LEAF is already granted at level 1 - see
+; Learnset - canon Gen 2 levels; SYNTHESIS/SAFEGUARD do not exist in Gen 1,
+; replaced with RECOVER/MEGA_DRAIN. RAZOR_LEAF is already granted at level 1 - see
 ; base_stats/bayleef.asm.
     db 10, LEECH_SEED
 	db 12, REFLECT
@@ -1409,8 +1409,8 @@ MagmarEvosMoves:
 MeganiumEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - canon Gen 2 levels; SYNTHESIS/SAFEGUARD filled with METRONOME
-; (see ChikoritaEvosMoves). RAZOR_LEAF/REFLECT are already granted at level 1
+; Learnset - canon Gen 2 levels; SYNTHESIS/SAFEGUARD do not exist in Gen 1,
+; replaced with RECOVER/MEGA_DRAIN. RAZOR_LEAF/REFLECT are already granted at level 1
 ; - see base_stats/meganium.asm.
     db 10, LEECH_SEED
 	db 12, REFLECT
@@ -1625,8 +1625,7 @@ TotodileEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 18, CROCONAW
 	db 0
-; Learnset - canon Gen 2 levels; SCARY_FACE does not exist in Gen 1, filled
-; with METRONOME.
+; Learnset - canon Gen 2 levels; SCARY_FACE does not exist in Gen 1, dropped.
     db 7, RAGE
     db 9, BUBBLE
 	db 13, WATER_GUN
@@ -2036,7 +2035,7 @@ LedybaEvosMoves:
 	db EVOLVE_LEVEL, 18, LEDIAN
 	db 0
 ; Learnset - canon Gen 2 levels; SAFEGUARD/BATON_PASS do not exist in Gen 1,
-; filled with METRONOME.
+; replaced with MEGA_PUNCH/THUNDERPUNCH.
 	db 5, SUPERSONIC
 	db 10, COMET_PUNCH
 	db 20, LIGHT_SCREEN
@@ -2212,7 +2211,7 @@ SpinarakEvosMoves:
 	db EVOLVE_LEVEL, 22, ARIADOS
 	db 0
 ; Learnset - canon Gen 2 levels; SCARY_FACE/SPIDER_WEB do not exist in Gen 1,
-; filled with METRONOME.
+; replaced with LEECH_LIFE/PSYCHIC_M.
 	db 7, LEECH_LIFE ; was SCARY_FACE
     db 9, ABSORB
 	db 11, CONSTRICT
@@ -2231,7 +2230,7 @@ AriadosEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - POISON_STING/STRING_SHOT/CONSTRICT already granted at level 1
-; (SCARY_FACE's level-1 slot is METRONOME, see base_stats/ariados.asm)
+; (SCARY_FACE's level-1 slot is FOCUS_ENERGY, see base_stats/ariados.asm)
 	db 7, LEECH_LIFE ; was SCARY_FACE
     db 9, ABSORB
 	db 11, CONSTRICT
@@ -2974,8 +2973,8 @@ MagikarpEvosMoves:
 TogeticEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - GROWL/CHARM already granted at level 1 (CHARM's slot is
-; METRONOME, see base_stats/togetic.asm)
+; Learnset - GROWL already granted at level 1 (CHARM's level-1 slot is POUND,
+; see base_stats/togetic.asm)
 	db 7, METRONOME
     db 10, DEFENSE_CURL
 	db 15, SING ; was SWEET_KISS
@@ -2991,8 +2990,8 @@ NatuEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 25, XATU
 	db 0
-; Learnset - canon Gen 2 levels; FUTURE_SIGHT does not exist in Gen 1, filled
-; with METRONOME.
+; Learnset - canon Gen 2 levels; FUTURE_SIGHT does not exist in Gen 1, replaced
+; with PSYBEAM.
 	db 10, NIGHT_SHADE
 	db 18, CONFUSION
 	db 30, PSYBEAM ; was FUTURE_SIGHT
@@ -3026,7 +3025,7 @@ XatuEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - PECK/LEER/NIGHT_SHADE already granted at level 1; FUTURE_SIGHT
-; does not exist in Gen 1, filled with METRONOME.
+; does not exist in Gen 1, replaced with PSYBEAM.
 	db 12, NIGHT_SHADE
 	db 20, CONFUSION
 	db 32, PSYBEAM ; was FUTURE_SIGHT
@@ -3677,8 +3676,8 @@ HoppipEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 18, SKIPLOOM
 	db 0
-; Learnset - canon Gen 2 levels; SYNTHESIS (level 1, filled with METRONOME)
-; and COTTON_SPORE do not exist in Gen 1.
+; Learnset - canon Gen 2 levels; SYNTHESIS (level 1, slot given to TACKLE)
+; and COTTON_SPORE (replaced with RECOVER) do not exist in Gen 1.
 	db 5, TAIL_WHIP
 	db 10, ABSORB
 	db 13, POISONPOWDER
@@ -4080,7 +4079,7 @@ MurkrowEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - PECK already granted at level 1; PURSUIT/FAINT_ATTACK/
-; MEAN_LOOK do not exist in Gen 1, filled with METRONOME.
+; MEAN_LOOK do not exist in Gen 1, replaced with GUST/SWIFT/SCREECH.
 	db 8, GUST ; was PURSUIT
     db 15, FURY_ATTACK
 	db 16, WING_ATTACK
@@ -4112,7 +4111,8 @@ MisdreavusEvosMoves:
 	db EVOLVE_ITEM, DUSK_STONE, 1, MISMAGIUS
 	db 0
 ; Learnset - GROWL/PSYWAVE already granted at level 1; SPITE/MEAN_LOOK/
-; PAIN_SPLIT/PERISH_SONG do not exist in Gen 1, filled with METRONOME.
+; PAIN_SPLIT/PERISH_SONG do not exist in Gen 1, replaced with LICK/
+; NIGHT_SHADE/LIGHT_SCREEN/PSYCHIC_M.
 	db 6, LICK ; was SPITE
     db 10, CONFUSION
 	db 12, CONFUSE_RAY
@@ -4125,8 +4125,8 @@ MisdreavusEvosMoves:
 GirafarigEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - TACKLE/GROWL/CONFUSION/STOMP already granted at level 1; CRUNCH
-; does not exist in Gen 1, filled with METRONOME.
+; Learnset - TACKLE/GROWL/CONFUSION/STOMP already granted at level 1;
+; BATON_PASS/CRUNCH do not exist in Gen 1, filled with METRONOME.
 	db 7, CONFUSION
 	db 13, STOMP
 	db 20, AGILITY
@@ -4139,9 +4139,9 @@ PinecoEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 31, FORRETRESS
 	db 0
-; Learnset - TACKLE already granted at level 1 (PROTECT's slot is METRONOME,
-; see base_stats/pineco.asm); RAPID_SPIN/SPIKES do not exist in Gen 1, filled
-; with METRONOME.
+; Learnset - TACKLE already granted at level 1 (PROTECT does not exist in
+; Gen 1 and was dropped, see base_stats/pineco.asm); RAPID_SPIN/SPIKES do not
+; exist in Gen 1, replaced with HARDEN/PIN_MISSILE.
 	db 8, SELFDESTRUCT
     db 9, LEECH_LIFE
     db 11, HARDEN ; was RAPID_SPIN
@@ -4156,8 +4156,8 @@ PinecoEvosMoves:
 ForretressEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - TACKLE/SELFDESTRUCT already granted at level 1 (PROTECT's slot is
-; METRONOME, see base_stats/forretress.asm)
+; Learnset - TACKLE/SELFDESTRUCT already granted at level 1 (PROTECT does not
+; exist in Gen 1 and was dropped, see base_stats/forretress.asm)
 	db 8, SELFDESTRUCT
     db 9, LEECH_LIFE
     db 11, HARDEN ; was RAPID_SPIN
@@ -4172,7 +4172,7 @@ ForretressEvosMoves:
 DunsparceEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - RAGE already granted at level 1; PURSUIT does not exist in
+; Learnset - RAGE already granted at level 1; SPITE/PURSUIT do not exist in
 ; Gen 1, filled with METRONOME.
 	db 5, DEFENSE_CURL
 	db 13, GLARE
@@ -4186,7 +4186,7 @@ GligarEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - POISON_STING already granted at level 1; FAINT_ATTACK does not
-; exist in Gen 1, filled with METRONOME.
+; exist in Gen 1, replaced with SWIFT.
 	db 6, SAND_ATTACK
 	db 13, HARDEN
 	db 20, QUICK_ATTACK
@@ -4201,7 +4201,7 @@ SteelixEvosMoves:
 	db 0
 ; Learnset - canon Gen 2 levels (tmp/pokegold, since KEP's own Steelix
 ; learnset uses Gen 4+ moves); TACKLE/SCREECH already granted at level 1;
-; SANDSTORM/CRUNCH do not exist in Gen 1, filled with METRONOME.
+; SANDSTORM/CRUNCH do not exist in Gen 1, dropped.
 	db 12, ROCK_THROW
 	db 19, DIG
 	db 25, RAGE
@@ -4218,8 +4218,8 @@ SnubbullEvosMoves:
 	db EVOLVE_LEVEL, 23, GRANBULL
 	db 0
 ; Learnset - TACKLE already granted at level 1 (SCARY_FACE's slot is
-; METRONOME, see base_stats/snubbull.asm); CHARM does not exist in Gen 1,
-; filled with METRONOME.
+; METRONOME, see base_stats/snubbull.asm); CHARM does not exist in Gen 1 and
+; ROAR is Gen 1's useless WHIRLWIND, both filled with METRONOME.
 	db 4, TAIL_WHIP
 	db 8, METRONOME ; was CHARM
 	db 13, BITE
@@ -4263,7 +4263,7 @@ ScizorEvosMoves:
 	db 0
 ; Learnset - from tmp/pokegold/data/pokemon/evos_attacks.asm; QUICK_ATTACK/LEER
 ; already granted at level 1; PURSUIT/FALSE_SWIPE/METAL_CLAW do not exist in
-; Gen 1, filled with METRONOME.
+; Gen 1, dropped.
 	db 6, FOCUS_ENERGY
     db 11, WING_ATTACK
 	db 16, CUT
@@ -4278,7 +4278,7 @@ ShuckleEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - CONSTRICT/WITHDRAW already granted at level 1; ENCORE/SAFEGUARD
-; do not exist in Gen 1, filled with METRONOME.
+; do not exist in Gen 1, dropped.
 	db 9, WRAP
     db 11, ROCK_THROW
 	db 25, BIDE
@@ -4382,13 +4382,14 @@ SwinubEvosMoves:
 	db EVOLVE_LEVEL, 33, PILOSWINE
 	db 0
 ; Learnset - TACKLE already granted at level 1; POWDER_SNOW/ENDURE do not
-; exist in Gen 1, filled with METRONOME.
+; exist in Gen 1, replaced with SAND_ATTACK/DEFENSE_CURL.
 	db 7, SAND_ATTACK ; was POWDER_SNOW
 	db 19, DEFENSE_CURL ; was ENDURE
 	db 28, TAKE_DOWN
 	db 37, MIST
 	db 46, BLIZZARD
 	db 50, AMNESIA
+	db 0
 
 PiloswineEvosMoves:
 ; Evolutions
@@ -4409,7 +4410,7 @@ CorsolaEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - TACKLE already granted at level 1; MIRROR_COAT/ANCIENTPOWER do
-; not exist in Gen 1, filled with METRONOME.
+; not exist in Gen 1, dropped.
 	db 7, HARDEN
 	db 10, BUBBLE
     db 15, ROCK_THROW
@@ -4465,7 +4466,7 @@ SkarmoryEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - LEER/PECK already granted at level 1; STEEL_WING does not exist
-; in Gen 1, filled with METRONOME.
+; in Gen 1, replaced with SLASH.
 	db 13, SAND_ATTACK
     db 14, WING_ATTACK
     db 16, ROCK_THROW
@@ -4482,7 +4483,7 @@ HoundourEvosMoves:
 	db EVOLVE_LEVEL, 24, HOUNDOOM
 	db 0
 ; Learnset - LEER/EMBER already granted at level 1; FAINT_ATTACK/CRUNCH do
-; not exist in Gen 1, filled with METRONOME.
+; not exist in Gen 1, replaced with SWIFT/FIRE_BLAST.
 	db 7, EMBER
     db 8, GROWL
     db 10, LICK
@@ -4498,7 +4499,7 @@ HoundoomEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - LEER/EMBER already granted at level 1; FAINT_ATTACK/CRUNCH do
-; not exist in Gen 1, filled with METRONOME.
+; not exist in Gen 1, replaced with SWIFT/FIRE_BLAST.
 	db 7, EMBER
     db 8, GROWL
     db 10, LICK
@@ -4528,8 +4529,8 @@ PhanpyEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 25, DONPHAN
 	db 0
-; Learnset - TACKLE/GROWL already granted at level 1; FLAIL/ENDURE do not
-; exist in Gen 1, filled with METRONOME.
+; Learnset - TACKLE/GROWL already granted at level 1; FLAIL/ROLLOUT/ENDURE do
+; not exist in Gen 1, replaced with DIG/SLAM/EARTHQUAKE.
 	db 9, DEFENSE_CURL
 	db 17, DIG ; was FLAIL
 	db 24, TAKE_DOWN
@@ -4541,8 +4542,9 @@ PhanpyEvosMoves:
 DonphanEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - HORN_ATTACK/GROWL already granted at level 1; FLAIL/ROLLOUT do
-; not exist in Gen 1, filled with METRONOME; RAPID_SPIN likewise.
+; Learnset - HORN_ATTACK/GROWL already granted at level 1; FLAIL/ROLLOUT/
+; ENDURE do not exist in Gen 1, replaced with DIG/SLAM/EARTHQUAKE; RAPID_SPIN
+; dropped.
 	db 9, DEFENSE_CURL
 	db 17, DIG ; was FLAIL
 	db 24, TAKE_DOWN
@@ -4597,8 +4599,8 @@ HitmontopEvosMoves:
 MiltankEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - TACKLE already granted at level 1; MILK_DRINK/HEAL_BELL do not
-; exist in Gen 1, filled with METRONOME.
+; Learnset - TACKLE already granted at level 1; MILK_DRINK/ROLLOUT/HEAL_BELL
+; do not exist in Gen 1, filled with METRONOME.
 	db 4, GROWL
 	db 8, DEFENSE_CURL
 	db 13, STOMP
@@ -4627,7 +4629,8 @@ RaikouEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - BITE/LEER already granted at level 1; ROAR renamed WHIRLWIND
-; in Gen 1; CRUNCH does not exist in Gen 1, filled with METRONOME.
+; in Gen 1; SPARK/CRUNCH do not exist in Gen 1, replaced with THUNDER_WAVE/
+; THUNDERBOLT.
 	db 8, GROWL
     db 11, THUNDERSHOCK
 	db 25, QUICK_ATTACK
@@ -4654,7 +4657,7 @@ SuicuneEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - BITE/LEER already granted at level 1; ROAR renamed WHIRLWIND
-; in Gen 1; MIRROR_COAT does not exist in Gen 1, filled with METRONOME.
+; in Gen 1; MIRROR_COAT does not exist in Gen 1, replaced with SURF.
     db 8, GROWL
 	db 11, WATER_GUN
 	db 25, GUST
@@ -4670,7 +4673,7 @@ LarvitarEvosMoves:
 	db EVOLVE_LEVEL, 30, PUPITAR
 	db 0
 ; Learnset - BITE/LEER already granted at level 1; SANDSTORM/SCARY_FACE/
-; CRUNCH do not exist in Gen 1, filled with METRONOME.
+; CRUNCH do not exist in Gen 1, replaced with TAIL_WHIP/ROCK_SLIDE/STOMP.
 	db 8, TAIL_WHIP ; was SANDSTORM
     db 10, ROCK_THROW
 	db 15, BITE
@@ -4687,7 +4690,8 @@ PupitarEvosMoves:
 	db EVOLVE_LEVEL, 55, TYRANITAR
 	db 0
 ; Learnset - BITE/LEER/SCREECH already granted at level 1; SANDSTORM/
-; SCARY_FACE/CRUNCH do not exist in Gen 1, filled with METRONOME.
+; SCARY_FACE/CRUNCH do not exist in Gen 1, replaced with TAIL_WHIP/ROCK_SLIDE/
+; STOMP.
 	db 8,  TAIL_WHIP ; was SANDSTORM
 	db 11, ROCK_THROW
 	db 22, SCREECH
@@ -4702,7 +4706,8 @@ TyranitarEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - BITE/LEER/SCREECH already granted at level 1; SANDSTORM/
-; SCARY_FACE/CRUNCH do not exist in Gen 1, filled with METRONOME.
+; SCARY_FACE/CRUNCH do not exist in Gen 1, replaced with TAIL_WHIP/ROCK_SLIDE/
+; STOMP.
 	db 8,  TAIL_WHIP ; was SANDSTORM
 	db 15, ROCK_THROW
 	db 22, SCREECH
@@ -4736,8 +4741,8 @@ HoOhEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - EMBER already granted at level 1; SACRED_FIRE/SAFEGUARD/
-; SUNNY_DAY/ANCIENTPOWER/FUTURE_SIGHT do not exist in Gen 1, filled with
-; METRONOME.
+; SUNNY_DAY/ANCIENTPOWER/FUTURE_SIGHT do not exist in Gen 1. SAFEGUARD and
+; FUTURE_SIGHT were replaced with SAND_ATTACK/SKY_ATTACK; the rest dropped.
     db 9, PECK
 	db 11, SAND_ATTACK ; was SAFEGUARD
 	db 22, GUST
@@ -4754,7 +4759,8 @@ CelebiEvosMoves:
 	db 0
 ; Learnset - LEECH_SEED/CONFUSION/RECOVER already granted at level 1;
 ; HEAL_BELL/SAFEGUARD/ANCIENTPOWER/FUTURE_SIGHT/BATON_PASS/PERISH_SONG do
-; not exist in Gen 1, filled with METRONOME.
+; not exist in Gen 1. HEAL_BELL dropped; the rest replaced with BARRIER/
+; RAZOR_LEAF/PSYBEAM/PETAL_DANCE/PSYCHIC_M.
 	db 10, BARRIER ; was SAFEGUARD
 	db 20, RAZOR_LEAF ; was ANCIENTPOWER
 	db 30, PSYBEAM ; was FUTURE_SIGHT
@@ -4793,7 +4799,7 @@ SirfetchdEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - PECK/SAND_ATTACK already granted at level 1; BRUTAL_SWING
-; does not exist in Gen 1, filled with METRONOME.
+; does not exist in Gen 1, replaced with SLASH.
 	db 7, LEER
     db 9, SHARPEN
     db 13, FURY_ATTACK
@@ -4865,7 +4871,7 @@ MrRimeEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - CONFUSION/BARRIER/REFLECT already granted at level 1;
-; FEINT_ATTACK does not exist in Gen 1, filled with METRONOME.
+; FEINT_ATTACK does not exist in Gen 1, replaced with MIST.
     db 23, LIGHT_SCREEN
     db 23, REFLECT
     db 25, DOUBLESLAP

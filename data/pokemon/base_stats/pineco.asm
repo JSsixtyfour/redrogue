@@ -10,7 +10,7 @@
 	INCBIN "gfx/pokemon/front/pineco.dim" ; sprite dimensions
 	dw PinecoPicFront, PinecoPicBack
 
-	db TACKLE, SELFDESTRUCT, NO_MOVE, NO_MOVE ; level 1 learnset - PROTECT filled with METRONOME
+	db TACKLE, SELFDESTRUCT, NO_MOVE, NO_MOVE ; level 1 learnset - PROTECT does not exist in Gen 1, dropped
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset

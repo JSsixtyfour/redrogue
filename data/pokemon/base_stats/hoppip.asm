@@ -10,7 +10,7 @@
 	INCBIN "gfx/pokemon/front/hoppip.dim" ; sprite dimensions
 	dw HoppipPicFront, HoppipPicBack
 
-	db SPLASH, TACKLE, NO_MOVE, NO_MOVE ; level 1 learnset - SYNTHESIS filled with METRONOME
+	db SPLASH, TACKLE, NO_MOVE, NO_MOVE ; level 1 learnset - SYNTHESIS replaced with TACKLE
 	db GROWTH_MEDIUM_SLOW ; growth rate
 
 	; tm/hm learnset

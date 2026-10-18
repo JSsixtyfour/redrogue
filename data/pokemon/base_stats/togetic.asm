@@ -10,7 +10,7 @@
 	INCBIN "gfx/pokemon/front/togetic.dim" ; sprite dimensions
 	dw TogeticPicFront, TogeticPicBack
 
-	db GROWL, POUND, NO_MOVE, NO_MOVE ; level 1 learnset - CHARM filled with METRONOME
+	db GROWL, POUND, NO_MOVE, NO_MOVE ; level 1 learnset - CHARM replaced with POUND
 	db GROWTH_FAST ; growth rate
 
 	; tm/hm learnset

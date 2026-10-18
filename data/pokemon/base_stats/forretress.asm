@@ -10,7 +10,7 @@
 	INCBIN "gfx/pokemon/front/forretress.dim" ; sprite dimensions
 	dw ForretressPicFront, ForretressPicBack
 
-	db TACKLE, SELFDESTRUCT, NO_MOVE, NO_MOVE ; level 1 learnset - PROTECT filled with METRONOME
+	db TACKLE, SELFDESTRUCT, NO_MOVE, NO_MOVE ; level 1 learnset - PROTECT does not exist in Gen 1, dropped
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
