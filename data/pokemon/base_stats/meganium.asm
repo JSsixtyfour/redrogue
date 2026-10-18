@@ -1,6 +1,6 @@
 	db DEX_MEGANIUM ; pokedex id
 
-	db  80,  82, 100,  80, 100
+	db  80,  82, 100,  80, 83
 	;   hp  atk  def  spd  spc
 
 	db GRASS, GRASS ; type
@@ -17,7 +17,7 @@
 	tmhm SWORDS_DANCE, TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
 	     HYPER_BEAM,   RAGE,         MEGA_DRAIN,   SOLARBEAM,    MIMIC,        \
 	     DOUBLE_TEAM,  REFLECT,      BIDE,         REST,         SUBSTITUTE,   \
-	     CUT,          LIGHT_SCREEN
+	     CUT,          LIGHT_SCREEN, FLASH
 	; end
 
 	db BANK(MeganiumPicFront) ; pic bank

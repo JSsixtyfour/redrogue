@@ -12,6 +12,7 @@ Usage:
   python tools/balance/model.py --runs 2000 --difficulty normal --exp-all 0
   python tools/balance/model.py --set GYM_R5_BASE=35 --set WILD_BUDGET_BASE=14
   python tools/balance/model.py --runs 200 --selfcheck
+  python tools/balance/model.py --runs 2000 --witch-exp-start-count 17
 """
 
 from __future__ import annotations
@@ -80,6 +81,9 @@ class Config:
                                      # 0-3 = the retired key-item tiers;
                                      # "a"/"b"/"c" = the Phase 5 option candidates (exp_share_split)
     exp_boost: bool = True           # False = drop BoostExp's x1.5 (the parity-at-x1.0 lever)
+    # Explicit alternative scenario: the permanent witch EXP prize is owned
+    # before battles at this wBattleCount or later. None = never acquired.
+    witch_exp_start_count: int | None = None
     # What-if over-level EXP penalty: ((gap, shift), ...) checked in order; a
     # recipient whose level exceeds the KO'd mon's by >= gap gets exp >> shift.
     # Levels are read on the recipient's own growth curve. () = off (the ROM today).
@@ -140,24 +144,35 @@ def apply_difficulty(level: int, difficulty: str) -> int:
 
 
 def evolve_by_level(g: GameData, cfg: Config, species: str, level: int, rng: random.Random) -> str:
-    """EvolveMonByLevel (func_enc_gen.asm), including the Eevee roll and the
-    species-group gate (RogueIsSpeciesEvolutionAllowed)."""
+    """EvolvePoolMon: exact form lists, uniform branches, and unlock gates."""
     while True:
+        origin = g.species[species]
+        # The ROM samples uniformly over unlocked EeveeBranches at level 35+.
+        if species == "EEVEE" and level >= 35:
+            branches = [s for s in g.eevee_branches
+                        if not g.species[s].form or g.species[s].form_group in cfg.groups]
+            return rng.choice(branches)
+        eligible = []
         for method, min_level, target in g.species[species].evos:
             if method in (EVOLVE_ITEM, EVOLVE_TRADE) and level < 35:
                 continue
-            if species == "EEVEE":
-                r = rng.randrange(16)
-                return "EEVEE" if r < 3 else "FLAREON" if r < 7 else "VAPOREON" if r < 11 else "JOLTEON"
             if level < min_level:
                 continue
-            cls = parse.classify(g.rarity, target, cfg.groups)
+            destination = g.species[target]
+            cls = parse.classify(g.rarity, destination.base_species, cfg.groups)
             if cls is not None and cls[0] not in cfg.groups:
                 continue
-            species = target
-            break
-        else:
+            # A form's own list carries its form forward ungated; base-list
+            # form branches require their form group to be unlocked.
+            if (not origin.form and destination.form
+                    and destination.form_group not in cfg.groups):
+                continue
+            eligible.append(target)
+        if not eligible:
             return species
+        species = eligible[0] if len(eligible) == 1 else rng.choice(eligible)
+        if not origin.form and g.species[species].form:
+            return species  # base-list exact-form choices finish this call
 
 
 def scale_trainer_evolution(g: GameData, cfg: Config, species: str, level: int, rng: random.Random) -> str:
@@ -165,16 +180,10 @@ def scale_trainer_evolution(g: GameData, cfg: Config, species: str, level: int, 
     return evolve_by_level(g, cfg, species, level, rng)
 
 
-def rival_starter_evolve(g: GameData, species: str, level: int) -> str:
-    """RivalStarterEvolve: up to two plain level steps, no bias, no Eevee."""
-    if species == "EEVEE":
-        return species
-    for _ in range(2):
-        nxt = next((t for m, lv, t in g.species[species].evos if m == parse.EVOLVE_LEVEL and level >= lv), None)
-        if nxt is None:
-            break
-        species = nxt
-    return species
+def rival_starter_evolve(g: GameData, species: str, level: int,
+                        cfg: Config, rng: random.Random) -> str:
+    """PatchRivalStarterSpecies uses the shared generated evolution path."""
+    return evolve_by_level(g, cfg, g.species[species].base_species, level, rng)
 
 
 # =============================================================================
@@ -319,8 +328,12 @@ def draw_pool(g: GameData, cfg: Config, pool: str, level: int, used: list[str], 
 
     def ok(draw: str) -> bool:
         fielded = draw if keep or draw == "EEVEE" else scale_trainer_evolution(g, cfg, draw, level, random.Random(0))
-        cls = parse.classify(g.rarity, draw, cfg.groups)
-        return not (fielded in used or (not allow_uber and cls and cls[1] == parse.TIER_UBER) or draw == no_rival)
+        # ROM duplicate and rival-starter preferences compare species bytes,
+        # even when two entries carry different forms of that species.
+        cls = parse.classify(g.rarity, g.species[draw].base_species, cfg.groups)
+        already_used = g.species[fielded].base_species in {g.species[s].base_species for s in used}
+        rival = no_rival is not None and g.species[draw].base_species == g.species[no_rival].base_species
+        return not (already_used or (not allow_uber and cls and cls[1] == parse.TIER_UBER) or rival)
 
     eligible = eligible_of(pool)
     if not eligible:
@@ -352,7 +365,7 @@ def spec_battle(g: GameData, cfg: Config, kind: str, count: int, n: int, base: i
     for slot in range(n):
         lv = apply_difficulty(max(1, min(base + slot * step, MAX_LEVEL)), cfg.difficulty)
         if slot == n - 1 and ace == "RIVAL_STARTER_PLACEHOLDER":
-            sp = rival_starter_evolve(g, rival_starter, lv)
+            sp = rival_starter_evolve(g, rival_starter, lv, cfg, rng)
         elif slot == n - 1 and ace:
             sp = ace
         else:
@@ -424,7 +437,7 @@ def miniboss_battle(g: GameData, cfg: Config, who: str, count: int, rival_starte
 
     no_rival = rival_starter if who == "RIVAL" else None
     if who == "RIVAL":
-        ace = rival_starter_evolve(g, rival_starter, level(n - 1))
+        ace = rival_starter_evolve(g, rival_starter, level(n - 1), cfg, rng)
     else:
         ace = draw_pool(g, cfg, f"{pre}Ace{band}", level(n - 1), [], False, rng, keep=True)
     mons: list[tuple[str, int]] = []
@@ -515,13 +528,19 @@ def wild_boss_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -
 # ROM mirrors: EXP, money, levels
 # =============================================================================
 
-def exp_for_ko(g: GameData, base_exp: int, level: int, trainer: bool, boost: bool = True) -> int:
+def exp_for_ko(g: GameData, base_exp: int, level: int, trainer: bool, boost: bool = True,
+               witch_boost: bool = False) -> int:
     """GainExperience: base * L / 7, then BoostExp (x1.5, saturating) for a
     trainer battle, or for every battle when WILD_EXP_MATCHES_TRAINER.
-    boost=False is the what-if with BoostExp removed."""
+    boost=False is the what-if with BoostExp removed. witch_boost mirrors the
+    permanent prize's separate floor(EXP/10) addition after the common boost."""
     e = base_exp * level // 7
     if boost and (trainer or g.knobs["WILD_EXP_MATCHES_TRAINER"]):
         e = min(e + e // 2, 0xFFFF)
+    # WitchBoostExp10Percent runs AFTER BoostExp, with integer division and
+    # the same 16-bit saturation. This prize does not depend on trainer ID.
+    if witch_boost:
+        e = min(e + e // 10, 0xFFFF)
     return e
 
 
@@ -721,7 +740,7 @@ class Simulator:
         self.cur_round = 0        # for Run.gaps: 0 = Oak's Lab, 1-8 rounds, 9 = the finale
         self.money = bcd(g.knobs["START_MONEY"])
         self.dead_money = 0       # winnings from DEAD_MONEY_KINDS battles
-        self.rival_starter = self.rng.choice([b for i, b in enumerate(balls) if i != pick])
+        self.rival_starter = g.species[self.rng.choice([b for i, b in enumerate(balls) if i != pick])].base_species
         self.count = 0
         self.ko_turn = 0
         self.bridge_count = 0
@@ -750,17 +769,19 @@ class Simulator:
             else:
                 fighter = 0
             boost = cfg.exp_boost
+            witch_boost = (cfg.witch_exp_start_count is not None
+                           and battle.count >= cfg.witch_exp_start_count)
             if cfg.overlevel:
                 self._ko_level = lv
             if cfg.exp_all is None or cfg.exp_all == "off":
                 m = self.members[fighter]
-                m.exp_gained += self._penalize(m, exp_for_ko(g, base, lv, battle.trainer, boost))
+                m.exp_gained += self._penalize(m, exp_for_ko(g, base, lv, battle.trainer, boost, witch_boost))
             elif cfg.exp_all in EXP_SHARE_CANDIDATES:
                 f_base, b_base = exp_share_split(cfg.exp_all, base, len(self.members))
                 for i, m in enumerate(self.members):
-                    m.exp_gained += self._penalize(m, exp_for_ko(g, f_base if i == fighter else b_base, lv, battle.trainer, boost))
+                    m.exp_gained += self._penalize(m, exp_for_ko(g, f_base if i == fighter else b_base, lv, battle.trainer, boost, witch_boost))
             else:
-                share = exp_for_ko(g, exp_all_base(base, cfg.exp_all), lv, battle.trainer, boost)
+                share = exp_for_ko(g, exp_all_base(base, cfg.exp_all), lv, battle.trainer, boost, witch_boost)
                 f = self.members[fighter]
                 f.exp_gained += self._penalize(f, share)      # the fighter's own call
                 for m in self.members:                        # then every party mon
@@ -832,7 +853,7 @@ class Simulator:
         steps only in the forest)."""
         g, cfg, rng = self.g, self.cfg, self.rng
         k = g.knobs
-        budget = min(255, k["WILD_BUDGET_BASE"] + self.count // k["WILD_BUDGET_DIVISOR"])
+        budget = min(k["WILD_BUDGET_MAX"], k["WILD_BUDGET_BASE"] + self.count // k["WILD_BUDGET_DIVISOR"])
         rolls = cfg.wild_steps if cfg.wild_steps is not None else rng.choice(g.wild_paths[wtype][cfg.wild_path])
         encounters = sum(1 for _ in range(rolls) if rng.randrange(256) < k["WILD_AREA_ENCOUNTER_RATE"])
         for _ in range(min(budget, encounters)):
@@ -1010,7 +1031,8 @@ def simulate(g: GameData, cfg: Config, n: int, seed: int = 1) -> list[Run]:
 
 def format_round_table(rows: list[dict], cfg: Config) -> str:
     head = (f"difficulty={cfg.difficulty} exp_all={cfg.exp_all} boost={cfg.exp_boost} policy={cfg.policy} "
-            f"take_wild={cfg.take_wild} groups={','.join(cfg.groups)}")
+            f"take_wild={cfg.take_wild} groups={','.join(cfg.groups)} "
+            f"witch_exp_start_count={cfg.witch_exp_start_count}")
     lines = [head,
              "| checkpoint | battles | enemy ace | starter (p10-p90) | team avg | team lowest | enemy ace - starter "
              "| if MedSlow | if MedFast | if Fast | if Slow | spendable money |",
@@ -1209,6 +1231,9 @@ def main(argv: list[str] | None = None) -> int:
                     help="equal (the ROM's EXP Share on, 68.75%%), equal625 (before 2026-10-10), off, "
                          "a retired key-item tier 0-3, or candidate a/b/c")
     ap.add_argument("--no-exp-boost", action="store_true", help="drop BoostExp's x1.5")
+    ap.add_argument("--witch-exp-start-count", type=int, default=None, metavar="COUNT",
+                    help="alternative scenario: own the permanent +10%% witch EXP prize before "
+                         "battles at this wBattleCount or later (default: never acquired)")
     ap.add_argument("--round-shape", default=None, metavar="ROUTE,GYM",
                     help="what-if battles per stage and gym trainers per gym, e.g. 4,3")
     ap.add_argument("--policy", choices=("carry", "rotate"), default="carry")
@@ -1225,6 +1250,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--selfcheck", action="store_true")
     ap.add_argument("--trace", action="store_true", help="print one run's battles (seed --seed)")
     args = ap.parse_args(argv)
+    if args.witch_exp_start_count is not None and args.witch_exp_start_count < 0:
+        ap.error("--witch-exp-start-count must be nonnegative")
 
     if args.round_shape:
         r, gy = (int(x) for x in args.round_shape.split(","))
@@ -1249,6 +1276,7 @@ def main(argv: list[str] | None = None) -> int:
         exp_all=None if args.exp_all == "off" else args.exp_all if args.exp_all in EXP_SHARE_CANDIDATES
         else int(args.exp_all),
         exp_boost=not args.no_exp_boost,
+        witch_exp_start_count=args.witch_exp_start_count,
         groups=tuple(x.strip().upper() for x in args.groups.split(",")),
         take_wild=args.take_wild,
         take_miniboss=args.take_miniboss,

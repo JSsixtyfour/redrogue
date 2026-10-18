@@ -1,14 +1,15 @@
 ; Alolan Raticate - RATICATE form 1.
 ;
 ; Dark/Normal. PRIMARY Dark becomes NORMAL; secondary Normal is unaffected.
-; Special split: modern SpA 40 / SpD 80, take the HIGHER -> spc 80.
+; Special: spc 50, between the modern values (SpA 40 / SpD 80), so the total
+; matches vanilla Raticate's 343.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Raticate.
 	form_record RATICATE, 1
 
 	db DEX_RATICATE ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  75,  71,  70,  77,  80
+	db  75,  71,  70,  77,  50
 	;   hp  atk  def  spd  spc
 
 	db NORMAL, NORMAL ; type

@@ -1326,7 +1326,7 @@ PCFinalizeCave::
 	farcall CaveSubroomArm           ; Phase 4: the ladders into the subroom
 
 	; Fresh entry only (slow path): set the wild-battle budget for this visit.
-	; cap = WILD_BUDGET_BASE + wBattleCount/WILD_BUDGET_DIVISOR, saturating at 255.
+	; cap = min(WILD_BUDGET_MAX, WILD_BUDGET_BASE + wBattleCount/WILD_BUDGET_DIVISOR).
 	ld a, [wBattleCount]
 	ld b, 0
 .budgetDivLoop
@@ -1338,8 +1338,9 @@ PCFinalizeCave::
 .budgetGotQuotient
 	ld a, b
 	add a, WILD_BUDGET_BASE         ; WILD_BUDGET_BASE + wBattleCount/WILD_BUDGET_DIVISOR
-	jr nc, .budgetNoClamp
-	ld a, 255
+	cp WILD_BUDGET_MAX + 1
+	jr c, .budgetNoClamp
+	ld a, WILD_BUDGET_MAX
 .budgetNoClamp
 	ld [wProcCaveWildBudget], a
 

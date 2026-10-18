@@ -11,7 +11,7 @@
 	dw MismagiusPicFront, MismagiusPicBack
 
 	db LICK, METRONOME, NO_MOVE, NO_MOVE ; level 1 learnset - FILLER, expand later
-	db GROWTH_MEDIUM_SLOW ; growth rate
+	db GROWTH_FAST ; growth rate - matches Misdreavus
 
 	; tm/hm learnset - modeled on Gengar's (the closest Gen 1 Ghost-type)
 	tmhm FLASH,   THUNDER_WAVE,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \

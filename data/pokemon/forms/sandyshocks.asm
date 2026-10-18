@@ -2,15 +2,13 @@
 ;
 ; Paired with Magneton (paradox 'ancient Magneton'): Electric/Ground, both
 ; valid Gen 1 types.
-; Special split: modern SpA 85 / SpD 65, take the HIGHER -> spc 85.
-; Moves/growth/catch rate/base exp/tmhm copied verbatim from Magneton, same
-; as the Espeon precedent (data/pokemon/forms/espeon.asm).
+
 	form_record MAGNETON, 1
 
 	db DEX_MAGNETON ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  85,  63,  85,  87,  85
+	db  85,  81,  97,  101,  121
 	;   hp  atk  def  spd  spc
 
 	db ELECTRIC, GROUND ; type
@@ -20,14 +18,14 @@
 	INCBIN "gfx/pokemon/front/sandyshocks.dim" ; sprite dimensions
 	dw SandyShocksPicFront, SandyShocksPicBack
 
-	db TACKLE, SONICBOOM, THUNDERSHOCK, NO_MOVE ; level 1 learnset
+	db TACKLE, SUPERSONIC, SAND_ATTACK, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
 	tmhm TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   RAGE,         \
 	     THUNDERBOLT,  THUNDER,      LIGHT_SCREEN, MIMIC,        DOUBLE_TEAM,  \
 	     REFLECT,      BIDE,         SWIFT,        REST,         THUNDER_WAVE, \
-	     SUBSTITUTE,   FLASH
+	     SUBSTITUTE,   FLASH,        BODY_SLAM,    EARTHQUAKE,   DIG
 	; end
 
 	db BANK(SandyShocksPicFront) ; pic bank

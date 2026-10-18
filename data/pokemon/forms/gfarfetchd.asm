@@ -1,7 +1,8 @@
 ; Galarian Farfetch'd - FARFETCHD form 1.
 ;
 ; Fighting (single type in modern games).
-; Special split: modern SpA 58 / SpD 62, take the HIGHER -> spc 62.
+; Special split: modern SpA 58 / SpD 62, take the LOWER -> spc 58. ATK is 70,
+; down from modern 95, so the total matches vanilla Farfetch'd's 290.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Farfetch'd.
 ; Name GFARFETCHD has no hyphen: 'G-FARFETCHD' is 11 characters, one over cap.
 	form_record FARFETCHD, 1

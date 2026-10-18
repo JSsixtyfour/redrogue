@@ -7,6 +7,7 @@ wrong, the bug is in model.py, not here.
 
 Usage:
   python tools/balance/report.py --runs 2000
+  python tools/balance/report.py --runs 2000 --witch-exp-start-count 17 --no-history
   python tools/balance/report.py --out "K:/Other computers/My Laptop/Red Rogue Files/balance"
 """
 
@@ -59,6 +60,7 @@ def config_row(cfg: model.Config) -> dict:
         "exp_all": "off" if cfg.exp_all is None else cfg.exp_all,
         "policy": cfg.policy,
         "take_wild": cfg.take_wild,
+        "witch_exp_start_count": cfg.witch_exp_start_count,
     }
 
 
@@ -216,6 +218,47 @@ def section_difficulty(g: parse.GameData, args, out: Path) -> list[str]:
         for r in rows:
             all_rows.append({**config_row(cfg), **r})
     write_csv(out / "per_difficulty.csv", all_rows)
+    return lines
+
+
+def section_witch_exp(g: parse.GameData, args, out: Path) -> list[str]:
+    """Keep the baseline unchanged; compare one explicitly timed prize scenario."""
+    start = args.witch_exp_start_count
+    if start is None:
+        return []
+    baseline = model.Config(difficulty="hard", exp_all="equal", policy="rotate")
+    alternative = replace(baseline, witch_exp_start_count=start)
+    base_rows = model.summarize(g, model.simulate(g, baseline, args.runs, args.seed))
+    prize_rows = model.summarize(g, model.simulate(g, alternative, args.runs, args.seed))
+    if start == 0:
+        timing = "from the Oak's Lab rival battle"
+    elif start <= g.knobs["NUM_ROGUE_ROUNDS"] * g.knobs["ROUND_BATTLES"]:
+        rnd = (start - 1) // g.knobs["ROUND_BATTLES"] + 1
+        step = (start - 1) % g.knobs["ROUND_BATTLES"] + 1
+        timing = f"round {rnd}, battle-count step {step}, after {rnd - 1} badges"
+    else:
+        timing = "during or after the finale"
+    lines = ["## Witch EXP prize: alternative trajectory\n",
+             f"Same {args.runs} seeds as the HARD, EXP Share on baseline. The alternative owns "
+             f"the permanent +10% EXP prize before every battle whose `wBattleCount >= {start}` "
+             f"({timing}). "
+             "This is an acquisition-time scenario, not a simulation of witch offers or challenge "
+             "battles. Other report sections retain the no-prize baseline.\n",
+             "| checkpoint | starter baseline | starter with prize | change | team baseline | team with prize | change |",
+             "|---|---|---|---|---|---|---|"]
+    csv_rows = []
+    for base, prize in zip(base_rows, prize_rows):
+        row = {"label": base["label"], "witch_exp_start_count": start,
+               "starter_baseline": base["ace_rolled"], "starter_with_prize": prize["ace_rolled"],
+               "starter_change": prize["ace_rolled"] - base["ace_rolled"],
+               "team_baseline": base["team_rolled"], "team_with_prize": prize["team_rolled"],
+               "team_change": prize["team_rolled"] - base["team_rolled"]}
+        csv_rows.append(row)
+        lines.append(f"| {row['label']} | {row['starter_baseline']:.2f} | {row['starter_with_prize']:.2f} "
+                     f"| {row['starter_change']:+.2f} | {row['team_baseline']:.2f} "
+                     f"| {row['team_with_prize']:.2f} | {row['team_change']:+.2f} |")
+    lines.append("\nLevels use each rolled Pokemon's own growth curve.\n")
+    write_csv(out / "witch_exp.csv", csv_rows)
     return lines
 
 
@@ -577,12 +620,12 @@ def section_findings(args) -> list[str]:
 def section_caveats() -> list[str]:
     return [
         "## 10. Known approximations\n",
-        "- Round-1 leader variant A is an authored team in the ROM (the `wTrainerNo 1` hole). "
-        "The model rolls it from the pool at the same levels.\n",
         "- Johto/Warp runs: leaders are sampled from all 17 records and the E4 stays the Kanto "
-        "four. The real Phase 7 lineup roll isn't mirrored. Kanto-only (the default) is exact.\n",
-        "- The Gambler class, witch challenges/prizes, Element Prism, Rare Scope, and the "
+        "four. The real Phase 7 lineup roll isn't mirrored. The default uses the Kanto lineup.\n",
+        "- The Gambler class, witch challenges and other prizes, Element Prism, Rare Scope, and the "
         "ownership re-roll in `RogueSelectFromTier` are ignored.\n",
+        "- The baseline assumes no witch EXP prize. `--witch-exp-start-count COUNT` adds a "
+        "paired alternative trajectory with explicit acquisition timing; it does not change baseline sections.\n",
         "- Wild encounters are `min(budget, Binomial(rolling steps, rate/256))`, with rolling "
         "steps sampled from measured layouts of the offered type. The route is the shortest "
         "tour past every ball to the boss; a player who wanders gets more rolls.\n",
@@ -593,6 +636,12 @@ def section_caveats() -> list[str]:
         "- Money spending isn't modelled; every money figure is cumulative earned, minus the "
         "Elite Four and Champion prizes (unspendable).\n",
         "- The player wins every battle. Win difficulty is Phase 3.\n",
+        "- Pool duplicate preferences use species IDs. The final duplicate retry after a "
+        "random split evolution is not simulated; occasional duplicate teams can differ.\n",
+        "- Explicit form identities, form EXP/growth records, and form-specific evolution lists "
+        "are parsed from source. Species-group classification follows the ROM's base-ID check; "
+        "form unlocks are checked separately. Player evolution stones and party management "
+        "choices remain outside the simulated policy.\n",
         "- The Champion is RIVAL3 (`Rival3Spec`, levels 60-65). Champion Lance / Oak aren't modelled.\n",
         "- Duration (section 7): battle seconds are a measured machine-speed floor; the overworld "
         "term waits on a real timed run.\n",
@@ -603,6 +652,9 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--runs", type=int, default=2000)
     ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--witch-exp-start-count", type=int, default=None, metavar="COUNT",
+                    help="add a paired +10%% EXP prize scenario starting before battles at this "
+                         "wBattleCount (default: no alternative)")
     ap.add_argument("--out", default=str(ROOT / "tmp" / "balance"))
     ap.add_argument("--set", action="append", default=[], metavar="KNOB=VALUE")
     ap.add_argument("--no-history", action="store_true",
@@ -610,6 +662,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-stamp", action="store_true",
                     help="write straight into --out instead of a new dated subfolder")
     args = ap.parse_args(argv)
+    if args.witch_exp_start_count is not None and args.witch_exp_start_count < 0:
+        ap.error("--witch-exp-start-count must be nonnegative")
 
     # Each report gets its own dated folder under --out: an older report that
     # is open in Excel can't block the new one, and the folders are the tuning
@@ -630,7 +684,7 @@ def main(argv: list[str] | None = None) -> int:
 
     lines = ["# Red Rogue Balance Report\n",
              f"Generated from `tools/balance/report.py`, {args.runs} runs per config, seed {args.seed}.\n"]
-    for section in (section_headline, section_levels, section_difficulty,
+    for section in (section_headline, section_witch_exp, section_levels, section_difficulty,
                     section_wild_vs_route, section_money, section_shopping, section_duration, section_history):
         lines += section(g, args, out)
     lines += section_findings(args)

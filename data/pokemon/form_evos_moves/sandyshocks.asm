@@ -18,5 +18,5 @@ SandyshocksFormEvosMoves:
 	db 33, THUNDERBOLT
 	db 37, TRI_ATTACK
 	db 43, SCREECH
-	db 50, THUNDER
+	db 48, EARTHQUAKE
 	db 0

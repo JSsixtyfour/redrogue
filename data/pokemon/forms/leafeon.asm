@@ -4,6 +4,8 @@
 ; both are physical attackers with a 130 stat in their respective bulk/attack
 ; column (Flareon ATK 130, Leafeon DEF 130).
 ; Special split: modern SpA 60 / SpD 65, take the HIGHER -> spc 65.
+; Speed is 60, not modern 95: every Gen 1 eeveelution rearranges one shared
+; pool of 130 / 110 / 65 / 65 / 60 (see umbreon.asm), so the total is 430.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Flareon, same
 ; as the Espeon precedent.
 	form_record FLAREON, 1

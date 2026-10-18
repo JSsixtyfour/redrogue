@@ -15,7 +15,7 @@ GslowbroFormEvosMoves:
 	db 18, DISABLE
 	db 22, HEADBUTT
 	db 25, PSYBEAM
-	db 28, WATER_GUN
+	db 28, ACID
     db 30, SLUDGE
 	db 36, WITHDRAW
 	db 40, AMNESIA

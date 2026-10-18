@@ -2,14 +2,19 @@
 ;
 ; Dark (single type). PRIMARY Dark becomes NORMAL. Paired with Jolteon per the
 ; plan's stat-shape pairing.
-; Special split: modern SpA 60 / SpD 130, take the HIGHER -> spc 130.
+; Stats follow the Gen 1 eeveelution rule, not the modern split: every Gen 1
+; eeveelution rearranges one shared pool of 130 / 110 / 65 / 65 / 60
+; (Vaporeon puts 130 in HP, Jolteon in Speed, Flareon in Attack, with 110 as
+; Special). Umbreon's stats and role  don't translate well to gen 1. You could have Umbreon puts 130 in Special and 110 in Defense, the same shape as
+; Glaceon, so its total is 430 like the others. To give it a unique stat spread, which they probably would have, while also maintaining its tank role,
+I put the 130 in HP, making it a physical tank, with meh special walling.
 
 	form_record JOLTEON, 2
 
 	db DEX_JOLTEON ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  65, 60, 110,  65,  130
+	db  130, 60, 110,  65,  65
 	;   hp  atk  def  spd  spc
 
 	db NORMAL, NORMAL ; type

@@ -1,7 +1,8 @@
 ; Wiglett - DIGLETT form 2 (form 1 is Alolan, see adiglett.asm).
 ;
 ; Paired with Diglett ('sea Diglett'): Water (single type in modern games).
-; Special split: modern SpA 35 / SpD 25, take the HIGHER -> spc 35.
+; Special: spc 45, above both modern values (SpA 35 / SpD 25), so the total
+; matches vanilla Diglett's 230.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Diglett, same
 ; as the Espeon precedent.
 	form_record DIGLETT, 2

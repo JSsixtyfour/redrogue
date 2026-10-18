@@ -984,25 +984,18 @@ ChikoritaEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 16, BAYLEEF
 	db 0
-; Learnset - canon Gen 2 levels (tmp/pokegold/data/pokemon/evos_attacks.asm);
-; SYNTHESIS and SAFEGUARD do not exist in Gen 1 and are filled with METRONOME.
+; Learnset 
 	db 8, RAZOR_LEAF
+    db 10, LEECH_SEED
 	db 12, REFLECT
 	db 15, POISONPOWDER
-	db 22, METRONOME ; was SYNTHESIS
+	db 22, RECOVER ; was SYNTHESIS
 	db 29, BODY_SLAM
 	db 36, LIGHT_SCREEN
-	db 43, METRONOME ; was SAFEGUARD
+	db 43, MEGA_DRAIN ; was SAFEGUARD
 	db 50, SOLARBEAM
 	db 0
 ; Tutoring Learnset
-    db 2, DEFENSE_CURL
-    db 2, FLASH
-    db 2, HEADBUTT
-    db 2, LIGHT_SCREEN
-    db 2, PETAL_DANCE
-    db 2, RAZOR_WIND
-    db 2, SKULL_BASH
     db 0
 
 GrowlitheEvosMoves:
@@ -1378,22 +1371,16 @@ BayleefEvosMoves:
 ; Learnset - canon Gen 2 levels; SYNTHESIS/SAFEGUARD filled with METRONOME
 ; (see ChikoritaEvosMoves). RAZOR_LEAF is already granted at level 1 - see
 ; base_stats/bayleef.asm.
+    db 10, LEECH_SEED
 	db 12, REFLECT
 	db 15, POISONPOWDER
-	db 23, METRONOME ; was SYNTHESIS
+	db 23, RECOVER ; was SYNTHESIS
 	db 31, BODY_SLAM
-	db 39, LIGHT_SCREEN
-	db 47, METRONOME ; was SAFEGUARD
-	db 55, SOLARBEAM
+	db 38, LIGHT_SCREEN
+	db 45, MEGA_DRAIN ; was SAFEGUARD
+	db 52, SOLARBEAM
 	db 0
 ; Tutoring Learnset
-    db 2, DEFENSE_CURL
-    db 2, FLASH
-    db 2, HEADBUTT
-    db 2, LIGHT_SCREEN
-    db 2, PETAL_DANCE
-    db 2, RAZOR_WIND
-    db 2, SKULL_BASH
     db 0
 
 MagmarEvosMoves:
@@ -1425,22 +1412,19 @@ MeganiumEvosMoves:
 ; Learnset - canon Gen 2 levels; SYNTHESIS/SAFEGUARD filled with METRONOME
 ; (see ChikoritaEvosMoves). RAZOR_LEAF/REFLECT are already granted at level 1
 ; - see base_stats/meganium.asm.
+    db 10, LEECH_SEED
+	db 12, REFLECT
 	db 15, POISONPOWDER
-	db 23, METRONOME ; was SYNTHESIS
+	db 23, RECOVER ; was SYNTHESIS
 	db 31, BODY_SLAM
-	db 41, LIGHT_SCREEN
-	db 51, METRONOME ; was SAFEGUARD
-	db 61, SOLARBEAM
+	db 38, LIGHT_SCREEN
+	db 45, MEGA_DRAIN ; was SAFEGUARD
+	db 52, SOLARBEAM
 	db 0
 ; Tutoring Learnset
-    db 2, DEFENSE_CURL
-    db 2, FLASH
-    db 2, HEADBUTT
-    db 2, LIGHT_SCREEN
-    db 2, PETAL_DANCE
-    db 2, RAZOR_WIND
-    db 2, SKULL_BASH
     db 0
+    
+  
 
 ElectabuzzEvosMoves:
 ; Evolutions

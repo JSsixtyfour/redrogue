@@ -2349,7 +2349,7 @@ PFPreloadForest::
     ld [sProcForestPalette], a
 
     ; Set the forest's wild-battle budget for this run: WILD_BUDGET_BASE +
-    ; wBattleCount/WILD_BUDGET_DIVISOR, saturating at 255 (identical formula
+    ; wBattleCount/WILD_BUDGET_DIVISOR, capped at WILD_BUDGET_MAX (identical formula
     ; to cave's PCPreloadCave).
     ld a, [wBattleCount]
     ld b, 0
@@ -2362,8 +2362,9 @@ PFPreloadForest::
 .budgetGotQuotient
     ld a, b
     add a, WILD_BUDGET_BASE
-    jr nc, .budgetNoClamp
-    ld a, 255
+    cp WILD_BUDGET_MAX + 1
+    jr c, .budgetNoClamp
+    ld a, WILD_BUDGET_MAX
 .budgetNoClamp
     ld [wProcForestWildBudget], a
 

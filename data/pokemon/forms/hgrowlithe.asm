@@ -24,8 +24,8 @@
 	; tm/hm learnset
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
 	     DRAGON_RAGE,  DIG,          MIMIC,        DOUBLE_TEAM,  REFLECT,      \
-	     BIDE,         FIRE_BLAST,   SWIFT,        SKULL_BASH,   REST,         \
-	     SUBSTITUTE,   FLAMETHROWER, ROCK_SLIDE
+	     BIDE,         FIRE_BLAST,   ROCK_SLIDE,   SKULL_BASH,   REST,         \
+	     SUBSTITUTE,   FLAMETHROWER
 	; end
 
 	db BANK(HGrowlithePicFront) ; pic bank

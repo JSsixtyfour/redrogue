@@ -1,7 +1,8 @@
 ; Galarian Zapdos - ZAPDOS form 1.
 ;
 ; Fighting/Flying, both valid Gen 1 types.
-; Special split: modern SpA 85 / SpD 90, take the HIGHER -> spc 90.
+; Special split: modern SpA 85 / SpD 90, take the LOWER -> spc 85, so the total
+; matches vanilla Zapdos's 490.
 ; ATK is the biggest stat jump: 125 vs vanilla Zapdos's 90.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Zapdos.
 	form_record ZAPDOS, 1
@@ -24,10 +25,9 @@
 
 	; tm/hm learnset
 	tmhm RAZOR_WIND,   LIGHT_SCREEN, TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  \
-	     HYPER_BEAM,   RAGE,         THUNDERBOLT,  THUNDER,      MIMIC,        \
+	     HYPER_BEAM,   RAGE,         MEGA_KICK,    FLASH,      MIMIC,        \
 	     DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        SKY_ATTACK,   \
-	     REST,         THUNDER_WAVE, SUBSTITUTE,   FLY,          FLASH,        \
-         MEGA_KICK,    COUNTER
+	     REST,         COUNTER,      SUBSTITUTE,   FLY,        \
 	; end
 
 	db BANK(GZapdosPicFront) ; pic bank

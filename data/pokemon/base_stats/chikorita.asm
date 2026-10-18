@@ -1,6 +1,6 @@
 	db DEX_CHIKORITA ; pokedex id
 
-	db  45,  49,  65,  45,  65
+	db  45,  49,  65,  45,  49
 	;   hp  atk  def  spd  spc
 
 	db GRASS, GRASS ; type
@@ -17,7 +17,7 @@
 	tmhm SWORDS_DANCE, TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
 	     RAGE,         MEGA_DRAIN,   SOLARBEAM,    MIMIC,        DOUBLE_TEAM,  \
 	     REFLECT,      BIDE,         REST,         SUBSTITUTE,   CUT,          \
-	     LIGHT_SCREEN
+	     LIGHT_SCREEN, FLASH
 	; end
 
 	db BANK(ChikoritaPicFront) ; pic bank

@@ -10,11 +10,13 @@ ScreamtailFormEvosMoves:
 ; this file is never regenerated.
 ; Learnset
 	db 3, POUND
-	db 5, DEFENSE_CURL
+	db 5, GROWL
 	db 14, DISABLE
-	db 16, DOUBLESLAP
+	db 16, BITE
+	db 18, SONICBOOM
+	db 20, SUPERSONIC
 	db 24, REST
 	db 30, BODY_SLAM
-	db 38, LOVELY_KISS,
+	db 38, SCREECH
 	db 43, DOUBLE_EDGE
 	db 0

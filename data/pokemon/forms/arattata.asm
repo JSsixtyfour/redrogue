@@ -1,14 +1,15 @@
 ; Alolan Rattata - RATTATA form 1.
 ;
 ; Dark/Normal. PRIMARY Dark becomes NORMAL; secondary Normal is unaffected.
-; Special split: modern SpA 25 / SpD 35, take the HIGHER -> spc 35.
+; Special split: modern SpA 25 / SpD 35, take the LOWER -> spc 25, so the total
+; matches vanilla Rattata's 218.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Rattata.
 	form_record RATTATA, 1
 
 	db DEX_RATTATA ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  30,  56,  35,  72,  35
+	db  30,  56,  35,  72,  25
 	;   hp  atk  def  spd  spc
 
 	db NORMAL, NORMAL ; type

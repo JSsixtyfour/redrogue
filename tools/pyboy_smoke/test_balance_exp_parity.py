@@ -32,16 +32,18 @@ def boosted(value: int) -> int:
 
 
 class WildExpParityTest(HarnessTestCase):
-    def exp_for(self, battle_kind: int) -> int:
+    def exp_for(self, battle_kind: int, traded: bool = False) -> int:
         harness = self.harness
         assert harness is not None
         harness.boot_fight2(seed=1)
         captured: list[int] = []
+        boosted_flags: list[int] = []
         quotient = harness.address("hQuotient")
 
         def capture() -> None:
             memory = harness.pyboy.memory
             captured.append((memory[quotient + 2] << 8) | memory[quotient + 3])
+            boosted_flags.append(harness.read8("wGainBoostedExp"))
 
         seam = harness.hook_flag("GainExperience.noWitchExpBoost", capture)
 
@@ -51,13 +53,23 @@ class WildExpParityTest(HarnessTestCase):
         harness.write8("wEnemyMonLevel", ENEMY_LEVEL)
         harness.write8("wPartyGainExpFlags", 1)      # party slot 0 only
         harness.write8("wWitchPrizesEarned", 0)      # no +10% witch prize
-        # Same OT as the player, so the traded-mon boost cannot fire.
-        harness.write8("wPartyMon1OTID", harness.read8("wPlayerID"))
+        # Exercise both matching and foreign original-trainer IDs.
+        harness.write8("wPartyMon1OTID", harness.read8("wPlayerID") ^ int(traded))
         harness.write8("wPartyMon1OTID", harness.read8("wPlayerID", 1), 1)
+        harness.write8("wGainBoostedExp", 1)  # stale display flag must be cleared
 
         harness.probe_routine_until("GainExperience", lambda: seam["count"] > 0)
         self.assertTrue(captured, "GainExperience never reached .noWitchExpBoost")
+        self.assertEqual(boosted_flags, [0])
         return captured[0]
+
+    def test_traded_mon_gets_normal_exp(self) -> None:
+        normal = self.exp_for(TRAINER)
+        self.harness.close()
+        self.harness = RedRogueHarness(REPO_ROOT, ARTIFACTS)
+        traded = self.exp_for(TRAINER, traded=True)
+        self.assertEqual(traded, normal)
+        self.assertEqual(traded, boosted(BASE_EXP * ENEMY_LEVEL // 7))
 
     def test_wild_exp_matches_knob(self) -> None:
         knob = parse_rgbds_constants(

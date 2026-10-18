@@ -1,7 +1,8 @@
 ; Alolan Marowak - MAROWAK form 1.
 ;
 ; Fire/Ghost, both valid Gen 1 types, so no type-drop rule applies.
-; Special split: modern SpA 50 / SpD 80, take the HIGHER -> spc 80.
+; Special split: modern SpA 50 / SpD 80, take the LOWER -> spc 50, so the total
+; matches vanilla Marowak's 345.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Marowak.
 	form_record MAROWAK, 1
 

@@ -25,7 +25,7 @@
 	tmhm RAZOR_WIND,   LIGHT_SCREEN, TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  \
 	     DREAM_EATER,  SUBSTITUTE,   REST,         SKY_ATTACK,   HYPER_BEAM,   \
 	     RAGE,         MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     SWIFT,        FLY
+	     SWIFT,        FLY,          PSYCHIC_M
 	; end
 
 	db BANK(GArticunoPicFront) ; pic bank

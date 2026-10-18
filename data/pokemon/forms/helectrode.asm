@@ -9,7 +9,7 @@
 	db DEX_ELECTRODE ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  60,  50,  70, 150,  80
+	db  60,  50,  70, 140,  80
 	;   hp  atk  def  spd  spc
 
 	db ELECTRIC, GRASS ; type

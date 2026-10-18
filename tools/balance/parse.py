@@ -177,6 +177,91 @@ class Species:
     # (method, min level, target species name); item evolutions keep their
     # min-level byte (1), exactly as EvolveMonByLevel reads it.
     evos: list[tuple[int, int, str]] = field(default_factory=list)
+    base_species: str = ""
+    form: int = 0
+    display_name: str = ""
+    form_group: str | None = None
+
+    def __post_init__(self):
+        if not self.base_species:
+            self.base_species = self.name.split("#", 1)[0]
+        if not self.display_name:
+            self.display_name = self.name
+
+
+def species_key(base: str, form: int = 0) -> str:
+    """Stable string identity; ordinary species retain their existing names."""
+    return f"{base}#{form}" if form else base
+
+
+def load_eevee_branches() -> list[str]:
+    """RogueRollEeveeBranch's exact source outcomes, including target forms."""
+    branches = []
+    inside = False
+    for raw in _lines("custom_functions/func_forms.asm"):
+        code = _code(raw)
+        if code == "EeveeBranches:":
+            inside = True
+        elif code == "EeveeBranchesEnd:":
+            break
+        elif inside and code.startswith("db "):
+            branches.append(_entry_identity([part.strip() for part in code[3:].split(",")]))
+    if len(branches) != 8:
+        raise ValueError(f"EeveeBranches: expected 8 masked-random outcomes, got {len(branches)}")
+    return branches
+
+
+def _entry_identity(args: list[str]) -> str:
+    """A pool/rarity row's explicit form, stripping only pool control bits."""
+    form = 0
+    if len(args) > 1:
+        spec = args[1].strip()
+        if spec not in {"POOL_FORM_ROLL", "POOL_FORM_ROLL_KEEP", "POOL_FORM_BASE"}:
+            parts = [p.strip().strip("()") for p in spec.split("|")]
+            values = [_int(p) for p in parts if p != "POOL_FORM_KEEP"]
+            if len(values) != 1:
+                raise ValueError(f"unparsed pool form: {spec!r}")
+            form = values[0] & 3
+    return species_key(args[0], form)
+
+
+def _evolution_lists(lines: list[str]) -> dict[str, list[tuple[int, int, str]]]:
+    """Parse only the evolution prefix; an explicit zero is finality."""
+    out: dict[str, list[tuple[int, int, str]]] = {}
+    current = None
+    for raw in lines:
+        code = _code(raw)
+        match = re.match(r"^(\w+(?:Form)?EvosMoves):$", code)
+        if match:
+            current = match.group(1)
+            out[current] = []
+            continue
+        if current is None or not code:
+            continue
+        if code == "db 0":
+            current = None
+            continue
+        form = 0
+        if code.startswith("evo_"):
+            op, args = code.split(None, 1)
+            method = {"evo_level_form": "EVOLVE_LEVEL", "evo_item_form": "EVOLVE_ITEM",
+                      "evo_trade_form": "EVOLVE_TRADE"}.get(op)
+            if method is None:
+                raise ValueError(f"unknown evolution macro: {code!r}")
+            parts = [p.strip() for p in args.split(",")]
+            form = _int(parts.pop(0))
+            parts.insert(0, method)
+        elif code.startswith("db "):
+            parts = [p.strip() for p in code[3:].split(",")]
+        else:
+            raise ValueError(f"unparsed evolution line under {current}: {code!r}")
+        method = {"EVOLVE_LEVEL": EVOLVE_LEVEL, "EVOLVE_ITEM": EVOLVE_ITEM,
+                  "EVOLVE_TRADE": EVOLVE_TRADE}.get(parts[0])
+        if method is None:
+            raise ValueError(f"unparsed evolution line under {current}: {code!r}")
+        level = _int(parts[2] if method == EVOLVE_ITEM else parts[1])
+        out[current].append((method, level, species_key(parts[-1], form)))
+    return out
 
 
 def _base_stats() -> dict[str, tuple[int, str]]:
@@ -218,40 +303,7 @@ def load_species() -> dict[str, Species]:
             elif code and not code.startswith(("table_width", "assert_table_length")):
                 break
 
-    evos_by_label: dict[str, list[tuple[int, int, str]]] = {}
-    current: str | None = None
-    reading = False
-    for raw in lines:
-        code = _code(raw)
-        m = re.match(r"^([A-Za-z0-9_]+EvosMoves):$", code)
-        if m:
-            current, reading = m.group(1), True
-            evos_by_label[current] = []
-            continue
-        if not (current and reading and code.startswith(("db ", "evo_"))):
-            continue
-        if code.startswith("evo_"):
-            # A FORM entry (macros/data.asm): `evo_<kind>_form <form>, <as the plain
-            # entry>`. The balance model is species-level, so it reads the same
-            # (method, level, target) as the plain twin and drops the form index.
-            name, _, args = code.partition(" ")
-            kind = {"evo_level_form": "EVOLVE_LEVEL", "evo_item_form": "EVOLVE_ITEM",
-                    "evo_trade_form": "EVOLVE_TRADE"}.get(name)
-            if kind is None:
-                raise ValueError(f"evos_moves.asm: unknown evolution macro under {current}: {code!r}")
-            parts = [kind] + [p.strip() for p in args.split(",")][1:]
-        else:
-            parts = [p.strip() for p in code[3:].split(",")]
-        if parts == ["0"]:
-            reading = False
-        elif parts[0] == "EVOLVE_LEVEL":
-            evos_by_label[current].append((EVOLVE_LEVEL, int(parts[1]), parts[2]))
-        elif parts[0] == "EVOLVE_ITEM":
-            evos_by_label[current].append((EVOLVE_ITEM, int(parts[2]), parts[3]))
-        elif parts[0] == "EVOLVE_TRADE":
-            evos_by_label[current].append((EVOLVE_TRADE, int(parts[1]), parts[2]))
-        else:
-            raise ValueError(f"evos_moves.asm: unparsed evolution line under {current}: {code!r}")
+    evos_by_label = _evolution_lists(lines)
 
     out: dict[str, Species] = {}
     for k, label in enumerate(pointers):
@@ -260,7 +312,55 @@ def load_species() -> dict[str, Species]:
         if name is None or name not in stats:
             continue                     # MissingNo slots
         exp, growth = stats[name]
-        out[name] = Species(name, iid, exp, growth, list(evos_by_label.get(label, [])))
+        out[name] = Species(name, iid, exp, growth, list(evos_by_label.get(label, [])),
+                            base_species=name, display_name=name)
+
+    # Only assembled records and the authoritative pointer table participate.
+    form_table = _lines("data/pokemon/form_evos_moves.asm")
+    form_lists = {}
+    for raw in form_table:
+        inc = re.match(r'INCLUDE "([^"]+)"', _code(raw))
+        if inc:
+            form_lists.update(_evolution_lists(_lines(inc.group(1))))
+    pointers = {}
+    pending = None
+    for raw in form_table:
+        code = _code(raw)
+        pair = re.fullmatch(r"db (\w+),\s*(\d+)", code)
+        if pair:
+            pending = species_key(pair.group(1), int(pair.group(2)))
+        elif pending and code.startswith("dw "):
+            pointers[pending] = code[3:].strip()
+            pending = None
+    johto_pairs = set()
+    inside = False
+    for raw in _lines("data/pokemon/forms.asm"):
+        code = _code(raw)
+        if code == "FormJohtoPairs::":
+            inside = True
+        elif code == "FormJohtoPairsEnd::":
+            inside = False
+        elif inside and code.startswith("db "):
+            johto_pairs.add(_entry_identity([p.strip() for p in code[3:].split(",")]))
+    for raw in _lines("data/pokemon/forms.asm"):
+        inc = re.match(r'INCLUDE "([^"]+)"', _code(raw))
+        if not inc:
+            continue
+        text = "\n".join(_lines(inc.group(1)))
+        pair = re.search(r"form_record\s+(\w+),\s*(\d+)", text)
+        exp = re.search(r"db\s+(\d+)\s*;\s*base exp", text)
+        growth = re.search(r"db\s+(GROWTH_[A-Z_]+)", text)
+        if not (pair and exp and growth):
+            raise ValueError(f"{inc.group(1)}: incomplete form record")
+        base, form = pair.group(1), int(pair.group(2))
+        key = species_key(base, form)
+        if key not in pointers or pointers[key] not in form_lists:
+            raise ValueError(f"{key}: missing authoritative form evolution list")
+        display = re.search(r'dname\s+"([^"]+)"', text)
+        out[key] = Species(key, out[base].internal_id, int(exp.group(1)), growth.group(1),
+                           list(form_lists[pointers[key]]), base, form,
+                           display.group(1) if display else key,
+                           "JOHTO" if key in johto_pairs else "WARP")
     return out
 
 
@@ -296,7 +396,7 @@ def load_rarity() -> dict[str, list[Tier]]:
             continue
         if current and code.startswith("rarity_mon "):
             # Every explicit form contributes one pick, just like a species.
-            lists[current].append(code[len("rarity_mon "):].split(",")[0].strip())
+            lists[current].append(_entry_identity([p.strip() for p in code[len("rarity_mon "):].split(",")]))
 
     tier_names = ("Pokeball", "Greatball", "Ultraball", "Masterball", "Uber")
     out: dict[str, list[Tier]] = {}
@@ -325,7 +425,13 @@ def base_species_for_tier(rarity, group, tier, groups):
 
 
 def classify(rarity: dict[str, list[Tier]], species: str, groups=()) -> tuple[str, int] | None:
-    """RogueClassifySpecies: first (group, tier) whose full list holds it."""
+    """RogueClassifySpecies classifies the base ID, ignoring nonzero-form rows.
+
+    An incoming form still has its base species ID in the ROM. Only form-zero
+    rarity records establish that ID's group/tier; a Warp form row must never
+    make the base species into a Warp-only species.
+    """
+    species = species.split("#", 1)[0]
     for group in GROUPS:
         for t, tier in enumerate(rarity[group]):
             if species in tier.all:
@@ -341,7 +447,7 @@ def load_pools() -> dict[str, dict[str, list[str]]]:
     """{POOL_X: {KANTO: [...], JOHTO: [...], WARP: [...]}} from data/trainers/pools.asm,
     plus the gym leaders' banded pools {POOL_BAND_<Leader>_<Ace|Fod|Off><band>: ...}
     from data/trainers/band_pools.asm (a `band_same` alias maps to its twin's
-    runs). Entries are species names; a form index is dropped."""
+    runs). Entries are canonical species/form string identities."""
     consts = parse_rgbds_constants(ROOT / "data" / "trainers" / "pools.asm")
     # Macro bodies (`trainer_pool BandPool_\1`, `const POOL_BAND_\1`) are not rows.
     order = [line.split("trainer_pool", 1)[1].strip()
@@ -362,7 +468,7 @@ def load_pools() -> dict[str, dict[str, list[str]]]:
             current = None if suffix == "_End" else (m.group(1), {None: "KANTO", "_Johto": "JOHTO", "_Warp": "WARP"}[suffix])
             continue
         if current and code.startswith("pool_mon "):
-            runs[current[0]][current[1]].append(code.split()[1].rstrip(","))
+            runs[current[0]][current[1]].append(_entry_identity([p.strip() for p in code[len("pool_mon "):].split(",")]))
     out = {name: runs[label] for (_, name), label in zip(pool_ids, order)}
 
     band: dict[str, dict[str, list[str]]] = {}
@@ -385,7 +491,7 @@ def load_pools() -> dict[str, dict[str, list[str]]]:
         elif op == "band_end":
             name = None
         elif op in ("band_mon", "band_ace") and name:
-            band[name][grp].append(args[0])
+            band[name][grp].append(_entry_identity(args))
     out.update({f"POOL_BAND_{n}": r for n, r in band.items()})
     return out
 
@@ -545,6 +651,7 @@ class GameData:
     item_prices: dict[str, int]
     wild_paths: dict[str, dict[str, list[int]]]
     bridge_gifts: dict[str, list[str]] = field(default_factory=dict)
+    eevee_branches: list[str] = field(default_factory=list)
 
 
 def load_all() -> GameData:
@@ -567,6 +674,7 @@ def load_all() -> GameData:
         item_prices=load_item_prices(),
         wild_paths=load_wild_paths(),
         bridge_gifts=load_bridge_gifts(),
+        eevee_branches=load_eevee_branches(),
     )
     _validate(data)
     return data
@@ -575,6 +683,7 @@ def load_all() -> GameData:
 def _validate(d: GameData) -> None:
     """Every species name the model can reach must resolve to base stats."""
     names: set[str] = set()
+    names.update(d.eevee_branches)
     for tiers in d.rarity.values():
         for t in tiers:
             names.update(t.all)

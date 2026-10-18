@@ -1,9 +1,9 @@
 ; Paldean Tauros (Blaze Breed) - TAUROS form 2.
 ;
 ; Fighting/Fire, both valid Gen 1 types.
-; Special split: modern SpA 55 / SpD 65, take the HIGHER -> spc 65.
-; ATK/DEF are higher than Combat Breed, SPD lower - the fire/water breeds trade
-; speed for bulk and power.
+; Stats are 75/110/105/100/60, shared by all three breeds (the modern breeds
+; share one spread too). Speed 100 and spc 60 are set so the total matches
+; vanilla Tauros's 450. Only the secondary type differs from the other breeds.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Tauros.
 	form_record TAUROS, 2
 

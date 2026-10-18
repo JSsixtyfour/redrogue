@@ -1,7 +1,8 @@
 ; Alolan Sandshrew - SANDSHREW form 1.
 ;
 ; Ice/Steel. SECONDARY Steel is DROPPED, leaving ICE/ICE.
-; Special split: modern SpA 10 / SpD 35, take the HIGHER -> spc 35.
+; Special: spc 25, between the modern values (SpA 10 / SpD 35), so the total
+; matches vanilla Sandshrew's 280.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Sandshrew.
 ; Name ASANDSHREW has no hyphen: 'A-SANDSHREW' is 11 characters, one over cap.
 	form_record SANDSHREW, 1

@@ -1,7 +1,7 @@
 ; Alolan Golem - GOLEM form 1.
 ;
-; Rock/Electric. Special split: modern SpA 55 / SpD 65, take the HIGHER -> spc 65.
-; ATK is the stat that differs most: 120 vs vanilla Golem's 110.
+; Rock/Electric. Stats are identical to vanilla Golem (modern Alolan Golem's
+; ATK 120 is lowered to 110 so the total matches Golem's 420).
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Golem.
 	form_record GOLEM, 1
 
@@ -22,12 +22,12 @@
 	db GROWTH_MEDIUM_SLOW ; growth rate
 
 	; tm/hm learnset
-	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
+	tmhm THUNDER,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
 	     DOUBLE_EDGE,  HYPER_BEAM,   SUBMISSION,   COUNTER,      SEISMIC_TOSS, \
 	     RAGE,         EARTHQUAKE,   FISSURE,      DIG,          MIMIC,        \
 	     DOUBLE_TEAM,  BIDE,         FLASH,    SELFDESTRUCT, FIRE_BLAST,   \
 	     REST,         EXPLOSION,    ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     \
-         FLAMETHROWER, THUNDER_WAVE, THUNDERBOLT,  THUNDER
+         FLAMETHROWER, THUNDER_WAVE, THUNDERBOLT
 	; end
 
 	db BANK(AGolemPicFront) ; pic bank

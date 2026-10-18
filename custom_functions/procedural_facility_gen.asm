@@ -6223,7 +6223,7 @@ PFacPreload::
     ld [sProcFacilitySignVariant], a
 
     ; Wild-battle budget: WILD_BUDGET_BASE + wBattleCount/WILD_BUDGET_DIVISOR,
-    ; saturating at 255 (cave formula).
+    ; capped at WILD_BUDGET_MAX (cave formula).
     ld a, [wBattleCount]
     ld b, 0
 .budgetDivLoop
@@ -6235,8 +6235,9 @@ PFacPreload::
 .budgetGotQuotient
     ld a, b
     add a, WILD_BUDGET_BASE
-    jr nc, .budgetNoClamp
-    ld a, 255
+    cp WILD_BUDGET_MAX + 1
+    jr c, .budgetNoClamp
+    ld a, WILD_BUDGET_MAX
 .budgetNoClamp
     ld [wProcFacilityWildBudget], a
 

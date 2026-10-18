@@ -2,8 +2,9 @@
 ; uses all three form slots (Combat/Blaze/Aqua).
 ;
 ; Fighting/Water, both valid Gen 1 types.
-; Special split: modern SpA 55 / SpD 65, take the HIGHER -> spc 65.
-; Same stat spread as Blaze Breed; only the secondary type differs.
+; Stats are 75/110/105/100/60, shared by all three breeds (the modern breeds
+; share one spread too). Speed 100 and spc 60 are set so the total matches
+; vanilla Tauros's 450. Only the secondary type differs from Blaze Breed.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Tauros.
 	form_record TAUROS, 3
 

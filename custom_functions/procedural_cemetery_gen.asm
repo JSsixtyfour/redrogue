@@ -153,7 +153,7 @@ PCemGenerateMaps::
 	ld [rRAMG], a
 
 	; set wild battle budget for the entire cemetery run
-	; (WILD_BUDGET_BASE + wBattleCount/WILD_BUDGET_DIVISOR)
+	; min(WILD_BUDGET_MAX, WILD_BUDGET_BASE + wBattleCount/WILD_BUDGET_DIVISOR)
 	ld a, [wBattleCount]
 	ld b, 0
 .cemBudgetDiv
@@ -165,8 +165,9 @@ PCemGenerateMaps::
 .cemBudgetDone
 	ld a, b
 	add a, WILD_BUDGET_BASE
-	jr nc, .cemBudgetNoClamp
-	ld a, 255
+	cp WILD_BUDGET_MAX + 1
+	jr c, .cemBudgetNoClamp
+	ld a, WILD_BUDGET_MAX
 .cemBudgetNoClamp
 	ld [wProcCemWildBudget], a
 	; clear calmed events for fresh run

@@ -119,22 +119,11 @@ GainExperience:
 	ldh [hDivisor], a
 	ld b, 4
 	call Divide
-	ld hl, MON_OTID - (MON_DVS - 1)
+	; All recipients earn the same EXP regardless of original trainer.
+	; Keep hl on the second OT-ID byte for the EXP-field advance below.
+	ld hl, MON_OTID + 1 - (MON_DVS - 1)
 	add hl, de
-	ld b, [hl] ; wPartyMon*OTID
-	inc hl
-	ld a, [wPlayerID]
-	cp b
-	jr nz, .tradedMon
-	ld b, [hl]
-	ld a, [wPlayerID + 1]
-	cp b
-	ld a, 0
-	jr z, .next
-.tradedMon
-	call BoostExp ; traded mon exp boost
-	ld a, 1
-.next
+	xor a
 	ld [wGainBoostedExp], a
 IF WILD_EXP_MATCHES_TRAINER
 	call BoostExp ; every battle gets the trainer 1.5x (constants/balance_constants.asm)

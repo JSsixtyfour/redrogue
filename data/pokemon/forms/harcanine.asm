@@ -1,7 +1,8 @@
 ; Hisuian Arcanine - ARCANINE form 1.
 ;
 ; Fire/Rock, both valid Gen 1 types.
-; Special split: modern SpA 95 / SpD 80, take the HIGHER -> spc 95.
+; Special: spc 75, below both modern values (SpA 95 / SpD 80), so the total
+; matches vanilla Arcanine's 455.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Arcanine.
 	form_record ARCANINE, 1
 
@@ -24,8 +25,8 @@
 	; tm/hm learnset
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
 	     RAGE,         DRAGON_RAGE,  DIG,          FLAMETHROWER, MIMIC,        \
-	     DOUBLE_TEAM,  REFLECT,      BIDE,         FIRE_BLAST,   SWIFT,        \
-	     SKULL_BASH,   REST,         SUBSTITUTE,   ROCK_SLIDE
+	     DOUBLE_TEAM,  REFLECT,      BIDE,         FIRE_BLAST,   ROCK_SLIDE,    \
+	     SKULL_BASH,   REST,         SUBSTITUTE
 	; end
 
 	db BANK(HArcaninePicFront) ; pic bank

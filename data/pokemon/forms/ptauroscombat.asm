@@ -1,9 +1,9 @@
 ; Paldean Tauros (Combat Breed) - TAUROS form 1.
 ;
-; Fighting (single type in modern games). Stats match vanilla Kantonian Tauros
-; exactly - Combat Breed is the baseline the other two breeds trade Speed for
-; bulk/offense against.
-; Special split: modern SpA 40 / SpD 70, take the HIGHER -> spc 70.
+; Fighting (single type in modern games).
+; Stats are 75/110/105/100/60, shared by all three breeds (the modern breeds
+; share one spread too). Speed 100 and spc 60 are set so the total matches
+; vanilla Tauros's 450 (vanilla is 75/100/95/110/70).
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Tauros.
 	form_record TAUROS, 1
 

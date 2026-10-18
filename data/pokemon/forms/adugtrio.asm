@@ -9,8 +9,8 @@
 ;  - Alolan Dugtrio is Ground/Steel. SECONDARY Steel is DROPPED, leaving
 ;    GROUND/GROUND, which is what vanilla Dugtrio already is.
 ;  - Special split: modern SpA 50 / SpD 70, take the HIGHER -> spc 70.
-;  - ATK is the one stat that differs: modern Alolan Dugtrio has 100 against
-;    vanilla Gen 1 Dugtrio's 80.
+;  - DEF 50 -> 60 and SPD 120 -> 110 are the only stat differences from vanilla
+;    Dugtrio. Modern ATK 100 is kept at Dugtrio's 80 so the total matches 355.
 ;  - Base exp and catch rate kept at Dugtrio's.
 	form_record DUGTRIO, 1
 

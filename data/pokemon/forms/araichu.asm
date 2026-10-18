@@ -1,14 +1,16 @@
 ; Alolan Raichu - RAICHU form 1.
 ;
 ; Electric/Psychic, both valid Gen 1 types.
-; Special split: modern SpA 95 / SpD 85, take the HIGHER -> spc 95.
+; Special: spc 100, above both modern values (SpA 95 / SpD 85). Speed is 100,
+; vanilla Raichu's Gen 1 value (modern 110 is the Gen 6 buff), so the total
+; matches vanilla Raichu's 395.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Raichu.
 	form_record RAICHU, 1
 
 	db DEX_RAICHU ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  60,  85,  50, 110, 100
+	db  60,  85,  50, 100, 100
 	;   hp  atk  def  spd  spc
 
 	db ELECTRIC, PSYCHIC_TYPE ; type

@@ -3,6 +3,8 @@
 ; Fairy (single type). PRIMARY Fairy becomes NORMAL. Paired with Vaporeon per
 ; the plan's stat-shape pairing.
 ; Special split: modern SpA 130 / SpD 95, take the HIGHER -> spc 130.
+; HP is 110, not modern 95: every Gen 1 eeveelution rearranges one shared
+; pool of 130 / 110 / 65 / 65 / 60 (see umbreon.asm), so the total is 430.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Vaporeon, same
 ; as the Espeon precedent.
 	form_record VAPOREON, 2

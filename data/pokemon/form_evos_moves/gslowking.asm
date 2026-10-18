@@ -16,8 +16,8 @@ GslowkingFormEvosMoves:
 	db 18, DISABLE
 	db 22, HEADBUTT
     db 25, PSYBEAM
-    db 30, SLUDGE
-	db 33, WATER_GUN
+    db 30, ACID
+	db 33, SLUDGE
 	db 44, AMNESIA
 	db 55, PSYCHIC_M
 	db 0

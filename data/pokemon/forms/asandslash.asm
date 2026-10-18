@@ -1,7 +1,8 @@
 ; Alolan Sandslash - SANDSLASH form 1.
 ;
 ; Ice/Steel. SECONDARY Steel is DROPPED, leaving ICE/ICE.
-; Special split: modern SpA 25 / SpD 65, take the HIGHER -> spc 65.
+; Special: spc 45, between the modern values (SpA 25 / SpD 65), so the total
+; matches vanilla Sandslash's 405.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Sandslash.
 ; Name ASANDSLASH has no hyphen: 'A-SANDSLASH' is 11 characters, one over cap.
 	form_record SANDSLASH, 1

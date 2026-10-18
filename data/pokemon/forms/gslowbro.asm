@@ -1,7 +1,8 @@
 ; Galarian Slowbro - SLOWBRO form 1.
 ;
 ; Poison/Psychic, both valid Gen 1 types.
-; Special split: modern SpA 100 / SpD 70, take the HIGHER -> spc 100.
+; Special split: modern SpA 100 / SpD 70, take the LOWER -> spc 70, so the
+; total matches vanilla Slowbro's 390.
 ; ATK is the biggest stat jump: 100 vs vanilla Slowbro's 75.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Slowbro.
 	form_record SLOWBRO, 1
