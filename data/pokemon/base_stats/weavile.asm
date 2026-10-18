@@ -1,6 +1,6 @@
 	db DEX_WEAVILE ; pokedex id
 
-	db  70, 120,  65, 125,  85
+	db  70, 120,  65, 125,  65
 	;   hp  atk  def  spd  spc
 
 	db NORMAL, ICE ; type - Dark (primary) -> Normal per project type rules
@@ -15,8 +15,9 @@
 
 	; tm/hm learnset
 	tmhm SWORDS_DANCE, TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
-	     RAGE,         MIMIC,        DOUBLE_TEAM,  BIDE,         REST,         \
-	     SUBSTITUTE,   CUT,          SKULL_BASH
+	     ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         MIMIC,        \
+	     DOUBLE_TEAM,  BIDE,         SWIFT,        SKULL_BASH,   REST,         \
+	     SUBSTITUTE,   CUT
 	; end
 
 	db BANK(WeavilePicFront) ; pic bank

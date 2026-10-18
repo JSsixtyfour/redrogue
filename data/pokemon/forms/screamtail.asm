@@ -2,20 +2,23 @@
 ;
 ; Paired with Jigglypuff (paradox 'ancient Jigglypuff'): Fairy/Psychic.
 ; PRIMARY Fairy becomes NORMAL; secondary Psychic is unaffected.
-; Special split: modern SpA 65 / SpD 115, take the HIGHER -> spc 115.
-; Moves/growth/catch rate/base exp/tmhm copied verbatim from Jigglypuff, same
-; as the Espeon precedent.
+; Special: spc 105, between the modern values (SpA 65 / SpD 115). Total 495,
+; just under the pseudo-legendaries (500); taking SpD 115 put it at 505.
+; Base exp 211 matches Sandy Shocks, its paradox partner: just under the
+; legendary birds/beasts (215-217), level with Tangrowth.
+; Moves/growth/catch rate/tmhm copied verbatim from Jigglypuff, same as the
+; Espeon precedent.
 	form_record JIGGLYPUFF, 1
 
 	db DEX_JIGGLYPUFF ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db 115,  65,  99, 111, 115
+	db 115,  65,  99, 111, 105
 	;   hp  atk  def  spd  spc
 
 	db NORMAL, PSYCHIC_TYPE ; type
 	db 170 ; catch rate
-	db 76 ; base exp
+	db 211 ; base exp
 
 	INCBIN "gfx/pokemon/front/screamtail.dim" ; sprite dimensions
 	dw ScreamTailPicFront, ScreamTailPicBack

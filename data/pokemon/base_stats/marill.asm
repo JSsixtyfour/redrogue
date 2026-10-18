@@ -1,6 +1,6 @@
 	db DEX_MARILL ; pokedex id
 
-	db  70,  20,  50,  40,  50
+	db  70,  20,  50,  40,  40
 	;   hp  atk  def  spd  spc
 
 	db WATER, WATER ; type

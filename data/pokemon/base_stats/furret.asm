@@ -1,6 +1,6 @@
 	db DEX_FURRET ; pokedex id
 
-	db  85,  76,  64,  90,  55
+	db  85,  76,  64,  90,  45
 	;   hp  atk  def  spd  spc
 
 	db NORMAL, NORMAL ; type

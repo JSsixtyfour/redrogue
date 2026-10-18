@@ -1,6 +1,6 @@
 	db DEX_LEDYBA ; pokedex id
 
-	db  40,  20,  30,  55,  80
+	db  40,  20,  30,  55,  65
 	;   hp  atk  def  spd  spc
 
 	db BUG, FLYING ; type

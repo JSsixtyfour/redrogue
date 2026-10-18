@@ -1,6 +1,6 @@
 	db DEX_AZUMARILL ; pokedex id
 
-	db 100,  50,  80,  50,  80
+	db 100,  50,  80,  50,  70
 	;   hp  atk  def  spd  spc
 
 	db WATER, WATER ; type

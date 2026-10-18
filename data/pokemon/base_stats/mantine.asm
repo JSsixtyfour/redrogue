@@ -1,6 +1,6 @@
 	db DEX_MANTINE ; pokedex id
 
-	db  65,  40,  70,  70, 140
+	db  85,  40,  70,  70, 125
 	;   hp  atk  def  spd  spc
 
 	db WATER, FLYING ; type

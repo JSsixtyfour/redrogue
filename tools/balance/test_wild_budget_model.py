@@ -1,4 +1,4 @@
-"""The simulated wild encounter cap follows the source budget curve."""
+"""The offline wild encounter cap follows the source budget curve."""
 
 import unittest
 from unittest.mock import Mock, patch

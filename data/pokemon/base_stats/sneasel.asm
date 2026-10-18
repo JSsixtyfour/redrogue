@@ -1,6 +1,6 @@
 	db DEX_SNEASEL ; pokedex id
 
-	db  55,  95,  55, 115,  75
+	db  55,  95,  55, 115,  55
 	;   hp  atk  def  spd  spc
 
 	db NORMAL, ICE ; type - Dark (primary) -> Normal per project type rules

@@ -1,6 +1,6 @@
 	db DEX_LEDIAN ; pokedex id
 
-	db  55,  35,  50,  85, 110
+	db  55,  35,  50,  85, 105
 	;   hp  atk  def  spd  spc
 
 	db BUG, FLYING ; type

@@ -1,6 +1,6 @@
 	db DEX_HO_OH ; pokedex id
 
-	db 106, 130,  90,  90, 154
+	db 106, 140, 100,  90, 154
 	;   hp  atk  def  spd  spc
 
 	db FIRE, FLYING ; type

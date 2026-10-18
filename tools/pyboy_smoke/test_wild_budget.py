@@ -22,6 +22,38 @@ SEAMS = (
 
 
 class WildBudgetTest(HarnessTestCase):
+    def test_each_area_consumes_budget_and_blocks_at_zero(self):
+        h = self.harness
+        assert h is not None
+        events = parse_rgbds_constants(REPO_ROOT / "constants/event_constants.asm")
+        h.boot_fight2(seed=1)
+        h.park_before_hijack()
+        baseline = io.BytesIO()
+        h.save_state(baseline)
+        seams = (
+            ("checkCaveBudget", "wProcCaveWildBudget", "EVENT_PC_BUDGET_ENDED"),
+            ("checkForestBudget", "wProcForestWildBudget", "EVENT_PC_BUDGET_ENDED"),
+            ("checkCemBudget", "wProcCemWildBudget", "EVENT_PC_CEM_BUDGET_ENDED"),
+            ("checkFacilityBudget", "wProcFacilityWildBudget", "EVENT_PC_BUDGET_ENDED"),
+        )
+        try:
+            for seam, budget, event_name in seams:
+                event = events[event_name]
+                event_address = h.address("wEventFlags") + event // 8
+                event_mask = 1 << (event % 8)
+                for remaining in range(18, -1, -1):
+                    with self.subTest(area=seam, remaining=remaining):
+                        h.load_state(baseline)
+                        h.write8(budget, remaining)
+                        h.write8("wIsTrainerBattle", 1)  # cleared only by successful commit
+                        h.pyboy.memory[event_address] &= ~event_mask & 0xFF
+                        h.call_routine(f"TryDoWildEncounter.{seam}", limit=300)
+                        self.assertEqual(h.read8(budget), max(0, remaining - 1))
+                        self.assertEqual(h.read8("wIsTrainerBattle"), int(remaining == 0))
+                        self.assertEqual(h.event_is_set(event), remaining == 1)
+        finally:
+            h.load_state(baseline)
+
     def test_all_generator_budget_initializers_cover_every_count(self):
         h = self.harness
         assert h is not None
@@ -50,6 +82,9 @@ class WildBudgetTest(HarnessTestCase):
             result = {}
 
             def inputs(_context):
+                if result.get("entered"):
+                    return
+                result["entered"] = True
                 h.pyboy.register_file.A = h.read8("wBattleCount")
                 h.pyboy.register_file.B = 0
 

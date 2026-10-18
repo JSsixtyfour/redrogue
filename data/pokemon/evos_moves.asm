@@ -3446,11 +3446,11 @@ SudowoodoEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - canon Gen 2 levels; FLAIL/FAINT_ATTACK do not exist in Gen 1,
-; filled with METRONOME. ROCK_THROW/MIMIC already granted at level 1.
+; replaced with METRONOME/SWIFT. ROCK_THROW/MIMIC already granted at level 1.
 	db 10, METRONOME ; was FLAIL
 	db 19, LOW_KICK
 	db 28, ROCK_SLIDE
-	db 37, METRONOME ; was FAINT_ATTACK
+	db 37, SWIFT ; was FAINT_ATTACK
 	db 46, SLAM
 	db 0
 
@@ -3995,9 +3995,16 @@ WeavileEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - Weavile evolves from Sneasel (added in batch 6, see
-; SneaselEvosMoves for the EVOLVE_ITEM, ICE_STONE wiring).
-	db 20, METRONOME ; FILLER - real moveset TBD
-	db 40, METRONOME ; FILLER - real moveset TBD
+; SneaselEvosMoves for the EVOLVE_ITEM, ICE_STONE wiring). Copied from
+; Sneasel's learnset; SCRATCH/LEER already granted at level 1; FAINT_ATTACK/
+; BEAT_UP do not exist in Gen 1, replaced with SWIFT/METRONOME.
+	db 9, QUICK_ATTACK
+	db 17, SCREECH
+	db 25, SWIFT ; was FAINT_ATTACK
+	db 33, FURY_SWIPES
+	db 41, AGILITY
+	db 49, SLASH
+	db 57, METRONOME ; was BEAT_UP
 	db 0
 
 MamoswineEvosMoves:
@@ -4283,7 +4290,7 @@ HeracrossEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - TACKLE/LEER already granted at level 1; ENDURE/REVERSAL/MEGAHORN
-; do not exist in Gen 1, filled with METRONOME.
+; do not exist in Gen 1, replaced with LOW_KICK/SUBMISSION/SWORDS_DANCE.
 	db 6, HORN_ATTACK
     db 10, KARATE_CHOP
 	db 18, LOW_KICK ; was ENDURE
@@ -4304,10 +4311,10 @@ SneaselEvosMoves:
 	db EVOLVE_ITEM, ICE_STONE, 1, WEAVILE
 	db 0
 ; Learnset - SCRATCH/LEER already granted at level 1; FAINT_ATTACK/BEAT_UP do
-; not exist in Gen 1, filled with METRONOME.
+; not exist in Gen 1, replaced with SWIFT/METRONOME.
 	db 9, QUICK_ATTACK
 	db 17, SCREECH
-	db 25, METRONOME ; was FAINT_ATTACK
+	db 25, SWIFT ; was FAINT_ATTACK
 	db 33, FURY_SWIPES
 	db 41, AGILITY
 	db 49, SLASH
@@ -4319,10 +4326,10 @@ TeddiursaEvosMoves:
 	db EVOLVE_LEVEL, 30, URSARING
 	db 0
 ; Learnset - SCRATCH/LEER already granted at level 1; FAINT_ATTACK/SNORE do
-; not exist in Gen 1, filled with METRONOME.
+; not exist in Gen 1, replaced with SWIFT/METRONOME.
 	db 8, LICK
 	db 15, FURY_SWIPES
-	db 22, METRONOME ; was FAINT_ATTACK
+	db 22, SWIFT ; was FAINT_ATTACK
 	db 29, REST
 	db 36, SLASH
 	db 43, METRONOME ; was SNORE
@@ -4333,10 +4340,10 @@ UrsaringEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - SCRATCH/LEER/LICK/FURY_SWIPES already granted at level 1;
-; FAINT_ATTACK/SNORE do not exist in Gen 1, filled with METRONOME.
+; FAINT_ATTACK/SNORE do not exist in Gen 1, replaced with SWIFT/METRONOME.
 	db 8, LICK
 	db 15, FURY_SWIPES
-	db 22, METRONOME ; was FAINT_ATTACK
+	db 22, SWIFT ; was FAINT_ATTACK
 	db 29, REST
 	db 39, SLASH
 	db 49, METRONOME ; was SNORE

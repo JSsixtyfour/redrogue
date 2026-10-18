@@ -1,6 +1,6 @@
 	db DEX_SENTRET ; pokedex id
 
-	db  35,  46,  34,  20,  45
+	db  35,  46,  34,  20,  35
 	;   hp  atk  def  spd  spc
 
 	db NORMAL, NORMAL ; type

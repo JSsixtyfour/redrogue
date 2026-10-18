@@ -13,7 +13,7 @@
 
 	db ELECTRIC, GROUND ; type
 	db 60 ; catch rate
-	db 161 ; base exp
+	db 211 ; base exp
 
 	INCBIN "gfx/pokemon/front/sandyshocks.dim" ; sprite dimensions
 	dw SandyShocksPicFront, SandyShocksPicBack

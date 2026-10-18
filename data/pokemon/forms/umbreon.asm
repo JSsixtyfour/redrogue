@@ -5,9 +5,11 @@
 ; Stats follow the Gen 1 eeveelution rule, not the modern split: every Gen 1
 ; eeveelution rearranges one shared pool of 130 / 110 / 65 / 65 / 60
 ; (Vaporeon puts 130 in HP, Jolteon in Speed, Flareon in Attack, with 110 as
-; Special). Umbreon's stats and role  don't translate well to gen 1. You could have Umbreon puts 130 in Special and 110 in Defense, the same shape as
-; Glaceon, so its total is 430 like the others. To give it a unique stat spread, which they probably would have, while also maintaining its tank role,
-I put the 130 in HP, making it a physical tank, with meh special walling.
+; Special). Umbreon's stats and role don't translate well to Gen 1. It could
+; put 130 in Special and 110 in Defense, but that is the same shape as Glaceon.
+; To give it a unique spread, which it probably would have had, while keeping
+; its tank role, the 130 goes in HP instead: a physical tank with meh special
+; walling. Total 430 like the others. Modern HP 95 is not in the pool.
 
 	form_record JOLTEON, 2
 

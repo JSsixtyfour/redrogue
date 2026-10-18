@@ -1,14 +1,17 @@
 ; Galarian Slowking - SLOWKING form 1.
 ;
 ; Poison/Psychic, both valid Gen 1 types.
-; Special split: modern SpA 110 / SpD 110, tie either way -> spc 110.
+; Special split: modern SpA 110 / SpD 110, tie -> 110, then +10 -> spc 120.
+; Modern G-Slowking trades 10 ATK (65 vs Slowking's 75) for 10 SpA; the SpA
+; gain vanishes into Gen 1's shared Special, so it is given back here. Total
+; 390, matching G-Slowbro and Slowking.
 ; Moves/growth/catch rate/base exp/tmhm copied verbatim from Slowking.
 	form_record SLOWKING, 1
 
 	db DEX_SLOWKING ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db  95,  65,  80,  30, 110
+	db  95,  65,  80,  30, 120
 	;   hp  atk  def  spd  spc
 
 	db POISON, PSYCHIC_TYPE ; type
