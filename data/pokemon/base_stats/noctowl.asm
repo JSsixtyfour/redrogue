@@ -10,13 +10,14 @@
 	INCBIN "gfx/pokemon/front/noctowl.dim" ; sprite dimensions
 	dw NoctowlPicFront, NoctowlPicBack
 
-	db TACKLE, GROWL, METRONOME, PECK ; level 1 learnset - FORESIGHT filled with METRONOME
+	db TACKLE, GROWL, PECK, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
 	tmhm RAZOR_WIND,   SUBSTITUTE,   TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  \
 	     HYPER_BEAM,   RAGE,         MIMIC,        DOUBLE_TEAM,  REFLECT,      \
-	     BIDE,         SWIFT,        SKY_ATTACK,   REST,         FLY
+	     BIDE,         SWIFT,        SKY_ATTACK,   REST,         FLY,		  \
+		 DREAM_EATER,  FLASH,        PSYWAVE,      PSYCHIC_M,    BODY_SLAM
 	; end
 
 	db BANK(NoctowlPicFront) ; pic bank

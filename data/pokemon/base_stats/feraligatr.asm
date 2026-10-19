@@ -19,7 +19,8 @@
 	     HYPER_BEAM,   SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         \
 	     EARTHQUAKE,   FISSURE,      DIG,          MIMIC,        DOUBLE_TEAM,  \
 	     REFLECT,      BIDE,         SKULL_BASH,   REST,         SUBSTITUTE,   \
-	     SURF,         STRENGTH,     ROCK_SLIDE,   DRAGON_RAGE
+	     SURF,         STRENGTH,     ROCK_SLIDE,   DRAGON_RAGE,  SWORDS_DANCE, \
+		 CUT
 	; end
 
 	db BANK(FeraligatrPicFront) ; pic bank

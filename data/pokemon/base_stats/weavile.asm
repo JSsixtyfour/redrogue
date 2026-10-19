@@ -14,10 +14,11 @@
 	db GROWTH_MEDIUM_SLOW ; growth rate
 
 	; tm/hm learnset
-	tmhm SWORDS_DANCE, TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
-	     ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         MIMIC,        \
-	     DOUBLE_TEAM,  BIDE,         SWIFT,        SKULL_BASH,   REST,         \
-	     SUBSTITUTE,   CUT
+	tmhm TOXIC,        SWORDS_DANCE,    TAKE_DOWN,    DOUBLE_EDGE,  ICE_BEAM,     \
+	     BLIZZARD,     HYPER_BEAM,   RAGE,         MIMIC,        DOUBLE_TEAM,  \
+	     BIDE,         SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE,   \
+		 MEGA_PUNCH,   MEGA_KICK,    COUNTER,      DIG,          STRENGTH,     \
+		 SURF,         REFLECT,      DREAM_EATER,  METRONOME,    
 	; end
 
 	db BANK(WeavilePicFront) ; pic bank

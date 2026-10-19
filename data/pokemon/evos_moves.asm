@@ -1916,11 +1916,11 @@ HoothootEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 20, NOCTOWL
 	db 0
-; Learnset - canon Gen 2 levels; FORESIGHT does not exist in Gen 1, filled
-; with METRONOME.
-	db 6, METRONOME ; was FORESIGHT
-	db 11, PECK
+; Learnset
+	db 8, PECK
+    db 11, GUST ; was FORESIGHT
 	db 16, HYPNOSIS
+    db 19, NIGHTSHADE
 	db 22, REFLECT
 	db 28, TAKE_DOWN
 	db 34, CONFUSION
@@ -1932,11 +1932,14 @@ NoctowlEvosMoves:
 	db 0
 ; Learnset - FORESIGHT/PECK already granted at level 1 (see
 ; base_stats/noctowl.asm)
+    db 8, PECK
+    db 11, GUST ; was FORESIGHT
 	db 16, HYPNOSIS
+    db 19, NIGHTSHADE
 	db 25, REFLECT
-	db 33, TAKE_DOWN
-	db 41, CONFUSION
-	db 57, DREAM_EATER
+	db 30, TAKE_DOWN
+	db 36, CONFUSION
+	db 50, DREAM_EATER
 	db 0
 
 VulpixEvosMoves:
@@ -2764,10 +2767,11 @@ ChinchouEvosMoves:
 ; Learnset - canon Gen 2 levels; FLAIL/SPARK do not exist in Gen 1, filled
 ; with METRONOME.
 	db 5, SUPERSONIC
-	db 13, METRONOME ; was FLAIL
+	db 13, THUNDERSHOCK ; was FLAIL
 	db 17, WATER_GUN
-	db 25, METRONOME ; was SPARK
+	db 25, BUBBLEBEAM ; was SPARK
 	db 29, CONFUSE_RAY
+    db 35, THUNDERBOLT
 	db 37, TAKE_DOWN
 	db 41, HYDRO_PUMP
 	db 0
@@ -2776,12 +2780,13 @@ LanturnEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - BUBBLE/THUNDER_WAVE/SUPERSONIC already granted at level 1
-	db 13, METRONOME ; was FLAIL
+	db 13, THUNDERSHOCK ; was FLAIL
 	db 17, WATER_GUN
-	db 25, METRONOME ; was SPARK
-	db 33, CONFUSE_RAY
-	db 45, TAKE_DOWN
-	db 53, HYDRO_PUMP
+	db 25, BUBBLEBEAM ; was SPARK
+	db 32, CONFUSE_RAY
+    db 38, THUNDERBOLT
+	db 40, TAKE_DOWN
+	db 50, HYDRO_PUMP
 	db 0
 
 CaterpieEvosMoves:
@@ -3073,11 +3078,10 @@ MareepEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 15, FLAAFFY
 	db 0
-; Learnset - canon Gen 2 levels; COTTON_SPORE does not exist in Gen 1,
-; filled with METRONOME.
+; Learnset - canon Gen 2 levels
 	db 9, THUNDERSHOCK
 	db 16, THUNDER_WAVE
-	db 23, METRONOME ; was COTTON_SPORE
+	db 23, CONFUSE_RAY
 	db 30, LIGHT_SCREEN
 	db 37, THUNDER
 	db 0
@@ -3177,7 +3181,7 @@ FlaaffyEvosMoves:
 ; Learnset - TACKLE/GROWL/THUNDERSHOCK already granted at level 1
 	db 9, THUNDERSHOCK
 	db 18, THUNDER_WAVE
-	db 27, METRONOME ; was COTTON_SPORE
+	db 27, CONFUSE_RAY ; was COTTON_SPORE
 	db 36, LIGHT_SCREEN
 	db 45, THUNDER
 	db 0
@@ -3353,10 +3357,10 @@ AmpharosEvosMoves:
 ; level 1
 	db 9, THUNDERSHOCK
 	db 18, THUNDER_WAVE
-	db 27, METRONOME ; was COTTON_SPORE
+	db 27, CONFUSE_RAY ; was COTTON_SPORE
 	db 30, THUNDERPUNCH
-	db 42, LIGHT_SCREEN
-	db 57, THUNDER
+	db 40, LIGHT_SCREEN
+	db 50, THUNDER
 	db 0
 
 GoldeenEvosMoves:

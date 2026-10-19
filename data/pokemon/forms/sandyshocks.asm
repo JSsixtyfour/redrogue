@@ -25,7 +25,8 @@
 	tmhm TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   RAGE,         \
 	     THUNDERBOLT,  THUNDER,      LIGHT_SCREEN, MIMIC,        DOUBLE_TEAM,  \
 	     REFLECT,      BIDE,         SWIFT,        REST,         THUNDER_WAVE, \
-	     SUBSTITUTE,   FLASH,        BODY_SLAM,    EARTHQUAKE,   DIG
+	     SUBSTITUTE,   FLASH,        BODY_SLAM,    EARTHQUAKE,   DIG,		   \
+		 FISSURE
 	; end
 
 	db BANK(SandyShocksPicFront) ; pic bank

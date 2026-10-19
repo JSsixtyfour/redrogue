@@ -19,7 +19,7 @@
 	     SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         DIG,          \
 	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SKULL_BASH,   \
 	     REST,         SUBSTITUTE,   SURF,         STRENGTH,     ROCK_SLIDE,   \
-         DRAGON_RAGE
+         DRAGON_RAGE,  SWORDS_DANCE, CUT
 	; end
 
 	db BANK(TotodilePicFront) ; pic bank

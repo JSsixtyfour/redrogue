@@ -17,7 +17,7 @@
 	tmhm SWORDS_DANCE, TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
 	     RAGE,         MEGA_DRAIN,   SOLARBEAM,    MIMIC,        DOUBLE_TEAM,  \
 	     REFLECT,      BIDE,         REST,         SUBSTITUTE,   CUT,          \
-	     LIGHT_SCREEN, FLASH
+	     LIGHT_SCREEN, FLASH,        STREMGTH
 	; end
 
 	db BANK(BayleefPicFront) ; pic bank

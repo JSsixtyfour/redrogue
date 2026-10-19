@@ -19,7 +19,7 @@
 	     SEISMIC_TOSS, RAGE,         FLAMETHROWER,  EARTHQUAKE,   FISSURE,      \
 	     DIG,          MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
 	     FIRE_BLAST,   SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE,   \
-	     CUT,          STRENGTH,    
+	     CUT,          STRENGTH,     ROCKSLIDE
 	; end
 
 	db BANK(TyphlosionPicFront) ; pic bank
