@@ -55,6 +55,7 @@ Players select one of three randomized Pokémon with different rarity classes as
   - A battle ITEM list for key items.
 - **HMs are just TMs.** No field moves or HM obstacles, and Pokémon that know HM moves can be stored in
   the PC or left at the daycare.
+- Revised Pokémon Learnsets
   
 ## Menus and quality of life
 
