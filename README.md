@@ -40,10 +40,9 @@ Players select one of three randomized Pokémon with different rarity classes as
   - Trapping Moves fail on Type Immune Pokémon
   - Substitute Revamped
      - Fails if user would have 0 HP
-     - Blocks Status Moves, Leech Seed, Draining attacks
+     - Blocks Status Moves and Leech Seed,
      - Multihit moves can break substitute and damage the user
      - Explosion and Selfdestruct still faint the user when they break a Substitute, and recoil moves still deal recoil
-     - 
 - **Sleep Clause (Smogon's Gen 1 rule).** Neither side can put a second opposing Pokémon to sleep
   while one it already put to sleep is still asleep; the move fails with "SLEEP CLAUSE prevents it!".
   Your own Rest never counts and is never blocked. It applies to both sides in every battle, and every
