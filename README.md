@@ -138,7 +138,7 @@ A roguelike built on the [pret/pokered](https://github.com/pret/pokered) disasse
      - [Running Shoes](https://github.com/pret/pokered/wiki/Running-Shoes)
      - [Trainers are Not Pokemon](https://github.com/pret/pokered/wiki/Trainers-are-not-Pokemon)
 - suloku [Experience Share](https://github.com/pret/pokered/wiki/Experience-System-&-Exp.-All-Enhancements-(Single-message,-etc))
-- **Patrik Rak:** CMWC random number generator (with optimisations by Einar Saukas and Alan Albrecht).
+- Patrik Rak: [CMWC random number generator (with optimisations by Einar Saukas and Alan Albrecht)](https://gist.github.com/raxoft/2275716fea577b48f7f0).
 
 **Tutorials**
 - The pret/pokered wiki tutorial authors.
