@@ -21,7 +21,7 @@ A roguelike built on the [pret/pokered](https://github.com/pret/pokered) disasse
 ## Source Mod Credits
 ### Shin Pokemon Red
 #### Creators:
-- jojobear13
+- jojobear13 - Developer
      - Enhanced Colors
      - Gamma Colors
      - 60 FPS
@@ -33,17 +33,22 @@ A roguelike built on the [pret/pokered](https://github.com/pret/pokered) disasse
      - AI Work
      - Random Upgrades
      - DV Upgrades
+     - Double Processing Speed
+     - M. Gene/M. Tome
+     - Zero Delay Text
      - and much muchmore
 ### Credits For Pokemon Yume:
 #### Creator:
 - PokefanMarcel - Developer
    - Bill's PC grid
-   - battle move-info panel
+   - Battle move-info panel
    - status-screen art
    - running sprites
    - player-select system
    - math routines
    - Item Bag System
+   - EXP Bar
+   - AI Work
    - and much more
 ### Credits For Pokemon Extreme Yellow:
 #### Creator:
@@ -70,8 +75,9 @@ A roguelike built on the [pret/pokered](https://github.com/pret/pokered) disasse
 ### Credits For pureRGB:
 #### Creator:
 - Vortyne - Developer
-   - HBlank tile copying,
-   - map-redraw speedups,
+   - HBlank tile copying
+   - map-redraw speedups
+   - AI Heuristics
    - assorted fixes.
 ### Credits For Yellow Legacy:
 #### Creators:
@@ -89,11 +95,9 @@ A roguelike built on the [pret/pokered](https://github.com/pret/pokered) disasse
     - Lake
     - Neslug
     - Pikachu25
-- Green sprite
-    - Madame Frog/Hatun
-    - Ghost-MissingNo
 - Nurse Joy Battle Sprite - ZuperZACH
 - Officer Jenny Battle Sprite - Karlos
+- Learnsets/TMs
 
 ### Code Credits:
 - PlagueVonKarma:
@@ -138,7 +142,8 @@ A roguelike built on the [pret/pokered](https://github.com/pret/pokered) disasse
      - [Running Shoes](https://github.com/pret/pokered/wiki/Running-Shoes)
      - [Trainers are Not Pokemon](https://github.com/pret/pokered/wiki/Trainers-are-not-Pokemon)
 - suloku [Experience Share](https://github.com/pret/pokered/wiki/Experience-System-&-Exp.-All-Enhancements-(Single-message,-etc))
-- Patrik Rak: [CMWC random number generator (with optimisations by Einar Saukas and Alan Albrecht)](https://gist.github.com/raxoft/2275716fea577b48f7f0).
+- Patrik Rak: [CMWC random number generator (with optimisations by Einar Saukas and Alan Albrecht)](https://gist.github.com/raxoft/2275716fea577b48f7f0)
+- Pret Tutorials:https://github.com/pret/pokered/wiki/Tutorials
 
 **Tutorials**
 - The pret/pokered wiki tutorial authors.
