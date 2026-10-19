@@ -3,24 +3,24 @@
 A roguelike built on the [pret/pokered](https://github.com/pret/pokered) disassembly.
 
 # Credits
-# Pokémon Red Rogue Team
-## Developer
+## Pokémon Red Rogue Team
+### Developer
 - The_Smashfather - Developer
-## Sprite Artists
+### Sprite Artists
 - halofactory: Trainer Back Sprites
 - SkidMarc25: Red/Green Style Johto Pokemon Sprites
 - Kyle Glor: Pokemon Sprites
 - TheQuickSlash
 - Sope!
-## Playtesters
+### Playtesters
 - 1upShyGuy
 - goombapatrol
 - halofactory
 - pun
 - Josh Brody
-# Source Mod Credits
-## Shin Pokemon Red
-### Creators:
+## Source Mod Credits
+### Shin Pokemon Red
+#### Creators:
 - jojobear13
      - Enhanced Colors
      - Gamma Colors
@@ -34,8 +34,8 @@ A roguelike built on the [pret/pokered](https://github.com/pret/pokered) disasse
      - Random Upgrades
      - DV Upgrades
      - and much muchmore
-## Credits For Pokemon Yume:
-### Creator:
+### Credits For Pokemon Yume:
+#### Creator:
 - PokefanMarcel - Developer
    - Bill's PC grid
    - battle move-info panel
@@ -45,40 +45,39 @@ A roguelike built on the [pret/pokered](https://github.com/pret/pokered) disasse
    - math routines
    - Item Bag System
    - and much more
-## Credits For Pokemon Extreme Yellow:
-### Creator:
+### Credits For Pokemon Extreme Yellow:
+#### Creator:
 - RainbowMetalPigeon
    - mid-battle evolution
    - move descriptions
    - difficulty modes
    - Cubone overworld sprite
    - AI Work
-## Credits For Kanto Expansion Pak:
-### Creator:
+### Credits For Kanto Expansion Pak:
+#### Creator:
 - MementoMartha
    - Post GSC Species Data
    - Sprites for Various Regional Forms, Eeveelutions, and other Pokemon
-## Credits For Red++:
-### Creator:
+### Credits For Red++:
+#### Creator:
 - JustRegularLuna
    - Johto Species Data
    - Sprites for Various Regional Forms, Eeveelutions, and other Pokemon
-## Credits For Polished Crystal:
-### Creator:
+### Credits For Polished Crystal:
+#### Creator:
 - Rangi
    - Multiplication & Division Routine
-### Creator:
-## Credits For pureRGB:
-### Creator:
+### Credits For pureRGB:
+#### Creator:
 - Vortyne - Developer
    - HBlank tile copying,
    - map-redraw speedups,
    - assorted fixes.
-## Credits For Yellow Legacy:
-### Creators:
+### Credits For Yellow Legacy:
+#### Creators:
 - TheSmithPlays - Developer
 - cRz Shadows - Developer
-### Sprite Artists:
+#### Sprite Artists:
 - Pokemon overworld sprites
     - Isona
     - Alakadoof
