@@ -1,6 +1,81 @@
 # Red Rogue
 
-A roguelike built on the [pret/pokered](https://github.com/pret/pokered) disassembly.
+A Pokémon Red roguelike built on the [Pret Pokémon Red Disassembly](https://github.com/pret/pokered) disassembly. Experience Kanto in a brand new way as players select their trainer class and complete runs in a virtual world inside SilphCos Research Labs. Players will choose entry into mystery doors based on item rewards, challenges, and more.
+
+## Gameplay
+Players select one of three randomized Pokémon with different rarity classes as a reward for conquering the trainers in a "route." They will then proceed to face tougher challenges in the eight randomized gyms as they seek to collect badges to defeat the Elite 4. Player will face minibosses, procedurally generated wild areas and bosses, and gift giver characters. In-between battles players will visit the "Lobby" to heal up, trade Pokémon, buy items, strategize, and much more. Define your team, take risks, and prepare for battle, because if you lose you start from the beginning!
+
+## Features
+- Enhanced Colors
+- 60 FPS
+- 2x and 4x Game Speeds
+- Ironman Mode (Similar to Nuzlocke, every fainted Pokémon is lost)
+- Pokémon Followers
+- Randomized Trainers, which can have custom designed movesets
+- The most advanced RBY AI
+- Custom Room
+- Character Class Select
+- 100+ Pokémon from Johto and Future Kanto Variants/Evolutions when playing in Johto/Time Warp Modes
+- Five Pocket Bag
+- And Much, Much More
+
+## Battle Changes
+- **A new trainer AI.** A ground-up rewrite with four skill tiers that ramp over a run: Must play Hard Mode to experience the highest level AI
+- **Tougher teams.** Enemy Pokémon roll real DVs and stat experience that scale with the run. Gym
+  leaders use signature moves and Yellow-style special movesets, and many trainers field curated
+  competitive sets. AI Trainers no longer miss 25% of status moves.
+- **Gen 1 bug fixes.** Focus Energy works, trapping-move fixes, the 999 stat cap under Reflect and Light Screen, correct PP on Transform, and
+  dozens more (many from Shin Pokémon Red), including:
+  - **Struggle** now triggers when your only moves left are Disabled or out of PP, even with PP Ups
+    applied (it used to leave you stuck at "no PP left");
+  - **Rest** also lifts burn and paralysis stat drops and clears Toxic;
+  - **Rage and Thrash/Petal Dance** no longer lose accuracy every turn they repeat;
+  - **Disable** always blocks at least one turn, even against a slower Pokémon;
+  - **Haze** cures both sides' status, and no longer leaves a Pokémon locked into Bide, Thrash or Rage
+    unable to act;
+  - Psywave never does 0 damage, and a multi-hit move reports its effectiveness once.
+  - Ghost Moves are now super effective against Psychic
+  - 100% accurate moves will not miss under normal circumstances
+  - No accuracy drops for Rage/Thrash/Petal Dance
+  - Trapping Moves fail on Type Immune Pokémon
+  - Substitute Revamped
+     - Fails if user would have 0 HP
+     - Blocks Status Moves, Leech Seed, Draining attacks
+     - Multihit moves can break substitute and damage the user
+     - Explosion and Selfdestruct still faint the user when they break a Substitute, and recoil moves still deal recoil
+     - 
+- **Sleep Clause (Smogon's Gen 1 rule).** Neither side can put a second opposing Pokémon to sleep
+  while one it already put to sleep is still asleep; the move fails with "SLEEP CLAUSE prevents it!".
+  Your own Rest never counts and is never blocked. It applies to both sides in every battle, and every
+  AI tier respects it. The move-info panel reads SLEEP BAN on a sleep move while it would fail, but
+  you can still pick it (say, to gamble that the sleeper wakes first).
+- **Better battle UI.**
+  - A move-info panel shows type, effectiveness, power, accuracy and crit chance.
+  - An EXP bar.
+  - HUD markers for variant and shiny Pokémon.
+  - A battle ITEM list for key items.
+- **HMs are just TMs.** No field moves or HM obstacles, and Pokémon that know HM moves can be stored in
+  the PC or left at the daycare.
+  
+## Menus and quality of life
+
+- **Five-pocket bag:** Recovery, Key Items, TM Pack, Stat and Valuable. TMs are infinite-use and tracked
+  as owned or not owned.
+- **Item descriptions.** Every item has a two-line description in the bag and at the mart counter,
+  and TM names show their move ("TM44 REST").
+- **Bill's PC redesign.** A 5x4 icon grid with animated icons from Pokémon Yume, direct party/box SWAP and a box-full
+  reminder.
+- **Status screen.** Press START to cycle stats, DVs and stat-experience bars, plus a Learndex view of
+  level-up, TM/HM and tutor moves.
+- **Pokedex.** A base-stats bar page and a MOVE viewer.
+- **Following Pokémon.** Your lead Pokemon walks behind you, Yellow-style, on almost every map. You can
+  talk to it, and it can be switched off in Options.
+- **Faster everything.** Faster saving, faster Pokemon Center healing, faster menus and screen
+  transitions, faster spinner tiles, running shoes, and instant text.
+- **Unique overworld and party icons** for many species.
+- **Redesigned Options** with Enhanced Colors and Enhanced Gamma, 60 FPS, Follower, text speed,
+  battle speed (1x, 2x, 4x), battle animations (on, reduced or off), DIFFICULTY, EXP Share, Ironman
+  and audio settings.
 
 # Credits
 ## Pokémon Red Rogue Team
@@ -149,6 +224,7 @@ A roguelike built on the [pret/pokered](https://github.com/pret/pokered) disasse
 - pokeemerald-expansion.
 - pmariglia's foul-play / poke-engine.
 - genericmadscientist's Pokemon Stadium 2 write-up.
+- Supergiant Games: Hades/Hades 2
 
 **Pokemon** is (c) Nintendo, Creatures Inc. and GAME FREAK inc. Red Rogue is a non-commercial fan
 project and is not affiliated with or endorsed by them.
