@@ -165,23 +165,36 @@ class RentalZoneTest(unittest.TestCase):
 
     def test_each_loaded_hub_reclaims_recovers_and_saves_once(self):
         h = self.h
+        h.park_before_hijack()
+        baseline = io.BytesIO()
+        h.save_state(baseline)
         # The direct transaction fixture is parked inside VBlank. Sprite
         # updates can wait for graphics; the live lobby case below runs them.
         h.register_hook("UpdateSprites", lambda _: return_from_call(h))
         h.register_hook("RentalSettlementPopup", lambda _: return_from_call(h))
+        saves = []
+        h.register_hook("SaveGameData", lambda _: saves.append(h.read8("hCurMap")))
         for hub in ("REWARD_ROOM", "INDIGO_PLATEAU_LOBBY"):
+            # Each hub is an independent transaction. Restore the complete
+            # starting machine before seeding it; the previous hub's final
+            # load can leave an unsafe frame-tail resume point. Within this
+            # hub, carry all party/box/SRAM state through the actual calls.
+            h.load_state(baseline)
+            saves.clear()
             self.seed(h, 5, {5:[25], 8:[30]}, 167)
             zone = self.map("PEWTER_GYM")
             h.call_routine("RentalRecordMapLoad")
             self.assertEqual(h.read8("wRentalZone"), zone)
-            self.map(hub)
+            hub_map = self.map(hub)
             h.call_routine("RentalSettleZoneReturn")
             self.assertEqual(h.read_bytes("wRentalRecord", 4), [0,0,0,2])
             self.assertEqual(h.read8("wPartyCount"), 1)
             self.assertEqual(h.read8("wPartyMons", offset=12), 25)
             self.assertEqual(h.read_sram_bytes("sBox9", 1, bank=3), [0])
+            self.assertEqual(saves, [hub_map], hub)
             h.write8("wPartyMons", 99, offset=12)
             h.call_routine("RentalSettleZoneReturn")
+            self.assertEqual(saves, [hub_map], hub)
             h.call_routine("LoadPartyAndDexData")
             self.assertEqual(h.read8("wPartyMons", offset=12), 25)
 
