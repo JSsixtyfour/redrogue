@@ -151,10 +151,10 @@ class ExplicitRarityFormsTest(unittest.TestCase):
             self.h.write8('wCurEnemyLevel', level)
             self.h.write8('wSpawnForm', 3)  # deferred selection must not publish here
             self.h.write8('wPendingEeveeForm', 0x80)
-            self.h.pyboy.register_file.D = SPECIES[sp]
-            self.h.pyboy.register_file.E = form
-            self.h.call_routine('EvolvePoolMon')
-            regs = self.h.last_call_registers
+            # Observe the routine's result without resuming the interrupted
+            # lobby on its modified evolution scratch state. As in the other
+            # generated-evolution test below, also require a balanced stack.
+            regs = self.run_direct('EvolvePoolMon', D=SPECIES[sp], E=form)
             self.assertEqual((regs['D'], regs['E']), (SPECIES[target], target_form), sp)
             self.assertEqual(self.h.read8('wSpawnForm'), 3, sp)
             self.assertEqual(self.h.read8('wPendingEeveeForm'), 0, sp)

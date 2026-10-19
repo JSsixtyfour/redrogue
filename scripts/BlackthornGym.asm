@@ -18,7 +18,7 @@ ClairShowOrHideExitBlock:
 	ret z
 	CheckEvent EVENT_BEAT_CLAIR
 	jr z, .blockExitToNextRoom
-	ld a, $0E
+	ld a, $0F
 	jp .setExitBlock
 .blockExitToNextRoom
 	ld a, $3B

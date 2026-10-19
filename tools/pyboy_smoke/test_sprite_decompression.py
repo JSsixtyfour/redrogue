@@ -45,6 +45,17 @@ class SpriteDecompressionTest(HarnessTestCase):
         mismatched = [k for k, v in results.items() if v["sha256"] != golden[k]]
         self.assertEqual(mismatched, [], f"{len(mismatched)} pics decode differently")
 
+    def test_dmg_battle_with_speed_option_never_switches_cpu(self) -> None:
+        h = self.harness
+        switches = []
+        h.write8('hIsInBattle', 2)
+        h.write8('wOptions2', h.read8('wOptions2') | 0x80)
+        h.register_hook('ToggleCPUSpeed', lambda _: switches.append(True))
+        results = run_all(h)
+        golden = load_golden()
+        self.assertEqual({k: v['sha256'] for k, v in results.items()}, golden)
+        self.assertEqual(switches, [])
+
     def test_every_pic_matches_its_source_art(self) -> None:
         results = run_all(self.harness)
         size = SPRITEBUFFERSIZE

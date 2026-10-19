@@ -3,7 +3,8 @@
 ; from COLUMN-major 2bpp; see the %.lz rule in the Makefile), decoded by
 ; pokecrystal's Decompress below. It replaced Gen 1's bit-stream RLE +
 ; differential + XOR decoder, which took 21 DMG frames per pic on average (up to
-; 40); this takes 0.6 (up to 1.7), measured over all 674 pics.
+; 40). The 2026-10-19 single-speed probe over 669 pics, normal and flipped,
+; measures 1.16 frames on average (up to 2.46), including plane splitting.
 ;
 ; Output contract, unchanged from the Gen 1 decoder and pinned by
 ; tools/pyboy_smoke/test_sprite_decompression.py (golden + source-art checks):
@@ -23,6 +24,29 @@ UncompressSpriteData::
 	ld a, b
 	ldh [hLoadedROMBank], a
 	ld [rROMB], a
+	; pureRGB 231abdfc: temporarily accelerate battle pic decompression on
+	; CGB. Keep Red Rogue's 60 FPS option and the caller's original speed:
+	; only a single-speed battle caller with the option on needs restoring.
+	ldh a, [hGBC]
+	and a
+	jr z, .keepSpeed
+	ldh a, [hIsInBattle]
+	and a
+	jr z, .keepSpeed
+	ld a, [wOptions2]
+	bit BIT_60_FPS, a
+	jr z, .keepSpeed
+	ldh a, [rKEY1]
+	bit 7, a
+	jr nz, .keepSpeed
+	predef SetCPUSpeed
+	xor a ; 0: this call switched to double speed
+	jr .speedReady
+.keepSpeed
+	ld a, $ff ; $ff: leave the caller's speed alone
+.speedReady
+	push af
+	; Enable SRAM AFTER the speed helper, before touching the pic buffers.
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	xor a
@@ -38,6 +62,11 @@ UncompressSpriteData::
 	ldh [hLoadedROMBank], a
 	ld [rROMB], a
 	call SplitSpritePlanes
+	pop af
+	inc a
+	jr z, .restoreBank
+	predef SingleCPUSpeed
+.restoreBank
 	pop af
 	ldh [hLoadedROMBank], a
 	ld [rROMB], a

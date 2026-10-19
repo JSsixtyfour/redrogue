@@ -6,7 +6,7 @@
 	const_export BLACKTHORNGYM_GYM_GUIDE
 
 BlackthornGym_Object:
-	db $1 ; border block
+	db $0 ; border block
 
 	def_warp_events
 	warp_event  4, 13, WARP_NO_RETURN, 3

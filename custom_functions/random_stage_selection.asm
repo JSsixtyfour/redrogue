@@ -824,6 +824,113 @@ ApplyDebug2DoorForce::
 .outOfRange
 	pop hl
 	ret
+
+; Debug overrides must update the slot identity as well as the warp. The signs,
+; badge award and trainer card all read the latched slots, not the door maps.
+; Only called after Debug 2's NORMAL overrides, while still in the lobby.
+Debug2SyncGymChoice:
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_ROGUE_GYM_NEXT, a
+	ret z
+	ld a, [wGymChoice]
+	ld b, a
+	and GYM_CHOICE_DOOR1_MASK
+	ld c, a
+	ld a, b
+	and GYM_CHOICE_DOOR2_MASK
+	rrca
+	rrca
+	rrca
+	cp c
+	jr nz, .pair
+	; With one badge slot left, keep one destination: door 1's override wins.
+	ld a, [wLobbyDoor1StageMap]
+	ld [wLobbyDoor2StageMap], a
+.pair
+	ld a, [wLobbyDoor1StageMap]
+	ld [wRogueMap], a
+	call .setSlot
+	ld a, [wLobbyDoor1StageMap]
+	ld b, a
+	ld a, [wLobbyDoor2StageMap]
+	cp b
+	jr z, .single
+	push af
+	ld a, [wGymChoice]
+	and GYM_CHOICE_DOOR2_MASK
+	rrca
+	rrca
+	rrca
+	ld c, a
+	pop af
+	jr .setSlot
+.single
+	; Two identical destinations are one gym, just like the ordinary last gym.
+	ld a, [wGymChoice]
+	and GYM_CHOICE_DOOR1_MASK
+	ld b, a
+	add a
+	add a
+	add a
+	or b
+	ld b, a
+	ld a, [wGymChoice]
+	and 1 << BIT_GYM_CHOICE_LATCHED
+	or 1 << BIT_GYM_CHOICE_REVEALED ; an explicitly forced single gym is known
+	or b
+	ld [wGymChoice], a
+	ret
+
+; a = actual door map, c = badge slot. Swap an existing leader into the chosen
+; slot rather than duplicate it. A leader outside the lineup replaces this slot.
+.setSlot
+	ld b, a
+	ld hl, GymMapByLeader
+.findLeader
+	ld a, [hli]
+	cp -1
+	ret z
+	ld d, a
+	ld a, [hli]
+	cp b
+	jr nz, .findLeader
+	; Fuchsia's occupant is authored by the run's Koga/Janine choice.
+	ld a, d
+	cp KOGA
+	jr nz, .haveLeader
+	ld hl, wRunGymLineup
+	ld b, NUM_BADGES
+.findJanine
+	ld a, [hli]
+	cp JANINE
+	jr z, .janine
+	dec b
+	jr nz, .findJanine
+	jr .haveLeader
+.janine
+	ld d, a
+.haveLeader
+	ld b, 0
+	ld hl, wRunGymLineup
+	add hl, bc
+	ld e, [hl]
+	push hl
+	ld hl, wRunGymLineup
+	ld b, NUM_BADGES
+.findOldSlot
+	ld a, [hl]
+	cp d
+	jr z, .swap
+	inc hl
+	dec b
+	jr nz, .findOldSlot
+	jr .assign
+.swap
+	ld [hl], e
+.assign
+	pop hl
+	ld [hl], d
+	ret
 ENDC
 
 ; ============================================================
@@ -968,21 +1075,17 @@ IF DEF(_DEBUG)
 	; bridge exit patch, the wild-area no-repeat mask).
 	jr nz, .consumeDebug2Forces
 	ld a, [wDebug2ForcedDoor1]
-	push af
-	xor a
-	ld [wDebug2ForcedDoor1], a     ; consume: only force the next lobby visit
-	pop af
 	and %00011111                 ; encounter selector occupies bits 6-7
 	ld hl, wLobbyDoor1StageMap
 	call ApplyDebug2DoorForce
 	ld a, [wDebug2ForcedDoor2]
-	push af
-	xor a
-	ld [wDebug2ForcedDoor2], a
-	pop af
 	ld hl, wLobbyDoor2StageMap
 	call ApplyDebug2DoorForce
-	jr .noDebug2DoorForce
+	ld a, [wDebug2ForcedDoor1]
+	ld b, a
+	ld a, [wDebug2ForcedDoor2]
+	or b
+	call nz, Debug2SyncGymChoice
 .consumeDebug2Forces
 	xor a
 	ld [wDebug2ForcedDoor1], a
