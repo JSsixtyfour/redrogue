@@ -1,6 +1,6 @@
-# Red Rogue
+# Pokémon Red Rogue
 
-A Pokémon Red roguelike built on the [Pret Pokémon Red Disassembly](https://github.com/pret/pokered) disassembly. Experience Kanto in a brand new way as players select their trainer class and complete runs in a virtual world inside SilphCo's Research Labs. Players will choose entry into mystery doors based on rewards, challenges, and more.
+A Pokémon Red Rogue is a roguelike built on the [Pret Pokémon Red Disassembly](https://github.com/pret/pokered) disassembly. Experience Kanto in a brand new way as players select their trainer class and complete runs in a virtual world inside SilphCo's Research Labs. Players will choose entry into mystery doors based on rewards, challenges, and more.
 
 ## Gameplay
 Players select one of three randomized Pokémon with different rarity classes as a reward for conquering the trainers in a "route." They will then proceed to face tougher challenges in the eight randomized gyms as they seek to collect badges to defeat the Elite 4. Player will face minibosses, procedurally generated wild areas and bosses, and gift giver characters. In-between battles players will visit the "Lobby" to heal up, trade Pokémon, buy items, strategize, and much more. Define your team, take risks, and prepare for battle, because if you lose you start from the beginning! Don't worry if you fall, upgrade your key items and head out for the Champion again!
