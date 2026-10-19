@@ -1,6 +1,6 @@
 ; custom_functions/key_item_pocket.asm
 ;
-; Key items: paired own+active bits in sKeyItemsBitfield byte 0.
+; Key items: paired own+active bits across all four bytes of sKeyItemsBitfield.
 ;   Even bit = owned, odd bit = active (in bag, usable).
 ;   Active bit is always own_bit + 1 (callers can inc c to get it).
 ;
@@ -79,11 +79,7 @@ GetKeyItemTierForCurItem::
     ld h, 0
     ld de, sKeyItemTiers
     add hl, de
-    ld a, RAMG_SRAM_ENABLE
-    ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
+    call _OpenKeyItemSRAM
     ld a, [hl]
     ld c, a
     xor a
@@ -111,7 +107,7 @@ GetKeyItemTierInE::
 
 ; ============================================================
 ; _KeyBitInfo (same-bank private)
-; INPUT: c = bit_index (0-7); SRAM must be enabled by caller.
+; INPUT: c = bit_index (0-31); SRAM must be enabled by caller.
 ; OUTPUT: hl = &sKeyItemsBitfield[c>>3], b = 1<<(c&7)
 ; ============================================================
 _KeyBitInfo:
@@ -137,32 +133,58 @@ _KeyBitInfo:
     add hl, de
     ret
 
-; ============================================================
-; _CountActive (same-bank private; SRAM must be enabled)
-; Count how many key items have their active bit set (bits 1,3,5,7).
-; OUTPUT: a = count (0 to KEY_ITEM_MAX_ACTIVE)
-; ============================================================
+; Open the persistent inventory bank explicitly; callers close it on return.
+_OpenKeyItemSRAM:
+    ld a, RAMG_SRAM_ENABLE
+    ld [rRAMG], a
+    ASSERT BANK("Save Data") == 1
+    ld a, 1
+    ld [rRAMB], a
+    ret
+
+; Count and repair equipment using the same order as both inventory lists.
+; SRAM must be enabled in bank 1. Returns a = count, clobbers bc/de/hl.
+; Keep the first three owned/equipped items; return extras to PC storage.
+; Clear orphan active bits, but never alter ownership, tiers or cartridges.
+; Retired/reserved bits are absent from KeyItemPocketTable and do not count.
 _CountActive:
-    ld hl, sKeyItemsBitfield
+    ld hl, KeyItemPocketTable
+    ld e, 0
+.scan
+    ld a, [hli]
+    cp $ff
+    jr z, .done
+    ld c, [hl]
+    inc hl
+    push hl
+    push de
+    call _KeyBitInfo
     ld a, [hl]
-    ld b, 0
-    bit 1, a
-    jr z, .s1
-    inc b
-.s1
-    bit 3, a
-    jr z, .s2
-    inc b
-.s2
-    bit 5, a
-    jr z, .s3
-    inc b
-.s3
-    bit 7, a
-    jr z, .s4
-    inc b
-.s4
+    and b
+    ld d, a                   ; nonzero if owned
+    sla b                     ; owned mask -> equipped mask
+    ld a, [hl]
+    and b
+    ld a, d
+    pop de                    ; restores running count; preserves flags
+    jr z, .next               ; already unequipped
+    and a
+    jr z, .unequip             ; cannot equip an unowned item
+    ld a, e
+    cp KEY_ITEM_MAX_ACTIVE
+    jr nc, .unequip
+    inc e
+    jr .next
+.unequip
     ld a, b
+    cpl
+    and [hl]
+    ld [hl], a
+.next
+    pop hl
+    jr .scan
+.done
+    ld a, e
     ret
 
 ; ============================================================
@@ -172,11 +194,7 @@ _CountActive:
 IsKeyItemOwned::
     call IsKeyPocketItem
     jr nc, .no
-    ld a, RAMG_SRAM_ENABLE
-    ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
+    call _OpenKeyItemSRAM
     call _KeyBitInfo      ; c = own_bit
     ld a, [hl]
     and b
@@ -198,11 +216,10 @@ IsKeyItemActive::
     call IsKeyPocketItem
     jr nc, .no
     inc c               ; c = active_bit = own_bit + 1
-    ld a, RAMG_SRAM_ENABLE
-    ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
+    call _OpenKeyItemSRAM
+    push bc
+    call _CountActive
+    pop bc
     call _KeyBitInfo
     ld a, [hl]
     and b
@@ -268,11 +285,7 @@ AcquireKeyPocketItem::
     call IsKeyPocketItem
     ret nc                    ; not a key item
     ; c = own_bit
-    ld a, RAMG_SRAM_ENABLE
-    ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
+    call _OpenKeyItemSRAM
     push bc
     call _KeyBitInfo          ; hl = byte addr, b = 1<<own_bit
     ld a, [hl]
@@ -280,11 +293,19 @@ AcquireKeyPocketItem::
     ld [hl], a                ; set owned bit
     call _CountActive
     pop bc                    ; restore c = own_bit
-    cp KEY_ITEM_MAX_ACTIVE
-    jr nc, .ownOnly           ; already 3 active — goes to PC
-    ; Set active bit (own_bit + 1)
+    push af                   ; count while resolving the item's active mask
     inc c
     call _KeyBitInfo
+    ld a, [hl]
+    and b
+    ld e, a                   ; already equipped grants still report success
+    pop af
+    cp KEY_ITEM_MAX_ACTIVE
+    jr c, .equip
+    ld a, e
+    and a
+    jr z, .ownOnly
+.equip
     ld a, [hl]
     or b
     ld [hl], a
@@ -301,16 +322,16 @@ AcquireKeyPocketItem::
 
 ; ============================================================
 ; WithdrawKeyItem — activate wCurItem (PC → bag). Replaces EquipKeyItem.
-; OUTPUT: carry set = now active; carry clear = bag full or already active
+; OUTPUT: carry set = now active; carry clear = unowned, full or already active
 ; ============================================================
 WithdrawKeyItem::
     call IsKeyPocketItem
     jr nc, .fail
-    ld a, RAMG_SRAM_ENABLE
-    ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
+    call _OpenKeyItemSRAM
+    call _KeyBitInfo
+    ld a, [hl]
+    and b
+    jr z, .close              ; only owned items can leave PC storage
     inc c                     ; c = active_bit
     push bc
     call _KeyBitInfo
@@ -332,6 +353,7 @@ WithdrawKeyItem::
 .alreadyActive
 .bagFull
     pop bc
+.close
     xor a
     ld [rRAMG], a
 .fail
@@ -346,11 +368,7 @@ DepositKeyItem::
     call IsKeyPocketItem
     jr nc, .fail
     inc c                     ; c = active_bit
-    ld a, RAMG_SRAM_ENABLE
-    ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
+    call _OpenKeyItemSRAM
     push bc
     call _KeyBitInfo
     ld a, [hl]
@@ -386,11 +404,7 @@ DepositKeyItem::
 ; as fully upgraded and dropped from the Credit Exchange's upgrade list.
 ; ============================================================
 ClearKeyItemsBitfield::
-    ld a, RAMG_SRAM_ENABLE
-    ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
+    call _OpenKeyItemSRAM
     ld hl, sKeyItemsBitfield
     ld b, 8       ; 4 bytes of ownership bits + 4 of upgrade tiers
     xor a
@@ -434,11 +448,8 @@ BuildActiveKeyItemListAt::
     ld [wPocketListWritePtr], a
     ld a, e
     ld [wPocketListWritePtr + 1], a
-    ld a, RAMG_SRAM_ENABLE
-    ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
+    call _OpenKeyItemSRAM
+    call _CountActive        ; repair old overfilled saves before displaying
     ld b, 0          ; output count
     ld c, 0          ; table index
 .bagScan
@@ -506,11 +517,8 @@ BuildActiveKeyItemListAt::
 ; Used by the PC WITHDRAW screen.
 ; ============================================================
 BuildKeyItemPCWithdrawList::
-    ld a, RAMG_SRAM_ENABLE
-    ld [rRAMG], a
-    ASSERT BANK("Save Data") == 1
-    ld a, 1
-    ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
+    call _OpenKeyItemSRAM
+    call _CountActive        ; extras must appear in PC storage immediately
     ld a, HIGH(wKeyItemPocketBuf + 1)
     ld [wPocketListWritePtr], a
     ld a, LOW(wKeyItemPocketBuf + 1)

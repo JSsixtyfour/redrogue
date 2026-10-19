@@ -16,48 +16,17 @@ PCMainMenu:
 	call HandleMenuInput
 	bit B_PAD_B, a
 	jp nz, LogOff
+	ldh a, [hCurrentMenuItem]
+	and a
+	jp z, BillsPC
+	ld b, a
 	ld a, [wMaxMenuItem]
-	cp 2
-	jr nz, .next ;if not 2 menu items (not counting log off) (2 occurs before you get the pokedex)
-	ldh a, [hCurrentMenuItem]
-	and a
-	jp z, BillsPC    ;if current menu item id is 0, it's bills pc
-	cp 1
-	jr z, .playersPC ;if current menu item id is 1, it's players pc
-	jp LogOff        ;otherwise, it's 2, and you're logging off
-.next
-	cp 3
-	jr nz, .next2 ;if not 3 menu items (not counting log off) (3 occurs after you get the pokedex, before you beat the pokemon league)
-	ldh a, [hCurrentMenuItem]
-	and a
-	jp z, BillsPC    ;if current menu item id is 0, it's bills pc
-	cp 1
-	jr z, .playersPC ;if current menu item id is 1, it's players pc
-	cp 2
-	jp z, OaksPC     ;if current menu item id is 2, it's oaks pc
-	jp LogOff        ;otherwise, it's 3, and you're logging off
-.next2
-	ldh a, [hCurrentMenuItem]
-	and a
-	jp z, BillsPC    ;if current menu item id is 0, it's bills pc
-	cp 1
-	jr z, .playersPC ;if current menu item id is 1, it's players pc
-	cp 2
-	jp z, OaksPC     ;if current menu item id is 2, it's oaks pc
-	cp 3
-	jp z, PKMNLeague ;if current menu item id is 3, it's pkmnleague
-	jp LogOff        ;otherwise, it's 4, and you're logging off
-.playersPC
-	ld hl, wMiscFlags
-	res BIT_NO_MENU_BUTTON_SOUND, [hl]
-	set BIT_USING_GENERIC_PC, [hl]
-	ld a, SFX_ENTER_PC
-	call PlaySound
-	call WaitForSoundToFinish
-	ld hl, AccessedMyPCText
-	call PrintText
-	farcall PlayerPC
-	jr ReloadMainMenu
+	cp b
+	jp z, LogOff
+	ld a, b
+	dec a
+	jp z, OaksPC
+	jp PKMNLeague
 OaksPC:
 	ld a, SFX_ENTER_PC
 	call PlaySound

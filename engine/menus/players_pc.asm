@@ -1,4 +1,8 @@
 PlayerPC::
+	; Personal storage and cartridge changes are available only in the Dorm.
+	ldh a, [hCurMap]
+	cp SILPH_CO_DORM
+	ret nz
 	ld hl, wStatusFlags5
 	set BIT_NO_TEXT_DELAY, [hl]
 	ld a, ITEM_NAME

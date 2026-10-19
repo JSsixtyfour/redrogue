@@ -11,58 +11,51 @@ DisplayPCMainMenu::
 	and a
 	jr nz, .leaguePCAvailable
 	hlcoord 0, 0
-	ld b, 8
+	ld b, 6
 	ld c, 14
 	jr .next
 .noOaksPC
 	hlcoord 0, 0
-	ld b, 6
+	ld b, 4
 	ld c, 14
 	jr .next
 .leaguePCAvailable
 	hlcoord 0, 0
-	ld b, 10
+	ld b, 8
 	ld c, 14
 .next
 	call TextBoxBorder
 	call UpdateSprites
-	ld a, 3
+	ld a, 2
 	ld [wMaxMenuItem], a
 	hlcoord 2, 2
 	ld de, BillsPCText
 .next2
 	call PlaceString
-	hlcoord 2, 4
-	ld de, wPlayerName
-	call PlaceString
-	ld l, c
-	ld h, b
-	ld de, PlayersPCText
-	call PlaceString
 	CheckEvent EVENT_GOT_POKEDEX
 	jr z, .noOaksPC2
-	hlcoord 2, 6
+	hlcoord 2, 4
 	ld de, OaksPCText
 	call PlaceString
 	ld a, [wNumHoFTeams]
 	and a
 	jr z, .noLeaguePC
-	ld a, 4
+	ld a, 3
 	ld [wMaxMenuItem], a
-	hlcoord 2, 8
+	hlcoord 2, 6
 	ld de, PKMNLeaguePCText
 	call PlaceString
-	hlcoord 2, 10
+	hlcoord 2, 8
 	ld de, LogOffPCText
 	jr .next3
 .noLeaguePC
-	hlcoord 2, 8
+	hlcoord 2, 6
 	ld de, LogOffPCText
 	jr .next3
 .noOaksPC2
-	ld a, $2
+	ld a, $1
 	ld [wMaxMenuItem], a
-	hlcoord 2, 6
+	hlcoord 2, 4
 	ld de, LogOffPCText
 .next3
 	call PlaceString
