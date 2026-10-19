@@ -101,11 +101,6 @@ A roguelike built on the [pret/pokered](https://github.com/pret/pokered) disasse
 
 ### Code Credits:
 - PlagueVonKarma:
-    - KEP’s AI is based on Vortyne’s PureRGB AI, with elements from Jojobear13’s Shinred AI
-        - https://github.com/PlagueVonKarma/kep-hack/blob/0af5bd126bd1d1b69bfd9b7fe3da20e1b14f094c/engine/battle/trainer_ai.asm
-        - https://github.com/PlagueVonKarma/kep-hack/commit/0af5bd126bd1d1b69bfd9b7fe3da20e1b14f094c
-        - https://github.com/PlagueVonKarma/kep-hack/commit/e6763371e4fcb26da70709fe0566ab4a8d1d2083
-        - https://github.com/PlagueVonKarma/kep-hack/commit/c8f27d8bce0a0708d347f510694be4fba8158c65
     - [Already Caught Icon](https://github.com/PlagueVonKarma/kep-hack/commit/00efe3c6b461773a20b424fbf548cb38c880c9ac)
     - [Move Relearner & Move Deleter](https://github.com/pret/pokered/wiki/Adding-a-Move-Relearner-&-Move-Deleter)
     - [DV / Stat Exp display in stat menu](https://github.com/PlagueVonKarma/kep-hack/commit/98110eddc82ff056a0c8420dc96fe5d9bbd9cb79)
@@ -136,7 +131,6 @@ A roguelike built on the [pret/pokered](https://github.com/pret/pokered) disasse
     - [Implement move priority system](https://github.com/pret/pokered/wiki/Implement-move-priority-system)
 - Dannye - [Add All Unique Party Menu Sprite Icons](https://github.com/pret/pokered/wiki/Add-All-Unique-Party-Menu-Sprite-Icons)
 - SoupPotato/Dannye - [Functioning EXP bar in battle](https://github.com/AhabsStudios/pokekaizen/commit/0332a4d1ca74b4993b2f4bc8d926bac971a0751d)
-- Voloved - [Add Item Sorting In Bag](https://github.com/pret/pokered/wiki/Add-Item-Sorting-In-Bag)
 - Mateo - [Move Relearner/Tutor]([https://github.com/pret/pokered/wiki/Add-Item-Sorting-In-Bag](https://github.com/pret/pokered/wiki/Adding-a-Move-Relearner-&-Move-Deleter))
 - SatoMew (presumably more people worked on these but satomew is the only page author) - [Bugs and Glitches](https://github.com/pret/pokered/wiki/%5BARCHIVED%5D-Bugs-and-Glitches)
 - JustRegularLuna
