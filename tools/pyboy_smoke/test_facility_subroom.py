@@ -308,6 +308,12 @@ class FacilitySuperNerdTest(FacilitySubroomTest):
         h = self.h
         room = self.maps["PROCEDURAL_FACILITY_SUBROOM"]
         piece = self.enter_subroom()
+        # One Facility in five rolls the PokeManiac in his place (BIT_PFAC_MANIAC),
+        # who fights at FINAL_ROUTE_STEP with his own lines; this is the Super
+        # Nerd's test (test_cave_subroom covers the PokeManiac).
+        flags = h.read_sram_bytes("sProcFacilityItemGot", 1)
+        flags[0] &= ~0x08
+        h.write_sram_bytes("sProcFacilityItemGot", flags)
         nx, ny = piece["nerd"]
         self.walk_to(piece, (nx, ny + 1))
 

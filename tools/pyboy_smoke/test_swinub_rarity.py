@@ -100,6 +100,7 @@ class SwinubRarityTest(unittest.TestCase):
         bank, entry = h.symbols.get('RogueRollGroupForTier')
         _, pick = h.symbols.get('RogueRollGroupForTier.pick')
         rng_bank, rng_entry = h.symbols.get('Rangerandom')
+        _, roll_start, roll_end = h.symbols.routine_range('RogueRollGroupForTier')
         for mask in (1, 3, 5, 7):
             for tier in (0, 1):
                 # Pool sizes come from the ROM's own pool getter, not literals:
@@ -119,13 +120,25 @@ class SwinubRarityTest(unittest.TestCase):
                     for index in (start, start + count - 1):
                         self.configure(7, mask)
                         seen_counts = []
+                        # call_routine lets the parked lobby run out its frame
+                        # after the restore, and the lobby's own entry setups
+                        # (the trader's roll) draw from Rangerandom and call
+                        # this picker too. Act only on the test's own call:
+                        # the first entry, and draws made from the picker.
+                        calls = [0]
                         def arguments(_):
-                            h.pyboy.register_file.B = tier
+                            calls[0] += 1
+                            if calls[0] == 1:
+                                h.pyboy.register_file.B = tier
                         def ordinal(_):
-                            if h.pyboy.register_file.C == 0:
+                            if calls[0] == 1 and h.pyboy.register_file.C == 0:
                                 h.pyboy.register_file.E = index
                         def rng_count(_):
-                            seen_counts.append(h.pyboy.register_file.C)
+                            sp = h.pyboy.register_file.SP
+                            caller = h.pyboy.memory[sp] | h.pyboy.memory[sp + 1] << 8
+                            if (calls[0] == 1 and h.read8('hLoadedROMBank') == bank
+                                    and roll_start <= caller < roll_end):
+                                seen_counts.append(h.pyboy.register_file.C)
                         h.pyboy.hook_register(bank, entry, arguments, None)
                         h.pyboy.hook_register(bank, pick, ordinal, None)
                         h.pyboy.hook_register(rng_bank, rng_entry, rng_count, None)
