@@ -165,7 +165,7 @@ SnorlaxMonster, stag019, strager, stringflow, Summate, Sylvie, TheFakeMateo, Tho
 Urs-Bjorn Schmidt, Victor M. Gonzalez, Vortyne, vulcandth, xCrystal, xeons, YamaArashi, yenatch,
 Yoann Fievez, Zachary Buhman, and two contributors recorded only by machine address (Adam, David).
 
-## Building
+# Building
 
 See [INSTALL.md](INSTALL.md) for toolchain setup (rgbds version in `.rgbds-version`). Build from WSL
 or Linux:
@@ -177,7 +177,7 @@ make            # pokered.gbc, pokeblue.gbc, pokeblue_debug.gbc
 Always build all three ROMs when verifying a change. Every link is also archived to `builds/` with its
 matching `.sym`, stamped with date and git hash (`BUILD_KEEP=N` keeps the newest N per ROM).
 
-## Verification
+# Verification
 
 | Target | What it checks |
 | --- | --- |
@@ -239,7 +239,7 @@ RELEASE_WEBHOOK_URL=https://discord.com/api/webhooks/...
 The bot side (its `release_webhook_id` and the Message Content intent) is in the playtest bot's
 README.
 
-## Crash screen
+# Crash screen
 
 In the debug build, a crash shows a screen instead of freezing. It catches a jump into unused ROM
 or to `$0000`, which is how most of this project's bugs end. Release builds still just hang.
@@ -284,7 +284,7 @@ two builds share that ID it lists them and asks for `built` (the screen's date l
 guessing. It works for builds sent with `make release` (the bot keeps their `.gbc` and `.sym`); the
 playtest bot's README has the one-time setup. `--json` prints the result as data.
 
-## Reproduction bundles
+# Reproduction bundles
 
 To gather everything about one report in one folder:
 
@@ -309,7 +309,7 @@ It needs that build's `.sym`. Builds sent with `make release` are kept for good 
 somewhere safe and pass the `.sym` path in place of the ID. A clean commit can also be rebuilt for
 the same addresses; a `-dirty` build cannot.
 
-## Save format
+# Save format
 
 Every save carries a header (`RRSG` plus `SAVE_SCHEMA_ID` from `constants/save_constants.asm`) at
 SRAM bank 1 `$a040`. Continue refuses a save from another format and leaves it untouched; testers
@@ -324,7 +324,7 @@ Changing the save format (bump, migration, tests, real-save gate) is in `SAVE_CO
 in Red Rogue Files. `python3 tools/save_compat/saves.py make|continue` makes real saves with PyBoy and
 cold-boot checks them.
 
-## Preview pages
+# Preview pages
 
 Two scripts build a single self-contained HTML page each, from the source files they describe. Open
 the page in any browser. Nothing is installed and nothing outside the standard library is needed.
