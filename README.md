@@ -2,6 +2,169 @@
 
 A roguelike built on the [pret/pokered](https://github.com/pret/pokered) disassembly.
 
+# Credits
+# Pokémon Red Rogue Team
+## Developer
+- The_Smashfather - Developer
+## Sprite Artists
+- halofactory: Trainer Back Sprites
+- SkidMarc25: Red/Green Style Johto Pokemon Sprites
+- Kyle Glor: Pokemon Sprites
+- TheQuickSlash
+- Sope!
+## Playtesters
+- 1upShyGuy
+- goombapatrol
+- halofactory
+- pun
+- Josh Brody
+# Source Mod Credits
+## Shin Pokemon Red
+### Creators:
+- jojobear13
+     - Enhanced Colors
+     - Gamma Colors
+     - 60 FPS
+     - Gen 1 Bug Fixes
+     - Shiny system
+     - PokemonYellow Audio Backport
+     - Daycare Upgrades
+     - EXP bar
+     - AI Work
+     - Random Upgrades
+     - DV Upgrades
+     - and much muchmore
+## Credits For Pokemon Yume:
+### Creator:
+- PokefanMarcel - Developer
+   - Bill's PC grid
+   - battle move-info panel
+   - status-screen art
+   - running sprites
+   - player-select system
+   - math routines
+   - Item Bag System
+   - and much more
+## Credits For Pokemon Extreme Yellow:
+### Creator:
+- RainbowMetalPigeon
+   - mid-battle evolution
+   - move descriptions
+   - difficulty modes
+   - Cubone overworld sprite
+   - AI Work
+## Credits For Kanto Expansion Pak:
+### Creator:
+- MementoMartha
+   - Post GSC Species Data
+   - Sprites for Various Regional Forms, Eeveelutions, and other Pokemon
+## Credits For Red++:
+### Creator:
+- JustRegularLuna
+   - Johto Species Data
+   - Sprites for Various Regional Forms, Eeveelutions, and other Pokemon
+## Credits For Polished Crystal:
+### Creator:
+- Rangi
+   - Multiplication & Division Routine
+### Creator:
+## Credits For pureRGB:
+### Creator:
+- Vortyne - Developer
+   - HBlank tile copying,
+   - map-redraw speedups,
+   - assorted fixes.
+## Credits For Yellow Legacy:
+### Creators:
+- TheSmithPlays - Developer
+- cRz Shadows - Developer
+### Sprite Artists:
+- Pokemon overworld sprites
+    - Isona
+    - Alakadoof
+    - Karlos
+- Pokemon party sprites
+    - Chamber
+    - Soloo993
+    - Blue Emerald
+    - Lake
+    - Neslug
+    - Pikachu25
+- Green sprite
+    - Madame Frog/Hatun
+    - Ghost-MissingNo
+- Nurse Joy Battle Sprite - ZuperZACH
+- Officer Jenny Battle Sprite - Karlos
+
+### Code Credits:
+- PlagueVonKarma:
+    - KEP’s AI is based on Vortyne’s PureRGB AI, with elements from Jojobear13’s Shinred AI
+        - https://github.com/PlagueVonKarma/kep-hack/blob/0af5bd126bd1d1b69bfd9b7fe3da20e1b14f094c/engine/battle/trainer_ai.asm
+        - https://github.com/PlagueVonKarma/kep-hack/commit/0af5bd126bd1d1b69bfd9b7fe3da20e1b14f094c
+        - https://github.com/PlagueVonKarma/kep-hack/commit/e6763371e4fcb26da70709fe0566ab4a8d1d2083
+        - https://github.com/PlagueVonKarma/kep-hack/commit/c8f27d8bce0a0708d347f510694be4fba8158c65
+    - [Already Caught Icon](https://github.com/PlagueVonKarma/kep-hack/commit/00efe3c6b461773a20b424fbf548cb38c880c9ac)
+    - [Move Relearner & Move Deleter](https://github.com/pret/pokered/wiki/Adding-a-Move-Relearner-&-Move-Deleter)
+    - [DV / Stat Exp display in stat menu](https://github.com/PlagueVonKarma/kep-hack/commit/98110eddc82ff056a0c8420dc96fe5d9bbd9cb79)
+    - [Faster Spinners](https://github.com/PlagueVonKarma/kep-hack/commit/7c5c2a3047dd74b9ed014053172e0222b49d486b)
+    - [Shorter Exp All Message](https://github.com/pret/pokered/wiki/Experience-System-&-Exp.-All-Enhancements-(Single-message,-etc))
+- Jojobear13:
+    - [Box full reminder ](https://github.com/jojobear13/shinpokered/commit/7223a046997168913e67444b509ec15462bc7ec1)
+    - [Player animation is faster when running](https://github.com/jojobear13/shinpokered/commit/34b1776a54c7617f749e8ca2757721d58a59c150)
+    - [Pokemon can now learn more than 1 move per level](https://github.com/jojobear13/shinpokered/commit/d3357ca3b68af11a66e4f60459cd354f65e99e39)
+    - [TM names display on pick up](https://github.com/jojobear13/shinpokered/commit/34c4a36a581769a59e45449fd2bdcad31ee54a99)
+- YakiNeen:
+    - [Remove Redundant TrainerNamePointers](https://github.com/pret/pokered/wiki/Remove-Redundant-TrainerNamePointers)
+    - [Remove Some Japanese Text Grammar Functions](https://github.com/pret/pokered/wiki/Remove-Some-Japanese-Text-Grammar-Functions)
+    - [Remove Unused Tile in gfx overworld fishing_rod.png](https://github.com/pret/pokered/wiki/Remove-Unused-Tile-in-gfx-overworld-fishing_rod.png)
+    - [Remove Dakutens and Handakutens feature](https://github.com/pret/pokered/wiki/Remove-Dakutens-and-Handakutens-feature)
+    - [Remove Japanese Opening Quote and put BOLD P in gfx font font_battle_extra.png](https://github.com/pret/pokered/wiki/Remove-Japanese-Opening-Quote-and-put-BOLD-P-in-gfx-font-font_battle_extra.png)
+    - [Remove Blank Leader Names](https://github.com/pret/pokered/wiki/Remove-Blank-Leader-Names)
+    - [Collision check when Jumping a Ledge](https://github.com/pret/pokered/wiki/Collision-check-when-Jumping-a-Ledge)
+- Vortyne:
+    - [Multiple-level-up learnset skipping bug fix](https://github.com/Vortyne/pureRGB/commit/9c38ff4a1afb8c0773202b37c8b9068b4b9f4354)
+    - [Move overworld tile anim code out of home bank](https://github.com/Vortyne/pureRGB/commit/09c037f5df39cd99fe4e13b4d5fee8ed86206e7b)
+- Pgattic:
+    - [Running Shoes (https://github.com/pret/pokered/wiki/Running-Shoes)
+    - [Remove Artificial Save Delay](https://github.com/pret/pokered/wiki/Remove-Artificial-Save-Delay)
+- Xillicis:
+    - [Remove 25% chance for enemy stat down moves to miss](https://github.com/pret/pokered/wiki/Remove-25%25-chance-for-enemy-stat-down-moves-to-miss)
+    - [Implement move priority system](https://github.com/pret/pokered/wiki/Implement-move-priority-system)
+- Dannye - [Add All Unique Party Menu Sprite Icons](https://github.com/pret/pokered/wiki/Add-All-Unique-Party-Menu-Sprite-Icons)
+- SoupPotato/Dannye - [Functioning EXP bar in battle](https://github.com/AhabsStudios/pokekaizen/commit/0332a4d1ca74b4993b2f4bc8d926bac971a0751d)
+- Voloved - [Add Item Sorting In Bag](https://github.com/pret/pokered/wiki/Add-Item-Sorting-In-Bag)
+- Mateo - [Move Relearner/Tutor]([https://github.com/pret/pokered/wiki/Add-Item-Sorting-In-Bag](https://github.com/pret/pokered/wiki/Adding-a-Move-Relearner-&-Move-Deleter))
+- SatoMew (presumably more people worked on these but satomew is the only page author) - [Bugs and Glitches](https://github.com/pret/pokered/wiki/%5BARCHIVED%5D-Bugs-and-Glitches)
+- JustRegularLuna
+     - [Running Shoes](https://github.com/pret/pokered/wiki/Running-Shoes)
+     - [Trainers are Not Pokemon](https://github.com/pret/pokered/wiki/Trainers-are-not-Pokemon)
+- suloku [Experience Share](https://github.com/pret/pokered/wiki/Experience-System-&-Exp.-All-Enhancements-(Single-message,-etc))
+- **Patrik Rak:** CMWC random number generator (with optimisations by Einar Saukas and Alan Albrecht).
+
+**Tutorials**
+- The pret/pokered wiki tutorial authors.
+
+**Research and inspiration**
+- The Smogon RBY community.
+- pokeemerald-expansion.
+- pmariglia's foul-play / poke-engine.
+- genericmadscientist's Pokemon Stadium 2 write-up.
+
+**Pokemon** is (c) Nintendo, Creatures Inc. and GAME FREAK inc. Red Rogue is a non-commercial fan
+project and is not affiliated with or endorsed by them.
+
+**pret/pokered contributors** (from the disassembly's git history, deduplicated):
+95girl, Adam AKA Coolboyman, Akatsuki-py, Akihiro Otomo, Alchav, Amber Brault, AnonymousRandomPerson,
+Antonio Nino Diaz, bitman44, BlueZangoose, Bryan Bishop, Chatot4444, colawsol, Colton G. Rushton,
+CreamElDudJafar, Daniel Harding (dannye), deak311andris, DrNyk, edave64, Eggy0, Engezerstorung,
+IIMarckus, Joe Farebrother, Jordan Moore, kagnusdev, KuroiIeWa5Da, Lin, Linus Unneback, luckytyphlosion,
+Marcus Huderle, Mathias Bynens, Matt, Matthew Glazar, mid-kid, Mr Wint, Narishma-gb, Nishant Chatterjee,
+Nog-Frog, Panda Habert, PikalaxALT, Pokechu22, PokefanMarcel, Pokeglitch, Preeyan Parmar,
+RainbowMetalPigeon, Rangi, Remy Oukaour, Rotekoppen, Sam Nelson, Sanky, Sanqui, SatoMew, Sawakita,
+SnorlaxMonster, stag019, strager, stringflow, Summate, Sylvie, TheFakeMateo, Thomas Winwood,
+Urs-Bjorn Schmidt, Victor M. Gonzalez, Vortyne, vulcandth, xCrystal, xeons, YamaArashi, yenatch,
+Yoann Fievez, Zachary Buhman, and two contributors recorded only by machine address (Adam, David).
+
 ## Building
 
 See [INSTALL.md](INSTALL.md) for toolchain setup (rgbds version in `.rgbds-version`). Build from WSL
