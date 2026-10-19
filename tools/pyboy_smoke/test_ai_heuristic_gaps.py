@@ -228,10 +228,13 @@ class AIRedundantGapsTest(_MoveLayerGapsBase):
             "SHARPEN", {"wEnemyMonAttackMod": 13}), 79)  # exactly +6: boundary
 
     def test_sub_only_family_blocked_only_by_substitute(self):
-        # AIRedundant_SubOnly covers flinch/confusion riders and drain.
+        # AIRedundant_SubOnly covers flinch/confusion riders.
         self.assertEqual(self.redundant_score("BITE"), 20)
         self.assertEqual(self.redundant_score(
             "BITE", {"wPlayerBattleStatus2": 1 << self.battle["HAS_SUBSTITUTE_UP"]}), 79)
+        # Drain attacks still deal damage to a doll, despite providing no heal.
+        self.assertEqual(self.redundant_score(
+            "ABSORB", {"wPlayerBattleStatus2": 1 << self.battle["HAS_SUBSTITUTE_UP"]}), 20)
 
     def test_substitute_quarter_hp_boundary_and_already_up(self):
         # AIRedundant_Substitute: eliminated at or below a quarter HP
@@ -294,6 +297,9 @@ class AISmartGapsTest(_MoveLayerGapsBase):
             "ABSORB", {"wEnemyMonHP": (199,), "wEnemyMonMaxHP": (200,)}), 19)
         self.assertEqual(self.smart_score(
             "ABSORB", {"wEnemyMonHP": (200,), "wEnemyMonMaxHP": (200,)}), 20)
+        self.assertEqual(self.smart_score(
+            "ABSORB", {"wEnemyMonHP": (199,), "wEnemyMonMaxHP": (200,),
+                       "wPlayerBattleStatus2": 1 << self.battle["HAS_SUBSTITUTE_UP"]}), 20)
 
     def test_dream_eater_sleeping_encouraged_awake_left_to_redundant(self):
         self.assertEqual(self.smart_score("DREAM_EATER", {"wBattleMonStatus": 1}), 17)

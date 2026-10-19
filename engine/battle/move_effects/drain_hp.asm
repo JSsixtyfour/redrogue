@@ -1,4 +1,8 @@
 DrainHPEffect_:
+	; A surviving doll takes damage but yields no health. If the hit broke
+	; the doll, AttackSubstitute already cleared this move's drain effect.
+	callfar CheckTargetSubstitute
+	ret nz
 	ld hl, wDamage
 	ld a, [hl]
 	srl a ; divide damage by 2

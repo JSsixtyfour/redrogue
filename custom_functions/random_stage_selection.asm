@@ -770,12 +770,21 @@ _PickNextStage:
 	jp _PickNextGym                 ; bit set = gym next (sets wRogueMap)
 
 IF DEF(_DEBUG)
+; Explicit Debug 2 destinations. Preserve the original Kanto indices and add
+; Johto in GymLeaderPool order. Keep Debug2GymNames aligned with this table.
+Debug2GymMaps:
+	db PEWTER_GYM, CERULEAN_GYM, VERMILION_GYM, CELADON_GYM
+	db FUCHSIA_GYM, SAFFRON_GYM, CINNABAR_GYM, VIRIDIAN_GYM
+	db VIOLET_GYM, AZALEA_GYM, GOLDENROD_GYM, ECRUTEAK_GYM
+	db CIANWOOD_GYM, OLIVINE_GYM, MAHOGANY_GYM, BLACKTHORN_GYM
+ASSERT @ - Debug2GymMaps == NUM_GYM_POOL_ALL
+
 ; ============================================================
 ; ApplyDebug2DoorForce  (debug builds only)
 ; If Debug 2's forced-door index (a) is non-zero, resolves it to a map (gym
-; via GymMapByBadge or route via RogueStageMapTable, per the gym-next flag -
-; same table _PickNextStage itself would use) and overwrites the door map at
-; hl. No-op if a == 0 (random / no override). Called from
+; via Debug2GymMaps or route via RogueStageMapTable, per the gym-next flag)
+; and overwrites the door map at hl. No-op if a == 0 (random / no override).
+; Called from
 ; SelectAndPatchLobbyExit AFTER _PickNextStage + SpecialEncounterRollAndAssign
 ; have already set wLobbyDoor1/2StageMap, so a debug force always has final say
 ; per door, independent of the normal/mini-boss/wild-area pick.
@@ -795,12 +804,12 @@ ApplyDebug2DoorForce::
 	ld hl, RogueStageMapTable
 	ld a, NUM_STAGE_MAPS
 	jr z, .haveForceTable
-	ld hl, GymMapByBadge
-	ld a, NUM_BADGES
+	ld hl, Debug2GymMaps
+	ld a, NUM_GYM_POOL_ALL
 .haveForceTable
 	; Bounds check. The index field is five bits, so it reaches 31, and BOTH
 	; tables are shorter than that - the route table is 22 entries and the gym
-	; table 8. Nothing checked it before, so an index past the end read whatever
+	; table 16. Nothing checked it before, so an index past the end read whatever
 	; followed the table and patched a door to a garbage map id. The config
 	; screen clamps as well, but this is the last line of defence and the tables
 	; are what it is actually indexing.
@@ -941,7 +950,7 @@ IF DEF(_DEBUG)
 	; 0 = random), overriding whatever the normal pick/mini-boss roll produced
 	; above. See ApplyDebug2DoorForce + Debug2ApplyRoundState (the two prompts
 	; that set these). Not meaningful during the final sequence (Victory Road/
-	; Elite Four aren't in RogueStageMapTable/GymMapByBadge), so skip entirely
+	; Elite Four aren't in RogueStageMapTable/Debug2GymMaps), so skip entirely
 	; once all 8 badges are obtained.
 	ld a, [wObtainedBadges]
 	cp $FF

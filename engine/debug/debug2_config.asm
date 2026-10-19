@@ -471,7 +471,7 @@ Debug2DoorList::
 	ld hl, Debug2RouteNames
 	ret
 .gym
-	ld b, NUM_BADGES
+	ld b, NUM_GYM_POOL_ALL
 	ld hl, Debug2GymNames
 	ret
 .gift
@@ -561,7 +561,7 @@ Debug2UnnamedText: db "- SEE INDEX@"
 ; so a door cannot name one place and open on another:
 ;   Debug2RouteNames  22 entries, mirroring RogueStageMapTable
 ;                     (custom_functions/random_stage_selection.asm)
-;   Debug2GymNames     8 entries, mirroring GymMapByBadge (same file)
+;   Debug2GymNames    16 entries, mirroring Debug2GymMaps (same file)
 ;   Debug2GiftNames   14 entries, mirroring BridgeRoomMaps
 ;                     (custom_functions/bridge_selection.asm)
 ; ----------------------------------------------------------------------------
@@ -616,9 +616,8 @@ Debug2PowerPlantText:  db "POWER PLANT@"
 Debug2Mansion1FText:   db " MANSION 1F@"
 Debug2Seafoam1FText:   db " SEAFOAM 1F@"
 
-; KEEP IN SYNC with GymMapByBadge (custom_functions/random_stage_selection.asm).
-; This is the fallback badge-slot list, not necessarily the gyms a rolled
-; wRunGymLineup will send a given run to; see that table's own comment.
+; KEEP IN SYNC with Debug2GymMaps (custom_functions/random_stage_selection.asm).
+; Explicit destinations, independent of the run's randomly rolled gym lineup.
 Debug2GymNames:
 	dw Debug2GymPewterText
 	dw Debug2GymCeruleanText
@@ -628,6 +627,15 @@ Debug2GymNames:
 	dw Debug2GymSaffronText
 	dw Debug2GymCinnabarText
 	dw Debug2GymViridianText
+	dw Debug2GymVioletText
+	dw Debug2GymAzaleaText
+	dw Debug2GymGoldenrodText
+	dw Debug2GymEcruteakText
+	dw Debug2GymCianwoodText
+	dw Debug2GymOlivineText
+	dw Debug2GymMahoganyText
+	dw Debug2GymBlackthornText
+ASSERT (@ - Debug2GymNames) / 2 == NUM_GYM_POOL_ALL
 
 Debug2GymPewterText:    db "     PEWTER@"
 Debug2GymCeruleanText:  db "   CERULEAN@"
@@ -637,6 +645,14 @@ Debug2GymFuchsiaText:   db "    FUCHSIA@"
 Debug2GymSaffronText:   db "    SAFFRON@"
 Debug2GymCinnabarText:  db "   CINNABAR@"
 Debug2GymViridianText:  db "   VIRIDIAN@"
+Debug2GymVioletText:    db "     VIOLET@"
+Debug2GymAzaleaText:    db "     AZALEA@"
+Debug2GymGoldenrodText: db "  GOLDENROD@"
+Debug2GymEcruteakText:  db "   ECRUTEAK@"
+Debug2GymCianwoodText:  db "   CIANWOOD@"
+Debug2GymOlivineText:   db "    OLIVINE@"
+Debug2GymMahoganyText:  db "   MAHOGANY@"
+Debug2GymBlackthornText: db " BLACKTHORN@"
 
 ; KEEP IN SYNC with BridgeRoomMaps (custom_functions/bridge_selection.asm).
 Debug2GiftNames:

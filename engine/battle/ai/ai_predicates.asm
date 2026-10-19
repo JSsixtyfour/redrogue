@@ -1611,7 +1611,7 @@ AIAdjustDamageForDelivery:
 	jp .storeDE
 ; b starts as the move's maximum hit count. c is $ff for no Substitute or the
 ; current 8-bit Substitute HP. Returns b = hits that can reach the owner.
-; Equality intentionally leaves an active zero-HP shield for the next hit.
+; Equality breaks the shield; only later hits can reach the owner.
 .remainingOwnerHits
 	ld a, [wAIDamageEstimate]
 	ld d, a
@@ -1632,6 +1632,7 @@ AIAdjustDamageForDelivery:
 	ld a, c
 	sub e
 	ld c, a
+	jr z, .breaksSubstitute
 	dec b
 	ret z
 	jr nc, .substituteHit

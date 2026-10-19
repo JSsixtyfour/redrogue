@@ -34,6 +34,35 @@ class CreditsSourceContractTest(unittest.TestCase):
     def setUp(self) -> None:
         self.order = _db_tokens(REPO_ROOT / "data/credits/credits_order.asm")
 
+    def test_screens_fit_four_lines(self) -> None:
+        lines = 0
+        for token in self.order:
+            if token in SCREEN_COMMANDS:
+                self.assertLessEqual(lines, 4, "credits text extends into the bottom black bar")
+                lines = 0
+            elif token not in ("CRED_COPYRIGHT", "CRED_THE_END"):
+                lines += 1
+
+    def test_strings_are_unique_reachable_and_match_the_pointer_order(self) -> None:
+        text = (REPO_ROOT / "data/credits/credits_text.asm").read_text()
+        constants = (REPO_ROOT / "constants/credits_constants.asm").read_text()
+        pointers = re.findall(r"^\s*dw (Cred\w+)$", text, re.M)
+        ids = re.findall(r"^\s*const (CRED_\w+)", constants.split("DEF NUM_CRED_STRINGS")[0], re.M)
+        self.assertEqual(len(pointers), len(ids))
+        definitions = re.findall(r"^(Cred\w+):", text, re.M)
+        self.assertEqual(len(definitions), len(set(definitions)), "duplicate credit label")
+        self.assertTrue(set(pointers) <= set(definitions), "undefined credit pointer target")
+        rr_strings = re.findall(r'^(CredRR\w+):\s+credits_string "([^"]+)"', text, re.M)
+        self.assertEqual(pointers[64:], [label for label, _ in rr_strings])
+        for label, value in rr_strings:
+            with self.subTest(label=label):
+                self.assertGreater(len(value), 0)
+                self.assertLessEqual(len(value), 20)
+                self.assertIn(label, pointers, "string has no pointer entry")
+                self.assertIn(ids[pointers.index(label)], self.order, "string never appears in the roll")
+        for token in self.order:
+            self.assertIn(token, ids + list(SCREEN_COMMANDS) + ["CRED_COPYRIGHT", "CRED_THE_END"])
+
     def test_every_mon_screen_has_a_creditsmons_entry(self) -> None:
         mons = _db_tokens(REPO_ROOT / "data/credits/credits_mons.asm")
         used = sum(1 for t in self.order if t in MON_COMMANDS)
@@ -121,17 +150,25 @@ class CreditsMenuRollTest(unittest.TestCase):
 
     def test_select_toggles_fast_and_start_skips(self) -> None:
         self.open_credits("a")
-        # Boundary n is the end of screen n (boundary 0 is the roll's start).
-        # Screens 2, 4 and 7 are all CRED_TEXT_FADE, so they compare like for
-        # like; each toggle happens one screen before the one measured.
-        self.wait_boundaries(3)
-        normal = self.boundaries[2] - self.boundaries[1]
-        self.tap("select")  # fast from inside screen 3
-        self.wait_boundaries(5)
-        fast = self.boundaries[4] - self.boundaries[3]
-        self.tap("select")  # back to normal inside screen 5
-        self.wait_boundaries(8)
-        restored = self.boundaries[7] - self.boundaries[6]
+        # Pick equivalent display commands from the data. Toggle at the start
+        # of the preceding screen, leaving the measured screen wholly in one mode.
+        commands = [t for t in _db_tokens(REPO_ROOT / "data/credits/credits_order.asm") if t in SCREEN_COMMANDS]
+        candidates = [i for i, command in enumerate(commands) if command == "CRED_TEXT_FADE"]
+        measured = []
+        for index in candidates:
+            if index >= 1 and (not measured or index >= measured[-1] + 2):
+                measured.append(index)
+            if len(measured) == 3:
+                break
+        self.assertEqual(len(measured), 3, "need three separated fade screens for timing comparison")
+        durations = []
+        for sample, index in enumerate(measured):
+            self.wait_boundaries(index)  # preceding screen has just started
+            if sample:
+                self.tap("select")
+            self.wait_boundaries(index + 2)
+            durations.append(self.boundaries[index + 1] - self.boundaries[index])
+        normal, fast, restored = durations
 
         self.assertGreater(normal, 120)
         self.assertLess(fast, normal / 2, f"fast {fast} vs normal {normal}")
@@ -148,6 +185,21 @@ class CreditsMenuRollTest(unittest.TestCase):
             if self.init["count"]:
                 break
         self.assertTrue(self.init["count"], "the menu roll never returned to the title")
+
+    def test_zero_offset_string_renders_at_the_center_column(self) -> None:
+        # Override only the first string in this emulator instance with "BY".
+        # Its offset is zero: the old unconditional $ff high byte wrote 256
+        # bytes before the intended tilemap row instead.
+        bank, address = self.h.symbols.get("CredRRTitle")
+        for offset, value in enumerate((0, 0x81, 0x98, 0x50)):
+            self.h.pyboy.memory[bank, address + offset] = value
+        rows = []
+        self.h.hook_flag("FadeInCredits", lambda: rows.append([
+            self.h.read8("wTileMap", offset=6 * 20 + 9 + column) for column in range(2)
+        ]))
+        self.open_credits("a")
+        self.wait_for(lambda: bool(rows), "first credits text", 300)
+        self.assertEqual(rows[0], [0x81, 0x98])
 
     def test_start_held_from_the_menu_does_not_skip(self) -> None:
         # Pick CREDITS with START and keep holding it well into the roll.

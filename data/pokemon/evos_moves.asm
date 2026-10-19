@@ -1920,7 +1920,7 @@ HoothootEvosMoves:
 	db 8, PECK
     db 11, GUST ; was FORESIGHT
 	db 16, HYPNOSIS
-    db 19, NIGHTSHADE
+    db 19, NIGHT_SHADE
 	db 22, REFLECT
 	db 28, TAKE_DOWN
 	db 34, CONFUSION
@@ -1935,7 +1935,7 @@ NoctowlEvosMoves:
     db 8, PECK
     db 11, GUST ; was FORESIGHT
 	db 16, HYPNOSIS
-    db 19, NIGHTSHADE
+    db 19, NIGHT_SHADE
 	db 25, REFLECT
 	db 30, TAKE_DOWN
 	db 36, CONFUSION

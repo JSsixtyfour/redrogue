@@ -64,60 +64,75 @@
 	const CRED_FUKUI          ; $3D
 	const CRED_CLUB           ; $3E
 	const CRED_PAAD           ; $3F
-; Red Rogue sections (rolled before the vanilla staff, see credits_order.asm)
-	const CRED_RR_TITLE       ; $40
-	const CRED_RR_BY          ; $41
-	const CRED_RR_JSSIXTYFOUR ; $42
-	const CRED_RR_THANKS      ; $43
-	const CRED_RR_THANKS_2    ; $44
-	const CRED_RR_BASE        ; $45
-	const CRED_RR_PRET        ; $46
-	const CRED_RR_POKERED     ; $47
-	const CRED_RR_CONTRIBS    ; $48
-	const CRED_RR_PORTED      ; $49
-	const CRED_RR_PORTED_2    ; $4A
-	const CRED_RR_SHINRED     ; $4B
-	const CRED_RR_JOJOBEAR    ; $4C
-	const CRED_RR_YLEGACY     ; $4D
-	const CRED_RR_CRZSHADOWS  ; $4E
-	const CRED_RR_PURERGB     ; $4F
-	const CRED_RR_VORTYNE     ; $50
-	const CRED_RR_YUME        ; $51
-	const CRED_RR_POKEFANMARC ; $52
-	const CRED_RR_EXYELLOW    ; $53
-	const CRED_RR_RAINBOWMP   ; $54
-	const CRED_RR_KEP         ; $55
-	const CRED_RR_MEMENTO     ; $56
-	const CRED_RR_REDPP       ; $57
-	const CRED_RR_LUNA        ; $58
-	const CRED_RR_POLISHED    ; $59
-	const CRED_RR_RANGI       ; $5A
-	const CRED_RR_ART         ; $5B
-	const CRED_RR_SKIDMARC    ; $5C
-	const CRED_RR_YL_ART      ; $5D
-	const CRED_RR_ZUPERZACH   ; $5E
-	const CRED_RR_KARLOS      ; $5F
-	const CRED_RR_ALGORITHMS  ; $60
-	const CRED_RR_RAK         ; $61
-	const CRED_RR_SAUKAS      ; $62
-	const CRED_RR_ALBRECHT    ; $63
-	const CRED_RR_CODE        ; $64
-	const CRED_RR_MATEO       ; $65
-	const CRED_RR_XILLICIS    ; $66
-	const CRED_RR_YAKINEEN    ; $67
-	const CRED_RR_TUTORIALS   ; $68
-	const CRED_RR_PRET_WIKI   ; $69
-	const CRED_RR_AUTHORS     ; $6A
-	const CRED_RR_RESEARCH    ; $6B
-	const CRED_RR_SMOGON      ; $6C
-	const CRED_RR_PMARIGLIA   ; $6D
-	const CRED_RR_GENERICMAD  ; $6E
-	const CRED_RR_EMERALD     ; $6F
-	const CRED_RR_EXPANSION   ; $70
-	const CRED_RR_TOOLS       ; $71
-	const CRED_RR_RGBDS       ; $72
-	const CRED_RR_BGB         ; $73
-	const CRED_RR_PYBOY       ; $74
+; Red Rogue sections (same order as CreditsTextPointers)
+	const CRED_RR_TITLE
+	const CRED_RR_BY
+	const CRED_RR_JSSIXTYFOUR
+	const CRED_RR_ARTISTS
+	const CRED_RR_SKIDMARC
+	const CRED_RR_HALO
+	const CRED_RR_KYLE
+	const CRED_RR_THANKS
+	const CRED_RR_THANKS_2
+	const CRED_RR_PRET
+	const CRED_RR_SHINRED
+	const CRED_RR_JOJOBEAR
+	const CRED_RR_YLEGACY
+	const CRED_RR_YLEGACYDEV
+	const CRED_RR_CRZSHADOWS
+	const CRED_RR_SMITH
+	const CRED_RR_YLEGACYART
+	const CRED_RR_ISONA
+	const CRED_RR_ALAKADOOF
+	const CRED_RR_KARLOS
+	const CRED_RR_CHAMBER
+	const CRED_RR_SOLOO993
+	const CRED_RR_BLUEEMERALD
+	const CRED_RR_LAKE
+	const CRED_RR_NESLUG
+	const CRED_RR_PIKACH25
+	const CRED_RR_ZACH
+	const CRED_RR_PURERGB
+	const CRED_RR_VORTYNE
+	const CRED_RR_YUME
+	const CRED_RR_POKEFANMARC
+	const CRED_RR_EXYELLOW
+	const CRED_RR_RAINBOWMP
+	const CRED_RR_KEP
+	const CRED_RR_MEMENTO
+	const CRED_RR_REDPP
+	const CRED_RR_LUNA
+	const CRED_RR_POLISHED
+	const CRED_RR_RANGI
+	const CRED_RR_ALGORITHMS
+	const CRED_RR_RAK
+	const CRED_RR_SAUKAS
+	const CRED_RR_ALBRECHT
+	const CRED_RR_CODE
+	const CRED_RR_MATEO
+	const CRED_RR_XILLICIS
+	const CRED_RR_YAKINEEN
+	const CRED_RR_PLAGUE
+	const CRED_RR_DANNYE
+	const CRED_RR_PGATTIC
+	const CRED_RR_SOUP
+	const CRED_RR_SATO
+	const CRED_RR_SULOKU
+	const CRED_RR_PORYGON
+	const CRED_RR_PRET_WIKI
+	const CRED_RR_RESEARCH
+	const CRED_RR_SMOGON
+	const CRED_RR_PMARIGLIA
+	const CRED_RR_GENERICMAD
+	const CRED_RR_EMERALD
+	const CRED_RR_CONTRIBS
+	const CRED_RR_TUTORIALS
+	const CRED_RR_EXPANSION
+	const CRED_RR_TOOLS
+	const CRED_RR_POLISHEDMAP
+	const CRED_RR_RGBDS
+	const CRED_RR_BGB
+	const CRED_RR_PYBOY
 DEF NUM_CRED_STRINGS EQU const_value
 
 	const_def -1, -1

@@ -310,12 +310,12 @@ class AICheckpointBTest(unittest.TestCase):
         self.assertGreater(self.substitute_rank("FURY_ATTACK", 200), 2 * one_hit)
 
     def test_crit_weighting_cannot_inflate_capped_shield_progress(self):
-        # A 10-HP shield caps a breaking Tackle's shield part at 11, and the
-        # breaking hit never spills to the owner, so 11 is the whole value before
-        # accuracy; AIScaleDamageByAccuracy's x255/256 floors it to 10. Crit
+        # A 10-HP shield caps a breaking Tackle's shield part at 10, and the
+        # breaking hit never spills to the owner, so 10 is the whole value before
+        # accuracy; AIScaleDamageByAccuracy's x255/256 floors it to 9. Crit
         # weighting used to be applied on top of the cap (12 before accuracy).
         self.assertGreater(self.estimate("TACKLE"), 10)
-        self.assertEqual(self.substitute_rank("TACKLE", 10), 11 * 255 // 256)
+        self.assertEqual(self.substitute_rank("TACKLE", 10), 10 * 255 // 256)
 
     def test_substitute_breaker_outranks_a_hit_the_shield_absorbs(self):
         # Review F3 (2026-09-29): behind a Substitute every single hit used to
@@ -734,8 +734,8 @@ class AICheckpointBTest(unittest.TestCase):
                 self.assertEqual(self.delivered(possible, plain, 20, 10), 0)
             with self.subTest(direction=prefix, case="fixed-break-then-owner"):
                 self.assertEqual(self.delivered(possible, fixed, 20, 10), 20)
-            with self.subTest(direction=prefix, case="fixed-equality-then-break"):
-                self.assertEqual(self.delivered(possible, fixed, 20, 20), 0)
+            with self.subTest(direction=prefix, case="fixed-equality-then-owner"):
+                self.assertEqual(self.delivered(possible, fixed, 20, 20), 20)
 
     def test_standard_variable_hits_use_maximum_for_possible_and_distribution_for_expected(self):
         variable = self.effects["TWO_TO_FIVE_ATTACKS_EFFECT"]

@@ -422,6 +422,8 @@ AISmart_SuperFang:
 ; Drain moves are more valuable as sustain when the enemy is not already at
 ; full HP. Source: PureRGB EncourageDrainingMoveIfLowHealth.
 AISmart_DrainHP:
+	call AIRedundantTargetHasSubstitute
+	jr nz, .noChange ; damage is useful, but the doll provides no healing
 	call AIEnemyHPAtMax
 	jr c, .noChange
 	ld a, AI_NUDGE

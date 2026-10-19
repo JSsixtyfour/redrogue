@@ -122,12 +122,11 @@ AIRedundantEffectTable:
 	dbw FLINCH_SIDE_EFFECT2, AIRedundant_SubOnly
 	dbw CONFUSION_EFFECT, AIRedundant_ConfusionEffect
 	dbw CONFUSION_SIDE_EFFECT, AIRedundant_SubOnly
-	dbw DRAIN_HP_EFFECT, AIRedundant_SubOnly
 	dbw DREAM_EATER_EFFECT, AIRedundant_DreamEater
 	dbw LEECH_SEED_EFFECT, AIRedundant_LeechSeed
 ; AI_OVERHAUL_PLAN.md follow-up F17, 2026-09-02: stat-down effects get their
 ; OWN handler now (floor check added - see AIRedundant_StatDown below), split
-; out of AIRedundant_SubOnly, which remains for the four effects that truly
+; out of AIRedundant_SubOnly, which remains for the three effects that truly
 ; have no other redundancy condition.
 	dbw ATTACK_DOWN1_EFFECT, AIRedundant_StatDown
 	dbw DEFENSE_DOWN1_EFFECT, AIRedundant_StatDown
@@ -358,7 +357,8 @@ AIRedundant_StatDown:
 
 ; Effects whose ENTIRE mechanism is "does nothing at all if the target has a
 ; Substitute up" and has no other redundancy condition worth checking here:
-; flinch/confusion side effects and drain HP. Stat-down moves used to share
+; flinch/confusion side effects. Drain attacks still damage the doll.
+; Stat-down moves used to share
 ; this handler too; they now have their own (AIRedundant_StatDown, above),
 ; which adds the floor check F17 introduced.
 AIRedundant_SubOnly:

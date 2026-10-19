@@ -288,7 +288,10 @@ Credits:
 	ld a, [de]
 	inc de
 	ld c, a
-	ld b, -1
+	; Sign-extend the centering offset, including zero for 1-2 characters.
+	add a
+	sbc a
+	ld b, a
 	pop hl
 	add hl, bc
 	call PlaceString

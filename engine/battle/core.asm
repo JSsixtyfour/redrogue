@@ -4160,7 +4160,7 @@ HandleSelfConfusionDamage:
 	call DrawPlayerHUDAndHPBar
 	xor a
 	ldh [hWhoseTurn], a
-	jp ApplyDamageToPlayerPokemon
+	jp ApplyDamageToPlayerPokemon.directDamage
 
 INCLUDE "engine/battle/used_move_text.asm"
 
@@ -4228,9 +4228,9 @@ ENDC
 	ldh a, [hWhoseTurn]
 	and a
 	jr nz, .enemyTurn
-	jp ApplyDamageToPlayerPokemon
+	jp ApplyDamageToPlayerPokemon.directDamage
 .enemyTurn
-	jp ApplyDamageToEnemyPokemon
+	jp ApplyDamageToEnemyPokemon.directDamage
 
 AttackMissedText:
 	text_far _AttackMissedText
@@ -5350,6 +5350,9 @@ ApplyDamageToEnemyPokemon:
 	ld a, [wEnemyBattleStatus2]
 	bit HAS_SUBSTITUTE_UP, a ; does the enemy have a substitute?
 	jp nz, AttackSubstitute
+.directDamage
+; Confusion self-hits and Jump Kick crashes bypass both Substitutes.
+	ld hl, wDamage + 1
 ; subtract the damage from the pokemon's current HP
 ; also, save the current HP at wHPBarOldHP
 	ld a, [hld]
@@ -5472,6 +5475,9 @@ ApplyDamageToPlayerPokemon:
 	ld a, [wPlayerBattleStatus2]
 	bit HAS_SUBSTITUTE_UP, a ; does the player have a substitute?
 	jp nz, AttackSubstitute
+.directDamage
+; Confusion self-hits and Jump Kick crashes bypass both Substitutes.
+	ld hl, wDamage + 1
 ; subtract the damage from the pokemon's current HP
 ; also, save the current HP at wHPBarOldHP and the new HP at wHPBarNewHP
 	ld a, [hld]
@@ -5516,11 +5522,7 @@ ApplyAttackToPlayerPokemonDone:
 
 AttackSubstitute:
 ; Unlike the two ApplyAttackToPokemon functions, Attack Substitute is shared by player and enemy.
-; Self-confusion damage as well as Hi-Jump Kick and Jump Kick recoil cause a momentary turn swap before being applied.
-; If the user has a Substitute up and would take damage because of that,
-; damage will be applied to the other player's Substitute.
-; Normal recoil such as from Double-Edge isn't affected by this glitch,
-; because this function is never called in that case.
+; Self-damage uses the directDamage entries above and never reaches this path.
 
 	ld hl, SubstituteTookDamageText
 	call PrintText
@@ -5542,6 +5544,7 @@ AttackSubstitute:
 	ld a, [de]
 	sub [hl]
 	ld [de], a
+	jr z, .substituteBroke ; exact damage also destroys the shield
 	ret nc
 .substituteBroke
 ; If the target's Substitute breaks, wDamage isn't updated with the amount of HP
@@ -6435,16 +6438,6 @@ GetTargetSpecialFormCaps:
 	ret
 
 MoveHitTest:
-	; Special form (func_special_form.asm): if the attacker has SF_NEVER_MISS
-	; or the target has SF_ALWAYS_HIT (No Guard emulation), the move auto-hits.
-	; Returning here without setting wMoveMissed reads as a hit, exactly like
-	; the X-Accuracy `ret nz` paths below.
-	call GetAttackerSpecialFormCaps
-	bit SF_NEVER_MISS, a
-	ret nz
-	call GetTargetSpecialFormCaps
-	bit SF_ALWAYS_HIT, a
-	ret nz
 ; player's turn
 	ld hl, wEnemyBattleStatus1
 	ld de, wPlayerMoveEffect
@@ -6469,14 +6462,9 @@ MoveHitTest:
 	ret z ; Swift never misses (this was fixed from the Japanese versions)
 	call CheckTargetSubstitute ; substitute check (note that this overwrites a)
 	jr z, .checkForDigOrFlyStatus
-; The fix for Swift broke this code. It's supposed to prevent HP draining moves from working on Substitutes.
-; Since CheckTargetSubstitute overwrites a with either $00 or $01, it never works.
-	; Shin Red import Phase 4 (4.11): reload the move effect that
-	; CheckTargetSubstitute just clobbered, which is all it takes to make the
-	; two checks below finally do what vanilla plainly intended.
+; Ordinary drain attacks damage the doll; DrainHPEffect_ suppresses healing.
+; Dream Eater and Leech Seed retain their existing Substitute protection.
 	ld a, [de]
-	cp DRAIN_HP_EFFECT
-	jp z, .moveMissed
 	cp DREAM_EATER_EFFECT
 	jp z, .moveMissed
 	; LEECH_SEED is NOT vanilla intent - it is shinpokered's own addition and a
@@ -6485,8 +6473,7 @@ MoveHitTest:
 	cp LEECH_SEED_EFFECT
 	jp z, .moveMissed
 .checkForDigOrFlyStatus
-	bit INVULNERABLE, [hl]
-	jp nz, .moveMissed
+; Validate Mist before No Guard, which only bypasses accuracy/invulnerability.
 	ldh a, [hWhoseTurn]
 	and a
 	jr nz, .enemyTurn
@@ -6514,9 +6501,7 @@ MoveHitTest:
 	jp nz, .moveMissed
 .skipEnemyMistCheck
 	ld a, [wPlayerBattleStatus2]
-	bit USING_X_ACCURACY, a ; is the player using X Accuracy?
-	ret nz ; if so, always hit regardless of accuracy/evasion
-	jr .calcHitChance
+	jr .checkNoGuard
 .enemyTurn
 	ld a, [wEnemyMoveEffect]
 	cp ATTACK_DOWN1_EFFECT
@@ -6535,7 +6520,23 @@ MoveHitTest:
 	jp nz, .moveMissed
 .skipPlayerMistCheck
 	ld a, [wEnemyBattleStatus2]
-	bit USING_X_ACCURACY, a ; is the enemy using X Accuracy?
+.checkNoGuard
+; Dream Eater's sleep requirement, Substitute and Mist have already passed.
+; Preserve the target status1 pointer and the attacker's X Accuracy byte.
+	push af
+	push hl
+	call GetAttackerSpecialFormCaps
+	bit SF_NEVER_MISS, a
+	jr nz, .noGuardChecked
+	call GetTargetSpecialFormCaps
+	bit SF_ALWAYS_HIT, a
+.noGuardChecked
+	pop hl
+	pop bc ; b = attacker status2; pops preserve the No Guard test flags
+	ret nz
+	bit INVULNERABLE, [hl]
+	jp nz, .moveMissed
+	bit USING_X_ACCURACY, b ; X Accuracy still cannot bypass Fly/Dig
 	ret nz ; if so, always hit regardless of accuracy/evasion
 .calcHitChance
 	call CalcHitChance ; scale the move accuracy according to attacker's accuracy and target's evasion
@@ -7051,7 +7052,7 @@ CheckEnemyStatusConditions:
 	call PlayMoveAnimation
 	ld a, $1
 	ldh [hWhoseTurn], a
-	call ApplyDamageToEnemyPokemon
+	call ApplyDamageToEnemyPokemon.directDamage
 	jr .monHurtItselfOrFullyParalysed
 .checkIfTriedToUseDisabledMove
 ; prevents a disabled move that was selected before being disabled from being used

@@ -17,7 +17,7 @@
 	tmhm TOXIC,        TAKE_DOWN,    RAGE,         THUNDERBOLT,  THUNDER,      \
 	     LIGHT_SCREEN, MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
 	     STRENGTH, 	SWIFT,        REST,         THUNDER_WAVE, COUNTER,    \
-	     SUBSTITUTE,   FLASH,        BODY_SLAM,    SUBMISSION,   SEISMIC_TOSS  \
+	     SUBSTITUTE,   FLASH,        BODY_SLAM,    SUBMISSION,   SEISMIC_TOSS,  \
 		 DOUBLE_EDGE,  DIG,          STRENGTH,     COUNTER      \
 	; end
 

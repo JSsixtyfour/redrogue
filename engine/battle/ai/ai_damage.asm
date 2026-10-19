@@ -113,8 +113,7 @@ AILayerDamage:
 ; ranking on owner damage alone left every attack tied at the baseline and the
 ; AI with no reason to pick the one that breaks the shield (2026-09-29 review
 ; F3). Rank on the EXPECTED shield progress - over the move's real hit-count
-; outcomes, each capped at Substitute HP + 1 (the +1 so a hit that BREAKS it
-; outranks one that only leaves a zero-HP shield, the engine equality rule) -
+; outcomes, each capped at Substitute HP (equality now breaks the shield) -
 ; plus the expected damage that still reaches the owner. Crit weighting and the
 ; owner-HP cap apply to the owner part only: shield progress is already capped
 ; and a crit cannot push it past the shield (Codex follow-up R3, 2026-09-29:
@@ -323,7 +322,7 @@ AILayerDamage:
 	ret
 
 ; INPUT: de = the enemy move's one-hit maximum. OUTPUT: bc = the expected damage
-; the player's Substitute absorbs from it: f(n) = min(n * one hit, Sub HP + 1)
+; the player's Substitute absorbs from it: f(n) = min(n * one hit, Sub HP)
 ; averaged over the real hit-count outcomes - 1 hit, 2 (ATTACK_TWICE / Twineedle),
 ; or 2-5 at 3/8, 3/8, 1/8, 1/8 (TwoToFiveAttacksEffect; Witch multistrike is
 ; player-only). Clobbers af, de, hl.
@@ -331,7 +330,6 @@ AIExpectedShieldProgress:
 	ld a, [wPlayerSubstituteHP]
 	ld l, a
 	ld h, 0
-	inc hl ; hl = cap, Sub HP + 1
 	ld a, [wEnemyMoveEffect]
 	cp ATTACK_TWICE_EFFECT
 	jr z, .twoHits
