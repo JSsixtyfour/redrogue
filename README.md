@@ -127,6 +127,7 @@ A roguelike built on the [pret/pokered](https://github.com/pret/pokered) disasse
 - Vortyne:
     - [Multiple-level-up learnset skipping bug fix](https://github.com/Vortyne/pureRGB/commit/9c38ff4a1afb8c0773202b37c8b9068b4b9f4354)
     - [Move overworld tile anim code out of home bank](https://github.com/Vortyne/pureRGB/commit/09c037f5df39cd99fe4e13b4d5fee8ed86206e7b)
+    - [Infinite Use TMs](https://github.com/pret/pokered/wiki/Infinite-Use-TMs)
 - Pgattic:
     - [Running Shoes (https://github.com/pret/pokered/wiki/Running-Shoes)
     - [Remove Artificial Save Delay](https://github.com/pret/pokered/wiki/Remove-Artificial-Save-Delay)
@@ -143,6 +144,7 @@ A roguelike built on the [pret/pokered](https://github.com/pret/pokered) disasse
      - [Trainers are Not Pokemon](https://github.com/pret/pokered/wiki/Trainers-are-not-Pokemon)
 - suloku [Experience Share](https://github.com/pret/pokered/wiki/Experience-System-&-Exp.-All-Enhancements-(Single-message,-etc))
 - Patrik Rak: [CMWC random number generator (with optimisations by Einar Saukas and Alan Albrecht)](https://gist.github.com/raxoft/2275716fea577b48f7f0)
+- Porygondolier [Trainer Movesets](https://github.com/pret/pokered/wiki/Edit-the-trainer-movesets)
 - Pret Tutorials:https://github.com/pret/pokered/wiki/Tutorials
 
 **Tutorials**
