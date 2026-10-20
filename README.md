@@ -124,7 +124,7 @@ Pokemon & Items are awarded based on a rarity system
      - Double Processing Speed
      - M. Gene/M. Tome
      - Zero Delay Text
-     - and much muchmore
+     - and much more
 ### Credits For Pokemon Yume:
 #### Creator:
 - PokefanMarcel - Developer
