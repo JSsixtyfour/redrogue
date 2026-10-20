@@ -19,7 +19,9 @@ Each `step()` looks at the current mode and does one thing:
 A run ends `completed` (the requested number of stages), `champion` (the Hall
 of Fame), `blackout` (the party fainted: a legitimate loss), or as a failure:
 `stalled` (no game progress for --stall-frames, a softlock suspect),
-`frame_limit`, or `error`. Failures write a screenshot and state dump.
+`crashed` (autoplay_checks caught a crash), `frame_limit`, or `error`.
+Failures write a screenshot and state dump. autoplay_checks also reports
+invalid game data it finds along the way as `anomaly` events.
 
 Runs are deterministic for a given ROM and seed. The seed is applied just
 before the lobby rolls its first doors, so it decides the whole run: rerun the
@@ -32,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import sys
 import time
@@ -39,6 +42,7 @@ import traceback
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
+import autoplay_checks
 import autoplay_world as world
 import benchmark_policies
 from harness import RedRogueHarness
@@ -47,7 +51,10 @@ from source_constants import parse_map_constants, parse_rgbds_constants, parse_t
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = Path(__file__).resolve().parent / "artifacts"
 
-FAILURES = ("stalled", "frame_limit", "error")
+# crashed: autoplay_checks caught a crash; hung: the emulator stopped returning
+# (run_autoplay.py's per-seed timeout, an illegal opcode).
+FAILURES = ("stalled", "frame_limit", "error", "crashed", "hung")
+HEARTBEAT_STEPS = 1000
 
 PARTYMON_STRUCT_LENGTH = 0x2C
 MON_HP, MON_MAXHP = 0x01, 0x22  # party_struct offsets
@@ -141,6 +148,7 @@ class AutoplayAgent:
         offer_policy: str = "random",
         stall_frames: int = 20_000,
         log=None,
+        heartbeat: Path | None = None,
     ):
         if battle_policy not in benchmark_policies.POLICIES:
             raise ValueError(f"unknown battle policy {battle_policy!r}")
@@ -152,6 +160,7 @@ class AutoplayAgent:
         self.offer_policy = offer_policy
         self.stall_frames = stall_frames
         self.log = log or (lambda message: None)
+        self.heartbeat = heartbeat
         self.report = RunReport(seed=seed)
 
         self.rules = benchmark_policies.load_rules(ROOT)
@@ -229,6 +238,7 @@ class AutoplayAgent:
         self.last_progress_frame = 0
         self.progress_marker: tuple = ()
         self._install_hooks()
+        self.checks = autoplay_checks.GameChecks(self, ROOT)
 
     # ------------------------------------------------------------------ hooks
 
@@ -683,13 +693,33 @@ class AutoplayAgent:
                                 f"in mode {self.mode()}")
                     break
                 self.step()
+                self.checks.after_step()
+                if self.checks.crash is not None:
+                    crash = self.checks.crash
+                    where = crash.get("from") or crash.get("pc") or {}
+                    self.finish("crashed", f"{crash['kind']}: {crash['detail']}"
+                                + (f" at {where.get('label') or where.get('address')}" if where else ""))
+                    break
                 self.note_progress()
+                if self.heartbeat is not None and self.report.steps % HEARTBEAT_STEPS == 0:
+                    self.write_heartbeat()
         except Exception as error:  # an agent bug or a game crash: keep the report
             self.finish("error", f"{type(error).__name__}: {error}")
             raise
         finally:
             self.report.frames = self.h.pyboy.frame_count - start_frame
         return self.report
+
+    def write_heartbeat(self) -> None:
+        """Where the run is, for run_autoplay.py to report if the emulator
+        hangs (the worker can then no longer report anything itself)."""
+        self.heartbeat.write_text(json.dumps({
+            "frame": self.h.pyboy.frame_count,
+            "map": self.map_name(self.h.read8("hCurMap")),
+            "position": self.position(),
+            "mode": self.mode(),
+            "last_events": self.report.events[-12:],
+        }) + "\n", encoding="utf-8")
 
     def end_run(self, outcome: str, detail: str) -> None:
         start = self.run_start
@@ -759,6 +789,7 @@ class AutoplayAgent:
         if mode != "busy":
             self.busy_since = None
         if mode == "overworld":
+            self.checks.before_overworld_step()
             self.overworld_step()
         elif mode == "busy":
             self.busy_step()
@@ -777,6 +808,7 @@ class AutoplayAgent:
             self.event("battle_start", opponent=self.last_opponent)
         elif self.in_battle and not in_battle:
             self.event("battle_end", result=self.h.read8("wBattleResult"))
+            self.checks.on_battle_end()
         self.in_battle = in_battle
 
     def on_map_change(self, current_map: int) -> None:
@@ -788,6 +820,7 @@ class AutoplayAgent:
         if self.arrival_map != current_map:
             self.arrival = None
         self.event("enter_map", map=self.map_name(current_map))
+        self.checks.on_map_change()
         if current_map == self.hall_of_fame:
             self.end_run("champion", "entered the Hall of Fame")
         elif self.pending_loss and current_map == self.dorm:
@@ -1265,19 +1298,31 @@ def play(
     battle_policy: str = "type_switcher",
     door_policy: str = "random",
     log=None,
+    sram: bytes | None = None,
+    heartbeat: Path | None = None,
 ) -> dict[str, object]:
     """Boot (Debug 2 lobby, or a real new game), play and return the report.
     A failure (see FAILURES) also writes a screenshot and state dump under
-    artifacts/."""
+    artifacts/, and the first anomaly a save state to load and inspect.
+    `sram` is the cartridge RAM at power-on (32 KB; zeroes if None), for
+    sram_fuzz.py."""
     started = time.monotonic()
-    harness = RedRogueHarness(ROOT, ARTIFACTS)
+    ram_path = None
+    if sram is not None:
+        ram_path = ARTIFACTS / f"autoplay_seed{seed}_{os.getpid()}.sram"
+        ram_path.parent.mkdir(parents=True, exist_ok=True)
+        ram_path.write_bytes(sram)
+    harness = RedRogueHarness(ROOT, ARTIFACTS, ram_path=ram_path)
+    if ram_path is not None:
+        ram_path.unlink()
     try:
         if new_game:
             boot_new_game(harness, seed)
         else:
             boot(harness, seed, battle_count)
         agent = AutoplayAgent(harness, seed=seed, battle_policy=battle_policy,
-                              door_policy=door_policy, stall_frames=stall_frames, log=log)
+                              door_policy=door_policy, stall_frames=stall_frames, log=log,
+                              heartbeat=heartbeat)
         error = None
         try:
             agent.run(runs=runs, stages=stages, max_frames=max_frames)
@@ -1287,6 +1332,12 @@ def play(
         data = report.to_json()
         if error:
             data["traceback"] = error
+        data["anomalies"] = agent.checks.anomalies
+        data["checks"] = agent.checks.summary()
+        if agent.checks.first_anomaly_state is not None:
+            path = ARTIFACTS / f"autoplay_seed{seed}_anomaly.state"
+            path.write_bytes(agent.checks.first_anomaly_state)
+            data["anomaly_state"] = str(path)
         if report.failed:
             image, state = harness.write_failure_artifacts(f"autoplay_seed{seed}")
             data["artifacts"] = {"image": str(image), "state": str(state)}
@@ -1326,7 +1377,10 @@ def main(argv: list[str] | None = None) -> int:
     path.write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")
     print(f"{data['outcome']}: {data['detail']} (stages={data['stages_cleared']} "
           f"won={data['battles_won']} frames={data['frames']}) -> {path}")
-    return 1 if data["outcome"] in FAILURES else 0
+    for anomaly in data["anomalies"]:
+        print(f"  anomaly at frame {anomaly['frame']} on {anomaly['map']}: "
+              f"{anomaly['check']}: {anomaly['detail']}")
+    return 1 if data["outcome"] in FAILURES or data["anomalies"] else 0
 
 
 if __name__ == "__main__":

@@ -66,6 +66,7 @@ RGBGFXFLAGS  ?= -Weverything
 	space \
 	ai_scenarios \
 	autoplay \
+	sram_fuzz \
 	balance_report \
 	release \
 	save_schema \
@@ -173,9 +174,15 @@ ai_benchmark: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_ai_benchmark.py $(BENCHMARK_ARGS)
 
 # Soak test: the autoplay agent plays seeded runs from the lobby to the Champion
-# in parallel and fails on any stalled or crashed run. AUTOPLAY_ARGS='--seeds 1-64'.
+# in parallel and fails on any stalled, crashed or hung run or any anomaly its
+# bug detectors report. AUTOPLAY_ARGS='--seeds 1-64'.
 autoplay: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_autoplay.py $(AUTOPLAY_ARGS)
+
+# Plays seeds with zeroed, $FF and random save RAM and fails if any plays
+# differently (a read of SRAM the game never wrote). SRAM_FUZZ_ARGS='--bisect'.
+sram_fuzz: pokeblue_debug.gbc
+	python3 tools/pyboy_smoke/sram_fuzz.py $(SRAM_FUZZ_ARGS)
 
 balance_report:
 	python3 tools/balance/model.py --runs 200 --selfcheck
