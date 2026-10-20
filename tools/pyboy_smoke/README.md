@@ -220,10 +220,10 @@ stop play:
   their labels. The overworld loop must also poll at one stack depth.
 - Garbled screens (`autoplay_screen.py`), as `screen_*` anomalies: a
   `text_far` whose target is not a label in a real bank or does not start with
-  a text command; a `TextCommandProcessor` pointer in ROM that is not a label
-  in the loaded bank; a byte dispatched as a text command that is not a `TX_*`;
+  a text command; a byte dispatched as a text command that is not a `TX_*`;
   a byte below $60 placed as a glyph (or the `<NULL>` TEXT ID ERROR char); and
-  a `PlaceString`, `CopyVideoData*` or `FarCopyData*` source inside code. The
+  a `TextCommandProcessor`, `PlaceString`, `CopyVideoData*` or `FarCopyData*`
+  pointer in ROM that lies inside code in the loaded bank. The
   code rules need `coverage_inventory`'s code labels (a ~70 s walk after a
   rebuild): the bot's entry points build them first, smoke tests use them
   only if cached.
@@ -338,3 +338,26 @@ make compare_builds COMPARE_ARGS='--seeds 1-24 --runs 2 --vary'
   build hits. Runs on different builds always part ways in a battle sooner or
   later (VBlank's `Random` can interrupt a main-code draw at a different
   instruction per build), so a split alone is not a finding.
+
+### Nightly runs
+
+`nightly.py` (`make nightly`) tests one commit, default `master`, with every
+long-running check. It runs in its own worktree (`../redrogue_nightly`, reset
+to the commit each night) so another session's half-made edit in the shared
+tree is never tested. It builds the three ROMs and runs these suites:
+- smoke and `make audit`
+- a 24-seed Debug 2 sweep with branching
+- a 16-seed varied new-game sweep with save checks and the coverage map
+- `compare_builds` on 8 seeds
+- `sram_fuzz` on 4 seeds
+
+The full set takes about an hour. Each night writes
+`../redrogue_nightly_reports/<date>_<sha>/`: logs, each suite's summary, copies
+of every failed seed's report, state and screenshot, and `report.md` with a
+replay command per finding. Its "Regressions" section compares against the
+previous night: a newly failing test, a suite that passed and now fails, a new
+kind of finding, a champion-rate drop over 15 points, or a coverage loss of
+over 100 routines. A commit that already has a report is skipped unless
+`--force`; `--suites` picks suites and `--quick` runs 2 seeds each, to check the
+runner. Scheduling is up to you, for example with Windows Task Scheduler (the
+command is in the module docstring).

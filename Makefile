@@ -66,7 +66,7 @@ RGBGFXFLAGS  ?= -Weverything
 	space \
 	ai_scenarios \
 	autoplay \
-	compare_builds \
+	compare_builds 	nightly \
 	sram_fuzz \
 	balance_report \
 	release \
@@ -185,6 +185,12 @@ autoplay: pokeblue_debug.gbc
 # part ways. COMPARE_ARGS='--seeds 1-32 --runs 2 --vary'.
 compare_builds: pokered.gbc pokeblue.gbc pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/compare_builds.py $(COMPARE_ARGS)
+
+# Tests one commit (default master) in its own worktree, ../redrogue_nightly, with
+# every long-running check, writes a dated report to ../redrogue_nightly_reports
+# and lists what got worse since the last one. NIGHTLY_ARGS='--suites smoke,lobby --force'.
+nightly:
+	python3 tools/pyboy_smoke/nightly.py $(NIGHTLY_ARGS)
 
 # Plays seeds with zeroed, $FF and random save RAM and fails if any plays
 # differently (a read of SRAM the game never wrote). SRAM_FUZZ_ARGS='--bisect'.

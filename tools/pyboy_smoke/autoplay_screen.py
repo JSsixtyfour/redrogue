@@ -7,11 +7,11 @@ where the game takes those pointers:
 
 - text_far: the 3-byte target (address, bank) of every TX_FAR must be a label
   in a real bank, and its first byte a valid text command.
-- text pointers: TextCommandProcessor's hl, when in ROM, must be a label in
-  the bank loaded at the time (a wrong bank lands on a different routine's
-  bytes, almost never on a label). PlaceString's de may legitimately point
-  into a text (the engine calls it after each command), so it must only stay
-  out of code.
+- text pointers: TextCommandProcessor's hl and PlaceString's de, when in ROM,
+  must not point into code in the bank loaded at the time (a wrong bank
+  usually lands in another routine). Neither has to be a label: PlaceString
+  gets a pointer into a text after each command, and the Pokedex prints an
+  entry's text from just past its name, height and weight (DexEntry+9).
 - text commands: the byte NextTextCommand dispatches must be a TX_* command
   (TX_START..TX_FAR); anything else runs off the jump table or into SOUND.
 - glyphs: every byte PlaceNextChar writes to the tile map must be a real tile
@@ -25,7 +25,9 @@ Each finding is a checks.anomaly; record=True instead counts every pointer
 seen by kind and verdict, to measure a check before trusting it. Measured
 2026-10-20 over 6 runs (Debug 2 and new game, --vary): 570k glyphs, 62k
 commands, 35k text pointers, 19k text_far, 62k strings and 72k copies, with no
-finding once PlaceString was moved to the code rule.
+finding once PlaceString was moved to the code rule. The first nightly's
+random-input branches then opened the Pokedex, whose entries print from
+DexEntry+9, so text pointers moved to the code rule too.
 
 The code rules need coverage_inventory's code labels, a ~70 s source walk
 when the .sym changed. autoplay.play() and the batch runners build them first;
@@ -113,16 +115,6 @@ class ScreenChecks:
         i = bisect_right(starts, address) - 1
         return i >= 0 and address < self.code_spans[bank][i][1]
 
-    def _pointer(self, kind: str, address: int) -> None:
-        if address >= ROM_END:
-            self._note(kind, "ok", "")
-            return
-        bank = self._bank_for(address)
-        if (bank, address) in self.labels:
-            self._note(kind, "ok", "")
-        else:
-            self._note(kind, "not a label", self._where(bank, address))
-
     # ----------------------------------------------------------------- checks
     # Each takes plain values, so a test can plant a fault without the game.
 
@@ -185,7 +177,11 @@ class ScreenChecks:
                    self._where(self._bank_for(self._de()), self._de()) + f" hTextID ${self.h.read8('hTextID'):02X}")
 
     def _on_text_processor(self, _context) -> None:
-        self._pointer("text_pointer", self.h.pyboy.register_file.HL)
+        address = self.h.pyboy.register_file.HL
+        if self.code_checks:
+            self.check_source("text_pointer", self._bank_for(address), address)
+        else:
+            self._note("text_pointer", "ok", "")  # counted, unchecked: no code labels cached
 
     def _on_place_string(self, _context) -> None:
         if self.code_checks:
