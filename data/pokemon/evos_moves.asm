@@ -3841,11 +3841,12 @@ AipomEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - SCRATCH/TAIL_WHIP already granted at level 1; BATON_PASS does
-; not exist in Gen 1, filled with METRONOME.
+; not exist in Gen 1
 	db 6, SAND_ATTACK
-	db 12, METRONOME ; was BATON_PASS
+	db 12, DOUBLESLAP ; was BATON_PASS
 	db 19, FURY_SWIPES
 	db 27, SWIFT
+    db 30, DOUBLE_KICK
 	db 36, SCREECH
 	db 46, AGILITY
 	db 0
