@@ -15,6 +15,11 @@ A seed still running after --timeout seconds is killed and reported `hung`
 with the last place its heartbeat recorded: an illegal opcode makes the
 emulator spin inside one tick, where nothing in the worker can notice.
 
+With --branches N, each seed also snapshots its key moments (battle start, the
+reward and gift pickers, the lobby) and plays N short random-input branches
+from up to --snapshots of each kind, with the same checks (autoplay_branch.py).
+A branch finding fails the batch too and prints the command that replays it.
+
 Reproduce one seed with `python3 tools/pyboy_smoke/autoplay.py --seed N`: runs
 are deterministic for a given ROM.
 """
@@ -67,6 +72,7 @@ def run_seed(seed: int, options: dict[str, object]) -> dict[str, object]:
         "position": finish.get("position"),
         "anomalies": data["anomalies"],
         "menus": data["menus"],
+        "branches": data.get("branches"),
         "report": str(path),
     }
 
@@ -165,6 +171,49 @@ def print_statistics(balance: dict[str, object]) -> None:
             print(f"  {title}: " + ", ".join(f"{name} {n}" for name, n in top))
 
 
+def branch_findings(row: dict[str, object]) -> list[dict[str, object]]:
+    return (row.get("branches") or {}).get("findings", [])
+
+
+def branch_statistics(rows: list[dict[str, object]]) -> dict[str, object]:
+    """Branches played per snapshot kind, and every finding with its replay
+    command, grouped by what was found."""
+    totals: dict[str, dict[str, int]] = {}
+    findings = []
+    longest_quiet = {"frames": 0}
+    for row in rows:
+        branches = row.get("branches") or {}
+        quiet = branches.get("longest_quiet") or {"frames": 0}
+        if quiet["frames"] > longest_quiet["frames"]:
+            longest_quiet = {"seed": row["seed"], **quiet}
+        for kind, counts in branches.get("totals", {}).items():
+            total = totals.setdefault(kind, {})
+            for key, value in counts.items():
+                total[key] = total.get(key, 0) + value
+        for finding in branch_findings(row):
+            what = [finding["outcome"] + (f": {finding['detail']}" if finding["detail"] else "")]                 if finding["outcome"] != "ok" else []
+            what += [f"{a['check']}: {a['detail']}" for a in finding["anomalies"]]
+            findings.append({"seed": row["seed"], "key": finding["key"], "at": finding["at"],
+                             "what": what, "replay": finding["replay"]})
+    return {"totals": totals, "longest_quiet": longest_quiet, "findings": findings}
+
+
+def print_branching(branching: dict[str, object]) -> None:
+    totals = branching["totals"]
+    print("  branches: " + ", ".join(
+        f"{kind} {c['branches']} ({c['frames']} frames, {c['findings']} with findings)"
+        for kind, c in sorted(totals.items()))
+        + f"; longest stretch without an input poll {branching['longest_quiet']['frames']} frames")
+    quiet = branching["longest_quiet"]
+    if quiet.get("key"):
+        print(f"    ({quiet['key']} on {quiet.get('map')}, in "
+              + " < ".join(quiet.get("stack") or [str(quiet.get("in"))])[:160] + ")")
+    for finding in branching["findings"][:12]:
+        print(f"  branch finding, seed {finding['seed']} {finding['key']} on {finding['at'].get('map')}: "
+              + "; ".join(finding["what"][:3]))
+        print(f"    replay: {finding['replay']}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Soak-test Red Rogue with the autoplay agent.")
     parser.add_argument("--seeds", default="1-8", help="e.g. 1-16 or 3,9,12")
@@ -181,6 +230,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--menu-input", default="real", choices=autoplay.MENU_INPUTS)
     parser.add_argument("--menu-chaos", type=float, default=0.0,
                         help="chance of a stray press at each menu step (0-1)")
+    parser.add_argument("--branches", type=int, default=0,
+                        help="random-input branches per snapshot of a key moment "
+                             "(battle start, reward and gift pickers, lobby); see autoplay_branch.py")
+    parser.add_argument("--snapshots", type=int, default=3, help="snapshots branched per kind and seed")
+    parser.add_argument("--branch-frames", type=int, default=3000, help="frames each branch plays")
+    parser.add_argument("--freeze-frames", type=int, default=None,
+                        help="frames without an input poll before a branch counts as frozen")
     parser.add_argument("--timeout", type=float, default=900,
                         help="seconds before a seed counts as hung and is killed")
     args = parser.parse_args(argv)
@@ -195,23 +251,32 @@ def main(argv: list[str] | None = None) -> int:
         "battle_policy": args.battle_policy,
         "menu_input": args.menu_input,
         "menu_chaos": args.menu_chaos,
+        "branches": args.branches,
+        "snapshots": args.snapshots,
+        "branch_frames": args.branch_frames,
+        "freeze_frames": args.freeze_frames,
     }
     rows = []
     for row in run_all(seeds, options, max(1, args.jobs), args.timeout):
         rows.append(row)
+        findings = branch_findings(row)
         mark = ("FAIL" if row["outcome"] in autoplay.FAILURES
-                else "ANOM" if row["anomalies"] else "ok  ")
+                else "ANOM" if row["anomalies"] else "BRCH" if findings else "ok  ")
         print(f"{mark} seed {row['seed']:>4}  {row['outcome']:<11} "
               f"stages={row['stages_cleared']:<3} won={row['battles_won']:<3} "
               f"{row['map']} {row['position']}  {row['detail']}", flush=True)
         for anomaly in row["anomalies"][:3]:
             print(f"       anomaly on {anomaly['map']}: {anomaly['check']}: {anomaly['detail']}")
+        for finding in findings[:3]:
+            print(f"       branch {finding['key']}: {finding['outcome']} {finding['detail']}"
+                  + "".join(f"; {a['check']}: {a['detail']}" for a in finding["anomalies"][:2]))
     rows.sort(key=lambda row: row["seed"])
 
     outcomes: dict[str, int] = {}
     for row in rows:
         outcomes[row["outcome"]] = outcomes.get(row["outcome"], 0) + 1
     failures = [row for row in rows if row["outcome"] in autoplay.FAILURES or row["anomalies"]]
+    branching = branch_statistics(rows) if args.branches else None
     balance = run_statistics([run for row in rows for run in row["run_records"]])
     menus: dict[str, dict[str, int]] = {}
     for row in rows:
@@ -225,6 +290,7 @@ def main(argv: list[str] | None = None) -> int:
             key = f"{anomaly['check']}: {anomaly['detail']}"
             anomalies[key] = anomalies.get(key, 0) + 1
     summary = {"options": options, "outcomes": outcomes, "balance": balance, "menus": menus,
+               "branching": branching,
                "anomalies": dict(sorted(anomalies.items(), key=lambda item: -item[1])), "runs": rows}
     path = autoplay.ARTIFACTS / "autoplay_summary.json"
     path.write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
@@ -237,12 +303,14 @@ def main(argv: list[str] | None = None) -> int:
           + f", {sum(bool(row['anomalies']) for row in rows)} with anomalies -> {path}")
     for finding, seeds_with_it in list(summary["anomalies"].items())[:12]:
         print(f"  anomaly in {seeds_with_it} seed(s): {finding}")
+    if branching:
+        print_branching(branching)
     for row in failures:
         flags = " --new-game" * args.new_game + f" --runs {args.runs}" * (args.runs != 1)
         why = row["outcome"] if row["outcome"] in autoplay.FAILURES else "anomaly"
         print(f"  reproduce: python3 tools/pyboy_smoke/autoplay.py --seed {row['seed']}{flags}"
               f"   # {why} at {row['map']}")
-    return 1 if failures else 0
+    return 1 if failures or (branching and branching["findings"]) else 0
 
 
 if __name__ == "__main__":

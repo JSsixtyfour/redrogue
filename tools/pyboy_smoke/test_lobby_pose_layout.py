@@ -33,8 +33,14 @@ class LobbyPoseLayoutTests(unittest.TestCase):
             self.assertEqual(movement, expected, picture)
 
     def test_clerks_keep_their_full_directional_sheet(self):
-        self.assertEqual(self.objects.count("SPRITE_CLERK"), 3)
+        self.assertEqual(self.objects.count("SPRITE_CLERK"), 2)
         self.assertNotIn("SPRITE_LOBBY_CLERK", self.objects)
+
+    def test_key_swap_attendant_shares_rental_pose(self):
+        self.assertIn(
+            "SPRITE_LOBBY_RENTAL_OFFICIAL, STAY, DOWN, TEXT_PC_KEY_SWAP_ATTENDANT",
+            self.objects,
+        )
 
     def test_two_fixed_south_services_use_the_four_tile_slots(self):
         self.assertIn("SPRITE_LOBBY_MOVE_RELEARNER, STAY, DOWN", self.objects)

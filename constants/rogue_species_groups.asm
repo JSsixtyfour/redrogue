@@ -24,6 +24,12 @@ DEF BIT_GROUP_KANTO EQU SPECIES_GROUP_KANTO
 DEF BIT_GROUP_JOHTO EQU SPECIES_GROUP_JOHTO
 DEF BIT_GROUP_WARP  EQU SPECIES_GROUP_WARP
 
+; CHEAT/Debug 2 override tag in the existing enabled byte. Test ALL high bits:
+; legacy $ff means ordinary unlocked groups enabled, never a cheat override.
+DEF GROUP_ENABLE_MASK EQU (1 << NUM_SPECIES_GROUPS) - 1
+DEF GROUP_OVERRIDE_MASK EQU $ff ^ GROUP_ENABLE_MASK
+DEF GROUP_OVERRIDE_TAG EQU $80
+
 ; Rarity tiers, in ascending order of value. Tier ids are an index into a
 ; group's tier table, so they are NOT the same as the 1-based class numbers the
 ; old `c` argument to Random_Pokemon_Selection uses (class 1 = pokeball = tier

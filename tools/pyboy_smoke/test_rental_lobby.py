@@ -32,11 +32,11 @@ class RentalLobbyTest(unittest.TestCase):
 
         h.tick(180)
 
-        self.assertEqual(h.read8("wNumSprites"), 12)
+        self.assertEqual(h.read8("wNumSprites"), 13)
 
-        self.assertEqual([h.read8(f"wSprite{i:02}StateData2ImageBaseOffset") for i in range(1,13)],
+        self.assertEqual([h.read8(f"wSprite{i:02}StateData2ImageBaseOffset") for i in range(1,14)],
 
-                         [3,4,4,5,11,12,6,7,8,9,13,14])
+                         [3,4,4,5,11,12,6,7,8,9,13,14,14])
 
         for name, address in (("GameboyKidSprite", 0x86C0), ("LinkReceptionistSprite", 0x8700)):
 

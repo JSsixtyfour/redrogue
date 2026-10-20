@@ -84,6 +84,18 @@ class GameChecks:
         self.h.register_hook("JoypadOverworld", self._on_overworld_poll)
         self.h.register_hook("DisplayBattleMenu", self._on_battle_menu)
 
+    def reset(self) -> None:
+        """Forget findings, for a new branch from a loaded state
+        (autoplay_branch.py). The overworld SP baseline and the lowest SP
+        carry over: every branch must poll at the same depth as the others."""
+        self.anomalies = []
+        self.counts = {}
+        self._seen = set()
+        self.first_anomaly_state = None
+        self.crash = None
+        self.world_pending = True
+        self.battle_party_checked = False
+
     # -------------------------------------------------------------- reporting
 
     def anomaly(self, check: str, detail: str, **data) -> None:

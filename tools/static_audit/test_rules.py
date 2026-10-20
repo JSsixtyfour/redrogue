@@ -46,6 +46,17 @@ ENDM
 MACRO sound_get_item_1
 	db $0b
 ENDM
+MACRO cont
+	db "<CONT>", \\#
+ENDM
+MACRO text_start
+	db 0
+ENDM
+MACRO text_decimal
+	db 9
+	dw \\1
+	db (\\2 << 4) | \\3
+ENDM
 """
 
 
@@ -436,6 +447,22 @@ class Rules(unittest.TestCase):
             _Second::
             	text "two"
             	text_end
+            """, [("A", "ROMX", 2)], "BadText", "GoodText")
+
+    def test_c3_char_mode_line_after_text_command(self):
+        self.check("C3", """
+            SECTION "A", ROMX
+            BadText::
+            	text "at most @"
+            	text_decimal wCount, 1, 1
+            	cont "#MON."
+            	done
+            GoodText::
+            	text "at most @"
+            	text_decimal wCount, 1, 1
+            	text_start
+            	cont "#MON."
+            	done
             """, [("A", "ROMX", 2)], "BadText", "GoodText")
 
     def test_d1_unreachable_code(self):

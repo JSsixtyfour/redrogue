@@ -388,7 +388,9 @@ sPrismCartridges:: ds 2
 ; This is the ENABLED state only. Whether a group is UNLOCKED is derived from
 ; the persistent activation events at read time (see RogueGetActiveGroupMask),
 ; so a toggle set here for a group the player has not earned yet is simply
-; ignored.
+; ignored. Exception: high bits matching GROUP_OVERRIDE_TAG select CHEAT's
+; active low bits directly, without changing permanent story events. An exact
+; GROUP_OVERRIDE_MASK match keeps legacy $ff on the ordinary unlock path.
 ;
 ; SRAM, outside sGameData, because the toggles are meant to persist across runs
 ; and blackouts exactly like sPrismCartridges above. MUST stay adjacent to

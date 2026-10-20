@@ -11,18 +11,21 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class LobbyNotepadTests(unittest.TestCase):
-    def test_notepads_are_background_events_after_eleven_service_texts(self):
+    def test_notepads_are_background_events_after_thirteen_service_texts(self):
         source = (ROOT / "data/maps/objects/IndigoPlateauLobby.asm").read_text()
         objects = re.findall(r"(?m)^\s*object_event\s+(.+)", source)
-        self.assertEqual(len(objects), 12)
+        self.assertEqual(len(objects), 13)
         self.assertFalse(any("SPRITE_CLIPBOARD" in obj for obj in objects))
         self.assertRegex(source, r"bg_event\s+9,\s*0,\s*TEXT_PC_DOOR1_SIGN")
         self.assertRegex(source, r"bg_event\s+11,\s*0,\s*TEXT_PC_DOOR2_SIGN")
         script = (ROOT / "scripts/IndigoPlateauLobby.asm").read_text()
-        table = script.split("IndigoPlateauLobby_TextPointers:")[1].split("LobbyDoor1SignText:")[0]
+        table = script.split("IndigoPlateauLobby_TextPointers:")[1].split("LobbyKeySwapAttendantText:")[0]
         ids = re.findall(r"dw_const\s+\w+,\s*(\w+)", table)
-        self.assertEqual(len(ids), 14)
-        self.assertEqual(ids[-2:], ["TEXT_PC_DOOR1_SIGN", "TEXT_PC_DOOR2_SIGN"])
+        self.assertEqual(len(ids), 16)
+        service_ids = [obj.partition(";")[0].split(",")[-1].strip() for obj in objects]
+        self.assertEqual(ids[:13], service_ids)
+        self.assertEqual(ids[13:], ["TEXT_PC_DOOR1_SIGN", "TEXT_PC_DOOR2_SIGN",
+                                   "TEXT_LOBBY_KEY_SWAP_ANNOUNCEMENT"])
 
     def test_closed_notepad_uses_sign_count_not_sprite_toggle(self):
         script = (ROOT / "scripts/IndigoPlateauLobby.asm").read_text()

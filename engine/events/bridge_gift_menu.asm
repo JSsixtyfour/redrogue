@@ -752,6 +752,15 @@ BridgeTeachMoveToCurrent:
 	ld [wNamedObjectIndex], a
 	call GetMoveName
 	call CopyToStringBuffer
+	; LearnMove itself never checks for a move already known (the TM path and
+	; level-up check first), so without this the gift writes a duplicate.
+	; AlreadyKnowsText prints wNameBuffer and wStringBuffer.
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMonNicks
+	call GetPartyMonName
+	callfar CheckIfMoveIsKnown
+	ccf
+	ret nc                       ; known: not taught (the caller's "rejected")
 	ld a, [wLetterPrintingDelayFlags]
 	push af
 	xor a

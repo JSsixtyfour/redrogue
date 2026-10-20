@@ -89,6 +89,7 @@ _WitchChallenge7Text::
 	text "Enter this stage"
 	line "with at most @"
 	text_decimal wPartyLimit, 1, 1
+	text_start ; back to characters: a bare `cont` here runs as sound commands
 	cont "#MON."
 
 	para "Bring more and"

@@ -31,6 +31,15 @@ FAR_COPIERS = {"FarCopyData", "FarCopyData2", "FarCopyData3", "FarCopyDataDouble
                "CopyVideoData", "CopyVideoDataDouble", "FarCopyBytes", "CopyVideoDataAlternate",
                "FarPlaceString", "FarCopyDataDouble2", "CopyVideoDataDoubleAlternate",
                "FarCopyDataAutoBank"}
+# Text macros that emit a command (macros/scripts/text.asm): after one, the
+# text engine reads the next byte as another command.
+TEXT_COMMAND_MACROS = {"text_ram", "text_bcd", "text_move", "text_box", "text_low",
+                       "text_promptbutton", "text_scroll", "text_decimal", "text_pause",
+                       "text_dots", "text_waitbutton", "text_far", "sound_get_item_1",
+                       "sound_pokedex_rating", "sound_get_item_1_duplicate", "sound_get_item_2",
+                       "sound_get_key_item", "sound_caught_mon", "sound_dex_page_added",
+                       "sound_cry_nidorina", "sound_cry_pidgeot", "sound_cry_porygon"}
+CHAR_MODE_MACROS = {"line", "cont", "para", "next", "page", "done", "prompt", "dex"}
 FLOW_SEVERITY = {"A1": "bug", "A2": "bug", "B4": "bug", "B5": "bug", "B8": "bug", "C1": "bug"}
 
 
@@ -673,6 +682,24 @@ def rule_c3(p: Program, fl):
                                      f"{', '.join(between)}, but {first} does not end its string "
                                      "in \"@\": the print loop eats text_end and prints the next "
                                      "half twice"))
+        # C3d: a text command leaves the stream in command mode, so the next
+        # byte must be another command (`text` re-enters character mode). A
+        # line/cont/para/... char there is read as a command: every byte from
+        # TX_SOUND_POKEDEX_RATING up goes to TextCommand_SOUND, which plays the
+        # text's characters as sound effects (Witch Challenge 7: ~30 s of
+        # garbage sounds after "at most 5", found by autoplay branching).
+        same_statement = k + 1 < len(items) and items[k + 1].kind == "data" and \
+            (items[k + 1].file, items[k + 1].line) == (it.file, it.line)
+        if it.macro in TEXT_COMMAND_MACROS and not same_statement:
+            j = k + 1
+            while j < len(items) and items[j].kind == "directive" and not items[j].op:
+                j += 1
+            nxt = items[j] if j < len(items) else None
+            if nxt is not None and nxt.kind == "data" and nxt.macro in CHAR_MODE_MACROS:
+                out.append(F("C3", nxt, p.parent_of(nxt),
+                             f"`{nxt.macro}` right after `{it.macro}`: the text engine is still "
+                             f"reading commands there, so `{nxt.macro}` and the characters after it "
+                             "run as sound effects (start the run with `text`)"))
         # C3c: text_asm handler must keep bc (the text cursor) when it returns
         if it.macro == "text_asm":
             j = k + 1

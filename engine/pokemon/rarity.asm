@@ -658,17 +658,9 @@ RogueGetTierBaseCount::
 ; ---------------------------------------------------------------------------
 RogueGetActiveGroupMask::
 	push bc
-; Debug 2 used to short-circuit here and return every group unlocked
-; unconditionally, so a fresh Debug 2 run could test Johto/Warp species and the
-; regional forms (see RogueFormsUnlocked) without a champion win or a PC visit.
-; The Debug 2 config screen's UPGRADES row (engine/debug/debug2_config.asm,
-; sharing OptCycleCheat with the option menu's CHEAT row) now writes the exact
-; unlock events (set-only) and SRAM toggles .deriveUnlocks reads below, so the short-circuit
-; made that row decorative: it could rewrite the real state, but this routine
-; never looked at it in Debug 2. engine/debug/debug_party.asm's .debug2 setup
-; seeds Timewarp+Johto before Debug2ConfigMenu runs, so an untouched Debug 2
-; game still gets today's "everything unlocked" default, and .deriveUnlocks is
-; now the single source of truth for both modes.
+; CHEAT and Debug 2 tag the enabled byte instead of setting story events.
+; An exact high-bit tag bypasses the unlock mask below; ordinary PC toggles
+; and legacy $ff still require the player's permanent activation events.
 .deriveUnlocks
 	; The two persistent activation bits are deliberately four positions above
 	; their species-group bits (5->1 and 6->2). One nibble swap converts both
@@ -689,6 +681,12 @@ RogueGetActiveGroupMask::
 	ld c, a
 	xor a
 	ld [rRAMG], a               ; never leave SRAM enabled across a return
+	ld a, c
+	and GROUP_OVERRIDE_MASK
+	cp GROUP_OVERRIDE_TAG
+	jr nz, .applyEnabled
+	ld b, GROUP_ENABLE_MASK
+.applyEnabled
 	ld a, c
 	set BIT_GROUP_KANTO, a      ; Kanto is always in the pool
 	and b                       ; drop anything not yet unlocked

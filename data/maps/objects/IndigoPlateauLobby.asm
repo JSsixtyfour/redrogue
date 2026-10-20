@@ -48,8 +48,8 @@ IndigoPlateauLobby_Object:
 	object_event  0,  2, SPRITE_LOBBY_MOVE_TUTOR, STAY, DOWN, TEXT_PC_MOVE_TUTOR                      ; Move Tutor (Stadium, Special Nintendo Events, Tradebacks)
 
 	object_event 7, 1, SPRITE_LOBBY_RENTAL_OFFICIAL, STAY, DOWN, TEXT_PC_RENTAL_OFFICIAL
-	; E,8 beside the PC. Reuses the already-loaded clerk sheet; visibility is
+	; E,8 beside the PC. Reuses the already-loaded rental pose; visibility is
 	; derived by IsObjectHidden from the same guard as personal storage access.
-	object_event $e, 8, SPRITE_CLERK, STAY, DOWN, TEXT_PC_KEY_SWAP_ATTENDANT
+	object_event $e, 8, SPRITE_LOBBY_RENTAL_OFFICIAL, STAY, DOWN, TEXT_PC_KEY_SWAP_ATTENDANT
 
 	def_warps_to INDIGO_PLATEAU_LOBBY

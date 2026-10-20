@@ -42,6 +42,7 @@ Elite4Pool:
 	db KAREN         ; 6  Johto only
 DEF NUM_E4_POOL_KANTO EQU 4
 DEF NUM_E4_POOL_ALL   EQU 7
+DEF E4_POOL_IDX_LANCE EQU 3
 DEF E4_POOL_IDX_KOGA  EQU 4
 ASSERT NUM_E4_POOL_ALL <= 8, "the used-slot mask in RollElite4 is one byte"
 
@@ -175,6 +176,9 @@ RollElite4AndChampion::
 ; ============================================================
 RollChampion:
 	farcall RogueGetActiveGroupMaskFar  ; e = active group mask (d preserved)
+	call FirstClearChampion
+	and a
+	jr nz, .storeChampion
 
 	; b = availability mask over ChampionPool. RIVAL3 is unconditional.
 	ld b, 1 << 0
@@ -192,31 +196,6 @@ RollChampion:
 	jr z, .noOak
 	set 2, b
 .noOak
-
-	; Forced first-clear champions, in unlock order. Each only fires if that
-	; candidate is actually available, so a player who has switched the group
-	; back off in the PC still gets a reachable Champion. If Johto is disabled
-	; while its first clear is pending, continue to the independent Warp check.
-	; Each pending first-clear pair is "activation set, defeated clear" in the
-	; same persistent event byte. Preserve that byte in c for the Warp check.
-	ld a, [wEventFlags + (EVENT_JOHTO_ACTIVATED / 8)]
-	ld c, a
-	bit 1, b
-	jr z, .checkFirstWarp
-	and (1 << (EVENT_JOHTO_ACTIVATED % 8)) | (1 << (EVENT_LANCE_CHAMPION_DEFEATED % 8))
-	cp 1 << (EVENT_JOHTO_ACTIVATED % 8)
-	jr nz, .checkFirstWarp
-	ld a, LANCE
-	jr .storeChampion
-.checkFirstWarp
-	bit 2, b
-	jr z, .randomChampion
-	ld a, c
-	and (1 << (EVENT_KANTO_TIMEWARP_ACTIVATED % 8)) | (1 << (EVENT_OAK_CHAMPION_DEFEATED % 8))
-	cp 1 << (EVENT_KANTO_TIMEWARP_ACTIVATED % 8)
-	jr nz, .randomChampion
-	ld a, PROF_OAK
-	jr .storeChampion
 
 .randomChampion
 	; Count the available candidates, draw one, then walk the mask to it.
@@ -252,6 +231,25 @@ RollChampion:
 	ld [wRunChampion], a
 	ret
 
+; e = active groups; a = guaranteed first-clear Champion, or zero.
+; Preserve bc/de for the Elite Four's used mask and pool size. Warp takes
+; priority even if CHEAT enabled it before the player ever defeated Lance.
+FirstClearChampion:
+	bit BIT_GROUP_WARP, e
+	jr z, .johto
+	CheckEvent EVENT_OAK_CHAMPION_DEFEATED
+	ld a, PROF_OAK
+	ret z
+.johto
+	bit BIT_GROUP_JOHTO, e
+	jr z, .none
+	CheckEvent EVENT_LANCE_CHAMPION_DEFEATED
+	ld a, LANCE
+	ret z
+.none
+	xor a
+	ret
+
 ; ============================================================
 ; RollElite4  (same-bank call only)
 ; Draws 4 distinct trainer class ids into wRunElite4.
@@ -276,6 +274,13 @@ RollElite4:
 	jr z, .kogaEligible
 	ld b, 1 << E4_POOL_IDX_KOGA         ; pre-mark Koga as already drawn
 .kogaEligible
+	; Reserve Lance BEFORE the draw when his first Champion win is pending.
+	; Even with Koga excluded, five candidates remain for the four E4 slots.
+	call FirstClearChampion
+	cp LANCE
+	jr nz, .championReserved
+	set E4_POOL_IDX_LANCE, b
+.championReserved
 
 	ld hl, wRunElite4
 	ld d, 4                             ; d = slots still to fill

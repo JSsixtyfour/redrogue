@@ -169,6 +169,7 @@ class AutoplayAgent:
         heartbeat: Path | None = None,
         menu_input: str = "real",
         menu_chaos: float = 0.0,
+        snapshot: Callable[[str, dict[str, object]], None] | None = None,
     ):
         if battle_policy not in benchmark_policies.POLICIES:
             raise ValueError(f"unknown battle policy {battle_policy!r}")
@@ -190,6 +191,11 @@ class AutoplayAgent:
         self.menu_chaos = menu_chaos
         self.chaos_rng = random.Random(f"chaos/{seed}")  # keeps self.rng's draws unchanged
         self.report = RunReport(seed=seed)
+        # Called at the start of a step with a key moment's kind (battle,
+        # reward, gift, lobby), before the agent answers it: autoplay_branch.py
+        # saves a state there to play random branches from.
+        self.snapshot = snapshot
+        self.snapshot_pending: str | None = None
 
         self.rules = benchmark_policies.load_rules(ROOT)
         maps = parse_map_constants(ROOT / "constants/map_constants.asm")
@@ -524,6 +530,8 @@ class AutoplayAgent:
     def _on_choice_menu(self, kind: str) -> None:
         self.choice_showings[kind] = self.choice_showings.get(kind, 0) + 1
         self.choice_pending = kind
+        if self.choice_showings[kind] == 1:
+            self.snapshot_pending = kind
 
     def _on_choice_menu_loop(self, _context) -> None:
         """Place the cursor once per showing, before HandleMenuInput draws it.
@@ -940,6 +948,11 @@ class AutoplayAgent:
         current_map = self.h.read8("hCurMap")
         if current_map != self.current_map:
             self.on_map_change(current_map)
+        if self.snapshot_pending is not None:
+            kind, self.snapshot_pending = self.snapshot_pending, None
+            if self.snapshot is not None:
+                self.snapshot(kind, {"map": self.map_name(current_map), "stages": self.report.stages_cleared,
+                                     "opponent": self.last_opponent if kind == "battle" else None})
         mode = self.mode()
         if mode != "busy":
             self.busy_since = None
@@ -961,6 +974,7 @@ class AutoplayAgent:
                 species = self.h.read8("wEnemyMonSpecies2")
                 self.last_opponent = "wild " + self.species_names.get(species, str(species))
             self.event("battle_start", opponent=self.last_opponent)
+            self.snapshot_pending = "battle"
         elif self.in_battle and not in_battle:
             self.event("battle_end", result=self.h.read8("wBattleResult"))
             self.checks.on_battle_end()
@@ -985,6 +999,7 @@ class AutoplayAgent:
             if self.stage_map is not None:
                 self.report.stages_cleared += 1
             self.stage_map = None
+            self.snapshot_pending = "lobby"
             self.warps_taken.clear()
             self.healed_this_visit = False
             self.shopped_this_visit = False
@@ -1459,13 +1474,22 @@ def play(
     heartbeat: Path | None = None,
     menu_input: str = "real",
     menu_chaos: float = 0.0,
+    branches: int = 0,
+    snapshots: int = 3,
+    branch_frames: int = 3000,
+    freeze_frames: int | None = None,
 ) -> dict[str, object]:
     """Boot (Debug 2 lobby, or a real new game), play and return the report.
     A failure (see FAILURES) also writes a screenshot and state dump under
     artifacts/, and the first anomaly a save state to load and inspect.
     `sram` is the cartridge RAM at power-on (32 KB; zeroes if None), for
-    sram_fuzz.py."""
+    sram_fuzz.py. With `branches`, the run snapshots its key moments and then
+    plays that many random-input branches from up to `snapshots` of each kind
+    (autoplay_branch.py); the report's "branches" holds what they found."""
+    import autoplay_branch  # it imports this module
+
     started = time.monotonic()
+    reel = autoplay_branch.SnapshotReel() if branches else None
     ram_path = None
     if sram is not None:
         ram_path = ARTIFACTS / f"autoplay_seed{seed}_{os.getpid()}.sram"
@@ -1481,7 +1505,9 @@ def play(
             boot(harness, seed, battle_count)
         agent = AutoplayAgent(harness, seed=seed, battle_policy=battle_policy,
                               door_policy=door_policy, stall_frames=stall_frames, log=log,
-                              heartbeat=heartbeat, menu_input=menu_input, menu_chaos=menu_chaos)
+                              heartbeat=heartbeat, menu_input=menu_input, menu_chaos=menu_chaos,
+                              snapshot=None if reel is None else lambda kind, info: reel.offer(
+                                  kind, harness.pyboy.frame_count, info, harness.save_state))
         error = None
         try:
             agent.run(runs=runs, stages=stages, max_frames=max_frames)
@@ -1503,6 +1529,11 @@ def play(
             data["artifacts"] = {"image": str(image), "state": str(state)}
     finally:
         harness.close()
+    if reel is not None:
+        options = {} if freeze_frames is None else {"freeze_frames": freeze_frames}
+        data["branches"] = autoplay_branch.run_snapshots(
+            seed, reel.select(snapshots), branches=branches, frames=branch_frames,
+            heartbeat=heartbeat, **options)
     data["wall_seconds"] = round(time.monotonic() - started, 1)
     return data
 
@@ -1524,6 +1555,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="chance of a stray press at each menu step (0-1)")
     parser.add_argument("--max-frames", type=int, default=1_000_000)
     parser.add_argument("--stall-frames", type=int, default=20_000)
+    parser.add_argument("--branches", type=int, default=0,
+                        help="random-input branches per snapshot (battle, reward, gift, lobby)")
+    parser.add_argument("--snapshots", type=int, default=3, help="snapshots branched per kind")
+    parser.add_argument("--branch-frames", type=int, default=3000)
     parser.add_argument("--report", type=Path, default=None,
                         help="report path (default artifacts/autoplay_seed<N>.json)")
     parser.add_argument("--quiet", action="store_true", help="do not print events as they happen")
@@ -1535,6 +1570,7 @@ def main(argv: list[str] | None = None) -> int:
         stall_frames=args.stall_frames, battle_count=args.battle_count,
         battle_policy=args.battle_policy, door_policy=args.door_policy,
         menu_input=args.menu_input, menu_chaos=args.menu_chaos,
+        branches=args.branches, snapshots=args.snapshots, branch_frames=args.branch_frames,
         log=None if args.quiet else print,
     )
     path = args.report or ARTIFACTS / f"autoplay_seed{args.seed}.json"
@@ -1545,7 +1581,11 @@ def main(argv: list[str] | None = None) -> int:
     for anomaly in data["anomalies"]:
         print(f"  anomaly at frame {anomaly['frame']} on {anomaly['map']}: "
               f"{anomaly['check']}: {anomaly['detail']}")
-    return 1 if data["outcome"] in FAILURES or data["anomalies"] else 0
+    findings = data.get("branches", {}).get("findings", [])
+    for finding in findings:
+        print(f"  branch {finding['key']} ({finding['at']['map']}): {finding['outcome']} "
+              f"{finding['detail']} {len(finding['anomalies'])} anomalies\n    {finding['replay']}")
+    return 1 if data["outcome"] in FAILURES or data["anomalies"] or findings else 0
 
 
 if __name__ == "__main__":

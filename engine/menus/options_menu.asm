@@ -706,9 +706,8 @@ OptCycleValue:
 ; ============================================================================
 ; The CHEAT row (in-game entry only)
 ;
-; A reversible four-way selector over active species groups. Enabling a group
-; grants its permanent unlock; disabling it only changes the SRAM enable byte.
-; Never clear activation events: they also remember completed Palm scenes.
+; A reversible four-way override of active species groups. Never write story
+; events: Palm's scenes and first-clear progression remain earned separately.
 ; Debug 2's UPGRADES row calls these same two routines.
 ;
 ;   index 0  KANTO       %001
@@ -719,8 +718,8 @@ OptCycleValue:
 ; Kanto is never removable: RogueGetActiveGroupMask re-adds it unconditionally
 ; and RogueRollGroupForTier assumes it.
 ;
-; Read the effective mask, including the Room PC's toggles. Writes replace the
-; active mask but only SET unlocks, preserving story history across all choices.
+; Read the effective mask, including the Room PC's toggles. Writes tag the
+; existing SRAM enable byte as an override, bypassing only species-group gates.
 ;
 ; NOT retroactive within a run: wRunGymLineup, wRunElite4 and wRunChampion are
 ; rolled once at run start, so Johto leaders and a Johto Elite Four only appear
@@ -782,6 +781,7 @@ OptCycleCheat:
 	ASSERT BIT_GROUP_WARP == 2
 	add a
 	or 1 << BIT_GROUP_KANTO
+	or GROUP_OVERRIDE_TAG
 	ld b, a
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
@@ -792,24 +792,6 @@ OptCycleCheat:
 	ld [sRogueSpeciesGroupsEnabled], a
 	xor a
 	ld [rRAMG], a ; never leave SRAM enabled across a return
-	ld a, c
-	push af
-	bit 0, c
-	jr z, .johtoDone
-	ld b, FLAG_SET
-	ld hl, wEventFlags
-	ld c, EVENT_JOHTO_ACTIVATED
-	predef FlagActionPredef
-.johtoDone
-	pop af
-	ld c, a
-	bit 1, c
-	jr z, .warpDone
-	ld b, FLAG_SET
-	ld hl, wEventFlags
-	ld c, EVENT_KANTO_TIMEWARP_ACTIVATED
-	predef FlagActionPredef
-.warpDone
 ; The engine redraws this row from hCurrentMenuItem on return, and save.asm
 ; writes that byte on at least one path, so carry it across the save.
 	ldh a, [hCurrentMenuItem]
