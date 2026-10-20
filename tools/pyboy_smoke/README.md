@@ -253,10 +253,19 @@ Each agent step (`autoplay.py`) depends on the mode:
   `LAST_MAP`, `ROGUE_MAP`, unvisited side room. Last resort: talk to everyone.
 - battle and dialogue: press only while the game polls `JoypadLowSensitivity`.
   Moves and switches come from a `benchmark_policies` policy (`--battle-policy`,
-  default `type_switcher`; a Disabled move is treated as out of PP),
-  set on the menu cursor at `MoveSelectionMenu`/`DisplayBattleMenu` as the AI
-  benchmark does. Reward and gift pickers take a random offer, then NO THANKS
-  if the menu reopens (Debug 2's party and box are full).
+  default `type_switcher`; a Disabled move is treated as out of PP). Reward and
+  gift pickers take a random offer, then NO THANKS if the menu reopens (Debug
+  2's party and box are full). With `--menu-input real` (the default) each
+  choice is a goal: while that menu waits, the agent presses directions until
+  its cursor (`hCurrentMenuItem`; the battle menu's column from
+  `wTopMenuItemX`) is on the target, then A, so the menus' own cursor code
+  runs. A cursor that cannot reach its target in 24 presses is a `menu`
+  anomaly, and a text wait that starts inside a menu's redraw (directions do
+  nothing until A/B) is answered and reported as `menu_text_wait`.
+  `--menu-input cursor` writes the cursor byte at the menu's hook instead, as
+  the AI benchmark does. `--menu-chaos P` adds a stray press (a direction, or
+  B to back out of the move menu) at each menu step with chance P; the goal
+  is re-read every press, so play still converges.
 - busy: walking, scripted movement and fades; wait.
 
 Hidden sprites come from `IsObjectHidden`'s own answer, hooked at

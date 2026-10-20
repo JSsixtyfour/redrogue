@@ -66,6 +66,7 @@ def run_seed(seed: int, options: dict[str, object]) -> dict[str, object]:
         "map": finish.get("map"),
         "position": finish.get("position"),
         "anomalies": data["anomalies"],
+        "menus": data["menus"],
         "report": str(path),
     }
 
@@ -177,6 +178,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--battle-policy", default="type_switcher",
                         choices=autoplay.benchmark_policies.POLICIES)
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
+    parser.add_argument("--menu-input", default="real", choices=autoplay.MENU_INPUTS)
+    parser.add_argument("--menu-chaos", type=float, default=0.0,
+                        help="chance of a stray press at each menu step (0-1)")
     parser.add_argument("--timeout", type=float, default=900,
                         help="seconds before a seed counts as hung and is killed")
     args = parser.parse_args(argv)
@@ -189,6 +193,8 @@ def main(argv: list[str] | None = None) -> int:
         "max_frames": args.max_frames,
         "stall_frames": args.stall_frames,
         "battle_policy": args.battle_policy,
+        "menu_input": args.menu_input,
+        "menu_chaos": args.menu_chaos,
     }
     rows = []
     for row in run_all(seeds, options, max(1, args.jobs), args.timeout):
@@ -207,16 +213,26 @@ def main(argv: list[str] | None = None) -> int:
         outcomes[row["outcome"]] = outcomes.get(row["outcome"], 0) + 1
     failures = [row for row in rows if row["outcome"] in autoplay.FAILURES or row["anomalies"]]
     balance = run_statistics([run for row in rows for run in row["run_records"]])
+    menus: dict[str, dict[str, int]] = {}
+    for row in rows:
+        for kind, counts in row.get("menus", {}).items():
+            total = menus.setdefault(kind, {})
+            for key, value in counts.items():
+                total[key] = total.get(key, 0) + value
     anomalies: dict[str, int] = {}
     for row in rows:
         for anomaly in row["anomalies"]:
             key = f"{anomaly['check']}: {anomaly['detail']}"
             anomalies[key] = anomalies.get(key, 0) + 1
-    summary = {"options": options, "outcomes": outcomes, "balance": balance,
+    summary = {"options": options, "outcomes": outcomes, "balance": balance, "menus": menus,
                "anomalies": dict(sorted(anomalies.items(), key=lambda item: -item[1])), "runs": rows}
     path = autoplay.ARTIFACTS / "autoplay_summary.json"
     path.write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
     print_statistics(balance)
+    if menus:
+        print("  menus answered with presses: " + ", ".join(
+            f"{kind} {c['choices']} ({c['moves']} cursor moves, {c['stray']} stray)"
+            for kind, c in sorted(menus.items())))
     print(f"\n{len(rows)} seeds: " + ", ".join(f"{n} {k}" for k, n in sorted(outcomes.items()))
           + f", {sum(bool(row['anomalies']) for row in rows)} with anomalies -> {path}")
     for finding, seeds_with_it in list(summary["anomalies"].items())[:12]:
