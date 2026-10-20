@@ -5,6 +5,19 @@ A Pokémon Red Rogue is a roguelike built on the [Pret Pokémon Red Disassembly]
 ## Gameplay
 Players select one of three randomized Pokémon with different rarity classes as a reward for conquering the trainers in a "route." They will then proceed to face tougher challenges in the eight randomized gyms as they seek to collect badges to defeat the Elite 4. Player will face minibosses, procedurally generated wild areas and bosses, and gift giver characters. In-between battles players will visit the "Lobby" to heal up, trade Pokémon, buy items, strategize, and much more. Define your team, take risks, and prepare for battle, because if you lose you start from the beginning! Don't worry if you fall, upgrade your key items and head out for the Champion again!
 
+Pokemon & Items are award based on a rarity system
+Poke Ball - Red - Common and least value
+Great Ball - Blue - Uncommon and decent value
+Ultra Ball - Black - Rare and high value
+Master Ball - Purple - Very Rare and highest value
+
+## Recommended Playing Methods
+- Windows: BGB https://bgb.bircd.org/
+- Apple/iOS: SameBoy https://sameboy.github.io/downloads/
+- Android: Pizza Boy C https://play.google.com/store/apps/details?id=it.dbtecno.pizzaboy
+- Real Hardware: Everdrive https://krikzz.com/
+  - Pokemon Red Rogue works on Game Boy, Super Game Boy, and Game Boy Color. However, for the best playing experience it is recommend that you play on Game Boy Color. Otherwise, various features will be excluded from the game and you may experience some minor slowdown.
+
 ## Features
 - Enhanced Colors
 - 60 FPS
@@ -137,6 +150,9 @@ Players select one of three randomized Pokémon with different rarity classes as
 #### Creator:
 - MementoMartha
    - Post GSC Species Data
+   - Sprites for Various Regional Forms, Eeveelutions, and other Pokemon
+#### Sprite Artist
+- Albatross
    - Sprites for Various Regional Forms, Eeveelutions, and other Pokemon
 ### Credits For Red++:
 #### Creator:
