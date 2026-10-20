@@ -12,6 +12,7 @@
     const_export PC_TRADENERD
     const_export PC_MOVETUTOR
 	const_export PC_RENTAL_OFFICIAL
+	const_export PC_KEY_SWAP_ATTENDANT
 
 
 IndigoPlateauLobby_Object:
@@ -26,7 +27,7 @@ IndigoPlateauLobby_Object:
 	warp_event  10,  0, ROGUE_MAP, 1
 
 	def_bg_events
-	; Text IDs 13/14 follow the twelve service NPCs. Keep door 2 last:
+	; Text IDs 14/15 follow the thirteen service NPCs. Keep door 2 last:
 	; the lobby script reduces wNumSigns to one while that exit is a wall.
 	bg_event  9,  0, TEXT_PC_DOOR1_SIGN
 	bg_event 11,  0, TEXT_PC_DOOR2_SIGN
@@ -47,5 +48,8 @@ IndigoPlateauLobby_Object:
 	object_event  0,  2, SPRITE_LOBBY_MOVE_TUTOR, STAY, DOWN, TEXT_PC_MOVE_TUTOR                      ; Move Tutor (Stadium, Special Nintendo Events, Tradebacks)
 
 	object_event 7, 1, SPRITE_LOBBY_RENTAL_OFFICIAL, STAY, DOWN, TEXT_PC_RENTAL_OFFICIAL
+	; E,8 beside the PC. Reuses the already-loaded clerk sheet; visibility is
+	; derived by IsObjectHidden from the same guard as personal storage access.
+	object_event $e, 8, SPRITE_CLERK, STAY, DOWN, TEXT_PC_KEY_SWAP_ATTENDANT
 
 	def_warps_to INDIGO_PLATEAU_LOBBY

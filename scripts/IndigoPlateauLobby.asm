@@ -55,6 +55,7 @@ IndigoPlateauLobby_Script:
 	call PCClerksSetup
 	rfarcall PCWitchSetup
 	rfarcall PCPsychicSetup    ; after SelectAndPatchLobbyExit: reads wRogueMap; also rolls salesman/trader/tutor
+	farcall LobbyKeySwapAnnounce
 
 .normal
 	; Door 2's baked-in notepad is absent when its block is a wall. Refresh on
@@ -97,8 +98,22 @@ IndigoPlateauLobby_TextPointers:
     dw_const PCTraderSuperNerdText,                  TEXT_PC_TRADER_SUPER_NERD
     dw_const PCMoveTutorText,                        TEXT_PC_MOVE_TUTOR
 	dw_const IndigoPlateauLobbyLinkReceptionistText, TEXT_PC_RENTAL_OFFICIAL
+	dw_const LobbyKeySwapAttendantText,             TEXT_PC_KEY_SWAP_ATTENDANT
 	dw_const LobbyDoor1SignText,                     TEXT_PC_DOOR1_SIGN
 	dw_const LobbyDoor2SignText,                     TEXT_PC_DOOR2_SIGN
+	dw_const LobbyKeySwapAnnouncementText,          TEXT_LOBBY_KEY_SWAP_ANNOUNCEMENT
+	EXPORT TEXT_LOBBY_KEY_SWAP_ANNOUNCEMENT
+
+LobbyKeySwapAttendantText:
+	text_asm
+	push bc
+	farcall LobbyKeySwapTalk
+	pop bc
+	jp TextScriptEnd
+
+LobbyKeySwapAnnouncementText:
+	text_far _LobbyKeySwapAnnouncementText
+	text_end
 
 LobbyDoor1SignText:
 	text_asm

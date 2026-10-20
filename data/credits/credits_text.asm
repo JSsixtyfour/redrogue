@@ -100,6 +100,7 @@ CreditsTextPointers:
 	dw CredRRRainbowMP
 	dw CredRRKEP
 	dw CredRRMemento
+	dw CredRRAlbatross
 	dw CredRRRedPP
 	dw CredRRLuna
 	dw CredRRPolished
@@ -313,6 +314,7 @@ CredRRExYellow:       credits_string "EXTREME YELLOW"
 CredRRRainbowMP:      credits_string "RAINBOWMETALPIGEON"
 CredRRKEP:            credits_string "KANTO EXPANSION PAK"
 CredRRMemento:        credits_string "MEMENTOMARTHA"
+CredRRAlbatross:      credits_string "ALBATROSS"
 CredRRRedPP:          credits_string "RED++"
 CredRRLuna:           credits_string "JUSTREGULARLUNA"
 CredRRPolished:       credits_string "POLISHED CRYSTAL"

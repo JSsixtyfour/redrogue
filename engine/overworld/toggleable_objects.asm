@@ -100,6 +100,14 @@ IsObjectHidden:
 	ldh a, [hCurrentSpriteOffset]
 	swap a
 	ld b, a                         ; b = sprite slot number
+	cp PC_KEY_SWAP_ATTENDANT
+	jr nz, .ordinarySlot
+	ldh a, [hCurMap]
+	cp INDIGO_PLATEAU_LOBBY
+	jr nz, .ordinarySlot
+	farjp LobbyKeySwapObjectHidden
+.ordinarySlot
+	ld a, b
 	cp 1
 	jr z, .checkMaybeRoguePG
 	cp 2

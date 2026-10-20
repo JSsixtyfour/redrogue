@@ -26,14 +26,14 @@ class LobbyPoseLayoutTests(unittest.TestCase):
             for line in self.objects.splitlines()
             if line.strip().startswith("object_event ")
         ]
-        self.assertEqual(len(actors), 12)
+        self.assertEqual(len(actors), 13)
         for actor in actors:
             picture, movement = actor[2].strip(), actor[3].strip()
             expected = "WALK" if picture == "SPRITE_MIDDLE_AGED_MAN" else "STAY"
             self.assertEqual(movement, expected, picture)
 
     def test_clerks_keep_their_full_directional_sheet(self):
-        self.assertEqual(self.objects.count("SPRITE_CLERK"), 2)
+        self.assertEqual(self.objects.count("SPRITE_CLERK"), 3)
         self.assertNotIn("SPRITE_LOBBY_CLERK", self.objects)
 
     def test_two_fixed_south_services_use_the_four_tile_slots(self):

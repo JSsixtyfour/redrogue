@@ -1,8 +1,7 @@
 PlayerPC::
-	; Personal storage and cartridge changes are available only in the Dorm.
-	ldh a, [hCurMap]
-	cp SILPH_CO_DORM
-	ret nz
+	call PlayerPCAllowed
+	and a
+	ret z
 	ld hl, wStatusFlags5
 	set BIT_NO_TEXT_DELAY, [hl]
 	ld a, ITEM_NAME
@@ -535,3 +534,99 @@ PrismShowGrantDestination::
 .stored
 	text "Sent to Dorm PC."
 	prompt
+
+; Personal storage is permanent in the Dorm and temporary at three lobby
+; arrivals. All callers, including direct PC text scripts, use this guard.
+PlayerPCAllowed::
+	ldh a, [hCurMap]
+	cp SILPH_CO_DORM
+	jr z, LobbyKeySwapOpen.open
+	; fall through
+
+; A = 1/NZ when open, 0/Z otherwise. No new saved state: the source map is
+; already save-backed and WarpFound2 replaces it on every departure/return.
+; Thus even returning from the next gym before fighting cannot reopen access.
+LobbyKeySwapOpen::
+	ldh a, [hCurMap]
+	cp INDIGO_PLATEAU_LOBBY
+	jr nz, .closed
+	ld a, [wWarpedFromWhichMap]
+	cp REWARD_ROOM
+	jr z, .pair
+	cp VICTORY_ROAD_1F
+	jr nz, .closed
+	ld a, [wObtainedBadges]
+	cp $ff
+	jr nz, .closed
+	CheckEvent EVENT_VICTORY_ROAD_CLEARED
+	jr z, .closed
+	ld a, [wBattleCount]
+	cp E4_FIRST_BATTLECOUNT
+	jr z, .open
+	jr .closed
+.pair
+	; This also runs inside sprite updates: keep the count in registers,
+	; without overwriting the caller's shared wNumSetBits scratch byte.
+	ld a, [wObtainedBadges]
+	ld c, a
+	ld b, 0
+.countBadges
+	srl c
+	jr nc, .nextBadge
+	inc b
+.nextBadge
+	ld a, c
+	and a
+	jr nz, .countBadges
+	ld a, b
+	cp PAIR_BADGES_A
+	jr z, .firstPair
+	cp PAIR_BADGES_B
+	jr nz, .closed
+	ld a, [wBattleCount]
+	cp PAIR_BADGES_B * ROUND_BATTLES + FIRST_GYM_STEP
+	jr z, .open
+	jr .closed
+.firstPair
+	ld a, [wBattleCount]
+	cp PAIR_BADGES_A * ROUND_BATTLES + FIRST_GYM_STEP
+	jr nz, .closed
+.open
+	ld a, 1
+	and a
+	ret
+.closed
+	xor a
+	ret
+
+; Dynamic IsObjectHidden override, like the stage-slot overrides. No global
+; toggle index is added or renumbered, so existing save flags remain intact.
+LobbyKeySwapObjectHidden::
+	call LobbyKeySwapOpen
+	xor 1
+	ldh [hIsToggleableObjectOff], a
+	ret
+
+; Called only from the lobby's fresh-entry block, after stage selection.
+LobbyKeySwapAnnounce::
+	call LobbyKeySwapOpen
+	and a
+	ret z
+	call UpdateSprites
+	ld a, TEXT_LOBBY_KEY_SWAP_ANNOUNCEMENT
+	ldh [hTextID], a
+	jp DisplayTextID
+
+LobbyKeySwapTalk::
+	call LobbyKeySwapOpen
+	and a
+	ret z
+	call SaveScreenTilesToBuffer2
+	jp PlayerPC
+
+_LobbyKeySwapAnnouncementText::
+	text "KEY ITEM SWAP"
+	line "NOW AVAILABLE!"
+	para "See the attendant"
+	line "beside the PC."
+	done

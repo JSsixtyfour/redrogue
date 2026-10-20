@@ -13,6 +13,9 @@
 ; chosen target again before evolving. Carry clear means the player declined
 ; every available branch or the mon has no evolution.
 MistStoneChooseEvolution::
+	xor a
+	ld [wMonDataLocation], a
+	call LoadMonData             ; selected source, not the last menu row
 ; Species Groups Phase 2R: EEVEE is handled separately, and not for convenience.
 ;
 ; The menu below walks the mon's evolution entries and prompts "Evolve into X?"
@@ -78,25 +81,27 @@ MistStoneChooseEvolution::
 	jr z, .noneChosen
 ; A FORM entry carries its target form straight after the type byte (see
 ; EvoEntryTakeForm); take it, and the rest parses as an ordinary entry.
-	ld c, 0                      ; c = this entry's target form
-	cp EVOLVE_LEVEL_FORM
-	jr c, .plainEntry
-	ld c, [hl]
-	inc hl
-	sub EVOLVE_FORM_TYPE_DELTA
-.plainEntry
+	ld b, a
+	call EvoEntryTakeForm
+	ld a, b
 	cp EVOLVE_ITEM
 	jr nz, .skipRequirement
 	inc hl                       ; item id
 .skipRequirement
 	inc hl                       ; minimum level
+	call IsEvolutionTargetAllowed
+	jr nc, .skipTarget
 	ld a, [hli]                  ; target species
 	push hl
 	; Name the target as the form this entry evolves it into: "A-PERSIAN" for
 	; an A-MEOWTH's entry, which names form 1 itself.
 	ld [wNamedObjectIndex], a
 	ld [wFormContextSpecies], a
-	ld a, c
+	ld a, [wEvoNewForm]
+	cp $ff
+	jr nz, .nameForm
+	xor a
+.nameForm
 	ld [wFormContextForm], a
 	call GetMonName
 	ld hl, MistStoneChoiceText
@@ -118,6 +123,9 @@ MistStoneChooseEvolution::
 	ld [wEvoNewSpecies], a
 	scf
 	ret
+.skipTarget
+	inc hl
+	jr .nextEvolution
 .noneChosen
 	and a
 	ret

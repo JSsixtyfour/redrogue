@@ -113,55 +113,9 @@ RedrawPartyMenu_::
 	db "NOT ABLE@"
 .evolutionStoneMenu
 	push hl
-	; this mon's OWN list (its form's block for a form), copied into wEvoDataBuffer
-	ld a, [wLoadedMonCatchRate]
-	and FORM_MASK
-	rlca ; bits 5-6 -> 0..3
-	rlca
-	rlca
-	ld e, a
-	ld a, [wLoadedMonSpecies]
-	ld d, a
-	farcall CopyEvoListForMonFar
-	ld hl, wEvoDataBuffer
+	farcall CanLoadedMonEvolveWithStone
 	ld de, .notAbleToEvolveText
-; loop through the pokemon's evolution entries
-.checkEvolutionsLoop
-	ld a, [hli]
-	and a ; reached terminator?
-	jr z, .placeEvolutionStoneString ; if so, place the "NOT ABLE" string
-	ld b, a
-	ld a, [wEvoStoneItemID]
-	cp MIST_STONE
-	ld a, b
-	jr z, .mistStoneAble
-	; a FORM entry carries its target form after the type byte: skip it and parse
-	; the rest as an ordinary entry (see EvoEntryTakeForm)
-	cp EVOLVE_LEVEL_FORM
-	jr c, .plainEntry
-	inc hl
-	sub EVOLVE_FORM_TYPE_DELTA
-.plainEntry
-	inc hl
-	inc hl
-	cp EVOLVE_ITEM
-	jr nz, .checkEvolutionsLoop
-; if it's a stone evolution entry
-	dec hl
-	dec hl
-	ld a, [hl]
-	inc hl
-	inc hl
-	inc hl
-	ld b, a ; the entry's stone; a form's own list names the stone it needs
-	ld a, [wEvoStoneItemID]
-	cp b ; does the player's stone match?
-	ld de, .notAbleToEvolveText ; ld keeps flags
-	jr nz, .checkEvolutionsLoop
-; if it does match
-	ld de, .ableToEvolveText
-	jr .placeEvolutionStoneString
-.mistStoneAble
+	jr nc, .placeEvolutionStoneString
 	ld de, .ableToEvolveText
 .placeEvolutionStoneString
 	ld bc, 20 + 9 ; down 1 row and right 9 columns

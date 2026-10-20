@@ -128,7 +128,7 @@ Evolution_PartyMonLoop: ; loop over party mons
 	jr z, .checkItemEvo
 	ld a, [wForceEvolution]
 	and a
-	jp nz, Evolution_PartyMonLoop
+	jp nz, .nextEvoEntry1 ; a later entry may use the selected stone
 	ld a, b
 	cp EVOLVE_LEVEL
 	jr z, .checkLevel
@@ -173,26 +173,10 @@ Evolution_PartyMonLoop: ; loop over party mons
 ; rather than per species keeps split evolutions independent: with Johto off
 ; and Warp on, Scyther still reaches Kleavor even though Scizor is blocked.
 ;
-; The check is a farcall (RogueIsSpeciesEvolutionAllowed is in the rarity bank),
-; which destroys a/b/c/h/l - so the level goes on the stack and hl is saved
-; around it. `pop hl` does not touch flags, so the callee's carry survives to
-; the branch below; the later `pop af` is only reached after that branch.
+; The shared helper checks both the species and a form-setting entry. It
+; preserves the table cursor, but farcalls destroy a/b/c, so save the level.
 	push af                      ; mon level, consumed just below
-	push hl                      ; evo-table cursor
-	ld e, [hl]                   ; target species - in e, NOT a: Bankswitch's
-	                             ; first instruction overwrites a, so an `a`
-	                             ; input cannot survive a farcall
-	farcall RogueIsSpeciesEvolutionAllowedFar
-	pop hl
-	jr nc, .evoBlocked
-; The species check above cannot see eeveelution FORMS: Espeon is JOLTEON form
-; 1, and JOLTEON is Kanto, so Leaf/Moon Stones made Leafeon/Sylveon in a
-; Kanto-only run. A form-setting stone evolution also asks the roller's form
-; gate (IsFormAllowed), so the two can never disagree.
-	push hl
-	ld c, [hl]                   ; target species
-	call IsEvoStoneFormAllowed
-	pop hl                       ; pop does not disturb flags
+	call IsEvolutionTargetAllowed
 	jr c, .evoGroupActive
 .evoBlocked
 	pop af                       ; discard the saved level, keep the stack even
@@ -1117,6 +1101,93 @@ GetEvoListForMon::
 
 NoEvolutionsList:
 	db 0
+
+; The same target gate for actual evolution, stone-menu labels and Mist offers.
+; IN: hl = target species byte, wEvoNewForm = parsed entry form, wLoadedMon
+;     = source mon, wEvoStoneItemID = stone (0 for level/trade).
+; OUT: carry SET = allowed. PRESERVES hl; clobbers af, bc, de.
+IsEvolutionTargetAllowed:
+	push hl
+	ld e, [hl]                  ; only de carries inputs across farcall
+	farcall RogueIsSpeciesEvolutionAllowedFar
+	pop hl
+	ret nc
+	push hl
+	ld c, [hl]
+	call IsEvoStoneFormAllowed
+	pop hl
+	ret
+
+; Stone-menu eligibility for the mon already loaded by RedrawPartyMenu_.
+; Uses the real parser and target gates, including form lists and minimum level.
+; Mist ignores method/level requirements, but never species-group restrictions.
+; OUT: carry SET = ABLE. Clobbers af, bc, de, hl, wEvoNewForm.
+CanLoadedMonEvolveWithStone::
+	ld de, wLoadedMon
+	farcall IsFusionMon
+	jr nz, .notAble
+	farcall GetSpecialFormCaps
+	bit SF_NO_EVOLVE, e
+	jr nz, .notAble
+	ld a, [wLoadedMonCatchRate]
+	and FORM_MASK
+	rlca
+	rlca
+	rlca
+	ld e, a
+	ld a, [wLoadedMonSpecies]
+	ld d, a
+	call GetEvoListForMon
+.nextEntry
+	ld a, [hli]
+	and a
+	ret z                       ; terminator also clears carry
+	ld b, a
+	call EvoEntryTakeForm
+	ld a, [wEvoStoneItemID]
+	cp MIST_STONE
+	jr z, .mist
+	ld a, b
+	cp EVOLVE_ITEM
+	jr nz, .skipLevelAndTarget
+	ld a, [wEvoStoneItemID]
+	cp [hl]
+	inc hl                      ; minimum level
+	jr nz, .skipLevelAndTarget
+	ld a, [wLoadedMonLevel]
+	cp [hl]
+	inc hl                      ; target species
+	jr c, .skipTarget
+	call IsEvolutionTargetAllowed
+	ret c
+	jr .skipTarget
+.mist
+	ld a, b
+	cp EVOLVE_ITEM
+	jr nz, .mistLevel
+; Eevee's plain item entries set forms through the stone table. Ask about the
+; entry's real stone temporarily so locked Leafeon etc. cannot pass as Kanto.
+	ld a, [hli]
+	ld [wEvoStoneItemID], a
+	inc hl
+	call IsEvolutionTargetAllowed
+	ld a, MIST_STONE
+	ld [wEvoStoneItemID], a
+	ret c
+	jr .skipTarget
+.mistLevel
+	inc hl
+	call IsEvolutionTargetAllowed
+	ret c
+	jr .skipTarget
+.skipLevelAndTarget
+	inc hl
+.skipTarget
+	inc hl
+	jr .nextEntry
+.notAble
+	and a
+	ret
 
 ; GetEvoListForMon for readers in OTHER banks, which cannot follow its in-bank
 ; pointer: copies the (d, e) mon's list into wEvoDataBuffer.
