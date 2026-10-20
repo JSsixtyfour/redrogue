@@ -45,9 +45,9 @@ RogueItemUseDoorDice::
 	and %11111100
 	or b
 	ld [wDiceCharges], a
-; SelectAndPatchLobbyExit patches THIS map's warp entries at fixed
-; coordinates (11,7)/(11,8) - calling it from any other map would corrupt
-; that map's warp table, which is exactly why the map gate above runs first.
+; SelectAndPatchLobbyExit rerolls the lobby's door state (wLobbyDoor1/2StageMap,
+; which the top ROGUE_MAP doors read when taken), so the map gate above runs
+; first: rerolling anywhere else would change doors the player is not facing.
 ;
 ; RESOLVED 2026-09-16: like the normal lobby-entry path (IndigoPlateauLobby_Script,
 ; which farcalls ProcPreloadAssignedWildArea right after its own SelectAndPatchLobbyExit),
