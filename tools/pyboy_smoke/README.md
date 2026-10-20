@@ -194,12 +194,49 @@ lost.
 
 A seed ends `champion` or `blackout` (one run; a game result, not a
 failure), `completed` (`--runs N` or `--stages N` reached), or fails: `stalled` (no game
-progress for `--stall-frames`, a softlock suspect), `frame_limit`, or `error`.
+progress for `--stall-frames`, a softlock suspect), `crashed` (below),
+`hung` (killed after `--timeout` seconds, default 900), `frame_limit`, or `error`.
 Each seed writes `artifacts/autoplay_seed<N>.json`: outcome, stages, an event
-log (doors, maps, battles, reward and gift picks, `no_path`), and the last 200
-inputs. Failed runs also get a screenshot and state dump, and
+log (doors, maps, battles, reward and gift picks, `no_path`), anomalies, and
+the last 200 inputs. Failed runs also get a screenshot and state dump, and
 `artifacts/autoplay_summary.json` has a row per seed. The target fails if any
-run failed. A full run is about 250,000 frames, roughly 25 seconds.
+run failed or reported an anomaly. A full run is about 250,000 frames, roughly
+25 seconds.
+
+### Bug detectors
+
+`autoplay_checks.py` rides along on every run and looks for bugs that do not
+stop play:
+
+- Data checks, at the first overworld frame after a map change or a battle:
+  the party (count, species list, species, level, HP, moves: none, invalid,
+  gaps, duplicates, PP over max, nicknames), the item pockets, money, the map
+  and its warp destinations. At each battle menu: both active mons; once per
+  trainer battle, the trainer's whole party. A finding is an `anomaly` event,
+  the run goes on, and the first one saves `autoplay_seed<N>_anomaly.state`.
+- Crashes end the run `crashed`: a jump to the `rst $38` vector ($FF padding,
+  NULL, garbage), code running outside ROM, or SP outside the stack (the VBlank
+  copies that borrow SP excepted). The report names the site, the stack and
+  their labels. The overworld loop must also poll at one stack depth.
+- An illegal opcode makes PyBoy spin inside one `tick()`, out of Python's
+  reach, so `run_autoplay.py` runs each seed in its own process and kills it
+  at `--timeout` as `hung`, reporting the bot's last heartbeat (every 1000
+  steps) instead.
+
+`sram_fuzz.py` hunts reads of save RAM the game never wrote, the one memory
+Init does not clear. It plays a seed with SRAM zeroed (twice: the runs must be
+deterministic), all $FF and random, and every run must match event for event.
+`--bisect` narrows a diverging fill down to the SRAM bytes that change play and
+names them from the .sym:
+
+```sh
+make sram_fuzz                                  # seeds 1-4, Debug 2
+make sram_fuzz SRAM_FUZZ_ARGS='--seeds 1-8 --new-game --runs 2 --bisect'
+```
+
+Random fills keep `@` out of `sPlayerName`: one there makes the title menu find
+a "save", fail its checksum and report the file destroyed, which is vanilla's
+handling and would shift every later frame.
 
 Runs are deterministic for a ROM and seed: the seed is applied just before the
 lobby rolls its first doors, so rerunning a seed reproduces its report.
@@ -216,10 +253,19 @@ Each agent step (`autoplay.py`) depends on the mode:
   `LAST_MAP`, `ROGUE_MAP`, unvisited side room. Last resort: talk to everyone.
 - battle and dialogue: press only while the game polls `JoypadLowSensitivity`.
   Moves and switches come from a `benchmark_policies` policy (`--battle-policy`,
-  default `type_switcher`; a Disabled move is treated as out of PP),
-  set on the menu cursor at `MoveSelectionMenu`/`DisplayBattleMenu` as the AI
-  benchmark does. Reward and gift pickers take a random offer, then NO THANKS
-  if the menu reopens (Debug 2's party and box are full).
+  default `type_switcher`; a Disabled move is treated as out of PP). Reward and
+  gift pickers take a random offer, then NO THANKS if the menu reopens (Debug
+  2's party and box are full). With `--menu-input real` (the default) each
+  choice is a goal: while that menu waits, the agent presses directions until
+  its cursor (`hCurrentMenuItem`; the battle menu's column from
+  `wTopMenuItemX`) is on the target, then A, so the menus' own cursor code
+  runs. A cursor that cannot reach its target in 24 presses is a `menu`
+  anomaly, and a text wait that starts inside a menu's redraw (directions do
+  nothing until A/B) is answered and reported as `menu_text_wait`.
+  `--menu-input cursor` writes the cursor byte at the menu's hook instead, as
+  the AI benchmark does. `--menu-chaos P` adds a stray press (a direction, or
+  B to back out of the move menu) at each menu step with chance P; the goal
+  is re-read every press, so play still converges.
 - busy: walking, scripted movement and fades; wait.
 
 Hidden sprites come from `IsObjectHidden`'s own answer, hooked at

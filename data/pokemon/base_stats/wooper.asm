@@ -10,16 +10,15 @@
 	INCBIN "gfx/pokemon/front/wooper.dim" ; sprite dimensions
 	dw WooperPicFront, WooperPicBack
 
-	db WATER_GUN, TAIL_WHIP, NO_MOVE, NO_MOVE ; level 1 learnset
+	db BUBBLE, TAIL_WHIP, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
-	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
+	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    STRENGTH,     SURF, \
 	     DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     BLIZZARD,     \
-	     HYPER_BEAM,   PAY_DAY,      SUBMISSION,   COUNTER,      SEISMIC_TOSS, \
+	     HYPER_BEAM,   PAY_DAY,      EARTHQUAKE, ROCK_SLIDE,	FLASH,         \ 
 	     RAGE,         DIG,          MIMIC,        DOUBLE_TEAM,  BIDE,         \
-	     SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE,   SURF,         \
-	     STRENGTH,     LIGHT_SCREEN
+	     SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE        \
 	; end
 
 	db BANK(WooperPicFront) ; pic bank

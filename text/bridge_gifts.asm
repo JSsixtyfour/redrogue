@@ -9,15 +9,13 @@ _CaptainGift9Desc::
 	done
 
 _FossilGift8Desc::
-	text "One #MON: SPEED"
-	line "and evade rise"
-	cont "but ATTACK falls"
+	text "One #MON: SPEED,"
+	line "evade up; ATK down"
 	done
 
 _FossilGift9Desc::
 	text "One #MON: HP and"
-	line "ATTACK rise but"
-	cont "SPEED falls"
+	line "ATK up, SPEED down"
 	done
 
 _FanClubGift6Desc::
@@ -106,9 +104,8 @@ _TrashedGift6Desc::
 	done
 
 _TrashedGift7Desc::
-	text "One #MON gains"
-	line "50% DEFENSE but"
-	cont "no status moves"
+	text "One #MON DEF+50%"
+	line "but no status moves"
 	done
 
 _TrashedGift8Desc::
@@ -155,9 +152,8 @@ _IgaGift5Desc::
 	done
 
 _IgaGift6Desc::
-	text "One #MON deals"
-	line "30% more damage"
-	cont "but loses HP"
+	text "One #MON: +30%"
+	line "damage, loses HP"
 	done
 
 _IgaGift7Desc::

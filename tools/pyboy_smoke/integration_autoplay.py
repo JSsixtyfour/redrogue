@@ -21,6 +21,7 @@ class AutoplayIntegrationTest(unittest.TestCase):
         self.assertEqual(data["stages_cleared"], 3, summary)
         self.assertGreaterEqual(data["battles_won"], 4, summary)
         self.assertEqual(data["blackouts"], 0, summary)
+        self.assertEqual(data["anomalies"], [], summary)
 
     def test_new_game_plays_into_a_second_run(self) -> None:
         """From power-on: title screen, NEW GAME, naming, the intro tour, a
@@ -30,6 +31,7 @@ class AutoplayIntegrationTest(unittest.TestCase):
         summary = {key: data[key] for key in ("outcome", "detail", "runs")}
         self.assertEqual(data["outcome"], "completed", summary)
         self.assertEqual(len(data["runs"]), 2, summary)
+        self.assertEqual(data["anomalies"], [], summary)
         for run in data["runs"]:
             self.assertIn(run["outcome"], ("champion", "blackout"), summary)
             self.assertGreaterEqual(run["battles_won"], 1, summary)

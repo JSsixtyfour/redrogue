@@ -14,12 +14,13 @@
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
-	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
-	     DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     BLIZZARD,     \
-	     HYPER_BEAM,   SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         \
-	     THUNDERBOLT,  THUNDER,      EARTHQUAKE,   FISSURE,      MIMIC,        \
-	     DOUBLE_TEAM,  BIDE,         FIRE_BLAST,   SKULL_BASH,   REST,         \
-	     ROCK_SLIDE,   SUBSTITUTE,   SURF,         STRENGTH
+	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    LIGHT_SCREEN, REFLECT, \
+	     DOUBLE_EDGE,  SWIFT, 		 DREAM_EATER,  THUNDER_WAVE, FLASH     \
+	     HYPER_BEAM,    RAGE,        PSYWAVE,      STRENGTH,     PSYCHIC_M \
+	     THUNDERBOLT,  THUNDER,      MIMIC,        SUBSTITUTE,   STRENGTH, \
+	     DOUBLE_TEAM,  BIDE,         SKULL_BASH,   REST,         EARTHQUAKE,         \
+		 DIG
+	       
 	; end
 
 	db BANK(GirafarigPicFront) ; pic bank

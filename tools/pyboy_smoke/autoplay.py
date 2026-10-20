@@ -19,7 +19,9 @@ Each `step()` looks at the current mode and does one thing:
 A run ends `completed` (the requested number of stages), `champion` (the Hall
 of Fame), `blackout` (the party fainted: a legitimate loss), or as a failure:
 `stalled` (no game progress for --stall-frames, a softlock suspect),
-`frame_limit`, or `error`. Failures write a screenshot and state dump.
+`crashed` (autoplay_checks caught a crash), `frame_limit`, or `error`.
+Failures write a screenshot and state dump. autoplay_checks also reports
+invalid game data it finds along the way as `anomaly` events.
 
 Runs are deterministic for a given ROM and seed. The seed is applied just
 before the lobby rolls its first doors, so it decides the whole run: rerun the
@@ -32,13 +34,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import sys
 import time
 import traceback
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
+import autoplay_checks
 import autoplay_world as world
 import benchmark_policies
 from harness import RedRogueHarness
@@ -47,7 +52,10 @@ from source_constants import parse_map_constants, parse_rgbds_constants, parse_t
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = Path(__file__).resolve().parent / "artifacts"
 
-FAILURES = ("stalled", "frame_limit", "error")
+# crashed: autoplay_checks caught a crash; hung: the emulator stopped returning
+# (run_autoplay.py's per-seed timeout, an illegal opcode).
+FAILURES = ("stalled", "frame_limit", "error", "crashed", "hung")
+HEARTBEAT_STEPS = 1000
 
 PARTYMON_STRUCT_LENGTH = 0x2C
 MON_HP, MON_MAXHP = 0x01, 0x22  # party_struct offsets
@@ -81,11 +89,28 @@ REVIVES = ("REVIVE", "MAX_REVIVE")
 HEAL_BELOW = 0.5  # heal a mon below this fraction of its max HP
 START_MENU_ITEM = 2  # POKEDEX, POKEMON, ITEM, ...
 PLAN_STEP_LIMIT = 80  # menu presses before a plan is abandoned
+MENU_NAV_LIMIT = 24  # presses for a menu cursor to reach its target
+STALEMATE_TURNS = 6  # battle menus in a row with neither side's HP changing
+MENU_INPUTS = ("real", "cursor")
 
 # Menu routine -> event kind. Each has a .menuLoop local label ahead of its
 # HandleMenuInput, lists its offers at 0..wMaxMenuItem-1 and NO THANKS at
 # wMaxMenuItem.
 CHOICE_MENUS = {"RogueRewardMenu": "reward", "BridgeGiftMenu": "gift"}
+
+
+@dataclass
+class MenuGoal:
+    """A menu choice to make with real presses: while `waiting()` (the menu
+    is the one polling), press `next_button()` until it answers None (the
+    cursor is on the target), then `button`."""
+    kind: str
+    waiting: Callable[[], bool]
+    target: int
+    next_button: Callable[[], str | None]
+    button: str = "a"
+    chaos: tuple[str, ...] = ("up", "down")  # stray presses --menu-chaos may add
+    presses: int = 0
 
 
 @dataclass
@@ -141,9 +166,14 @@ class AutoplayAgent:
         offer_policy: str = "random",
         stall_frames: int = 20_000,
         log=None,
+        heartbeat: Path | None = None,
+        menu_input: str = "real",
+        menu_chaos: float = 0.0,
     ):
         if battle_policy not in benchmark_policies.POLICIES:
             raise ValueError(f"unknown battle policy {battle_policy!r}")
+        if menu_input not in MENU_INPUTS:
+            raise ValueError(f"unknown menu input {menu_input!r}")
         self.h = harness
         self.mem = harness.pyboy.memory
         self.rng = random.Random(seed)
@@ -152,6 +182,13 @@ class AutoplayAgent:
         self.offer_policy = offer_policy
         self.stall_frames = stall_frames
         self.log = log or (lambda message: None)
+        self.heartbeat = heartbeat
+        # real: menus are answered with presses that move the cursor, as a
+        # player does; cursor: the cursor byte is written at the menu's hook
+        # (faster, but the menus' own cursor code never runs).
+        self.menu_input = menu_input
+        self.menu_chaos = menu_chaos
+        self.chaos_rng = random.Random(f"chaos/{seed}")  # keeps self.rng's draws unchanged
         self.report = RunReport(seed=seed)
 
         self.rules = benchmark_policies.load_rules(ROOT)
@@ -195,7 +232,12 @@ class AutoplayAgent:
         self.quantity_waiting = False
         self.party_menu_waiting = False
         self.party_menu_action = "b"
+        self.menu_goal: MenuGoal | None = None
+        self.menu_stats: dict[str, dict[str, int]] = {}  # kind -> choices made, presses, stray presses
+        self.menu_frame = -1  # HandleMenuInput last entered
+        self.text_wait_frame = -1  # WaitForTextScrollButtonPress last entered
         self.switch_target: int | None = None
+        self.stalemate: tuple[tuple[int, int], int] = ((-1, -1), 0)  # (both HPs, turns unchanged)
         self.switched_last_turn = False
         self.choice_showings: dict[str, int] = {}
         self.choice_pending: str | None = None
@@ -229,6 +271,7 @@ class AutoplayAgent:
         self.last_progress_frame = 0
         self.progress_marker: tuple = ()
         self._install_hooks()
+        self.checks = autoplay_checks.GameChecks(self, ROOT)
 
     # ------------------------------------------------------------------ hooks
 
@@ -238,6 +281,12 @@ class AutoplayAgent:
         h.register_hook("JoypadLowSensitivity", self._on_wait)
         h.register_hook("TextCommandProcessor", self._on_text)
         h.register_hook("HandleMenuInput", self._on_menu)
+        # The party menu waits in HandleMenuInput_ (its caller is not wanted:
+        # HandlePartyMenuInput's own hook marks that menu).
+        h.register_hook("HandleMenuInput_",
+                        lambda _c: setattr(self, "menu_frame", self.h.pyboy.frame_count))
+        h.register_hook("WaitForTextScrollButtonPress",
+                        lambda _c: setattr(self, "text_wait_frame", self.h.pyboy.frame_count))
         h.register_hook("DisplayNamingScreen", self._on_naming_screen)
         h.register_hook("DisplayNamingScreen.submitNickname",
                         lambda _c: setattr(self, "naming_screen", False))
@@ -283,7 +332,7 @@ class AutoplayAgent:
         self.last_ui_frame = self.h.pyboy.frame_count
 
     def _on_menu(self, _context) -> None:
-        self.last_ui_frame = self.h.pyboy.frame_count
+        self.last_ui_frame = self.menu_frame = self.h.pyboy.frame_count
         sp = self.h.pyboy.register_file.SP
         ret = self.mem[sp] | self.mem[sp + 1] << 8
         bank = 0 if ret < 0x4000 else self.h.read8("hLoadedROMBank")
@@ -299,10 +348,45 @@ class AutoplayAgent:
             target = benchmark_policies.choose_switch(
                 self.rules, benchmark_policies.read_state(self.h),
                 self.battle_policy, self.switched_last_turn)
+        if target is None:
+            target = self.break_stalemate()
         self.switched_last_turn = target is not None
         self.switch_target = target
         # FIGHT, or PKMN when the policy wants to switch.
-        self.h.write8("wBattleAndStartSavedMenuItem", 0 if target is None else 2)
+        choice = 0 if target is None else 2
+        if self.menu_input == "cursor":
+            self.h.write8("wBattleAndStartSavedMenuItem", choice)
+        else:
+            self.set_menu_goal("battle_menu", ("DisplayBattleMenu",), choice,
+                               self._battle_menu_button, chaos=("up", "down", "left", "right"))
+
+    def break_stalemate(self) -> int | None:
+        """A turn after turn where no one's HP moves (two Dittos that only
+        know Transform: each Transform restores 5 PP, so neither runs out and
+        Struggles) never ends on its own. Switch to another healthy mon, as a
+        player would."""
+        hps = (self.word("wBattleMonHP"), self.word("wEnemyMonHP"))
+        same, turns = self.stalemate
+        turns = turns + 1 if hps == same else 0
+        self.stalemate = (hps, turns)
+        if turns < STALEMATE_TURNS:
+            return None
+        current = self.h.read8("wPlayerMonNumber")
+        alive = [slot for slot, (hp, _) in enumerate(self.party_hp()) if hp and slot != current]
+        self.event("stalemate", turns=turns, player=self.species_names.get(self.h.read8("wBattleMonSpecies")),
+                   enemy=self.species_names.get(self.h.read8("wEnemyMonSpecies")), switch_to=alive[:1])
+        self.stalemate = (hps, 0)
+        return alive[0] if alive else None
+
+    def _battle_menu_button(self) -> str | None:
+        """Two one-column menus side by side: FIGHT/ITEM (0, 1) and PKMN/RUN
+        (2, 3). The column is the menu's cursor X ($9, or $1 in the Safari
+        Zone, on the left), the row hCurrentMenuItem."""
+        column = int(self.h.read8("wTopMenuItemX") >= 0xD)
+        want_column, want_row = divmod(self.menu_goal.target, 2)
+        if column != want_column:
+            return "right" if want_column else "left"
+        return self.line_button(self.h.read8("hCurrentMenuItem"), want_row)
 
     def _on_move_menu(self, _context) -> None:
         # Open the move menu with the cursor on the policy's move, as
@@ -330,7 +414,86 @@ class AutoplayAgent:
         else:
             policy = "type_aware" if self.battle_policy == "best_power" else self.battle_policy
             slot = benchmark_policies.choose_slot(self.rules, state, policy)
-        self.h.write8("wPlayerMoveListIndex", slot)
+        if self.menu_input == "cursor":
+            self.h.write8("wPlayerMoveListIndex", slot)
+        else:
+            # hCurrentMenuItem is the slot + 1 while the menu waits. B backs
+            # out to the battle menu, which decides again.
+            self.set_menu_goal("move_menu", ("SelectMenuItem",), slot,
+                               lambda: self.line_button(self.h.read8("hCurrentMenuItem") - 1,
+                                                        self.menu_goal.target),
+                               chaos=("up", "down", "b"))
+
+    def menu_context(self, goal: MenuGoal) -> dict[str, object]:
+        if goal.kind == "gift":
+            return {"gifts": self.h.read_bytes("wGift1", 3)}
+        return {}
+
+    @staticmethod
+    def line_button(position: int, target: int) -> str | None:
+        if position == target:
+            return None
+        return "down" if position < target else "up"
+
+    def set_menu_goal(self, kind: str, callers: tuple[str, ...] | Callable[[], bool], target: int,
+                      next_button: Callable[[], str | None], *, button: str = "a",
+                      chaos: tuple[str, ...] = ("up", "down")) -> None:
+        """`callers`: the menu's HandleMenuInput call sites, or a predicate
+        saying the menu is waiting."""
+        waiting = callers if callable(callers) else (
+            lambda: self.last_menu_caller.startswith(callers))
+        self.menu_goal = MenuGoal(kind, waiting, target, next_button, button, chaos)
+
+    def party_menu_goal(self, target: int, button: str) -> None:
+        if self.menu_input == "cursor":
+            if button == "a":
+                self.h.write8("wPartyAndBillsPCSavedMenuItem", target)
+            self.party_menu_action = button
+            return
+        # The party menu waits in HandleMenuInput_, which the menu hook does
+        # not see: HandlePartyMenuInput's own hook says it is up.
+        self.set_menu_goal("party_menu", lambda: self.party_menu_waiting, target,
+                           lambda: None if button == "b" else self.line_button(
+                               self.h.read8("hCurrentMenuItem"), self.menu_goal.target),
+                           button=button)
+
+    def menu_goal_step(self) -> bool:
+        """One press toward the pending menu goal, if its menu is the one
+        waiting now. False when it is not (text before the menu, say)."""
+        goal = self.menu_goal
+        if goal is None or not goal.waiting():
+            return False
+        stats = self.menu_stats.setdefault(goal.kind, {"choices": 0, "moves": 0, "stray": 0})
+        if self.text_wait_frame > self.menu_frame:
+            # The menu's own redraw waits for A/B (a three-line description
+            # in a two-line box scrolls with `cont`): directions do nothing
+            # until it is answered, and the A only scrolls, so a player has to
+            # press twice to choose. Answer it as they would.
+            cursor = self.h.read8("hCurrentMenuItem")
+            self.checks.anomaly("menu_text_wait", f"{goal.kind}: item {cursor} waits for a button "
+                                "while the menu draws it", **self.menu_context(goal))
+            self.text_wait_frame = -1
+            self.press("a")
+            return True
+        if self.menu_chaos and self.chaos_rng.random() < self.menu_chaos:
+            stats["stray"] += 1
+            self.press(self.chaos_rng.choice(goal.chaos))
+            return True
+        button = goal.next_button()
+        if button is not None and goal.presses >= MENU_NAV_LIMIT:
+            self.checks.anomaly("menu", f"{goal.kind}: cursor never reached {goal.target} "
+                                f"in {MENU_NAV_LIMIT} presses (at {self.h.read8('hCurrentMenuItem')})")
+            button = None
+        if button is None:
+            stats["choices"] += 1
+            self.menu_goal = None
+            self.party_menu_waiting = False
+            self.press(goal.button)
+        else:
+            stats["moves"] += 1
+            goal.presses += 1
+            self.press(button)
+        return True
 
     def has_body_armor(self) -> bool:
         owner = self.h.read8("wPlayerMonNumber") + 1  # owners are party slot + 1
@@ -343,24 +506,20 @@ class AutoplayAgent:
             # Only reached through an interaction the agent chose: the heal
             # plan's target, else (a gift that teaches a move, a trade offer)
             # the lead.
-            target = self.plan["slot"] if self.plan else 0
-            self.h.write8("wPartyAndBillsPCSavedMenuItem", target)
-            self.party_menu_action = "a"
+            self.party_menu_goal(self.plan["slot"] if self.plan else 0, "a")
             return
         forced = bool(self.h.read8("wForcePlayerToChooseMon"))
         current = self.h.read8("wPlayerMonNumber")
         alive = [slot for slot, (hp, _) in enumerate(self.party_hp()) if hp and slot != current]
         fainted = not (self.h.read8("wBattleMonHP") or self.h.read8("wBattleMonHP", 1))
         if not forced and self.switch_target is not None:
-            self.h.write8("wPartyAndBillsPCSavedMenuItem", self.switch_target)
+            self.party_menu_goal(self.switch_target, "a")
             self.switch_target = None
-            self.party_menu_action = "a"
         elif alive and (forced or fainted):
-            self.h.write8("wPartyAndBillsPCSavedMenuItem", alive[0])
-            self.party_menu_action = "a"
+            self.party_menu_goal(alive[0], "a")
         else:
             # The optional "switch after a KO" prompt: keep the current mon.
-            self.party_menu_action = "b"
+            self.party_menu_goal(current, "b")
 
     def _on_choice_menu(self, kind: str) -> None:
         self.choice_showings[kind] = self.choice_showings.get(kind, 0) + 1
@@ -383,7 +542,13 @@ class AutoplayAgent:
             choice = self.rng.randrange(no_thanks)
         else:
             choice = 0
-        self.h.write8("hCurrentMenuItem", choice)
+        if self.menu_input == "cursor":
+            self.h.write8("hCurrentMenuItem", choice)
+        else:
+            entry = next(name for name, menu_kind in CHOICE_MENUS.items() if menu_kind == kind)
+            self.set_menu_goal(kind, (entry,), choice,
+                               lambda: self.line_button(self.h.read8("hCurrentMenuItem"),
+                                                        self.menu_goal.target))
         self.event(kind, choice=choice, offers=no_thanks, showing=showing)
 
     def _on_victory(self, _context) -> None:
@@ -683,13 +848,33 @@ class AutoplayAgent:
                                 f"in mode {self.mode()}")
                     break
                 self.step()
+                self.checks.after_step()
+                if self.checks.crash is not None:
+                    crash = self.checks.crash
+                    where = crash.get("from") or crash.get("pc") or {}
+                    self.finish("crashed", f"{crash['kind']}: {crash['detail']}"
+                                + (f" at {where.get('label') or where.get('address')}" if where else ""))
+                    break
                 self.note_progress()
+                if self.heartbeat is not None and self.report.steps % HEARTBEAT_STEPS == 0:
+                    self.write_heartbeat()
         except Exception as error:  # an agent bug or a game crash: keep the report
             self.finish("error", f"{type(error).__name__}: {error}")
             raise
         finally:
             self.report.frames = self.h.pyboy.frame_count - start_frame
         return self.report
+
+    def write_heartbeat(self) -> None:
+        """Where the run is, for run_autoplay.py to report if the emulator
+        hangs (the worker can then no longer report anything itself)."""
+        self.heartbeat.write_text(json.dumps({
+            "frame": self.h.pyboy.frame_count,
+            "map": self.map_name(self.h.read8("hCurMap")),
+            "position": self.position(),
+            "mode": self.mode(),
+            "last_events": self.report.events[-12:],
+        }) + "\n", encoding="utf-8")
 
     def end_run(self, outcome: str, detail: str) -> None:
         start = self.run_start
@@ -759,6 +944,7 @@ class AutoplayAgent:
         if mode != "busy":
             self.busy_since = None
         if mode == "overworld":
+            self.checks.before_overworld_step()
             self.overworld_step()
         elif mode == "busy":
             self.busy_step()
@@ -777,6 +963,7 @@ class AutoplayAgent:
             self.event("battle_start", opponent=self.last_opponent)
         elif self.in_battle and not in_battle:
             self.event("battle_end", result=self.h.read8("wBattleResult"))
+            self.checks.on_battle_end()
         self.in_battle = in_battle
 
     def on_map_change(self, current_map: int) -> None:
@@ -788,6 +975,7 @@ class AutoplayAgent:
         if self.arrival_map != current_map:
             self.arrival = None
         self.event("enter_map", map=self.map_name(current_map))
+        self.checks.on_map_change()
         if current_map == self.hall_of_fame:
             self.end_run("champion", "entered the Hall of Fame")
         elif self.pending_loss and current_map == self.dorm:
@@ -823,7 +1011,9 @@ class AutoplayAgent:
             else:
                 self.h.tick(2)
             return
-        if self.party_menu_waiting:
+        if self.menu_goal_step():
+            pass
+        elif self.party_menu_waiting and self.menu_input == "cursor":
             self.party_menu_waiting = False
             self.press(self.party_menu_action)
         elif self.plan is not None:
@@ -1265,19 +1455,33 @@ def play(
     battle_policy: str = "type_switcher",
     door_policy: str = "random",
     log=None,
+    sram: bytes | None = None,
+    heartbeat: Path | None = None,
+    menu_input: str = "real",
+    menu_chaos: float = 0.0,
 ) -> dict[str, object]:
     """Boot (Debug 2 lobby, or a real new game), play and return the report.
     A failure (see FAILURES) also writes a screenshot and state dump under
-    artifacts/."""
+    artifacts/, and the first anomaly a save state to load and inspect.
+    `sram` is the cartridge RAM at power-on (32 KB; zeroes if None), for
+    sram_fuzz.py."""
     started = time.monotonic()
-    harness = RedRogueHarness(ROOT, ARTIFACTS)
+    ram_path = None
+    if sram is not None:
+        ram_path = ARTIFACTS / f"autoplay_seed{seed}_{os.getpid()}.sram"
+        ram_path.parent.mkdir(parents=True, exist_ok=True)
+        ram_path.write_bytes(sram)
+    harness = RedRogueHarness(ROOT, ARTIFACTS, ram_path=ram_path)
+    if ram_path is not None:
+        ram_path.unlink()
     try:
         if new_game:
             boot_new_game(harness, seed)
         else:
             boot(harness, seed, battle_count)
         agent = AutoplayAgent(harness, seed=seed, battle_policy=battle_policy,
-                              door_policy=door_policy, stall_frames=stall_frames, log=log)
+                              door_policy=door_policy, stall_frames=stall_frames, log=log,
+                              heartbeat=heartbeat, menu_input=menu_input, menu_chaos=menu_chaos)
         error = None
         try:
             agent.run(runs=runs, stages=stages, max_frames=max_frames)
@@ -1287,6 +1491,13 @@ def play(
         data = report.to_json()
         if error:
             data["traceback"] = error
+        data["anomalies"] = agent.checks.anomalies
+        data["menus"] = agent.menu_stats
+        data["checks"] = agent.checks.summary()
+        if agent.checks.first_anomaly_state is not None:
+            path = ARTIFACTS / f"autoplay_seed{seed}_anomaly.state"
+            path.write_bytes(agent.checks.first_anomaly_state)
+            data["anomaly_state"] = str(path)
         if report.failed:
             image, state = harness.write_failure_artifacts(f"autoplay_seed{seed}")
             data["artifacts"] = {"image": str(image), "state": str(state)}
@@ -1307,6 +1518,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--battle-count", type=int, default=1, help="Debug 2 starting battle count")
     parser.add_argument("--battle-policy", default="type_switcher", choices=benchmark_policies.POLICIES)
     parser.add_argument("--door-policy", default="random", choices=("random", "first"))
+    parser.add_argument("--menu-input", default="real", choices=MENU_INPUTS,
+                        help="real: move menu cursors with presses; cursor: write the cursor byte")
+    parser.add_argument("--menu-chaos", type=float, default=0.0,
+                        help="chance of a stray press at each menu step (0-1)")
     parser.add_argument("--max-frames", type=int, default=1_000_000)
     parser.add_argument("--stall-frames", type=int, default=20_000)
     parser.add_argument("--report", type=Path, default=None,
@@ -1319,6 +1534,7 @@ def main(argv: list[str] | None = None) -> int:
         new_game=args.new_game,
         stall_frames=args.stall_frames, battle_count=args.battle_count,
         battle_policy=args.battle_policy, door_policy=args.door_policy,
+        menu_input=args.menu_input, menu_chaos=args.menu_chaos,
         log=None if args.quiet else print,
     )
     path = args.report or ARTIFACTS / f"autoplay_seed{args.seed}.json"
@@ -1326,7 +1542,10 @@ def main(argv: list[str] | None = None) -> int:
     path.write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")
     print(f"{data['outcome']}: {data['detail']} (stages={data['stages_cleared']} "
           f"won={data['battles_won']} frames={data['frames']}) -> {path}")
-    return 1 if data["outcome"] in FAILURES else 0
+    for anomaly in data["anomalies"]:
+        print(f"  anomaly at frame {anomaly['frame']} on {anomaly['map']}: "
+              f"{anomaly['check']}: {anomaly['detail']}")
+    return 1 if data["outcome"] in FAILURES or data["anomalies"] else 0
 
 
 if __name__ == "__main__":

@@ -1030,7 +1030,16 @@ StageEventInjectStolenMon::
 	pop de
 	ld bc, BOXMON_STRUCT_LENGTH
 	add hl, bc                    ; hl = this slot's Level byte
+	; CalcStats takes the level from wCurEnemyLevel, not the struct, and here
+	; that still holds the Psychic's own level: without this the stolen mon
+	; kept its HP but got stats for that level (a level 90 Exeggutor at
+	; 294/58 HP, found by the autoplay data checks 2026-10-20). The give-back
+	; sets it too. Restored after: ReadTrainer's prize money loop reads it
+	; next and must still see the Psychic's level.
+	ld a, [wCurEnemyLevel]
+	push af
 	ld a, d
+	ld [wCurEnemyLevel], a
 	ld [hli], a                   ; hl now = MON_STATS
 	ld d, h
 	ld e, l
@@ -1047,6 +1056,8 @@ StageEventInjectStolenMon::
 	pop bc
 	pop de
 	call CalcStats
+	pop af
+	ld [wCurEnemyLevel], a
 	ret
 
 ; ============================================================

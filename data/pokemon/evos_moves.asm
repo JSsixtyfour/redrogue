@@ -3856,22 +3856,22 @@ SunkernEvosMoves:
 	db EVOLVE_ITEM, SUN_STONE, 1, SUNFLORA
 	db 0
 ; Learnset - ABSORB already granted at level 1; SUNNY_DAY/SYNTHESIS/
-; GIGA_DRAIN do not exist in Gen 1, filled with METRONOME.
+; GIGA_DRAIN do not exist in Gen 1
 	db 4, GROWTH
-	db 10, MEGA_DRAIN
-	db 19, METRONOME ; was SUNNY_DAY
-	db 31, METRONOME ; was SYNTHESIS
-	db 46, METRONOME ; was GIGA_DRAIN
+	db 10, LEECH_SEED
+	db 19, MEGA_DRAIN ; was SUNNY_DAY
+	db 31, RECOVER ; was SYNTHESIS
+	db 46, SOLARBEAM ; was GIGA_DRAIN
 	db 0
 
 SunfloraEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - ABSORB/POUND already granted at level 1; SUNNY_DAY does not
-; exist in Gen 1, filled with METRONOME.
+; exist in Gen 1.
 	db 4, GROWTH
 	db 10, RAZOR_LEAF
-	db 19, METRONOME ; was SUNNY_DAY
+	db 19, MEGA_DRAIN ; was SUNNY_DAY
 	db 31, PETAL_DANCE
 	db 46, SOLARBEAM
 	db 0
@@ -4058,26 +4058,27 @@ WooperEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 20, QUAGSIRE
 	db 0
-; Learnset - WATER_GUN/TAIL_WHIP already granted at level 1; RAIN_DANCE
-; does not exist in Gen 1, filled with METRONOME.
-	db 11, SLAM
+; Learnset - WATER_GUN/TAIL_WHIP already granted at level 1; RAIN_DANCE does not exist in Gen 1.
+	db 9, WATER_GUN
+    db 16, SLAM
 	db 21, AMNESIA
-	db 31, EARTHQUAKE
-	db 41, METRONOME ; was RAIN_DANCE
-	db 51, MIST
-	db 51, HAZE
+	db 31, WATERFALL
+	db 41, EARTHQUAKE ; was RAIN_DANCE
+	db 45, MIST
+	db 46, HAZE
 	db 0
 
 QuagsireEvosMoves:
-; Evolutionsf
+; Evolutions
 	db 0
 ; Learnset - WATER_GUN/TAIL_WHIP already granted at level 1
-	db 11, SLAM
+	db 10, WATERGUN
+    db 17, SLAM
 	db 23, AMNESIA
-	db 35, EARTHQUAKE
-	db 47, METRONOME ; was RAIN_DANCE
-	db 59, MIST
-	db 59, HAZE
+	db 33, WATERFALL
+	db 45, EARTHQUAKE ; was RAIN_DANCE
+	db 48, MIST
+	db 50, HAZE
 	db 0
 
 MurkrowEvosMoves:
@@ -4132,12 +4133,13 @@ GirafarigEvosMoves:
 	db 0
 ; Learnset - TACKLE/GROWL/CONFUSION/STOMP already granted at level 1;
 ; BATON_PASS/CRUNCH do not exist in Gen 1, filled with METRONOME.
-	db 7, CONFUSION
-	db 13, STOMP
-	db 20, AGILITY
+	db 11, BITE
+	db 15, CONFUSION
+    db 18, STOMP
+	db 20, HEADBUTT
 	db 30, METRONOME ; was BATON_PASS
 	db 41, PSYBEAM
-	db 54, METRONOME ; was CRUNCH
+	db 54, PSYCHIC ; was CRUNCH
 	db 0
 
 PinecoEvosMoves:
@@ -4177,14 +4179,16 @@ ForretressEvosMoves:
 DunsparceEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - RAGE already granted at level 1; SPITE/PURSUIT do not exist in
-; Gen 1, filled with METRONOME.
+; Learnset - SPITE/PURSUIT do not exist
 	db 5, DEFENSE_CURL
+    db 9, RAGE
+    db 11, POUND
 	db 13, GLARE
-	db 18, METRONOME ; was SPITE
-	db 26, METRONOME ; was PURSUIT
+	db 18, DISABLE ; was SPITE
+	db 26, BITE ; was PURSUIT
 	db 30, SCREECH
 	db 38, TAKE_DOWN
+    db 45, DOUBLE_EDGE
 	db 0
 
 GligarEvosMoves:
@@ -4226,12 +4230,12 @@ SnubbullEvosMoves:
 ; METRONOME, see base_stats/snubbull.asm); CHARM does not exist in Gen 1 and
 ; ROAR is Gen 1's useless WHIRLWIND, both filled with METRONOME.
 	db 4, TAIL_WHIP
-	db 8, METRONOME ; was CHARM
+	db 8, GROWL ; was CHARM
+    db 11, LICK
 	db 13, BITE
-	db 19, LICK
-	db 26, METRONOME ; was ROAR
-	db 34, RAGE
-	db 43, TAKE_DOWN
+	db 24, HEADBUTT ; was ROAR
+	db 30, RAGE
+	db 40, TAKE_DOWN
 	db 0
 
 GranbullEvosMoves:
@@ -4240,12 +4244,12 @@ GranbullEvosMoves:
 ; Learnset - TACKLE/TAIL_WHIP already granted at level 1 (SCARY_FACE's slot
 ; is METRONOME, see base_stats/granbull.asm)
 	db 4, TAIL_WHIP
-	db 8, METRONOME ; was CHARM
+	db 8, GROWL ; was CHARM
+    db 11, LICK
 	db 13, BITE
-	db 19, LICK
-	db 28, METRONOME ; was ROAR
-	db 38, RAGE
-	db 51, TAKE_DOWN
+	db 26, HEADBUTT ; was ROAR
+	db 33, RAGE
+	db 44, TAKE_DOWN
 	db 0
 
 QwilfishEvosMoves:

@@ -10,16 +10,16 @@
 	INCBIN "gfx/pokemon/front/dunsparce.dim" ; sprite dimensions
 	dw DunsparcePicFront, DunsparcePicBack
 
-	db RAGE, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset
+	db TACKLE, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
-	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
-	     DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     BLIZZARD,     \
+	tmhm DIG,          FLAMETHROWER, TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
+	     DOUBLE_EDGE,  THUNDER_WAVE, REFLECT,      METRONOME,    SOLARBEAM,    \
 	     HYPER_BEAM,   SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         \
 	     THUNDERBOLT,  THUNDER,      EARTHQUAKE,   FISSURE,      MIMIC,        \
 	     DOUBLE_TEAM,  BIDE,         FIRE_BLAST,   SKULL_BASH,   REST,         \
-	     ROCK_SLIDE,   SUBSTITUTE,   SURF,         STRENGTH
+	     ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     DREAM_EATER   \
 	; end
 
 	db BANK(DunsparcePicFront) ; pic bank

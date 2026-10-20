@@ -17,7 +17,8 @@
 	tmhm RAZOR_WIND,   SUBSTITUTE,   TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  \
 	     HYPER_BEAM,   RAGE,         ROCK_SLIDE,   MIMIC,        DOUBLE_TEAM,  \
 	     BIDE,         SWIFT,        REST,         EARTHQUAKE,   FISSURE,      \
-	     DIG,          FLY,          SWORDS_DANCE,
+	     DIG,          FLY,          SWORDS_DANCE, CUT,          STRENGTH,     \
+         COUNTER
 	; end
 
 	db BANK(GligarPicFront) ; pic bank
