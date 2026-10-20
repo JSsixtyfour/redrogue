@@ -17,6 +17,7 @@ symbol file's hash.
 from __future__ import annotations
 
 import hashlib
+import os
 import json
 import sys
 from functools import lru_cache
@@ -67,17 +68,36 @@ def _walk(rom: str) -> list[dict[str, object]]:
 SCHEMA = 2  # bump when a label record gains a field, so stale caches are rebuilt
 
 
+def _cache_path(rom: str) -> Path:
+    digest = hashlib.sha256((ROOT / f"{rom}.sym").read_bytes()).hexdigest()[:16]
+    return ARTIFACTS / f"coverage_inventory_{rom}_v{SCHEMA}_{digest}.json"
+
+
+def cached_code_labels(rom: str = ROM) -> list[dict[str, object]] | None:
+    """code_labels() if it is already built for this .sym, else None (no walk)."""
+    try:
+        return json.loads(_cache_path(rom).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
 def code_labels(rom: str = ROM) -> list[dict[str, object]]:
-    sym = (ROOT / f"{rom}.sym").read_bytes()
-    digest = hashlib.sha256(sym).hexdigest()[:16]
-    cache = ARTIFACTS / f"coverage_inventory_{rom}_v{SCHEMA}_{digest}.json"
-    if cache.exists():
+    cache = _cache_path(rom)
+    try:
         return json.loads(cache.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        pass  # not built yet for this .sym (or a partial write): build it
     labels = _walk(rom)
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
+    # Batch workers can build this at once after a rebuild: write to a private
+    # name and rename (atomic), and remove only caches for other symbol files,
+    # never the one another worker may be about to read.
+    temporary = cache.with_suffix(f".{os.getpid()}.tmp")
+    temporary.write_text(json.dumps(labels) + "\n", encoding="utf-8")
+    os.replace(temporary, cache)
     for old in ARTIFACTS.glob(f"coverage_inventory_{rom}_*.json"):
-        old.unlink()
-    cache.write_text(json.dumps(labels) + "\n", encoding="utf-8")
+        if old != cache:
+            old.unlink(missing_ok=True)
     return labels
 
 

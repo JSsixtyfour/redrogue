@@ -131,6 +131,10 @@ DEF NUM_BADGES EQU const_value
 	const BIT_STATUS_SCREEN_CYCLE     ; 2 - Up/Down may switch party mon
 	const BIT_STATUS_SCREEN_CYCLED    ; 3 - a wait loop just switched hWhichPokemon
 	const BIT_STATUS_SCREEN_PAGE2     ; 4 - reopen on page 2: page 1 draws unseen, no wait
+	; Start-menu END RUN (RogueStartMenuEndRun) -> OverworldLoopLessDelay. Set and
+	; consumed within one DisplayTextID dispatch. Not wOutOfBattleBlackout: that
+	; byte IS wChosenMenuItem, so any NPC's NO answer read back as END RUN.
+	const BIT_END_RUN_REQUESTED       ; 5
 
 ; wStatusFlags3
 	const_def

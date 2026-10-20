@@ -10,14 +10,15 @@
 	INCBIN "gfx/pokemon/front/remoraid.dim" ; sprite dimensions
 	dw RemoraidPicFront, RemoraidPicBack
 
-	db WATER_GUN, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset
+	db BUBBLE, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset - modeled on Tentacruel (Water)
 	tmhm TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    \
 	     ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         MIMIC,        \
 	     DOUBLE_TEAM,  BIDE,         SKULL_BASH,   REST,         SUBSTITUTE,   \
-	     SURF
+	     SURF,         PSYCHIC_M,    FLAMETHROWER, FIRE_BLAST,   SWIFT,        \ 
+         THUNDER_WAVE
 	; end
 
 	db BANK(RemoraidPicFront) ; pic bank

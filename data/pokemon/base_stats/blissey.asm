@@ -13,16 +13,15 @@
 	db POUND, TAIL_WHIP, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_FAST ; growth rate
 
-	; tm/hm learnset - from tmp/kep/data/pokemon/base_stats/blissey.asm;
-	; TELEPORT is not a valid TM/HM in this project (same class of error as
-	; Slowking's TELEPORT in batch 4), dropped rather than substituted
+	; tm/hm learnset 
 	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
 	     DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     BLIZZARD,     \
 	     HYPER_BEAM,   SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         \
-	     SOLARBEAM,    THUNDERBOLT,  THUNDER,      PSYCHIC_M,    MIMIC,        \
-	     DOUBLE_TEAM,  REFLECT,      BIDE,         METRONOME,    EGG_BOMB,     \
-	     FIRE_BLAST,   SKULL_BASH,   SOFTBOILED,   REST,         THUNDER_WAVE, \
-	     PSYWAVE,      TRI_ATTACK,   SUBSTITUTE,   STRENGTH,     FLASH
+	     SOLARBEAM,    THUNDERBOLT,  THUNDER,      PSYCHIC_M,    LIGHT_SCREEN, \
+	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         METRONOME,    \
+	     EGG_BOMB,     FIRE_BLAST,   SKULL_BASH,   SOFTBOILED,   REST,         \
+	     THUNDER_WAVE, PSYWAVE,      TRI_ATTACK,   SUBSTITUTE,   STRENGTH,     \
+	     FLASH,        FLAMETHROWER
 	; end
 
 	db BANK(BlisseyPicFront) ; pic bank

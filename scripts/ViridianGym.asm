@@ -254,21 +254,13 @@ ViridianGymGiovanniText:
 	call DisableWaitingAfterTextDisplay
 	jr .text_script_end
 .afterBeat
-	; Re-offer the legendary trade if not completed (see CeladonGym). Giovanni
-	; hides himself at the end of this handler, so this is the ONLY re-offer
-	; chance after the immediate post-battle one - fine for a one-shot reward.
+	; Re-offer the legendary trade if not completed (see CeladonGym).
+	; Giovanni stays available for later visits.
 	farcall OfferLegendaryTradeGiovanni
 	ld a, $1
 	ldh [hNoWaitAfterText], a
 	ld hl, .PostBattleAdviceText
 	call PrintText
-	call GBFadeOutToBlack
-	ld a, TOGGLE_VIRIDIAN_GYM_GIOVANNI
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-	call UpdateSprites
-	call Delay3
-	call GBFadeInFromBlack
 	jr .text_script_end
 .beforeBeat
 	ld hl, .PreBattleText

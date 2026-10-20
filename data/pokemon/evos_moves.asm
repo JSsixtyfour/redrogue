@@ -979,6 +979,8 @@ MissingNo1FEvosMoves:
 	db 0
 ; Learnset
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 ChikoritaEvosMoves:
 ; Evolutions
@@ -1514,6 +1516,8 @@ CyndaquilEvosMoves:
     db 46, FIRE_SPIN
     db 50, DOUBLE_EDGE
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 MankeyEvosMoves:
 ; Evolutions
@@ -1607,6 +1611,8 @@ QuilavaEvosMoves:
     db 48, FIRE_SPIN
     db 52, DOUBLE_EDGE
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 TyphlosionEvosMoves:
 ; Evolutions
@@ -1619,6 +1625,8 @@ TyphlosionEvosMoves:
 	db 42, FLAMETHROWER
     db 50, FIRE_SPIN
     db 55, DOUBLE_EDGE
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 TotodileEvosMoves:
@@ -1634,6 +1642,8 @@ TotodileEvosMoves:
 	db 32, SLASH
 	db 43, SCREECH
 	db 50, HYDRO_PUMP
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 FarfetchdEvosMoves:
@@ -1719,6 +1729,8 @@ CroconawEvosMoves:
 	db 45, SCREECH
 	db 52, HYDRO_PUMP
 	db 0
+; Tutoring Learnset - none
+	db 0
     
 
 FeraligatrEvosMoves:
@@ -1732,6 +1744,8 @@ FeraligatrEvosMoves:
 	db 47, SCREECH
 	db 55, HYDRO_PUMP
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 SentretEvosMoves:
 ; Evolutions
@@ -1744,6 +1758,8 @@ SentretEvosMoves:
 	db 25, SLAM
 	db 33, REST
 	db 41, AMNESIA
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 DoduoEvosMoves:
@@ -1862,6 +1878,8 @@ DittoEvosMoves:
 	db 0
 ; Learnset
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 MeowthEvosMoves:
 ; Evolutions
@@ -1911,6 +1929,8 @@ FurretEvosMoves:
 	db 38, REST
 	db 48, AMNESIA
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 HoothootEvosMoves:
 ; Evolutions
@@ -1926,6 +1946,8 @@ HoothootEvosMoves:
 	db 34, CONFUSION
 	db 48, DREAM_EATER
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 NoctowlEvosMoves:
 ; Evolutions
@@ -1940,6 +1962,8 @@ NoctowlEvosMoves:
 	db 30, TAKE_DOWN
 	db 36, CONFUSION
 	db 50, DREAM_EATER
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 VulpixEvosMoves:
@@ -2051,6 +2075,8 @@ LedybaEvosMoves:
 	db 40, AGILITY
 	db 45, DOUBLE_EDGE
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 LedianEvosMoves:
 ; Evolutions
@@ -2067,6 +2093,8 @@ LedianEvosMoves:
 	db 32, SWIFT
 	db 42, AGILITY
 	db 47, DOUBLE_EDGE
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 DratiniEvosMoves:
@@ -2228,6 +2256,8 @@ SpinarakEvosMoves:
 	db 35, SCREECH
 	db 40, AGILITY
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 AriadosEvosMoves:
 ; Evolutions
@@ -2247,6 +2277,8 @@ AriadosEvosMoves:
     db 32, CONFUSE_RAY
 	db 37, SCREECH
 	db 42, AGILITY
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 SandshrewEvosMoves:
@@ -2615,6 +2647,8 @@ WeedleEvosMoves:
 	db 0
 ; Learnset
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 KakunaEvosMoves:
 ; Evolutions
@@ -2622,6 +2656,8 @@ KakunaEvosMoves:
 	db 0
 ; Learnset
 	db 7, HARDEN
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 BeedrillEvosMoves:
@@ -2637,6 +2673,8 @@ BeedrillEvosMoves:
 	db 30, SLUDGE
 	db 35, SWORDS_DANCE
 	db 40, AGILITY
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 CrobatEvosMoves:
@@ -2654,6 +2692,8 @@ CrobatEvosMoves:
     db 40, SCREECH
 	db 47, HAZE
 	db 51, AGILITY
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 DodrioEvosMoves:
@@ -2775,6 +2815,8 @@ ChinchouEvosMoves:
 	db 37, TAKE_DOWN
 	db 41, HYDRO_PUMP
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 LanturnEvosMoves:
 ; Evolutions
@@ -2788,12 +2830,16 @@ LanturnEvosMoves:
 	db 40, TAKE_DOWN
 	db 50, HYDRO_PUMP
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 CaterpieEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 7, METAPOD
 	db 0
 ; Learnset
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 MetapodEvosMoves:
@@ -2802,6 +2848,8 @@ MetapodEvosMoves:
 	db 0
 ; Learnset
 	db 7, HARDEN
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 ButterfreeEvosMoves:
@@ -2817,6 +2865,8 @@ ButterfreeEvosMoves:
 	db 24, GUST
 	db 24, PSYBEAM
 	db 32, PSYCHIC_M
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 MachampEvosMoves:
@@ -2854,6 +2904,8 @@ TogepiEvosMoves:
 	db 31, REFLECT ; was SAFEGUARD
     db 35, LOVELY_KISS
 	db 38, DOUBLE_EDGE
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 GolduckEvosMoves:
@@ -2990,6 +3042,8 @@ TogeticEvosMoves:
     db 35, LOVELY_KISS
 	db 38, DOUBLE_EDGE
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 NatuEvosMoves:
 ; Evolutions
@@ -3002,6 +3056,8 @@ NatuEvosMoves:
 	db 30, PSYBEAM ; was FUTURE_SIGHT
 	db 40, CONFUSE_RAY
 	db 50, PSYCHIC_M
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 MukEvosMoves:
@@ -3036,6 +3092,8 @@ XatuEvosMoves:
 	db 32, PSYBEAM ; was FUTURE_SIGHT
 	db 42, CONFUSE_RAY
 	db 52, PSYCHIC_M
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 KinglerEvosMoves:
@@ -3085,6 +3143,8 @@ MareepEvosMoves:
 	db 30, LIGHT_SCREEN
 	db 37, THUNDER
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 ElectrodeEvosMoves:
 ; Evolutions
@@ -3098,6 +3158,8 @@ ElectrodeEvosMoves:
 	db 35, THUNDERBOLT
 	db 44, EXPLOSION
 	db 50, THUNDER
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 ClefableEvosMoves:
@@ -3184,6 +3246,8 @@ FlaaffyEvosMoves:
 	db 27, CONFUSE_RAY ; was COTTON_SPORE
 	db 36, LIGHT_SCREEN
 	db 45, THUNDER
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 HaunterEvosMoves:
@@ -3362,6 +3426,8 @@ AmpharosEvosMoves:
 	db 40, LIGHT_SCREEN
 	db 50, THUNDER
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 GoldeenEvosMoves:
 ; Evolutions
@@ -3415,6 +3481,8 @@ BellossomEvosMoves:
 	db 17, STUN_SPORE
 	db 19, SLEEP_POWDER
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 MarillEvosMoves:
 ; Evolutions
@@ -3428,6 +3496,8 @@ MarillEvosMoves:
 	db 21, BUBBLEBEAM
 	db 28, DOUBLE_EDGE
 	db 36, HYDRO_PUMP ; was RAIN_DANCE
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 AzumarillEvosMoves:
@@ -3443,6 +3513,8 @@ AzumarillEvosMoves:
 	db 32, DOUBLE_EDGE
 	db 40, HYDRO_PUMP ; was RAIN_DANCE
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 SudowoodoEvosMoves:
 ; Evolutions
@@ -3455,6 +3527,8 @@ SudowoodoEvosMoves:
 	db 37, SWIFT ; was FAINT_ATTACK
 	db 40, SLAM
     db 45, DOUBLE_EDGE
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 PonytaEvosMoves:
@@ -3657,6 +3731,8 @@ PolitoedEvosMoves:
 ; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid.
 ; HYPNOSIS/WATER_GUN/DOUBLESLAP/BODY_SLAM already granted at level 1.
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 MagnemiteEvosMoves:
 ; Evolutions
@@ -3691,6 +3767,8 @@ HoppipEvosMoves:
 	db 20, LEECH_SEED
 	db 30, MEGA_DRAIN
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 SkiploomEvosMoves:
 ; Evolutions
@@ -3705,6 +3783,8 @@ SkiploomEvosMoves:
 	db 17, SLEEP_POWDER
 	db 22, LEECH_SEED
 	db 36, MEGA_DRAIN
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 CharmanderEvosMoves:
@@ -3836,6 +3916,8 @@ JumpluffEvosMoves:
 	db 22, LEECH_SEED
 	db 38, MEGA_DRAIN
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 AipomEvosMoves:
 ; Evolutions
@@ -3850,6 +3932,8 @@ AipomEvosMoves:
 	db 36, SCREECH
 	db 46, AGILITY
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 SunkernEvosMoves:
 ; Evolutions
@@ -3863,6 +3947,8 @@ SunkernEvosMoves:
 	db 31, RECOVER ; was SYNTHESIS
 	db 46, SOLARBEAM ; was GIGA_DRAIN
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 SunfloraEvosMoves:
 ; Evolutions
@@ -3874,6 +3960,8 @@ SunfloraEvosMoves:
 	db 19, MEGA_DRAIN ; was SUNNY_DAY
 	db 31, PETAL_DANCE
 	db 46, SOLARBEAM
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 OddishEvosMoves:
@@ -4001,14 +4089,16 @@ WeavileEvosMoves:
 ; Learnset - Weavile evolves from Sneasel (added in batch 6, see
 ; SneaselEvosMoves for the EVOLVE_ITEM, ICE_STONE wiring). Copied from
 ; Sneasel's learnset; SCRATCH/LEER already granted at level 1; FAINT_ATTACK/
-; BEAT_UP do not exist in Gen 1, replaced with SWIFT/METRONOME.
+; BEAT_UP do not exist in Gen 1, replaced with SWIFT/ICE_PUNCH.
 	db 9, QUICK_ATTACK
 	db 17, SCREECH
 	db 25, SWIFT ; was FAINT_ATTACK
+    db 27, ICE_PUNCH
 	db 33, FURY_SWIPES
 	db 41, AGILITY
 	db 49, SLASH
-	db 57, METRONOME ; was BEAT_UP
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 MamoswineEvosMoves:
@@ -4026,6 +4116,8 @@ MamoswineEvosMoves:
 	db 48, BLIZZARD
     db 52, AMNESIA
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 MismagiusEvosMoves:
 ; Evolutions
@@ -4038,6 +4130,8 @@ MismagiusEvosMoves:
 	db 25, PSYBEAM
 	db 32, LIGHT_SCREEN ; was PAIN_SPLIT
 	db 40, PSYCHIC_M ; was PERISH_SONG
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 YanmaEvosMoves:
@@ -4053,6 +4147,8 @@ YanmaEvosMoves:
 	db 30, SWIFT
 	db 40, SCREECH
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 WooperEvosMoves:
 ; Evolutions
@@ -4067,6 +4163,8 @@ WooperEvosMoves:
 	db 45, MIST
 	db 46, HAZE
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 QuagsireEvosMoves:
 ; Evolutions
@@ -4079,6 +4177,8 @@ QuagsireEvosMoves:
 	db 45, EARTHQUAKE ; was RAIN_DANCE
 	db 48, MIST
 	db 50, HAZE
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 MurkrowEvosMoves:
@@ -4094,6 +4194,8 @@ MurkrowEvosMoves:
 	db 31, SWIFT ; was FAINT_ATTACK
     db 36, CONFUSE_RAY
 	db 41, SCREECH ; was MEAN_LOOK
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 SlowkingEvosMoves:
@@ -4111,6 +4213,8 @@ SlowkingEvosMoves:
 	db 44, AMNESIA
 	db 55, PSYCHIC_M
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 MisdreavusEvosMoves:
 ; Evolutions
@@ -4127,6 +4231,8 @@ MisdreavusEvosMoves:
 	db 32, LIGHT_SCREEN ; was PAIN_SPLIT
 	db 40, PSYCHIC_M ; was PERISH_SONG
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 GirafarigEvosMoves:
 ; Evolutions
@@ -4140,6 +4246,8 @@ GirafarigEvosMoves:
 	db 30, METRONOME ; was BATON_PASS
 	db 41, PSYBEAM
 	db 54, PSYCHIC_M ; was CRUNCH
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 PinecoEvosMoves:
@@ -4159,6 +4267,8 @@ PinecoEvosMoves:
 	db 39, PIN_MISSILE ; was SPIKES
 	db 40, DOUBLE_EDGE
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 ForretressEvosMoves:
 ; Evolutions
@@ -4175,6 +4285,8 @@ ForretressEvosMoves:
 	db 39, PIN_MISSILE ; was SPIKES
 	db 40, DOUBLE_EDGE
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 DunsparceEvosMoves:
 ; Evolutions
@@ -4190,6 +4302,8 @@ DunsparceEvosMoves:
 	db 38, TAKE_DOWN
     db 45, DOUBLE_EDGE
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 GligarEvosMoves:
 ; Evolutions
@@ -4203,6 +4317,8 @@ GligarEvosMoves:
 	db 36, SLASH
 	db 44, SCREECH
 	db 52, GUILLOTINE
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 SteelixEvosMoves:
@@ -4219,6 +4335,8 @@ SteelixEvosMoves:
 	db 37, ROCK_SLIDE
 	db 43, EARTHQUAKE
 	db 48, BIND
+	db 0
+; Tutoring Learnset - none
 	db 0
     
 
@@ -4237,6 +4355,8 @@ SnubbullEvosMoves:
 	db 30, RAGE
 	db 40, TAKE_DOWN
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 GranbullEvosMoves:
 ; Evolutions
@@ -4250,6 +4370,8 @@ GranbullEvosMoves:
 	db 26, HEADBUTT ; was ROAR
 	db 33, RAGE
 	db 44, TAKE_DOWN
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 QwilfishEvosMoves:
@@ -4265,6 +4387,8 @@ QwilfishEvosMoves:
     db 35, SLUDGE
 	db 44, HYDRO_PUMP
     db 48, TOXIC
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 ScizorEvosMoves:
@@ -4282,6 +4406,8 @@ ScizorEvosMoves:
 	db 48, DOUBLE_TEAM
 	db 54, SWORDS_DANCE
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 ShuckleEvosMoves:
 ; Evolutions
@@ -4293,6 +4419,8 @@ ShuckleEvosMoves:
 	db 25, BIDE
 	db 35, REST
     db 40, ROCK_SLIDE
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 HeracrossEvosMoves:
@@ -4311,6 +4439,8 @@ HeracrossEvosMoves:
 	db 44, SUBMISSION ; was REVERSAL
 	db 50, SWORDS_DANCE ; was MEGAHORN
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 SneaselEvosMoves:
 ; Evolutions
@@ -4324,10 +4454,12 @@ SneaselEvosMoves:
 	db 9, QUICK_ATTACK
 	db 17, SCREECH
 	db 25, SWIFT ; was FAINT_ATTACK
+    db 27, ICE_PUNCH
 	db 33, FURY_SWIPES
 	db 41, AGILITY
 	db 49, SLASH
-	db 57, METRONOME ; was BEAT_UP
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 TeddiursaEvosMoves:
@@ -4339,24 +4471,28 @@ TeddiursaEvosMoves:
 	db 8, LICK
 	db 15, FURY_SWIPES
 	db 22, SWIFT ; was FAINT_ATTACK
-	db 29, REST
-	db 36, SLASH
-	db 43, METRONOME ; was SNORE
-	db 50, THRASH
+	db 27, REST
+	db 33, SLASH
+	db 40, BODY_SLAM ; was SNORE
+	db 45, THRASH
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 UrsaringEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - SCRATCH/LEER/LICK/FURY_SWIPES already granted at level 1;
-; FAINT_ATTACK/SNORE do not exist in Gen 1, replaced with SWIFT/METRONOME.
+; FAINT_ATTACK/SNORE do not exist in Gen 1, replaced with SWIFT/BODY_SLAM.
 	db 8, LICK
 	db 15, FURY_SWIPES
 	db 22, SWIFT ; was FAINT_ATTACK
-	db 29, REST
-	db 39, SLASH
-	db 49, METRONOME ; was SNORE
-	db 59, THRASH
+	db 27, REST
+	db 37, SLASH
+	db 45, BODY_SLAM ; was SNORE
+	db 50, THRASH
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 SlugmaEvosMoves:
@@ -4372,6 +4508,8 @@ SlugmaEvosMoves:
 	db 43, ROCK_SLIDE
 	db 50, BODY_SLAM
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 MagcargoEvosMoves:
 ; Evolutions
@@ -4384,6 +4522,8 @@ MagcargoEvosMoves:
 	db 36, FLAMETHROWER
 	db 48, ROCK_SLIDE
 	db 60, BODY_SLAM
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 SwinubEvosMoves:
@@ -4398,6 +4538,8 @@ SwinubEvosMoves:
 	db 37, MIST
 	db 46, BLIZZARD
 	db 50, AMNESIA
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 PiloswineEvosMoves:
@@ -4414,6 +4556,8 @@ PiloswineEvosMoves:
 	db 48, BLIZZARD
     db 52, AMNESIA
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 CorsolaEvosMoves:
 ; Evolutions
@@ -4428,6 +4572,8 @@ CorsolaEvosMoves:
 	db 23, BUBBLEBEAM
 	db 30, SPIKE_CANNON
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 RemoraidEvosMoves:
 ; Evolutions
@@ -4435,13 +4581,15 @@ RemoraidEvosMoves:
 	db 0
 ; Learnset - WATER_GUN already granted at level 1; LOCK_ON does not exist in
 ; Gen 1, filled with METRONOME.
-	db 11, METRONOME ; was LOCK_ON
-	db 22, PSYBEAM
-	db 22, AURORA_BEAM
+    db 11, WATER_GUN
 	db 22, BUBBLEBEAM
-	db 33, FOCUS_ENERGY
-	db 44, ICE_BEAM
-	db 55, HYPER_BEAM
+	db 24, AURORA_BEAM
+    db 26, PSYBEAM
+	db 30, FOCUS_ENERGY
+	db 40, ICE_BEAM
+	db 45, HYPER_BEAM
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 OctilleryEvosMoves:
@@ -4450,13 +4598,16 @@ OctilleryEvosMoves:
 ; Learnset - WATER_GUN already granted at level 1; OCTAZOOKA does not exist
 ; in Gen 1, filled with METRONOME.
 	db 11, CONSTRICT
-	db 22, PSYBEAM
-	db 22, AURORA_BEAM
 	db 22, BUBBLEBEAM
-	db 25, METRONOME ; was OCTAZOOKA
-	db 38, FOCUS_ENERGY
-	db 54, ICE_BEAM
-	db 70, HYPER_BEAM
+	db 24, AURORA_BEAM
+    db 26, PSYBEAM
+	db 25, SMOKESCREEN ; was OCTAZOOKA
+	db 32, FOCUS_ENERGY
+	db 44, ICE_BEAM
+    db 47, HYDRO_PUMP
+	db 50, HYPER_BEAM
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 MantineEvosMoves:
@@ -4469,6 +4620,8 @@ MantineEvosMoves:
 	db 32, AGILITY
 	db 40, WING_ATTACK
 	db 49, CONFUSE_RAY
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 SkarmoryEvosMoves:
@@ -4485,6 +4638,8 @@ SkarmoryEvosMoves:
     db 35, ROCK_SLIDE
 	db 40, SLASH ; was STEEL_WING
     db 45, DRILL_PECK
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 HoundourEvosMoves:
@@ -4503,6 +4658,8 @@ HoundourEvosMoves:
 	db 35, FLAMETHROWER
 	db 43, FIRE_BLAST ; was CRUNCH
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 HoundoomEvosMoves:
 ; Evolutions
@@ -4519,6 +4676,8 @@ HoundoomEvosMoves:
 	db 41, FLAMETHROWER
 	db 47, FIRE_BLAST ; was CRUNCH
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 KingdraEvosMoves:
 ; Evolutions
@@ -4532,6 +4691,8 @@ KingdraEvosMoves:
 	db 36, QUICK_ATTACK
 	db 41, AGILITY
 	db 52, HYDRO_PUMP
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 PhanpyEvosMoves:
@@ -4547,6 +4708,8 @@ PhanpyEvosMoves:
 	db 41, EARTHQUAKE ; was ENDURE
 	db 49, DOUBLE_EDGE
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 DonphanEvosMoves:
 ; Evolutions
@@ -4561,6 +4724,8 @@ DonphanEvosMoves:
 	db 30, SLAM ; was ROLLOUT
 	db 41, EARTHQUAKE ; was ENDURE
 	db 49, DOUBLE_EDGE
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 Porygon2EvosMoves:
@@ -4580,6 +4745,8 @@ Porygon2EvosMoves:
 	db 42, TRI_ATTACK
 	db 45, DEFENSE_CURL
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 StantlerEvosMoves:
 ; Evolutions
@@ -4591,6 +4758,8 @@ StantlerEvosMoves:
 	db 31, SAND_ATTACK
 	db 40, TAKE_DOWN
 	db 49, CONFUSE_RAY
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 HitmontopEvosMoves:
@@ -4604,6 +4773,8 @@ HitmontopEvosMoves:
 	db 48, JUMP_KICK
 	db 53, DOUBLE_KICK
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 MiltankEvosMoves:
 ; Evolutions
@@ -4613,11 +4784,14 @@ MiltankEvosMoves:
 	db 4, GROWL
 	db 8, DEFENSE_CURL
 	db 13, STOMP
-	db 19, METRONOME ; was MILK_DRINK
+	db 19, ROCK_THROW ; was MILK_DRINK
 	db 26, BIDE
-	db 34, METRONOME ; was ROLLOUT
+    db 30, HEADBUTT
+	db 34, SOFTBOILED ; was ROLLOUT
 	db 43, BODY_SLAM
-	db 53, METRONOME ; was HEAL_BELL
+	db 50, JUMP_KICK ; was HEAL_BELL
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 BlisseyEvosMoves:
@@ -4632,6 +4806,8 @@ BlisseyEvosMoves:
 	db 44, DEFENSE_CURL
 	db 48, LIGHT_SCREEN
 	db 54, DOUBLE_EDGE
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 RaikouEvosMoves:
@@ -4648,6 +4824,8 @@ RaikouEvosMoves:
 	db 40, THUNDERBOLT ; was CRUNCH
 	db 50, THUNDER
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 EnteiEvosMoves:
 ; Evolutions
@@ -4660,6 +4838,8 @@ EnteiEvosMoves:
     db 35, SMOKESCREEN
 	db 40, FLAMETHROWER
 	db 50, FIRE_BLAST
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 SuicuneEvosMoves:
@@ -4675,6 +4855,8 @@ SuicuneEvosMoves:
 	db 40, SURF ; was MIRROR_COAT
     db 45, AURORA_BEAM
 	db 50, HYDRO_PUMP
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 LarvitarEvosMoves:
@@ -4693,6 +4875,8 @@ LarvitarEvosMoves:
 	db 45, EARTHQUAKE
 	db 50, HYPER_BEAM
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 PupitarEvosMoves:
 ; Evolutions
@@ -4710,6 +4894,8 @@ PupitarEvosMoves:
 	db 49, EARTHQUAKE
 	db 55, HYPER_BEAM
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 TyranitarEvosMoves:
 ; Evolutions
@@ -4725,6 +4911,8 @@ TyranitarEvosMoves:
 	db 44, STOMP ; was CRUNCH
 	db 49, EARTHQUAKE
 	db 55, HYPER_BEAM
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 
@@ -4745,6 +4933,8 @@ LugiaEvosMoves:
 	db 50, PSYCHIC_M
 	db 55, SKY_ATTACK ; was FUTURE_SIGHT
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 HoOhEvosMoves:
 ; Evolutions
@@ -4762,6 +4952,8 @@ HoOhEvosMoves:
     db 50, FIRE_SPIN
 	db 55, SKY_ATTACK ; was FUTURE_SIGHT
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 CelebiEvosMoves:
 ; Evolutions
@@ -4777,6 +4969,8 @@ CelebiEvosMoves:
     db 45, MEGA_DRAIN
 	db 50, PSYCHIC_M ; was PERISH_SONG
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 AnnihilapeEvosMoves:
 ; Evolutions
@@ -4791,6 +4985,8 @@ AnnihilapeEvosMoves:
 	db 37, SEISMIC_TOSS
 	db 45, SCREECH
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 LickilickyEvosMoves:
 ; Evolutions
@@ -4802,6 +4998,8 @@ LickilickyEvosMoves:
 	db 23, DEFENSE_CURL
 	db 31, SLAM
 	db 39, SCREECH
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 SirfetchdEvosMoves:
@@ -4820,16 +5018,25 @@ SirfetchdEvosMoves:
     db 31, DRILL_PECK
     db 39, AGILITY
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 MagnezoneEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - TACKLE/THUNDERSHOCK/SONICBOOM already granted at level 1;
-; METAL_SOUND/MAGNET_BOMB/IRON_HEAD do not exist in Gen 1, filled with
-; METRONOME.
-	db 31, METRONOME ; was METAL_SOUND
-	db 41, METRONOME ; was MAGNET_BOMB
-	db 50, METRONOME ; was IRON_HEAD
+; METAL_SOUND/MAGNET_BOMB/IRON_HEAD do not exist in Gen 1
+    db 6, THUNDERSHOCK
+	db 11, SUPERSONIC
+	db 16, SONICBOOM
+	db 21, THUNDER_WAVE
+	db 24, SWIFT
+	db 27, REFLECT
+	db 33, THUNDERBOLT
+	db 43, SCREECH
+	db 50, THUNDER
+    db 52, HEADBUTT ; was IRON_HEAD
+	db 0
 	db 0
 
 TangrowthEvosMoves:
@@ -4844,6 +5051,8 @@ TangrowthEvosMoves:
 	db 31, STUN_SPORE
 	db 34, SLEEP_POWDER
 	db 40, SLAM
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 RhyperiorEvosMoves:
@@ -4861,6 +5070,8 @@ RhyperiorEvosMoves:
 	db 49, TAKE_DOWN
 	db 55, HORN_DRILL
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 KleavorEvosMoves:
 ; Evolutions
@@ -4874,6 +5085,8 @@ KleavorEvosMoves:
 	db 35, SWORDS_DANCE
 	db 42, AGILITY
 	db 50, ROCK_SLIDE
+	db 0
+; Tutoring Learnset - none
 	db 0
 
 MrRimeEvosMoves:
@@ -4890,6 +5103,8 @@ MrRimeEvosMoves:
 	db 44, PSYCHIC_M
 	db 50, MIST ; was FEINT_ATTACK
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 ElectivireEvosMoves:
 ; Evolutions
@@ -4905,6 +5120,8 @@ ElectivireEvosMoves:
 	db 43, THUNDERBOLT
 	db 54, THUNDER
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 MagmortarEvosMoves:
 ; Evolutions
@@ -4918,11 +5135,20 @@ MagmortarEvosMoves:
 	db 52, SMOG
 	db 55, FLAMETHROWER
 	db 0
+; Tutoring Learnset - none
+	db 0
 
 PorygonZEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - TACKLE/SHARPEN/CONVERSION already granted at level 1;
 ; NASTY_PLOT does not exist in Gen 1, filled with METRONOME.
-	db 50, METRONOME ; was NASTY_PLOT
+	db 23, PSYBEAM
+	db 28, RECOVER
+	db 35, AGILITY
+	db 42, TRI_ATTACK
+	db 45, DEFENSE_CURL
+    db 50, METRONOME
+	db 0
+; Tutoring Learnset - none
 	db 0

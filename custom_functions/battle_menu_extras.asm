@@ -93,8 +93,10 @@ RogueEndBattleRefuseText:
 
 ; ============================================================
 ; Start menu final row. Rendering and activation share the same context gate.
-; No new saved state: wOutOfBattleBlackout is a one-dispatch request, cleared
-; before DisplayTextID and consumed only after its normal CloseTextDisplay.
+; No new saved state: BIT_END_RUN_REQUESTED (wStatusFlags2) is a one-dispatch
+; request, consumed by OverworldLoopLessDelay after DisplayTextID's normal
+; CloseTextDisplay. It must not be wOutOfBattleBlackout, which shares its byte
+; with wChosenMenuItem: every NPC YES/NO and list menu writes that.
 ; ============================================================
 
 ; OUTPUT: carry set = END RUN; carry clear = EXIT (hub or link context).
@@ -172,8 +174,8 @@ RogueStartMenuEndRun::
 	jr nz, .requestBlackout
 	SetEvent EVENT_AI_ATTEMPT_SPENT
 .requestBlackout
-	ld a, $ff
-	ld [wOutOfBattleBlackout], a
+	ld hl, wStatusFlags2
+	set BIT_END_RUN_REQUESTED, [hl]
 	scf
 	ret
 .declined

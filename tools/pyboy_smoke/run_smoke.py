@@ -43,6 +43,7 @@ SOURCE_ONLY_MODULES = frozenset({
     "test_bridge_gift_roll_range",   # ~6s
     "test_follower_sprite_budget",   # ~6s
     "test_coverage_inventory",       # ~70s when the .sym changed (source walk), else instant
+    "test_compare_builds",           # instant: synthetic rows
 })
 # Unknown modules are scheduled as if each test took this long.
 GUESS_PER_TEST_S = 0.3

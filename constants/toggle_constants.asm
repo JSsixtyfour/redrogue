@@ -90,6 +90,8 @@ ENDM
     const TOGGLE_OAKS_LAB_RIVAL ; 25
 
 	toggle_consts_for VIRIDIAN_GYM
+	; Potential removal if space is needed: Giovanni no longer hides.
+	; Retained for old-save hide-bit repair; removing shifts later toggle IDs.
 	const TOGGLE_VIRIDIAN_GYM_GIOVANNI ; 26
 	const TOGGLE_VIRIDIAN_GYM_ITEM ; 27 X
 

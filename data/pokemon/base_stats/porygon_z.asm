@@ -14,13 +14,11 @@
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset - from tmp/kep/data/pokemon/base_stats/porygonz.asm;
-	; TELEPORT is not a valid TM/HM in this project (same class of error as
-	; Slowking's TELEPORT in batch 4), dropped rather than substituted
-	tmhm TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  ICE_BEAM,     BLIZZARD,     \
+		tmhm TOXIC,    TAKE_DOWN,    DOUBLE_EDGE,  ICE_BEAM,     BLIZZARD,     \
 	     HYPER_BEAM,   RAGE,         THUNDERBOLT,  THUNDER,      PSYCHIC_M,    \
-	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        \
-	     SKULL_BASH,   REST,         THUNDER_WAVE, PSYWAVE,      TRI_ATTACK,   \
-	     SUBSTITUTE,   FLASH
+	     SUBSTITUTE,   MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
+	     SWIFT,        SKULL_BASH,   REST,         THUNDER_WAVE, PSYWAVE,      \
+	     TRI_ATTACK,   FLASH
 	; end
 
 	db BANK(PorygonZPicFront) ; pic bank

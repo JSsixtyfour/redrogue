@@ -16,8 +16,9 @@
 	; tm/hm learnset
 	tmhm SWORDS_DANCE, TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   \
 	     WATER_GUN,    ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         \
-	     THUNDER_WAVE,   MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     SWIFT,   REST,         SUBSTITUTE,   SURF
+	     THUNDER_WAVE,   MIMIC,      DOUBLE_TEAM,  REFLECT,      BIDE,         \
+	     SWIFT,        REST,         SUBSTITUTE,   SURF,         SELFDESTRUCT, \
+         EXPLOSION
 	; end
 
 	db BANK(QwilfishPicFront) ; pic bank

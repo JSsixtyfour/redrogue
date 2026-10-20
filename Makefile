@@ -66,6 +66,7 @@ RGBGFXFLAGS  ?= -Weverything
 	space \
 	ai_scenarios \
 	autoplay \
+	compare_builds \
 	sram_fuzz \
 	balance_report \
 	release \
@@ -178,6 +179,12 @@ ai_benchmark: pokeblue_debug.gbc
 # bug detectors report. AUTOPLAY_ARGS='--seeds 1-64'.
 autoplay: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_autoplay.py $(AUTOPLAY_ARGS)
+
+# Plays the same seeds from NEW GAME on the debug, Blue and Red builds and
+# reports failures or anomalies only one build hits, and where each seed's runs
+# part ways. COMPARE_ARGS='--seeds 1-32 --runs 2 --vary'.
+compare_builds: pokered.gbc pokeblue.gbc pokeblue_debug.gbc
+	python3 tools/pyboy_smoke/compare_builds.py $(COMPARE_ARGS)
 
 # Plays seeds with zeroed, $FF and random save RAM and fails if any plays
 # differently (a read of SRAM the game never wrote). SRAM_FUZZ_ARGS='--bisect'.

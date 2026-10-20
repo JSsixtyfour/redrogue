@@ -50,11 +50,11 @@ def parse_seeds(spec: str) -> list[int]:
 
 
 def report_path(seed: int) -> Path:
-    return autoplay.ARTIFACTS / f"autoplay_seed{seed}.json"
+    return autoplay.ARTIFACTS / f"{autoplay.stem(seed)}.json"
 
 
 def heartbeat_path(seed: int) -> Path:
-    return autoplay.ARTIFACTS / f"autoplay_seed{seed}.heartbeat.json"
+    return autoplay.ARTIFACTS / f"{autoplay.stem(seed)}.heartbeat.json"
 
 
 def run_seed(seed: int, options: dict[str, object]) -> dict[str, object]:
@@ -254,7 +254,14 @@ def main(argv: list[str] | None = None) -> int:
                              "(autoplay_coverage.py)")
     parser.add_argument("--timeout", type=float, default=900,
                         help="seconds before a seed counts as hung and is killed")
+    parser.add_argument("--rom", choices=autoplay.ROMS, default=autoplay.DEBUG_ROM,
+                        help="build to play; the release builds need --new-game")
     args = parser.parse_args(argv)
+    if args.rom != autoplay.DEBUG_ROM and not args.new_game:
+        parser.error(f"--rom {args.rom} has no Debug 2 menu; add --new-game")
+    autoplay.ROM = args.rom  # report paths here; play() sets it in each worker
+    import coverage_inventory
+    coverage_inventory.code_labels(args.rom)  # once, before the workers (autoplay_screen.py)
 
     seeds = parse_seeds(args.seeds)
     options = {
@@ -274,6 +281,7 @@ def main(argv: list[str] | None = None) -> int:
         "difficulty": args.difficulty,
         "vary": args.vary,
         "save_checks": args.save_checks,
+        "rom": args.rom,
     }
     rows = []
     for row in run_all(seeds, options, max(1, args.jobs), args.timeout):
@@ -313,7 +321,8 @@ def main(argv: list[str] | None = None) -> int:
     summary = {"options": options, "outcomes": outcomes, "balance": balance, "menus": menus,
                "branching": branching,
                "anomalies": dict(sorted(anomalies.items(), key=lambda item: -item[1])), "runs": rows}
-    path = autoplay.ARTIFACTS / "autoplay_summary.json"
+    path = autoplay.ARTIFACTS / ("autoplay_summary.json" if args.rom == autoplay.DEBUG_ROM
+                                 else f"autoplay_summary_{args.rom}.json")
     path.write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
     print_statistics(balance)
     if menus:
@@ -343,7 +352,8 @@ def main(argv: list[str] | None = None) -> int:
             autoplay_coverage.print_summary(autoplay_coverage.write_summary(hit_lists), top=12)
             print(f"  coverage map -> {autoplay_coverage.SUMMARY}")
     for row in failures:
-        flags = " --new-game" * args.new_game + f" --runs {args.runs}" * (args.runs != 1)
+        flags = (" --new-game" * args.new_game + f" --runs {args.runs}" * (args.runs != 1)
+                 + f" --rom {args.rom}" * (args.rom != autoplay.DEBUG_ROM))
         why = row["outcome"] if row["outcome"] in autoplay.FAILURES else "anomaly"
         print(f"  reproduce: python3 tools/pyboy_smoke/autoplay.py --seed {row['seed']}{flags}"
               f"   # {why} at {row['map']}")

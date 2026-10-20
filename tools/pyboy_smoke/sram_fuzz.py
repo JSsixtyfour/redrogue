@@ -151,6 +151,8 @@ def main(argv: list[str] | None = None) -> int:
                "max_frames": args.max_frames}
     seeds = parse_seeds(args.seeds)
     fills = ["zero", "zero", "ff"] + [f"random{k}" for k in range(1, args.fills + 1)]
+    import coverage_inventory
+    coverage_inventory.code_labels()  # once, before the workers (autoplay_screen.py)
     traces: dict[tuple[int, str], list[list[tuple]]] = {}
     with ProcessPoolExecutor(max_workers=max(1, args.jobs)) as pool:
         for seed, name, result in pool.map(run_fill, *zip(*[(s, f, options) for s in seeds for f in fills])):

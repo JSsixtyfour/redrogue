@@ -256,10 +256,56 @@ PCemRollBoss:
 	ld [rRAMG], a
 	ret
 
+DEF PCEM_GHOST_MOVES EQU 3 ; entries in PCemGhostMoves
+
+; IN: c = the rolled ghost move, de = the mon. OUT: c = a ghost move it does
+; not know yet: the rolled one, else the next in PCemGhostMoves (wrapping), and
+; that choice is saved as sProcCemeteryBossMove so the battle boss and the gifted
+; mon agree. Knowing all three, c comes back as rolled and the slot search finds
+; it, so nothing new is added (no duplicate). Call with SRAM bank 0 open (the
+; caller's read window). Clobbers a/b/hl.
+PCemPickUnknownGhostMove:
+	ld b, PCEM_GHOST_MOVES
+.try
+	call PCemKnowsMoveC
+	jr nz, .save                  ; not known: use it
+	ld hl, PCemGhostMoves
+.find
+	ld a, [hli]
+	cp c
+	jr nz, .find
+	ld c, [hl]                    ; the next one (PCemGhostMovesWrap after the last)
+	dec b
+	jr nz, .try
+	ret                           ; knows all three: give up, c is the rolled move again
+.save
+	ld a, c
+	ld [sProcCemeteryBossMove], a
+	ret
+
+; IN: c = move, de = mon. OUT: Z iff one of its four moves is c. Clobbers a/hl.
+PCemKnowsMoveC:
+	ld hl, MON_MOVES
+	add hl, de
+	push bc
+	ld b, NUM_MOVES
+.loop
+	ld a, [hli]
+	cp c
+	jr z, .done
+	dec b
+	jr nz, .loop
+	inc b                         ; b = 1: NZ, not known
+.done
+	pop bc                        ; pop keeps the flags
+	ret
+
 PCemGhostMoves:
 	db LICK        ; 0
 	db NIGHT_SHADE ; 1
 	db CONFUSE_RAY ; 2
+PCemGhostMovesWrap:   ; PCemPickUnknownGhostMove's "next after the last"; never rolled
+	db LICK
 
 ; ============================================================
 ; PCemRestoreBossSpecies
@@ -315,10 +361,14 @@ PCemRestoreBossSpecies::
 ; Clobbers a/bc/hl (preserves de).
 ; ============================================================
 PCemApplyGhostBoss::
-	; ghost-variant flag = bit 0 of MON_CATCH_RATE
+	; ghost-variant flag = bit 0 of MON_CATCH_RATE. Already set means this is a
+	; copy of a converted mon (the gift after the battle): keep its ghost move.
 	ld hl, MON_CATCH_RATE
 	add hl, de
+	ld a, [hl]
 	set 0, [hl]                   ; BIT_GHOST_VARIANT (func_ghost_variant.asm)
+	and 1
+	push af                       ; Z = not yet a ghost variant
 	; secondary type -> GHOST
 	ld hl, MON_TYPE2
 	add hl, de
@@ -332,6 +382,8 @@ PCemApplyGhostBoss::
 	ld [rRAMB], a
 	ld a, [sProcCemeteryBossMove]
 	ld c, a                       ; c = ghost move id
+	pop af
+	call z, PCemPickUnknownGhostMove ; a fresh mon may know it already (SRAM still open)
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE

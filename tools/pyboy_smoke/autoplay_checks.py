@@ -3,7 +3,7 @@
 The agent only notices a bug that stops play: a freeze, a softlock, a dead
 end. These checks look for the quieter ones while it plays:
 
-- data checks: at stable moments (the first overworld frame after a map change
+- data checks: at stable moments (the first overworld input poll after a map change
   or a battle, each turn's battle menu, the end of a run) the party, the item
   pockets, money, the current map and its warps, and in battle both active
   mons and the trainer's party must be valid. A finding is an `anomaly` event;
@@ -15,6 +15,8 @@ end. These checks look for the quieter ones while it plays:
   Either ends the run as `crashed` with the crash site, its stack and labels.
   The overworld loop must also poll the joypad at one stack depth: a drift is
   a leaked push or a routine that returns past its caller.
+- garbled screens (autoplay_screen.py): text and graphics read through a bad
+  pointer or from the wrong bank, as `screen_*` anomalies.
 
 An illegal opcode makes PyBoy spin forever inside tick(), out of Python's
 reach; run_autoplay.py's per-seed wall-clock timeout covers that (`hung`).
@@ -24,6 +26,7 @@ from __future__ import annotations
 import io
 from pathlib import Path
 
+import autoplay_screen
 from source_constants import parse_map_constants, parse_rgbds_constants
 
 PARTY_LENGTH = 6
@@ -87,6 +90,7 @@ class GameChecks:
         self.h.pyboy.hook_register(0, CRASH_VECTOR, self._on_crash_vector, None)
         self.h.register_hook("JoypadOverworld", self._on_overworld_poll)
         self.h.register_hook("DisplayBattleMenu", self._on_battle_menu)
+        self.screen = autoplay_screen.ScreenChecks(self)  # garbled text and graphics
 
     def reset(self) -> None:
         """Forget findings, for a new branch from a loaded state
@@ -192,6 +196,14 @@ class GameChecks:
             self.anomaly("overworld_stack_depth", f"SP ${sp:04X}, usually ${usual:04X}",
                          stack=[self._where(self._word(sp + 2 * i)) for i in range(CRASH_STACK_WORDS)])
         self.overworld_sp[sp] = self.overworld_sp.get(sp, 0) + 1
+        # The data checks run here, at the poll itself, not at an agent step
+        # that merely follows one: the map script runs right after the poll,
+        # and a step can land mid-routine. Measured 2026-10-20: seed 11's
+        # cemetery theft was checked halfway through _RemovePokemon's struct
+        # shift (species list compacted, structs not yet), a false anomaly.
+        if self.world_pending:
+            self.world_pending = False
+            self.check_world()
 
     # ------------------------------------------------------------- data checks
 
@@ -201,11 +213,6 @@ class GameChecks:
     def on_battle_end(self) -> None:
         self.world_pending = True
         self.battle_party_checked = False
-
-    def before_overworld_step(self) -> None:
-        if self.world_pending:
-            self.world_pending = False
-            self.check_world()
 
     def check_world(self) -> None:
         self.check_party()

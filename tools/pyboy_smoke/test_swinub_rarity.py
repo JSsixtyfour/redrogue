@@ -158,9 +158,20 @@ class SwinubRarityTest(unittest.TestCase):
             self.h.write8('wPartySpecies', SPECIES['MAMOSWINE'])
             self.h.write8('wPartySpecies', 255, offset=1)
             self.h.write8('wBoxSpecies', 255)
-            self.h.pyboy.register_file.D = SPECIES[candidate]
-            self.h.pyboy.register_file.E = 2
-            self.h.call_routine('AllSpeciesCheck')
+            # Inputs go in at the routine's entry, like entry() above. Setting D/E
+            # on the parked CPU made call_routine save them as the INTERRUPTED
+            # code's registers and resume it with DE = candidate/form: measured
+            # 2026-10-20, the park point moved to $4ba0 where DE is live, and
+            # PSYDUCK's $2f02 hit the MBC bank register and hung the emulator.
+            bank, addr = self.h.symbols.get('AllSpeciesCheck')
+            def arguments(_, species=SPECIES[candidate]):
+                self.h.pyboy.register_file.D = species
+                self.h.pyboy.register_file.E = 2
+            self.h.pyboy.hook_register(bank, addr, arguments, None)
+            try:
+                self.h.call_routine('AllSpeciesCheck')
+            finally:
+                self.h.pyboy.hook_deregister(bank, addr)
             regs = self.h.last_call_registers
             self.assertEqual(regs['C'], expected, candidate)
             self.assertEqual((regs['D'], regs['E']), (SPECIES[candidate], 2))

@@ -1,7 +1,7 @@
 """Autoplay agent: plays Red Rogue runs through joypad input, for soak testing.
 
-The agent reads game state from RAM through pokeblue_debug.sym and decides
-every input itself. It writes no game state except the menu-cursor bytes the
+The agent reads game state from RAM through the build's .sym (pokeblue_debug
+by default, --rom) and decides every input itself. It writes no game state except the menu-cursor bytes the
 AI benchmark already steers (battle menu, move menu, party menu, the reward and
 gift pickers): those choose WHICH option the next A press confirms, the same
 as moving the cursor there first.
@@ -24,11 +24,15 @@ Failures write a screenshot and state dump. autoplay_checks also reports
 invalid game data it finds along the way as `anomaly` events.
 
 Runs are deterministic for a given ROM and seed. The seed is applied just
-before the lobby rolls its first doors, so it decides the whole run: rerun the
-same seed to reproduce a report.
+before the lobby rolls its first doors (at StartNewGame with --new-game), so it
+decides the whole run: rerun the same seed to reproduce a report.
 
     python3 tools/pyboy_smoke/autoplay.py --seed 7 --stages 40
     python3 tools/pyboy_smoke/run_autoplay.py --seeds 1-16   # make autoplay
+
+Options that widen the hunt (--vary, --branches, --coverage, --save-checks,
+--rom, --difficulty) are described in tools/pyboy_smoke/README.md, "Options
+that widen the hunt", and in each flag's --help.
 """
 from __future__ import annotations
 
@@ -51,6 +55,17 @@ from source_constants import parse_map_constants, parse_rgbds_constants, parse_t
 
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = Path(__file__).resolve().parent / "artifacts"
+# The build played (a file stem). play(rom=) sets it for the process, so the
+# branch and save-check emulators run the same build. The release builds have
+# no Debug 2 menu and play only from NEW GAME (compare_builds.py).
+DEBUG_ROM = "pokeblue_debug"
+ROMS = (DEBUG_ROM, "pokeblue", "pokered")
+ROM = DEBUG_ROM
+
+
+def stem(seed: int) -> str:
+    """artifacts/ file stem for a seed, with the build unless it is the debug one."""
+    return f"autoplay_seed{seed}" + ("" if ROM == DEBUG_ROM else f"_{ROM}")
 
 # crashed: autoplay_checks caught a crash; hung: the emulator stopped returning
 # (run_autoplay.py's per-seed timeout, an illegal opcode).
@@ -177,6 +192,7 @@ class MenuGoal:
     button: str = "a"
     chaos: tuple[str, ...] = ("up", "down")  # stray presses --menu-chaos may add
     presses: int = 0
+    created: int = 0  # frame the goal was set
 
 
 @dataclass
@@ -536,7 +552,8 @@ class AutoplayAgent:
         saying the menu is waiting."""
         waiting = callers if callable(callers) else (
             lambda: self.last_menu_caller.startswith(callers))
-        self.menu_goal = MenuGoal(kind, waiting, target, next_button, button, chaos)
+        self.menu_goal = MenuGoal(kind, waiting, target, next_button, button, chaos,
+                                  created=self.h.pyboy.frame_count)
 
     def party_menu_goal(self, target: int, button: str) -> None:
         if self.menu_input == "cursor":
@@ -558,6 +575,13 @@ class AutoplayAgent:
         if goal is None or not goal.waiting():
             return False
         stats = self.menu_stats.setdefault(goal.kind, {"choices": 0, "moves": 0, "stray": 0})
+        if self.text_wait_frame > self.menu_frame and self.menu_frame < goal.created:
+            # Text before this menu has polled at all (the battle menu's goal is
+            # set on entry, and a trapping move's "attack continues!" prints
+            # before the menu draws): `waiting` only saw last turn's caller.
+            self.text_wait_frame = -1
+            self.press("a")
+            return True
         if self.text_wait_frame > self.menu_frame:
             # The menu's own redraw waits for A/B (a three-line description
             # in a two-line box scrolls with `cont`): directions do nothing
@@ -1100,7 +1124,6 @@ class AutoplayAgent:
             self.party_menu_repeats = 0
             if self.errand is not None and self.errand["kind"] != "battle" and self.errand["presses"]:
                 self.end_errand("back in the overworld")
-            self.checks.before_overworld_step()
             self.overworld_step()
         elif mode == "busy":
             self.busy_step()
@@ -1775,6 +1798,7 @@ def play(
     difficulty: str | None = None,
     vary: bool = False,
     save_checks: bool = False,
+    rom: str = DEBUG_ROM,
 ) -> dict[str, object]:
     """Boot (Debug 2 lobby, or a real new game), play and return the report.
     A failure (see FAILURES) also writes a screenshot and state dump under
@@ -1787,6 +1811,10 @@ def play(
     "coverage" lists the labels that ran (coverage_inventory.py, autoplay_coverage.py)."""
     import autoplay_branch  # it imports this module
 
+    global ROM
+    if rom != DEBUG_ROM and not new_game:
+        raise ValueError(f"{rom} has no Debug 2 menu; play it with new_game")
+    ROM = rom
     # --vary: this seed's own profile (battle policy, ironman, errands, starter).
     profile = draw_profile(seed) if vary else None
     # HARD, the balance baseline, unless asked; --vary mixes difficulties.
@@ -1799,10 +1827,13 @@ def play(
     reel = autoplay_branch.SnapshotReel() if branches or save_checks else None
     ram_path = None
     if sram is not None:
-        ram_path = ARTIFACTS / f"autoplay_seed{seed}_{os.getpid()}.sram"
+        ram_path = ARTIFACTS / f"{stem(seed)}_{os.getpid()}.sram"
         ram_path.parent.mkdir(parents=True, exist_ok=True)
         ram_path.write_bytes(sram)
-    harness = RedRogueHarness(ROOT, ARTIFACTS, ram_path=ram_path)
+    import coverage_inventory
+    # The screen checks' code rules (autoplay_screen.py); a ~70 s walk only after a rebuild.
+    coverage_inventory.code_labels(ROM)
+    harness = RedRogueHarness(ROOT, ARTIFACTS, ram_path=ram_path, rom=ROM)
     if ram_path is not None:
         ram_path.unlink()
     try:
@@ -1838,11 +1869,11 @@ def play(
         data["difficulty"] = next((name for name in DIFFICULTIES if parse_rgbds_constants(
             ROOT / "constants/ram_constants.asm")[f"DIFFICULTY_{name}"] == stored), stored)
         if agent.checks.first_anomaly_state is not None:
-            path = ARTIFACTS / f"autoplay_seed{seed}_anomaly.state"
+            path = ARTIFACTS / f"{stem(seed)}_anomaly.state"
             path.write_bytes(agent.checks.first_anomaly_state)
             data["anomaly_state"] = str(path)
         if report.failed:
-            image, state = harness.write_failure_artifacts(f"autoplay_seed{seed}")
+            image, state = harness.write_failure_artifacts(stem(seed))
             data["artifacts"] = {"image": str(image), "state": str(state)}
         hits = set(hits)
     finally:
@@ -1898,6 +1929,8 @@ def main(argv: list[str] | None = None) -> int:
                              "errands, items in battle, starter (Profile, draw_profile)")
     parser.add_argument("--difficulty", choices=DIFFICULTIES, default=None,
                         help="LEVELS setting (default HARD, the balance baseline; --vary mixes them)")
+    parser.add_argument("--rom", choices=ROMS, default=DEBUG_ROM,
+                        help="build to play; the release builds need --new-game")
     parser.add_argument("--report", type=Path, default=None,
                         help="report path (default artifacts/autoplay_seed<N>.json)")
     parser.add_argument("--quiet", action="store_true", help="do not print events as they happen")
@@ -1910,9 +1943,9 @@ def main(argv: list[str] | None = None) -> int:
         battle_policy=args.battle_policy, door_policy=args.door_policy,
         menu_input=args.menu_input, menu_chaos=args.menu_chaos,
         branches=args.branches, snapshots=args.snapshots, branch_frames=args.branch_frames,
-        coverage=args.coverage, difficulty=args.difficulty, vary=args.vary, save_checks=args.save_checks, log=None if args.quiet else print,
+        coverage=args.coverage, difficulty=args.difficulty, vary=args.vary, save_checks=args.save_checks, rom=args.rom, log=None if args.quiet else print,
     )
-    path = args.report or ARTIFACTS / f"autoplay_seed{args.seed}.json"
+    path = args.report or ARTIFACTS / f"{stem(args.seed)}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")
     print(f"{data['outcome']}: {data['detail']} (stages={data['stages_cleared']} "

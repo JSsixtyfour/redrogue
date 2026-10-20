@@ -123,10 +123,8 @@ class BranchDriver:
             autoplay.ROOT / "constants/pokemon_constants.asm").items()}
         self.events: list[dict[str, object]] = []
         self.joypad_frame = 0
-        self.overworld_frame = -1
         self.interrupted = (0, 0, 0)  # (bank, PC, SP) the last VBlank cut into: the main code
         self.h.register_hook("Joypad", self._on_joypad)
-        self.h.register_hook("JoypadOverworld", self._on_overworld)
         self.h.register_hook("VBlank", self._on_vblank)
         self.long_sequence = (0, -1)  # (its limit, frame it last ran)
         for name, limit in LONG_SEQUENCES.items():
@@ -143,9 +141,6 @@ class BranchDriver:
 
     def _on_joypad(self, _context) -> None:
         self.joypad_frame = self.h.pyboy.frame_count
-
-    def _on_overworld(self, _context) -> None:
-        self.overworld_frame = self.h.pyboy.frame_count
 
     def _on_vblank(self, _context) -> None:
         memory = self.h.pyboy.memory
@@ -188,7 +183,6 @@ class BranchDriver:
         buttons, weights = zip(*BUTTONS)
         start = h.pyboy.frame_count
         self.joypad_frame = start  # frame_count is not part of a state: it never goes back
-        self.overworld_frame = -1
         self.long_sequence = (0, -1)
         current_map, in_battle = h.read8("hCurMap"), h.read8("hIsInBattle")
         inputs: list[tuple[int, str, int]] = []
@@ -205,8 +199,6 @@ class BranchDriver:
                 if in_battle and not battle:
                     self.checks.on_battle_end()
                 in_battle = battle
-                if now - self.overworld_frame <= 2:
-                    self.checks.before_overworld_step()
                 button = rng.choices(buttons, weights)[0]
                 hold = rng.randint(1, 20 if button in DIRECTIONS else 6)
                 inputs.append((now - start, button, hold))
@@ -224,6 +216,9 @@ class BranchDriver:
                     outcome = "crashed"
                     detail = f"{crash['kind']}: {crash['detail']}" + (
                         f" at {where.get('label') or where.get('address')}" if where else "")
+                    # tick() ends inside VBlank: the main code it interrupted
+                    # says what the game itself was doing.
+                    crash["main_code"] = self.main_stack()[:6]
                     break
                 quiet = h.pyboy.frame_count - self.joypad_frame
                 if quiet > longest_quiet:
@@ -256,7 +251,7 @@ def branch_key(seed: int, snapshot: Snapshot, branch: int) -> str:
 
 
 def state_path(seed: int, snapshot: Snapshot) -> Path:
-    return autoplay.ARTIFACTS / f"autoplay_seed{seed}_{snapshot.name}.state"
+    return autoplay.ARTIFACTS / f"{autoplay.stem(seed)}_{snapshot.name}.state"
 
 
 def replay_command(path: Path, key: str, frames: int) -> str:
@@ -264,8 +259,9 @@ def replay_command(path: Path, key: str, frames: int) -> str:
         shown = path.relative_to(Path.cwd())
     except ValueError:
         shown = path
+    rom = "" if autoplay.ROM == autoplay.DEBUG_ROM else f" --rom {autoplay.ROM}"
     return (f"python3 tools/pyboy_smoke/autoplay_branch.py --state {shown} "
-            f"--key {key} --frames {frames}")
+            f"--key {key} --frames {frames}{rom}")
 
 
 def run_snapshots(seed: int, snapshots: list[Snapshot], *, branches: int, frames: int,
@@ -274,7 +270,7 @@ def run_snapshots(seed: int, snapshots: list[Snapshot], *, branches: int, frames
     """Every branch of every snapshot, in a fresh emulator. Returns the
     findings (with replay commands) and per-kind totals."""
     started = time.monotonic()
-    harness = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS)
+    harness = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS, rom=autoplay.ROM)
     findings = []
     totals: dict[str, dict[str, int]] = {}
     longest_quiet = {"frames": 0}
@@ -326,9 +322,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--key", required=True, help="the branch's key, as its report prints it")
     parser.add_argument("--frames", type=int, default=3000)
     parser.add_argument("--freeze-frames", type=int, default=FREEZE_FRAMES)
+    parser.add_argument("--rom", choices=autoplay.ROMS, default=autoplay.DEBUG_ROM,
+                        help="the build the state was saved on")
     args = parser.parse_args(argv)
 
-    harness = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS)
+    autoplay.ROM = args.rom
+    harness = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS, rom=args.rom)
     try:
         driver = BranchDriver(harness, freeze_frames=args.freeze_frames)
         result = driver.run(args.state.read_bytes(), args.key, args.frames)

@@ -15,9 +15,10 @@
 
 	; tm/hm learnset - modeled on Kangaskhan (Normal-type physical attacker)
 	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
-	     DOUBLE_EDGE,  HYPER_BEAM,   SUBMISSION,   COUNTER,      SEISMIC_TOSS, \
+	     DOUBLE_EDGE,  DIG,          SUBMISSION,   COUNTER,      SEISMIC_TOSS, \
 	     RAGE,         MIMIC,        DOUBLE_TEAM,  BIDE,         REST,         \
-	     SUBSTITUTE,   STRENGTH,     SWIFT
+	     SUBSTITUTE,   STRENGTH,     SWIFT,        EARTHQUAKE,   ROCK_SLIDE,   \
+         CUT,          METRONOME,    SWORDS_DANCE
 	; end
 
 	db BANK(TeddiursaPicFront) ; pic bank

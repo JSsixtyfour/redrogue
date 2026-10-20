@@ -98,14 +98,18 @@ class RedRogueHarness:
         sound_emulated: bool = False,
         ram_path: Path | None = None,
         cgb_mode: bool = False,
+        rom: str = "pokeblue_debug",
     ):
+        """`rom` is the build's file stem: pokeblue_debug (the test build), or
+        pokeblue / pokered for build comparisons (compare_builds.py). The
+        release builds have no Debug 2 menu, so boot_to_lobby needs the debug one."""
         self.repo_root = repo_root.resolve()
-        self.rom_path = self.repo_root / "pokeblue_debug.gbc"
-        self.sym_path = self.repo_root / "pokeblue_debug.sym"
+        self.rom_name = rom
+        self.rom_path = self.repo_root / f"{rom}.gbc"
+        self.sym_path = self.repo_root / f"{rom}.sym"
         if not self.rom_path.is_file() or not self.sym_path.is_file():
-            raise FileNotFoundError(
-                "pokeblue_debug.gbc and pokeblue_debug.sym are required; run `make blue_debug`"
-            )
+            target = {"pokeblue_debug": "blue_debug", "pokeblue": "blue", "pokered": "red"}.get(rom, rom)
+            raise FileNotFoundError(f"{rom}.gbc and {rom}.sym are required; run `make {target}`")
         self.symbols = SymbolTable(self.sym_path)
         rom_data = bytearray(self.rom_path.read_bytes())
         self.rom_sha256 = hashlib.sha256(rom_data).hexdigest()
@@ -229,7 +233,7 @@ class RedRogueHarness:
         if self.sym_path.stat().st_mtime > self.rom_path.stat().st_mtime + 2:
             raise ValueError(
                 f"{self.sym_path.name} is newer than {self.rom_path.name}; "
-                "rebuild pokeblue_debug.gbc before running PyBoy"
+                f"rebuild {self.rom_path.name} before running PyBoy"
             )
 
     def _coverage_callback(self, label: str, key: tuple[int, int] | None = None):
@@ -267,8 +271,15 @@ class RedRogueHarness:
         put there directly through pyboy.hook_register. Only code may be
         hooked, and no hook next to another: coverage_inventory.hook_plan."""
         skipped = []
+        # A hook whose next instruction is another hook wedges PyBoy, so stay
+        # 1-3 bytes (one instruction) clear of the hooks already registered
+        # (autoplay_screen hooks PlaceString, one byte before PlaceNextChar).
+        existing = set(self._hook_callbacks)
         for label, key in hooks.items():
             if key not in self._hook_callbacks and self.pyboy.memory[key[0], key[1]] == 0xDB:
+                skipped.append(label)
+                continue
+            if key not in existing and any((key[0], key[1] + d) in existing for d in (-3, -2, -1, 1, 2, 3)):
                 skipped.append(label)
                 continue
             self._register_at(key, self._coverage_callback(label, key))

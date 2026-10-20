@@ -38,6 +38,8 @@ RogueRunToggleClear::
 	jr .loop
 
 RunClearedToggles:
+	; Repair saves where an older build hid gym Giovanni after his advice.
+	db TOGGLE_VIRIDIAN_GYM_GIOVANNI
 	; Pokemon Tower 7F: rockets walk off and hide when beaten; Fuji hides when
 	; he warps the player to the lobby.
 	db TOGGLE_POKEMON_TOWER_7F_ROCKET_1

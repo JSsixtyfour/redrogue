@@ -208,7 +208,7 @@ run failed or reported an anomaly. A full run is about 250,000 frames, roughly
 `autoplay_checks.py` rides along on every run and looks for bugs that do not
 stop play:
 
-- Data checks, at the first overworld frame after a map change or a battle:
+- Data checks, at the first overworld input poll after a map change or a battle:
   the party (count, species list, species, level, HP, moves: none, invalid,
   gaps, duplicates, PP over max, nicknames), the item pockets, money, the map
   and its warp destinations. At each battle menu: both active mons; once per
@@ -218,6 +218,15 @@ stop play:
   NULL, garbage), code running outside ROM, or SP outside the stack (the VBlank
   copies that borrow SP excepted). The report names the site, the stack and
   their labels. The overworld loop must also poll at one stack depth.
+- Garbled screens (`autoplay_screen.py`), as `screen_*` anomalies: a
+  `text_far` whose target is not a label in a real bank or does not start with
+  a text command; a `TextCommandProcessor` pointer in ROM that is not a label
+  in the loaded bank; a byte dispatched as a text command that is not a `TX_*`;
+  a byte below $60 placed as a glyph (or the `<NULL>` TEXT ID ERROR char); and
+  a `PlaceString`, `CopyVideoData*` or `FarCopyData*` source inside code. The
+  code rules need `coverage_inventory`'s code labels (a ~70 s walk after a
+  rebuild): the bot's entry points build them first, smoke tests use them
+  only if cached.
 - An illegal opcode makes PyBoy spin inside one `tick()`, out of Python's
   reach, so `run_autoplay.py` runs each seed in its own process and kills it
   at `--timeout` as `hung`, reporting the bot's last heartbeat (every 1000
@@ -239,7 +248,8 @@ a "save", fail its checksum and report the file destroyed, which is vanilla's
 handling and would shift every later frame.
 
 Runs are deterministic for a ROM and seed: the seed is applied just before the
-lobby rolls its first doors, so rerunning a seed reproduces its report.
+lobby rolls its first doors (at `StartNewGame` with `--new-game`), so rerunning
+a seed reproduces its report on the same build.
 
 Each agent step (`autoplay.py`) depends on the mode:
 
@@ -282,8 +292,49 @@ HP (a Revive on a fainted one), and once per lobby visit it buys healing items
 from the recovery clerk (stock is randomized) up to four, or a Revive. Both are
 menu errands driven by button presses and abandoned after `PLAN_STEP_LIMIT`.
 
-Limits: the agent never visits the lobby's other NPCs (TMs, daycare, tutors,
-trades), never chooses rewards or doors on merit (both random), never upgrades
-key items between runs, and only picks up item balls as a last resort. Its
-`--new-game` balance numbers therefore describe this agent as much as the
-game.
+Limits: the agent never chooses rewards or doors on merit (both random), never
+buys key items on merit, and only picks up item balls as a last resort. Without
+`--vary` it also never visits the lobby's other NPCs. Its `--new-game` balance
+numbers therefore describe this agent as much as the game.
+
+### Options that widen the hunt
+
+All of these work on `autoplay.py` (one seed) and `run_autoplay.py` /
+`make autoplay` (a batch), and combine freely. Difficulty defaults to HARD, the
+balance baseline; `--difficulty NAME` overrides it.
+
+```sh
+make autoplay AUTOPLAY_ARGS='--seeds 1-16 --branches 8 --snapshots 3'
+make autoplay AUTOPLAY_ARGS='--seeds 1-16 --runs 3 --vary --coverage --max-frames 2500000 --timeout 2400'
+make autoplay AUTOPLAY_ARGS='--seeds 1-8 --save-checks'
+make autoplay AUTOPLAY_ARGS='--seeds 1-8 --new-game --rom pokered'
+make compare_builds COMPARE_ARGS='--seeds 1-24 --runs 2 --vary'
+```
+
+- `--vary`: each seed plays its own `Profile` (`draw_profile`, recorded in the
+  report): battle policy, ironman, difficulty (`DIFFICULTY_MIX`, mostly HARD),
+  Oak's Lab starter, items used in battle, a random key item kit (owned items
+  and tiers, at most 3 equipped, written to SRAM; charge-based items work from
+  run 2), Credit Exchange credits, and errands: random presses at a lobby NPC
+  or sign (TMs, daycare, tutors, trades, the key swap attendant) or in the bag.
+  `autoplay_checks.check_key_items` flags more than 3 equipped, an equipped
+  item not owned, or a tier over the cap.
+- `--branches N` (`autoplay_branch.py`): the run snapshots its key moments
+  (battle start, reward and gift pickers, lobby) and plays N short
+  random-input branches from up to `--snapshots` of each kind, with all checks
+  and a freeze watch. Each finding prints an `autoplay_branch.py --state ...
+  --key ...` command that replays it.
+- `--coverage` (`coverage_inventory.py`, `autoplay_coverage.py`): hooks every
+  code label until it first runs and writes `artifacts/coverage_summary.json`:
+  routines never run, branches never taken, labels only one run reached.
+  Known dead code (Poke Balls, X items) is listed as such, not as a gap.
+- `--save-checks` (`save_reload.py`): at lobby arrivals, runs to an idle
+  overworld frame, saves, reloads on a fresh emulator with only that cartridge
+  RAM, compares every saved region byte for byte, then cuts power at each step
+  of a save and classifies each reboot as old, new, mixed or refused.
+- `--rom pokeblue|pokered` (needs `--new-game`): plays a release build;
+  artifacts get a `_pokeblue` / `_pokered` suffix. `compare_builds.py` plays the
+  same seeds on all three builds and flags failures or anomalies only one
+  build hits. Runs on different builds always part ways in a battle sooner or
+  later (VBlank's `Random` can interrupt a main-code draw at a different
+  instruction per build), so a split alone is not a finding.
