@@ -4072,7 +4072,7 @@ QuagsireEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - WATER_GUN/TAIL_WHIP already granted at level 1
-	db 10, WATERGUN
+	db 10, WATER_GUN
     db 17, SLAM
 	db 23, AMNESIA
 	db 33, WATERFALL
@@ -4139,7 +4139,7 @@ GirafarigEvosMoves:
 	db 20, HEADBUTT
 	db 30, METRONOME ; was BATON_PASS
 	db 41, PSYBEAM
-	db 54, PSYCHIC ; was CRUNCH
+	db 54, PSYCHIC_M ; was CRUNCH
 	db 0
 
 PinecoEvosMoves:

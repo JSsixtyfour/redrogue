@@ -17,8 +17,8 @@
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   \
 	     WATER_GUN,    HYPER_BEAM,   PAY_DAY,      RAGE,         THUNDERBOLT,  \
 	     THUNDER,      MIMIC,        DOUBLE_TEAM,  BIDE,         SWIFT,        \
-	     SKULL_BASH,   REST,         SUBSTITUTE,   MEGA_PUNCH,   MEGA_KICK, 
-		 COUNTER,      SEISMIC_TOSS, DIG,          THUNDER_WAVE, METRONOME, 
+	     SKULL_BASH,   REST,         SUBSTITUTE,   MEGA_PUNCH,   MEGA_KICK,    \
+		 COUNTER,      SEISMIC_TOSS, DIG,          THUNDER_WAVE, METRONOME,    \
 		 CUT,          STRENGTH,     DREAM_EATER,  SOLARBEAM
 	; end
 

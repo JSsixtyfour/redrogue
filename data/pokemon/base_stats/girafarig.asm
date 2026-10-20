@@ -15,9 +15,9 @@
 
 	; tm/hm learnset
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    LIGHT_SCREEN, REFLECT, \
-	     DOUBLE_EDGE,  SWIFT, 		 DREAM_EATER,  THUNDER_WAVE, FLASH     \
-	     HYPER_BEAM,    RAGE,        PSYWAVE,      STRENGTH,     PSYCHIC_M \
-	     THUNDERBOLT,  THUNDER,      MIMIC,        SUBSTITUTE,   STRENGTH, \
+	     DOUBLE_EDGE,  SWIFT, 		 DREAM_EATER,  THUNDER_WAVE, FLASH,     \
+	     HYPER_BEAM,    RAGE,        PSYWAVE,      STRENGTH,     PSYCHIC_M, \
+	     THUNDERBOLT,  THUNDER,      MIMIC,        SUBSTITUTE,   STRENGTH,  \
 	     DOUBLE_TEAM,  BIDE,         SKULL_BASH,   REST,         EARTHQUAKE,         \
 		 DIG
 	       
