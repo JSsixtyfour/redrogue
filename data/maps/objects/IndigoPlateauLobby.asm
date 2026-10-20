@@ -18,8 +18,10 @@ IndigoPlateauLobby_Object:
 	db $0 ; border block
 
 	def_warp_events
-	warp_event  7, 11, LAST_MAP, 1
-	warp_event  8, 11, LAST_MAP, 2
+	; Arrival tiles only, never exits: stepping off and back on must not leave
+	; the lobby (see SelectAndPatchLobbyExit). The real doors are the top two.
+	warp_event  7, 11, WARP_NO_RETURN, 1
+	warp_event  8, 11, WARP_NO_RETURN, 2
 	warp_event  8,  0, ROGUE_MAP, 1
 	warp_event  10,  0, ROGUE_MAP, 1
 

@@ -53,7 +53,8 @@ class WitchPartyEntryTest(HarnessTestCase):
         # real stage-door index rather than manually forging its source fields.
         h = self.harness
         entry = list(h.warp_entries()[0])
-        entry[3] = h.TARGET_ROUTE
+        entry[3] = h.ROGUE_MAP
+        h.write8('wLobbyDoor2StageMap', h.TARGET_ROUTE)  # warp 3 resolves as door 2
         for offset, value in enumerate(entry):
             h.write8('wWarpEntries', value, offset=warp * 4 + offset)
         h.write8('wWarpEntries', 0xFE, offset=0)

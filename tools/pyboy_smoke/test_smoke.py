@@ -231,6 +231,37 @@ class BootSmokeTest(HarnessTestCase):
         maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
         self.assertEqual(self.harness.read8("wLastBlackoutMap"), maps["SILPH_CO_DORM"])
 
+    def test_lobby_arrival_tile_is_not_a_door(self) -> None:
+        # The bottom arrival warps used to be patched with the stage map, so
+        # stepping off the arrival tile and back on entered the stage without
+        # recording the lobby in wLastMap; a wild area's LAST_MAP exit then led
+        # to Pallet Town. Only the top ROGUE_MAP doors may leave the lobby.
+        h = self.harness
+        assert h is not None
+        h.boot_to_lobby()
+        for offset in (3, 7):
+            self.assertEqual(h.read8("wWarpEntries", offset=offset), h.WARP_NO_RETURN)
+        h.tick(4)
+        h.move_tile("up")
+        for _ in range(6):
+            h.pyboy.button_press("down")
+            h.tick(40)
+            h.pyboy.button_release("down")
+            h.tick(6)
+        h.tick(60)
+        self.assertEqual(h.read8("hCurMap"), h.LOBBY_MAP)
+        self.assertEqual([h.read8("wXCoord"), h.read8("wYCoord")], [7, 11])
+        h.move_tile("up")
+        self.assertEqual([h.read8("wXCoord"), h.read8("wYCoord")], [7, 10])
+
+    def test_enter_stage_door1_records_lobby_as_return_map(self) -> None:
+        h = self.harness
+        assert h is not None
+        h.boot_to_lobby()
+        h.enter_stage_door1(h.TARGET_ROUTE, description="Underground Path West-East")
+        self.assertEqual(h.read8("wLastMap"), h.LOBBY_MAP)
+        self.assertEqual(h.read8("wRogueDoorSelection"), h.read8("wRogueDoor1"))
+
     def test_debug2_can_force_expert_ai_tier(self) -> None:
         assert self.harness is not None
         self.harness.boot_to_lobby(ai_tier=3)
@@ -345,7 +376,7 @@ class BootSmokeTest(HarnessTestCase):
         )
         self.assertEqual(
             [entry[3] for entry in self.harness.warp_entries()[:2]],
-            [maps["PROCEDURAL_FACILITY"]] * 2,
+            [self.harness.ROGUE_MAP] * 2,
         )
         self.assertTrue(self.harness.event_is_set(events["EVENT_ENTER_ROOM"]))
 

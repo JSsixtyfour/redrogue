@@ -66,53 +66,7 @@ class JohtoGymMapContracts(HarnessTestCase):
         harness = self.harness
         assert harness is not None
         harness.boot_to_lobby()
-        doors = {
-            harness.read8("wLobbyDoor1StageMap"),
-            harness.read8("wLobbyDoor2StageMap"),
-        }
-        candidates = [
-            index
-            for index, entry in enumerate(harness.warp_entries())
-            if entry[3] in doors
-        ]
-        self.assertTrue(
-            candidates,
-            f"No lobby stage warp to repoint for {description}; doors={sorted(doors)}",
-        )
-
-        def repoint() -> None:
-            harness.write8("wLobbyDoor1StageMap", map_id)
-            harness.write8("wLobbyDoor2StageMap", map_id)
-            for index in candidates:
-                harness.write8("wWarpEntries", map_id, offset=index * 4 + 3)
-
-        repoint()
-        # SelectAndPatchLobbyExit can move the passable exit block without
-        # touching the destination table, so sweep the lobby row outward from
-        # the start position rather than assuming where the open door is.
-        offsets = [0]
-        for distance in range(1, 7):
-            offsets.extend((distance, -distance))
-        for offset in offsets:
-            direction = "right" if offset > 0 else "left"
-            for _ in range(abs(offset)):
-                harness.move_tile(direction)
-            harness.move_tile("up")
-            for _ in range(6):
-                if harness.read8("hCurMap") == map_id:
-                    break
-                harness.pyboy.button_press("down")
-                harness.tick(40)
-                harness.pyboy.button_release("down")
-                harness.tick(6)
-            if harness.read8("hCurMap") == map_id:
-                harness.tick(120)
-                return
-            harness.boot_to_lobby()
-            repoint()
-        self.fail(
-            f"Could not enter {description} (map ${map_id:02X}) through any lobby exit"
-        )
+        harness.enter_stage_door1(map_id, description=description)
 
     def test_johto_gyms_load_with_their_objects(self) -> None:
         constants_path = REPO_ROOT / "constants" / "map_constants.asm"

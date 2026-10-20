@@ -82,6 +82,7 @@ class RedRogueHarness:
     TARGET_ROUTE = 0x79  # UNDERGROUND_PATH_WEST_EAST
     LOBBY_MAP = 0xAE  # INDIGO_PLATEAU_LOBBY
     WARP_NO_RETURN = 0xFD
+    ROGUE_MAP = 0xFE
     GIOVANNI_TYPE_BITS = 0x20
     FIGHT2_SPEC_MAGIC = 0xD2
     AI_LAYER_NAMES = (
@@ -1134,9 +1135,19 @@ class RedRogueHarness:
         giovanni: bool = False,
         miniboss_bits: int = 0,
     ) -> None:
-        """miniboss_bits: wRogueFlagsBitfield bits 4-6 (type << 4, door 1)."""
+        """miniboss_bits: wRogueFlagsBitfield bits 4-6 (type << 4, door 1).
+
+        Walking to the real top door through the NPCs is fragile, so this
+        borrows the arrival warp (entry 0, the tile boot_to_lobby leaves the
+        player on) and gives it ROGUE_MAP - the same destination the real doors
+        have. Warp 0 has door-1 parity, so WarpFound2 takes the real door path:
+        it records the lobby in wLastMap, captures wRogueDoor1 and resolves the
+        stage from wLobbyDoor1StageMap. Never write map_id here: a raw map takes
+        the plain indoor-warp path, which skips all of that and sends LAST_MAP
+        stage exits (wild areas) to wherever wLastMap pointed before.
+        """
         self.write8("wLobbyDoor1StageMap", map_id)
-        self.write8("wWarpEntries", map_id, offset=3)
+        self.write8("wWarpEntries", self.ROGUE_MAP, offset=3)
 
         flags = self.read8("wRogueFlagsBitfield") & 0x0F
         if giovanni:
@@ -1534,14 +1545,13 @@ class RedRogueHarness:
                 return
             if self.read8("hCurMap") != self.LOBBY_MAP:
                 raise AssertionError("Left the lobby before queued preload")
-            doors = {self.read8("wLobbyDoor1StageMap"), self.read8("wLobbyDoor2StageMap")}
-            warps = [i for i, entry in enumerate(self.warp_entries()) if entry[3] in doors]
-            if not warps:
-                raise AssertionError("No lobby stage warp found for queued preload")
             self.write8("wLobbyDoor1StageMap", map_id)
             self.write8("wLobbyDoor2StageMap", map_id)
-            for i in warps:
-                self.write8("wWarpEntries", map_id, offset=i * 4 + 3)
+            # Make the two arrival warps act as the real doors (see
+            # enter_stage_door1): ROGUE_MAP routes through the lobby-door path,
+            # which records the lobby as the wild area's LAST_MAP exit target.
+            for i in (0, 1):
+                self.write8("wWarpEntries", self.ROGUE_MAP, offset=i * 4 + 3)
             state["started"] = True
             self.pyboy.register_file.PC = preload_pc
 

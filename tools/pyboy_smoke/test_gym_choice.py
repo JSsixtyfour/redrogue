@@ -190,6 +190,8 @@ class BridgeReturnsToLobbyTest(HarnessTestCase):
         h.boot_to_lobby(encounter_kind=2)              # Debug 2: a bridge visit
         room = h.read8("wLobbyDoor1StageMap")
         gym = h.read8("wRogueMap")
+        # The arrival tile is not a door; borrow it as door 1 (see enter_stage_door1).
+        h.write8("wWarpEntries", h.ROGUE_MAP, offset=3)
         h.move_tile("up")
         for _ in range(6):
             if h.read8("hCurMap") == room:

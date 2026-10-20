@@ -1092,18 +1092,17 @@ IF DEF(_DEBUG)
 	ld [wDebug2ForcedDoor2], a
 .noDebug2DoorForce
 ENDC
-	; Patch each door to its (possibly now different) stage map.
-	ld a, [wLobbyDoor1StageMap]
-	ld b, 11
-	ld c, 7
-	call PatchWarpEntry
-	ld a, [wLobbyDoor2StageMap]
-	ld b, 11
-	ld c, 8
-	call PatchWarpEntry
+	; Nothing to patch: the lobby's real doors are its top ROGUE_MAP warps, and
+	; WarpFound2 resolves them from wLobbyDoor1/2StageMap. This used to write the
+	; stage map into the bottom arrival warps (11,7)/(11,8), which turned the
+	; tile the player arrives on into a hidden third door - one that took the
+	; plain indoor-warp path and so never recorded the lobby in wLastMap, leaving
+	; LAST_MAP stage exits (wild areas) to return to whatever map was there
+	; before. Those warps are WARP_NO_RETURN now; keep them that way.
 	ret
 
-; Patches both lobby exit doors to GAME_CORNER.
+; Points both lobby exit doors at GAME_CORNER (the ROGUE_MAP doors read
+; wLobbyDoor1/2StageMap when taken, so no warp entry needs patching).
 ; Called from PCWitchText after CHALLENGE_GAMBLERS_PARADISE is accepted,
 ; because SelectAndPatchLobbyExit already ran on map entry before acceptance.
 PatchLobbyExitToGameCorner::
@@ -1111,13 +1110,6 @@ PatchLobbyExitToGameCorner::
 	ld [wRogueMap], a
 	ld [wLobbyDoor1StageMap], a
 	ld [wLobbyDoor2StageMap], a
-	ld b, 11
-	ld c, 7
-	call PatchWarpEntry
-	ld a, GAME_CORNER
-	ld b, 11
-	ld c, 8
-	call PatchWarpEntry
 	ret
 
 SelectAndPatchRewardRoomExit::
