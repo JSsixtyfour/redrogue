@@ -33,7 +33,6 @@ INCLUDE "engine/menus/display_text_id_init.asm"
 INCLUDE "engine/menus/draw_start_menu.asm"
 INCLUDE "engine/link/cable_club_npc.asm"
 INCLUDE "engine/menus/text_box.asm"
-INCLUDE "engine/menus/players_pc.asm"
 INCLUDE "engine/events/display_pokedex.asm"
 
 
@@ -826,6 +825,10 @@ INCLUDE "custom_functions/final_team_archive.asm"
 SECTION "Battle Menu Extras", ROMX
 
 INCLUDE "custom_functions/battle_menu_extras.asm"
+
+SECTION "Player PC", ROMX
+
+INCLUDE "engine/menus/players_pc.asm"
 
 ; Witch challenge overworld effects (challenge 9's per-step re-poison). Opens
 ; its own section, pinned to $3A in layout.link; farcall-only.

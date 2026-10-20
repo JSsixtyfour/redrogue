@@ -10,14 +10,16 @@
 	INCBIN "gfx/pokemon/front/sudowoodo.dim" ; sprite dimensions
 	dw SudowoodoPicFront, SudowoodoPicBack
 
-	db ROCK_THROW, MIMIC, NO_MOVE, NO_MOVE ; level 1 learnset
+	db TACKLE, MIMIC, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
 	     EARTHQUAKE,   FISSURE,      DIG,          MIMIC,        DOUBLE_TEAM,  \
 	     BIDE,         SELFDESTRUCT, SKULL_BASH,   REST,         EXPLOSION,    \
-	     ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     SWIFT
+	     ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     SWIFT,        SWIFT,		   \
+		 COUNTER,      MEGA_PUNCH,   MEGA_KICK,    COUNTER,      SEISMIC_TOSS, \
+		 HYPER_BEAM,   SUBMISSION
 	; end
 
 	db BANK(SudowoodoPicFront) ; pic bank

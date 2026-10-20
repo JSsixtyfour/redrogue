@@ -295,7 +295,8 @@ RoguePrismCheckAndSetEvent:
 RoguePrismShowFirstGrantMessage::
 	call RoguePrismCopyTypeName
 	ld hl, PrismFirstGrantText
-	jp PrintText
+	call PrintText
+	farjp PrismShowGrantDestination
 
 RoguePrismShowCartridgeMessage::
 	call RoguePrismCopyTypeName
@@ -681,7 +682,7 @@ RoguePrismCartridgeMenu::
 	jp PrintText
 
 .haveCartridges
-	call SaveScreenTilesToBuffer2
+	; Parent PC owns screen buffer 2; it redraws on return.
 
 	call PrismCountCartridges
 	hlcoord 0, 0
@@ -719,7 +720,8 @@ RoguePrismCartridgeMenu::
 	xor a
 	ldh [hCurrentMenuItem], a
 	ld [wLastMenuItem], a
-	ld a, PAD_A | PAD_B | PAD_UP | PAD_DOWN
+	ld [wMenuWatchMovingOutOfBounds], a
+	ld a, PAD_A | PAD_B
 	ld [wMenuWatchedKeys], a
 	call PrismCountCartridges
 	dec a
@@ -728,7 +730,15 @@ RoguePrismCartridgeMenu::
 	ld [wTopMenuItemY], a
 	ld a, 1
 	ld [wTopMenuItemX], a
+	ldh a, [hUILayoutFlags]
+	push af
+	set BIT_DOUBLE_SPACED_MENU, a ; SET means one row per entry
+	ldh [hUILayoutFlags], a
 	call HandleMenuInput
+	ld b, a
+	pop af
+	ldh [hUILayoutFlags], a
+	ld a, b
 	bit B_PAD_B, a
 	jr nz, .cancelled
 
@@ -752,13 +762,12 @@ RoguePrismCartridgeMenu::
 	xor a
 	ld [rRAMG], a                 ; never leave SRAM enabled across a return
 
-	call LoadScreenTilesFromBuffer2 ; put the PC screen back before confirming
+
 	call RoguePrismRefreshCache   ; new type applies immediately, not next battle
 	ld hl, ElementPrismSetText
 	jp PrintText
 
 .cancelled
-	call LoadScreenTilesFromBuffer2
 	ret
 
 ; ============================================================

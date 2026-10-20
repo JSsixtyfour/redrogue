@@ -18,7 +18,8 @@
 	     DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     BLIZZARD,     \
 	     SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         DIG,          \
 	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SKULL_BASH,   \
-	     REST,         SUBSTITUTE,   SURF,         STRENGTH
+	     REST,         SUBSTITUTE,   SURF,         STRENGTH,     SWIFT,		\
+		 LIGHT_SCREEN
 	; end
 
 	db BANK(MarillPicFront) ; pic bank

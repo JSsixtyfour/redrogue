@@ -3421,14 +3421,13 @@ MarillEvosMoves:
 	db EVOLVE_LEVEL, 18, AZUMARILL
 	db 0
 ; Learnset - canon Gen 2 levels; ROLLOUT/RAIN_DANCE do not exist in Gen 1,
-; filled with METRONOME.
 	db 3, DEFENSE_CURL
 	db 6, TAIL_WHIP
 	db 10, WATER_GUN
-	db 15, METRONOME ; was ROLLOUT
+	db 15, ROCK_THROW ; was ROLLOUT
 	db 21, BUBBLEBEAM
 	db 28, DOUBLE_EDGE
-	db 36, METRONOME ; was RAIN_DANCE
+	db 36, HYDRO_PUMP ; was RAIN_DANCE
 	db 0
 
 AzumarillEvosMoves:
@@ -3439,22 +3438,23 @@ AzumarillEvosMoves:
 	db 3, DEFENSE_CURL
 	db 6, TAIL_WHIP
 	db 10, WATER_GUN
-	db 15, METRONOME ; was ROLLOUT
+	db 15, ROCK_THROW ; was ROLLOUT
 	db 25, BUBBLEBEAM
-	db 36, DOUBLE_EDGE
-	db 48, METRONOME ; was RAIN_DANCE
+	db 32, DOUBLE_EDGE
+	db 40, HYDRO_PUMP ; was RAIN_DANCE
 	db 0
 
 SudowoodoEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - canon Gen 2 levels; FLAIL/FAINT_ATTACK do not exist in Gen 1,
-; replaced with METRONOME/SWIFT. ROCK_THROW/MIMIC already granted at level 1.
-	db 10, METRONOME ; was FLAIL
+	db 10, ROCK_THROW ; was FLAIL
 	db 19, LOW_KICK
 	db 28, ROCK_SLIDE
+    db 32, COUNTER
 	db 37, SWIFT ; was FAINT_ATTACK
-	db 46, SLAM
+	db 40, SLAM
+    db 45, DOUBLE_EDGE
 	db 0
 
 PonytaEvosMoves:

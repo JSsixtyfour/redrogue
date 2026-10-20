@@ -176,20 +176,20 @@ _ElementPrismDescriptionText::
 _ElementPrismSetText::
 	text "CARTRIDGE"
 	line "installed!"
-	done
+	prompt
 
 ; text_ram reads the equipped type's name out of wStringBuffer.
 _ElementPrismStatusText::
-	text "PRISM holds"
-	line "the "
+	text "PRISM CARTRIDGE:"
+	line "@"
 	text_ram wStringBuffer
-	text " CARTRIDGE."
-	done
+	text ""
+	prompt
 
 _PrismNoCartridgesText::
 	text "No CARTRIDGE"
 	line "installed."
-	done
+	prompt
 
 ; One-time grant messages (custom_functions/element_prism.asm), gated on
 ; persistent per-grantor events - shown once ever, never again, even across

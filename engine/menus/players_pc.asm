@@ -21,21 +21,29 @@ PlayerPC::
 	call PrintText
 
 PlayerPCMenu:
+	ldh a, [hUILayoutFlags]
+	res BIT_DOUBLE_SPACED_MENU, a
+	ldh [hUILayoutFlags], a
 	ld a, [wParentMenuItem]
 	ldh [hCurrentMenuItem], a
 	ld hl, wMiscFlags
 	set BIT_NO_MENU_BUTTON_SOUND, [hl]
 	call LoadScreenTilesFromBuffer2
 	hlcoord 0, 0
-	ld b, $8            ; was $6; grown two rows for the CARTRIDGE entry, since
-	                     ; `next` in PlayersPCMenuEntries advances 2 rows per item
-	                     ; (BIT_DOUBLE_SPACED_MENU is clear here)
+	ld b, 10
 	ld c, $e
 	call TextBoxBorder
 	call UpdateSprites
 	hlcoord 2, 2
 	ld de, PlayersPCMenuEntries
 	call PlaceString
+	farcall BuildKeyItemBagList
+	hlcoord 2, 10
+	ld de, PlayerPCEquippedText
+	call PlaceString
+	ld a, [wKeyItemPocketBuf]
+	add '0'
+	ldcoord_a 11, 10
 	ld hl, wTopMenuItemY
 	ld a, 2
 	ld [hli], a ; wTopMenuItemY
@@ -361,6 +369,9 @@ WhatDoYouWantText:
 ; Shows owned-but-not-active items. Blocks if bag already has 3.
 ; ============================================================
 PlayerPCWithdrawKeyItems:
+	xor a
+	ldh [hCurrentMenuItem], a
+	ld [wListScrollOffset], a
 	ld hl, wBagPocketsFlags
 	res BIT_PRINT_INFO_BOX, [hl]
 	set BIT_PC_WITHDRAWING, [hl]   ; block LEFT/RIGHT pocket switching in the list menu
@@ -369,14 +380,7 @@ PlayerPCWithdrawKeyItems:
 	call ClearScreen
 .withdrawLoop
 	call GBPalNormal
-	; Blank wTextBoxBuffer's text-box rows directly so PrintBagInfoText's
-	; restoreDefaultText path always restores blank tiles, never stale text.
-	; SaveTextBoxTilesToBuffer would capture "Moved to bag." etc. from wTileMap
-	; if a previous action printed text, contaminating the buffer.
-	ld hl, wTextBoxBuffer
-	ld bc, 36              ; 2 rows × 18 tiles of text box area
-	ld a, $7F              ; blank space tile
-	call FillMemory
+	call PlayerPCBlankTransferText
 	farcall BuildKeyItemPCWithdrawList
 	ld a, [wKeyItemPocketBuf]
 	and a
@@ -385,6 +389,7 @@ PlayerPCWithdrawKeyItems:
 	call PrintText
 	jp PlayerPCMenu
 .withdrawHasItems
+	call PlayerPCClampSelection
 	ld hl, wKeyItemPocketBuf
 	ld a, l
 	ld [wListPointer], a
@@ -392,39 +397,47 @@ PlayerPCWithdrawKeyItems:
 	ld [wListPointer + 1], a
 	xor a
 	ld [wPrintItemPrices], a
-	ldh [hCurrentMenuItem], a
 	ld a, ITEMLISTMENU
 	ld [wListMenuID], a
 	call DisplayListMenuID
 	jp c, PlayerPCMenu
+	ldh a, [hCurrentMenuItem]
+	push af
 	farcall WithdrawKeyItem
 	jr c, .withdrawn
 	ld hl, .bagFullText
 	call PrintText
+	pop af
+	ldh [hCurrentMenuItem], a
 	jr .withdrawLoop
 .withdrawn
 	ld hl, .withdrawnText
 	call PrintText
+	pop af
+	ldh [hCurrentMenuItem], a
 	jr .withdrawLoop
 
 .nothingToWithdrawText
 	text "Nothing to"
-	line "withdraw.@"
-	text_end
+	line "withdraw."
+	prompt
 .bagFullText
 	text "Bag is full!"
 	line "Deposit one"
-	cont "first.@"
-	text_end
+	cont "first."
+	prompt
 .withdrawnText
-	text "Moved to bag.@"
-	text_end
+	text "Moved to bag."
+	prompt
 
 ; ============================================================
 ; PlayerPCDepositKeyItems — put a bag key item into PC storage.
 ; Shows active items. Depositing clears the active bit.
 ; ============================================================
 PlayerPCDepositKeyItems:
+	xor a
+	ldh [hCurrentMenuItem], a
+	ld [wListScrollOffset], a
 	ld hl, wBagPocketsFlags
 	res BIT_PRINT_INFO_BOX, [hl]
 	set BIT_PC_WITHDRAWING, [hl]
@@ -433,7 +446,7 @@ PlayerPCDepositKeyItems:
 	call ClearScreen
 .depositLoop
 	call GBPalNormal
-	call SaveTextBoxTilesToBuffer   ; refresh each iteration
+	call PlayerPCBlankTransferText
 	farcall BuildKeyItemBagList
 	ld a, [wKeyItemPocketBuf]
 	and a
@@ -442,6 +455,7 @@ PlayerPCDepositKeyItems:
 	call PrintText
 	jp PlayerPCMenu
 .depositHasItems
+	call PlayerPCClampSelection
 	ld hl, wKeyItemPocketBuf
 	ld a, l
 	ld [wListPointer], a
@@ -449,19 +463,75 @@ PlayerPCDepositKeyItems:
 	ld [wListPointer + 1], a
 	xor a
 	ld [wPrintItemPrices], a
-	ldh [hCurrentMenuItem], a
 	ld a, ITEMLISTMENU
 	ld [wListMenuID], a
 	call DisplayListMenuID
 	jp c, PlayerPCMenu
+	ldh a, [hCurrentMenuItem]
+	push af
 	farcall DepositKeyItem
 	ld hl, .depositedText
 	call PrintText
+	pop af
+	ldh [hCurrentMenuItem], a
 	jr .depositLoop
 
 .bagEmptyText
-	text "Bag is empty.@"
-	text_end
+	text "Bag is empty."
+	prompt
 .depositedText
-	text "Stored in PC.@"
-	text_end
+	text "Stored in PC."
+	prompt
+
+PlayerPCEquippedText:
+	db "EQUIPPED  /3@"
+
+; List feedback must not become the next iteration's description background.
+PlayerPCBlankTransferText:
+	ld hl, wTextBoxBuffer
+	ld bc, 36
+	ld a, ' '
+	jp FillMemory
+
+; Preserve the current window unless its selected item vanished.
+; Nonempty wKeyItemPocketBuf, list cursor is at most row two.
+PlayerPCClampSelection:
+	ld a, [wKeyItemPocketBuf]
+	ld b, a
+	ld a, [wListScrollOffset]
+	ld c, a
+	ldh a, [hCurrentMenuItem]
+	add c
+	cp b
+	ret c
+	dec b
+	ld a, b
+	sub c
+	jr nc, .cursor
+	ld a, b
+	ld [wListScrollOffset], a
+	xor a
+.cursor
+	ldh [hCurrentMenuItem], a
+	ret
+
+; Query the final equipped state, rather than transient grant scratch RAM.
+PrismShowGrantDestination::
+	ld a, [wCurItem]
+	push af
+	ld a, ELEMENT_PRISM
+	ld [wCurItem], a
+	farcall IsKeyItemActive
+	ld hl, .stored
+	jr z, .print
+	ld hl, .equipped
+.print
+	pop af
+	ld [wCurItem], a
+	jp PrintText
+.equipped
+	text "Equipped in bag."
+	prompt
+.stored
+	text "Sent to Dorm PC."
+	prompt
