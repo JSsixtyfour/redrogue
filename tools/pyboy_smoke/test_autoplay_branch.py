@@ -49,6 +49,18 @@ class BranchDriverTest(HarnessTestCase):
         self.assertEqual(ram_first, ram_again)
         self.assertNotEqual(first["last_inputs"], other["last_inputs"])
 
+    def test_a_raising_hook_is_an_error_not_a_stall(self) -> None:
+        # PyBoy only prints a hook's exception and runs on; the harness keeps
+        # it so the driver reports it instead of failing later as something else.
+        def broken(_context) -> None:
+            raise ValueError("broken hook")
+
+        self.harness.register_hook("JoypadOverworld", broken)
+        result = self.driver.run(self.state, "test/hook", 300)
+        self.harness.unregister_hook("JoypadOverworld", broken)
+        self.assertEqual(result["outcome"], "error", result)
+        self.assertIn("broken hook", result["detail"])
+
     def test_no_input_poll_is_frozen(self) -> None:
         # Park the CPU on a `jr @` in ROM0: interrupts still run, Joypad never.
         memory = self.harness.pyboy.memory

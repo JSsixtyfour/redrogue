@@ -346,6 +346,11 @@ PCemApplyGhostBoss::
 	ld a, [hl]
 	and a
 	jr z, .gotSlot
+	; Already known: this runs from the battle hook and again from the gift
+	; hook, and the gifted mon copies the battle mon, so a second pass found the
+	; next empty slot and gave LICK twice (autoplay, 2026-10-20).
+	cp c
+	jr z, .gotSlot
 	inc hl
 	dec b
 	jr nz, .findSlot

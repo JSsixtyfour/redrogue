@@ -17,6 +17,11 @@ AILair_Script:
 	ret
 .opening
 	call UpdateSprites
+	; Map entry ignores every button, but the opening line waits for A at its
+	; `cont`: with A ignored it never finished (autoplay, 2026-10-20). Block the
+	; d-pad only while it shows, as PalmsRoomDisplayCutsceneText does.
+	ld a, PAD_CTRL_PAD
+	ldh [hJoyIgnore], a
 	ld a, TEXT_AILAIR_OPENING
 	ldh [hTextID], a
 	call DisplayTextID
@@ -82,6 +87,10 @@ AILair_Script:
 	call DelayFrames
 	dec b
 	jr nz, .delayLoop
+	; Buttons have been ignored since the post-battle text (the credits must not
+	; be skipped); with them still ignored this wait never ended on THE END.
+	xor a
+	ldh [hJoyIgnore], a
 	call WaitForTextScrollButtonPress
 	jp Init
 .done

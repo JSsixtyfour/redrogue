@@ -38,6 +38,7 @@ STACK_SIZE = 0xFF  # ram/wram.asm "Stack": ds $100 - 1 below wStack
 CRASH_VECTOR = 0x0038
 CRASH_STACK_WORDS = 6
 MAX_ANOMALIES = 40  # distinct findings kept per report; counts keep going
+KEY_ITEM_MAX_TIER = 2  # internal; the Credit Exchange sells TIER 1-3 (credit_mart.asm)
 
 # party_struct (macros/ram.asm)
 MON_SPECIES, MON_HP, MON_MOVES, MON_PP, MON_LEVEL, MON_MAXHP = 0x00, 0x01, 0x08, 0x1D, 0x21, 0x22
@@ -65,6 +66,9 @@ class GameChecks:
         self.base_pp = [0] + [self.h.pyboy.memory[bank, address + i * MOVE_LENGTH + MOVE_PP]
                               for i in range(self.num_moves)]
         self.rom_banks = 2 << self.h.pyboy.memory[0x148]  # cartridge header ROM size
+        self.key_item_bits = {name[len("KEY_ITEM_BIT_"):-len("_OWNED")]: bit for name, bit in ram.items()
+                              if name.startswith("KEY_ITEM_BIT_") and name.endswith("_OWNED")}
+        self.key_item_max_active = ram["KEY_ITEM_MAX_ACTIVE"]
         self.stack_top = self.h.address("wStack")
         self.sp_trick_ranges = [self.h.symbols.routine_range(name)
                                 for name in self.h.SP_TRICK_ROUTINES if name in self.h.symbols._symbols]
@@ -280,9 +284,26 @@ class GameChecks:
                     self.anomaly("items", f"{label}+{index} is {count}, past the {used} items in its table")
                 elif count > MAX_ITEM_COUNT:
                     self.anomaly("items", f"{label}+{index} holds {count}")
+        self.check_key_items()
         money = self.h.read_bytes("wPlayerMoney", 3)
         if any(byte >> 4 > 9 or byte & 0xF > 9 for byte in money):
             self.anomaly("money", f"not BCD: {bytes(money).hex()}")
+
+    def check_key_items(self) -> None:
+        """sKeyItemsBitfield (SRAM): item N owns bits 2N (owned) and 2N+1
+        (active); at most KEY_ITEM_MAX_ACTIVE active, each of them owned, and
+        no tier in sKeyItemTiers above the vendors' cap."""
+        field = int.from_bytes(bytes(self.h.read_sram_bytes("sKeyItemsBitfield", 4)), "little")
+        tiers = int.from_bytes(bytes(self.h.read_sram_bytes("sKeyItemTiers", 4)), "little")
+        active = [name for name, bit in self.key_item_bits.items() if field >> (bit + 1) & 1]
+        if len(active) > self.key_item_max_active:
+            self.anomaly("key_items", f"{len(active)} key items active, at most {self.key_item_max_active}: {active}")
+        for name in active:
+            if not field >> self.key_item_bits[name] & 1:
+                self.anomaly("key_items", f"{name} active but not owned")
+        for name, bit in self.key_item_bits.items():
+            if tiers >> bit & 3 > KEY_ITEM_MAX_TIER:
+                self.anomaly("key_items", f"{name} at tier {tiers >> bit & 3}")
 
     def check_map(self) -> None:
         current = self.h.read8("hCurMap")

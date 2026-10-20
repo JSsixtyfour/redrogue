@@ -115,7 +115,19 @@ OverworldLoopLessDelay::
 	jr nz, .checkForOpponent
 	lda_coord 8, 9
 	ld [wTilePlayerStandingOn], a ; checked when using Surf for forbidden tile pairs
+	; Only a freshly confirmed Start-menu END RUN may request a blackout here.
+	xor a
+	ld [wOutOfBattleBlackout], a
 	call DisplayTextID ; display either the start menu or the NPC/sign text
+	; DisplayTextID has now restored its bank and stack. Consume the request
+	; before leaving this map, rather than warping inside the text/menu call.
+	ld a, [wOutOfBattleBlackout]
+	and a
+	jr z, .noEndRun
+	xor a
+	ld [wOutOfBattleBlackout], a
+	jp HandleBlackOut
+.noEndRun
 	ld a, [wEnteringCableClub]
 	and a
 	jr z, .checkForOpponent

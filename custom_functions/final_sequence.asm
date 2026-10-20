@@ -167,11 +167,10 @@ RollElite4AndChampion::
 ; candidate if he did NOT land in the Elite Four, and that is read off
 ; wRunElite4.
 ;
-; The activation events are persistent story flags, and the corresponding
-; Champion-defeated events record whether each first-clear reward has already
-; been consumed. That keeps first-clear forcing independent of the number of
-; historical Hall of Fame teams, which is a record count rather than an
-; expansion-unlock state.
+; Active groups choose the pending first-clear Champion; persistent defeat
+; events release that guarantee. CHEAT may enable a group without its Palm
+; scene, so activation events must not be required for first-clear forcing.
+; RollElite4 reserves Lance whenever FirstClearChampion chooses him.
 ; CLOBBERS: a, bc, de, hl
 ; ============================================================
 RollChampion:

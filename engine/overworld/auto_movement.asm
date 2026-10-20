@@ -837,7 +837,14 @@ RLEList_SilphCoB1FPalmFinalReturn:
 	db NPC_MOVEMENT_LEFT, 4
 	db -1
 
+; Executes backward: DOWN 2, LEFT 4, then a no-op. Only the LAST simulated input
+; checks collision, and Palm is still leaving (17,2) when the player's fourth
+; LEFT lands there: as the last input it was refused, the player stopped on
+; (18,2), and RLEList_SilphCoB1FFinalPlayerEnterVR then ended one column short of
+; the VR warp with every button ignored (autoplay, 2026-10-20). The trailing
+; NO_INPUT takes the collision check instead.
 RLEList_SilphCoB1FPlayerFinalReturn:
+	db NO_INPUT, 1
 	db PAD_LEFT, 4
 	db PAD_DOWN, 2
 	db -1

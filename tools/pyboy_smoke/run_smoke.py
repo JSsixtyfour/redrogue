@@ -42,6 +42,7 @@ SOURCE_ONLY_MODULES = frozenset({
     "test_party_roster",             # ~10s: PARTY_ROSTER.md lint and curve rules
     "test_bridge_gift_roll_range",   # ~6s
     "test_follower_sprite_budget",   # ~6s
+    "test_coverage_inventory",       # ~70s when the .sym changed (source walk), else instant
 })
 # Unknown modules are scheduled as if each test took this long.
 GUESS_PER_TEST_S = 0.3

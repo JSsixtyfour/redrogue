@@ -1,7 +1,7 @@
 ; custom_functions/battle_menu_extras.asm
 ;
-; Battle menu additions: the END option's confirm-and-forfeit, the battle-only
-; ITEM list (active key items + POKE FLUTE) with its description box, and the
+; Battle/Start menu additions: END RUN confirmation, battle confirm-and-forfeit,
+; the battle-only ITEM list (active key items + POKE FLUTE) with its description box, and the
 ; ghost-variant entrance fade.
 ;
 ; Declares its own SECTION, pinned to ROMX $3A in layout.link. "Battle Core"
@@ -40,7 +40,7 @@ RogueConfirmEndBattle::
 	cp OAKS_LAB
 	jr z, .refuse
 
-	ld hl, .ConfirmText
+	ld hl, RogueEndRunConfirmText
 	call PrintText
 	ld a, YES_NO_MENU | (1 << BIT_SECOND_MENU_OPTION_DEFAULT) ; cursor starts on NO
 	ld [wTwoOptionMenuID], a
@@ -75,21 +75,113 @@ RogueConfirmEndBattle::
 	ret
 
 .refuse
-	ld hl, .RefuseText
+	ld hl, RogueEndBattleRefuseText
 	call PrintText
 .declined
 	and a
 	ret
 
-.ConfirmText:
+RogueEndRunConfirmText:
 	text "Give up and end"
 	line "this run?"
 	done
 
-.RefuseText:
+RogueEndBattleRefuseText:
 	text "You can't end"
 	line "this battle!"
 	prompt
+
+; ============================================================
+; Start menu final row. Rendering and activation share the same context gate.
+; No new saved state: wOutOfBattleBlackout is a one-dispatch request, cleared
+; before DisplayTextID and consumed only after its normal CloseTextDisplay.
+; ============================================================
+
+; OUTPUT: carry set = END RUN; carry clear = EXIT (hub or link context).
+RogueCanEndRun::
+	ld a, [wStatusFlags4]
+	bit BIT_LINK_CONNECTED, a
+	jr nz, .no
+	ld a, [wLinkState]
+	and a
+	jr nz, .no
+	ld a, [wEnteringCableClub]
+	and a
+	jr nz, .no
+	ldh a, [hCurMap]
+	ld b, a
+	ld hl, .ExcludedMaps
+.loop
+	ld a, [hli]
+	cp -1
+	jr z, .yes
+	cp b
+	jr nz, .loop
+.no
+	and a
+	ret
+.yes
+	scf
+	ret
+
+.ExcludedMaps:
+	db SILPH_CO_DORM, CREDIT_EXCHANGE, SILPH_CO_B1F, PALMS_ROOM
+	db TRUCK, SILPH_CO_VR, MINI_SAFFRON, SILPH_CO_1F
+	db -1
+
+; INPUT: de = final row's tile address, preserved across the farcall entry.
+RoguePrintStartMenuExit::
+	push de
+	call RogueCanEndRun
+	pop hl
+	ld de, .ExitText
+	jr nc, .print
+	ld de, .EndRunText
+.print
+	jp PlaceString
+
+.ExitText:
+	db "EXIT@"
+.EndRunText:
+	db "END RUN@"
+
+; OUTPUT: carry set = close menu (EXIT or confirmed END RUN).
+;         carry clear = declined; caller redraws the Start menu.
+RogueStartMenuEndRun::
+	call RogueCanEndRun
+	jr c, .confirm
+	scf
+	ret
+.confirm
+	ld hl, RogueEndRunConfirmText
+	call PrintText
+	ld a, YES_NO_MENU | (1 << BIT_SECOND_MENU_OPTION_DEFAULT)
+	ld [wTwoOptionMenuID], a
+	hlcoord 13, 9
+	lb bc, 10, 14
+	ld a, TWO_OPTION_MENU
+	ld [wTextBoxID], a
+	call DisplayTextBoxID
+	ld a, [wMenuExitMethod]
+	cp CHOSE_SECOND_ITEM ; NO or B
+	jr z, .declined
+	; Match the AI Lair loss hook without running its post-battle script:
+	; there is no battle result here, and that script could award victory.
+	ldh a, [hCurMap]
+	cp AI_LAIR
+	jr nz, .requestBlackout
+	SetEvent EVENT_AI_ATTEMPT_SPENT
+.requestBlackout
+	ld a, $ff
+	ld [wOutOfBattleBlackout], a
+	scf
+	ret
+.declined
+	; Buffer 2 is the Start-menu snapshot, saved before dispatching this row.
+	; Remove the full-width prompt before DrawStartMenu restores its own box.
+	call LoadScreenTilesFromBuffer2
+	and a
+	ret
 
 ; ============================================================
 ; BuildBattleItemList - the battle menu's ITEM list (DisplayPlayerBag,

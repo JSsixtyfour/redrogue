@@ -40,7 +40,7 @@ import sys
 import time
 import traceback
 from collections.abc import Callable
-from dataclasses import dataclass, field, replace
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
 import autoplay_checks
@@ -75,11 +75,13 @@ INPUT_LOG_LENGTH = 200
 
 # Between runs the game leaves the player in the Silph Co hub (the dorm after a
 # loss or the Hall of Fame). The next run starts through VR's warp to Oak's Lab.
+# After the post-Champion finale's briefing, VR's machine warp leads to the
+# AI Lair instead (SilphCoVRPatchMachineWarp rewrites it on every VR load).
 HUB_ROUTE = {
-    "SILPH_CO_DORM": "SILPH_CO_B1F",
-    "SILPH_CO_1F": "SILPH_CO_B1F",
-    "SILPH_CO_B1F": "SILPH_CO_VR",
-    "SILPH_CO_VR": "OAKS_LAB",
+    "SILPH_CO_DORM": ("SILPH_CO_B1F",),
+    "SILPH_CO_1F": ("SILPH_CO_B1F",),
+    "SILPH_CO_B1F": ("SILPH_CO_VR",),
+    "SILPH_CO_VR": ("OAKS_LAB", "AI_LAIR"),
 }
 
 # Healing outside battle (Potions cannot be used in one): HP each restores.
@@ -92,6 +94,70 @@ PLAN_STEP_LIMIT = 80  # menu presses before a plan is abandoned
 MENU_NAV_LIMIT = 24  # presses for a menu cursor to reach its target
 STALEMATE_TURNS = 6  # battle menus in a row with neither side's HP changing
 MENU_INPUTS = ("real", "cursor")
+# DIFFICULTY_* names (constants/ram_constants.asm). Autoplay plays HARD unless
+# told otherwise: balance is tuned there, and a fresh boot's NORMAL caps the AI
+# at tier 2, so THREAT, PLAN and RISKY never ran (the coverage map found them).
+DIFFICULTIES = ("VERY_EASY", "EASY", "NORMAL", "HARD", "VERY_HARD")
+
+# Errands (--vary): a short stretch of random menu answers at something the
+# agent would never choose itself, after which it backs out with B.
+ERRAND_PRESSES = 40  # random answers, then B until the errand ends
+ERRAND_GIVE_UP = 120  # presses in all before it is abandoned (a run still has the watchdog)
+ERRAND_BUTTONS = (("a", 40), ("down", 20), ("up", 12), ("b", 12), ("left", 8), ("right", 8))
+STARTER_SLOTS = (1, 2, 3)
+SAVE_CHECK_LOBBIES = 4  # lobby arrivals saved, reloaded and power-cut (save_reload.py)  # Oak's Lab's three starter balls (data/maps/objects/OaksLab.asm)
+
+
+@dataclass
+class Profile:
+    """How one seed plays, under --vary: drawn from the seed, recorded in the
+    report, so a sweep covers many styles and each run can be replayed."""
+    battle_policy: str
+    ironman: bool = False
+    errands: float = 0.0  # chance of an errand per lobby visit (a lobby NPC) and per stage (the bag)
+    battle_items: float = 0.0  # chance per battle turn of choosing ITEM and using what comes up
+    starter: int | None = None  # Oak's Lab ball slot, new games
+    difficulty: str = "HARD"
+    # Key items owned from the start, as [name, tier, active]: written to
+    # sKeyItemsBitfield/sKeyItemTiers (SRAM), the state a Credit Exchange
+    # purchase leaves. Their WRAM caches (charges, heal levels, the prism) are
+    # re-derived by the game itself at the first run boundary
+    # (RogueResetRunState), so charge-based items work from run 2 on.
+    kit: list[list[object]] = field(default_factory=list)
+    credits: int = 0  # Credit Exchange balance (wPlayerCoins), for the hub errands to spend
+
+
+# The key items a kit draws from: KEY_ITEM_BIT_<NAME>_OWNED in ram_constants.asm,
+# less EXP_ALL (an option now, not an item). Tiers are internal 0-2
+# (MAX_KEY_ITEM_TIER: TIER 1-3 on screen).
+KIT_EXCLUDED = {"EXP_ALL"}
+KIT_MAX_TIER = 2
+KIT_MAX_ACTIVE = 3  # KEY_ITEM_MAX_ACTIVE
+DIFFICULTY_MIX = (("VERY_EASY", 1), ("EASY", 1), ("NORMAL", 2), ("HARD", 3), ("VERY_HARD", 2))
+
+
+def key_item_bits() -> dict[str, int]:
+    """Key item name -> its owned bit (the active bit is the next one)."""
+    ram = parse_rgbds_constants(ROOT / "constants/ram_constants.asm")
+    return {name[len("KEY_ITEM_BIT_"):-len("_OWNED")]: bit for name, bit in ram.items()
+            if name.startswith("KEY_ITEM_BIT_") and name.endswith("_OWNED")}
+
+
+def draw_profile(seed: int) -> Profile:
+    rng = random.Random(f"profile/{seed}")
+    profile = Profile(battle_policy=rng.choice(benchmark_policies.POLICIES),
+                      ironman=rng.random() < 0.25,
+                      errands=rng.choice((0.25, 0.5, 1.0)),
+                      battle_items=rng.choice((0.0, 0.05, 0.15)),
+                      starter=rng.choice(STARTER_SLOTS))
+    names, weights = zip(*DIFFICULTY_MIX)
+    profile.difficulty = rng.choices(names, weights)[0]
+    items = sorted(name for name in key_item_bits() if name not in KIT_EXCLUDED)
+    owned = rng.sample(items, rng.randint(0, len(items)))
+    active = set(rng.sample(owned, min(KIT_MAX_ACTIVE, len(owned))))
+    profile.kit = [[name, rng.randint(0, KIT_MAX_TIER), name in active] for name in owned]
+    profile.credits = rng.choice((0, 0, 150, 999))
+    return profile
 
 # Menu routine -> event kind. Each has a .menuLoop local label ahead of its
 # HandleMenuInput, lists its offers at 0..wMaxMenuItem-1 and NO THANKS at
@@ -170,7 +236,10 @@ class AutoplayAgent:
         menu_input: str = "real",
         menu_chaos: float = 0.0,
         snapshot: Callable[[str, dict[str, object]], None] | None = None,
+        profile: Profile | None = None,
     ):
+        if profile is not None:
+            battle_policy = profile.battle_policy
         if battle_policy not in benchmark_policies.POLICIES:
             raise ValueError(f"unknown battle policy {battle_policy!r}")
         if menu_input not in MENU_INPUTS:
@@ -196,15 +265,29 @@ class AutoplayAgent:
         # saves a state there to play random branches from.
         self.snapshot = snapshot
         self.snapshot_pending: str | None = None
+        # --vary: a separate stream, so a profile's choices never shift self.rng's.
+        self.profile = profile
+        self.errand_rng = random.Random(f"errand/{seed}")
+        self.errand: dict[str, object] | None = None
+        self.errand_target: int | None | bool = False  # this lobby visit's errand NPC; False = not rolled
+        self.bag_errand_pending = False
+        self.party_menu_repeats = 0  # party menus shown outside battle since the overworld last polled
+        self.exchange_visited = False  # this trip through the hub, under --vary
+        self.errand_counts: dict[str, int] = {}
 
         self.rules = benchmark_policies.load_rules(ROOT)
         maps = parse_map_constants(ROOT / "constants/map_constants.asm")
         self.map_names = {value: name for name, value in maps.items()}
         self.lobby_map = maps["INDIGO_PLATEAU_LOBBY"]
+        self.oaks_lab = maps["OAKS_LAB"]
+        self.credit_exchange = maps["CREDIT_EXCHANGE"]
+        self.key_swap_text = lobby_text_id("TEXT_PC_KEY_SWAP_ATTENDANT")
+        self.silph_b1f = maps["SILPH_CO_B1F"]
         self.hall_of_fame = maps["HALL_OF_FAME"]
+        self.champions_room = maps["CHAMPIONS_ROOM"]
         self.dorm = maps["SILPH_CO_DORM"]
         self.reward_room = maps["REWARD_ROOM"]
-        self.hub_route = {maps[here]: maps[there] for here, there in HUB_ROUTE.items()}
+        self.hub_route = {maps[here]: {maps[there] for there in theres} for here, theres in HUB_ROUTE.items()}
         sprites = parse_rgbds_constants(ROOT / "constants/sprite_constants.asm")
         self.sprite_nurse = sprites["SPRITE_NURSE"]
         self.sprite_poke_ball = sprites["SPRITE_POKE_BALL"]
@@ -358,8 +441,13 @@ class AutoplayAgent:
             target = self.break_stalemate()
         self.switched_last_turn = target is not None
         self.switch_target = target
-        # FIGHT, or PKMN when the policy wants to switch.
+        if self.errand is not None and self.errand["kind"] == "battle":
+            self.end_errand("next turn")
+        # FIGHT, or PKMN when the policy wants to switch; ITEM for a --vary errand.
         choice = 0 if target is None else 2
+        if choice == 0 and self.profile and self.errand_rng.random() < self.profile.battle_items:
+            choice = 1
+            self.start_errand("battle", opponent=self.last_opponent)
         if self.menu_input == "cursor":
             self.h.write8("wBattleAndStartSavedMenuItem", choice)
         else:
@@ -501,6 +589,43 @@ class AutoplayAgent:
             self.press(button)
         return True
 
+    def start_errand(self, kind: str, **data) -> None:
+        self.errand = {"kind": kind, "presses": 0, "start": self.h.pyboy.frame_count, **data}
+        self.errand_counts[kind] = self.errand_counts.get(kind, 0) + 1
+        self.event("errand", phase="start", errand=kind, map=self.map_name(self.h.read8("hCurMap")),
+                   **{key: value for key, value in data.items() if key != "opened"})
+
+    def end_errand(self, why: str) -> None:
+        errand, self.errand = self.errand, None
+        self.event("errand", phase="end", errand=errand["kind"], why=why, presses=errand["presses"],
+                   frames=self.h.pyboy.frame_count - errand["start"])
+
+    def errand_step(self) -> None:
+        """One random answer, as a player poking at a menu would; past
+        ERRAND_PRESSES only B, to back out. A bag errand first walks the START
+        menu to ITEM and leaves it with B when it shows again, so it never
+        wanders into SAVE or the options (which hold the difficulty)."""
+        errand = self.errand
+        errand["presses"] += 1
+        if errand["presses"] > ERRAND_GIVE_UP:
+            self.end_errand("gave up")
+            self.press("b")
+            return
+        if errand["kind"] == "bag" and self.last_menu_caller.startswith("RedisplayStartMenu"):
+            if errand["opened"]:
+                self.press("b")
+            else:
+                button = self.line_button(self.h.read8("hCurrentMenuItem"), START_MENU_ITEM)
+                if button is None:
+                    errand["opened"] = True
+                self.press(button or "a")
+            return
+        if errand["presses"] > ERRAND_PRESSES:
+            self.press("b")
+            return
+        buttons, weights = zip(*ERRAND_BUTTONS)
+        self.press(self.errand_rng.choices(buttons, weights)[0])
+
     def has_body_armor(self) -> bool:
         owner = self.h.read8("wPlayerMonNumber") + 1  # owners are party slot + 1
         records = self.h.read_bytes("wBridgeSelectedEffects", 4)
@@ -508,10 +633,23 @@ class AutoplayAgent:
                    for i in range(0, len(records), 2))
 
     def _on_party_menu(self, _context) -> None:
-        if not self.h.read8("hIsInBattle"):
+        in_battle = self.h.read8("hIsInBattle")
+        forced = in_battle and (self.h.read8("wForcePlayerToChooseMon") or not (
+            self.h.read8("wBattleMonHP") or self.h.read8("wBattleMonHP", 1)))
+        if self.errand is not None and not forced:
+            self.party_menu_goal(self.errand_rng.randrange(max(1, self.h.read8("wPartyCount"))), "a")
+            return
+        if not in_battle:
             # Only reached through an interaction the agent chose: the heal
             # plan's target, else (a gift that teaches a move, a trade offer)
-            # the lead.
+            # the lead. Shown again with no plan (the lead cannot learn a TM
+            # an errand opened: "not compatible", and the menu returns) means
+            # the lead was refused: back out as a player would.
+            if self.plan is None:
+                self.party_menu_repeats += 1
+                if self.party_menu_repeats > 1:
+                    self.party_menu_goal(0, "b")
+                    return
             self.party_menu_goal(self.plan["slot"] if self.plan else 0, "a")
             return
         forced = bool(self.h.read8("wForcePlayerToChooseMon"))
@@ -856,6 +994,8 @@ class AutoplayAgent:
                                 f"in mode {self.mode()}")
                     break
                 self.step()
+                if self.h.hook_errors:
+                    raise RuntimeError("a hook callback raised:\n" + self.h.hook_errors[0])
                 self.checks.after_step()
                 if self.checks.crash is not None:
                     crash = self.checks.crash
@@ -957,6 +1097,9 @@ class AutoplayAgent:
         if mode != "busy":
             self.busy_since = None
         if mode == "overworld":
+            self.party_menu_repeats = 0
+            if self.errand is not None and self.errand["kind"] != "battle" and self.errand["presses"]:
+                self.end_errand("back in the overworld")
             self.checks.before_overworld_step()
             self.overworld_step()
         elif mode == "busy":
@@ -978,10 +1121,22 @@ class AutoplayAgent:
         elif self.in_battle and not in_battle:
             self.event("battle_end", result=self.h.read8("wBattleResult"))
             self.checks.on_battle_end()
+            if self.errand is not None and self.errand["kind"] == "battle":
+                self.end_errand("battle over")
         self.in_battle = in_battle
 
     def on_map_change(self, current_map: int) -> None:
         previous, self.current_map = self.current_map, current_map
+        # A heal plan or a menu errand belongs to the map it began on. A
+        # cutscene that changes the map under it (the Hall of Fame after a
+        # heal, then the title screen) would leave it answering menus that
+        # are gone: B at the title, forever.
+        if self.plan is not None:
+            self.event("plan_dropped", plan=self.plan["kind"], map=self.map_name(current_map))
+            self.plan = None
+        if self.errand is not None and self.errand["kind"] != "battle":
+            self.end_errand("map changed")
+        self.party_menu_repeats = 0
         self.blocked_steps.clear()
         self.script_steps.clear()
         self.hidden.clear()
@@ -990,7 +1145,15 @@ class AutoplayAgent:
             self.arrival = None
         self.event("enter_map", map=self.map_name(current_map))
         self.checks.on_map_change()
-        if current_map == self.hall_of_fame:
+        if current_map == self.credit_exchange:
+            self.exchange_visited = True
+            self.errand_target = False
+        elif current_map == self.oaks_lab:
+            self.exchange_visited = False
+        if current_map == self.hall_of_fame and previous == self.champions_room:
+            # Only the walk in from the Champion's room is a win: CONTINUE after
+            # the credits loads the Hall of Fame save there and passes through
+            # again on the way to the Dorm.
             self.end_run("champion", "entered the Hall of Fame")
         elif self.pending_loss and current_map == self.dorm:
             self.end_run("blackout", "the party fainted")
@@ -1004,11 +1167,14 @@ class AutoplayAgent:
             self.healed_this_visit = False
             self.shopped_this_visit = False
             self.door_choice = None
+            self.errand_target = False
         elif previous in (self.lobby_map, self.reward_room) and current_map != self.reward_room:
             # A stage: from a lobby door, or a new run's first stage, which the
             # reward room after Oak's Lab leads straight into.
             self.stage_map = self.last_stage = current_map
             self.choice_showings.clear()
+            if self.profile and self.errand_rng.random() < self.profile.errands:
+                self.bag_errand_pending = True
 
     # --------------------------------------------------- dialogue and battle
 
@@ -1041,6 +1207,8 @@ class AutoplayAgent:
                 self.press("a")
             else:
                 self.press("start", 4, 8)
+        elif self.errand is not None:
+            self.errand_step()
         else:
             self.press("a")
 
@@ -1217,6 +1385,11 @@ class AutoplayAgent:
         if self.plan is not None:
             self.press("start", 3, 8)
             return
+        if self.bag_errand_pending and self.errand is None:
+            self.bag_errand_pending = False
+            self.start_errand("bag", opened=False)
+            self.press("start", 3, 8)
+            return
         grid = self.read_grid()
         here = self.position()
         occupied = {(sprite["x"], sprite["y"]) for sprite in self.sprites().values()}
@@ -1266,6 +1439,9 @@ class AutoplayAgent:
             self.plan = {"kind": "shop", "steps": 0, "done": False}
         elif kind == "special":
             self.talked.add(int(slot))
+        elif kind == "errand":
+            self.errand_target = None  # done for this visit
+            self.start_errand("npc", target=int(slot))
         self.press("a", 2, 8)
 
     def enter_warp(self, face: str | None) -> None:
@@ -1306,12 +1482,40 @@ class AutoplayAgent:
             clerk = sprites.get(LOBBY_CLERK_SLOT)
             if clerk and clerk["picture"] == self.sprite_clerk and not self.shopped_this_visit:
                 groups.append(self.talk_goal(grid, {LOBBY_CLERK_SLOT: clerk}, "clerk"))
+            if self.profile and self.errand_target is False:
+                # The key swap attendant stands here only in a checkpoint
+                # window (after certain gyms): the one chance to change which
+                # 3 owned key items are equipped, so it wins the errand.
+                swap = self.key_swap_slot(sprites)
+                if swap is not None:
+                    self.errand_target = swap
+            if self.profile and self.errand_target is False:
+                others = sorted(slot for slot in sprites if slot not in (LOBBY_NURSE_SLOT, LOBBY_CLERK_SLOT))
+                self.errand_target = (self.errand_rng.choice(others) if others and
+                                      self.errand_rng.random() < self.profile.errands else None)
+            if self.errand_target in sprites:
+                groups.append(self.talk_goal(grid, {self.errand_target: sprites[self.errand_target]}, "errand"))
             return groups + self.door_goals()
+        if current == self.credit_exchange and self.profile:
+            # --vary's hub detour: one vendor counter (a sign), then back out.
+            signs = self.signs()
+            if self.errand_target is False:
+                self.errand_target = self.errand_rng.randrange(len(signs)) if signs else None
+            if self.errand_target is not None and self.errand_target < len(signs):
+                return [self.sign_goal(grid, signs[self.errand_target], self.errand_target)] + self.exit_goals()
+            return self.exit_goals()
         if current in self.hub_route:
             # Between runs: head for the next run. Talk to everyone if the way
             # on is shut (a checkpoint cutscene wants Prof. Palm first).
             route = [(x, y) for y, x, _, dest in self.h.warp_entries()
-                     if dest == self.hub_route[current]]
+                     if dest in self.hub_route[current]]
+            if self.profile and self.profile.errands and current == self.silph_b1f \
+                    and not self.exchange_visited:
+                # --vary: spend credits at the Credit Exchange on the way.
+                exchange = [(x, y) for y, x, _, dest in self.h.warp_entries()
+                            if dest == self.credit_exchange]
+                if exchange:
+                    return [self.warp_goal(exchange, "warp_exchange")]
             rest = {slot: sprite for slot, sprite in sprites.items() if slot not in self.talked}
             explore = [self.talk_goal(grid, rest, "special")] if rest else []
             ahead = [self.warp_goal(route, "warp_hub")] if route else []
@@ -1337,6 +1541,13 @@ class AutoplayAgent:
         # whose script refuses the exit until something is done (Oak's Lab
         # turns the player back until a starter is chosen).
         rest = {slot: sprite for slot, sprite in sprites.items() if slot not in self.talked}
+        if self.profile and self.profile.starter and current == self.oaks_lab:
+            # While all three balls stand, talk only to the profile's starter.
+            balls = {slot for slot in STARTER_SLOTS
+                     if sprites.get(slot, {}).get("picture") == self.sprite_poke_ball}
+            if len(balls) == len(STARTER_SLOTS):
+                rest = {slot: sprite for slot, sprite in rest.items()
+                        if slot not in balls or slot == self.profile.starter}
         explore = [self.talk_goal(grid, rest, "special")] if rest else []
         if self.h.pyboy.frame_count - self.last_progress_frame > EXPLORE_AFTER_FRAMES:
             return groups + explore + self.exit_goals()
@@ -1349,6 +1560,23 @@ class AutoplayAgent:
             for step, face in world.adjacent_facing((target["x"], target["y"]), counters, grid).items():
                 spots.setdefault(step, (face, f"{kind}:{slot}"))
         return Goal(spots)
+
+    def key_swap_slot(self, sprites: dict[int, dict[str, int]]) -> int | None:
+        texts = self.h.read_bytes("wMapSpriteData", 2 * SPRITE_SLOTS)
+        return next((slot for slot in sprites if texts[2 * (slot - 1) + 1] == self.key_swap_text), None)
+
+    def signs(self) -> list[tuple[int, int]]:
+        """This map's bg events (counters, signs) as (x, y) steps."""
+        count = self.h.read8("wNumSigns")
+        coords = self.h.read_bytes("wSignCoords", 2 * count)
+        return [(coords[2 * i + 1], coords[2 * i]) for i in range(count)]
+
+    def sign_goal(self, grid: world.WalkGrid, sign: tuple[int, int], index: int) -> Goal:
+        """A bg event is read facing it from the next step: any walkable side."""
+        x, y = sign
+        sides = {(x, y + 1): "up", (x, y - 1): "down", (x - 1, y): "right", (x + 1, y): "left"}
+        return Goal({step: (face, f"errand:{index}") for step, face in sides.items()
+                     if grid.walkable(*step)})
 
     def warp_goal(self, steps, label: str) -> Goal:
         return Goal({step: (self.edge_face(step), label) for step in steps}, warp=True)
@@ -1429,9 +1657,60 @@ class AutoplayAgent:
         return None
 
 
-def boot(harness: RedRogueHarness, seed: int, battle_count: int = 1) -> None:
+def lobby_text_id(name: str) -> int:
+    """A TEXT_PC_* value: its row in the lobby's text pointer table (from 1)."""
+    import re
+
+    source = (ROOT / "scripts/IndigoPlateauLobby.asm").read_text(encoding="utf-8")
+    table = source.split("IndigoPlateauLobby_TextPointers:", 1)[1]
+    return re.findall(r"^\s*dw_const\s+\w+,\s*(TEXT_\w+)", table, re.M).index(name) + 1
+
+
+def coverage_hooks() -> dict[str, tuple[int, int]]:
+    import coverage_inventory
+
+    return coverage_inventory.plan()[1]
+
+
+def apply_options(harness: RedRogueHarness, difficulty: str | None, ironman: bool,
+                  profile: Profile | None = None) -> None:
+    if difficulty is not None:
+        harness.set_difficulty(difficulty)
+    if ironman:
+        bit = parse_rgbds_constants(ROOT / "constants/ram_constants.asm")["BIT_IRONMAN"]
+        harness.write8("wOptions3", harness.read8("wOptions3") | 1 << bit)
+    if profile is not None:
+        grant_kit(harness, profile.kit)
+        harness.write8("wPlayerCoins", int(str(profile.credits // 100), 16))  # 2-byte BCD
+        harness.write8("wPlayerCoins", int(str(profile.credits % 100), 16), 1)
+
+
+def grant_kit(harness: RedRogueHarness, kit: list[list[object]]) -> None:
+    """Own exactly these key items (and activate the marked ones, at most
+    KEY_ITEM_MAX_ACTIVE) at these tiers: item N is bits 2N/2N+1 of
+    sKeyItemsBitfield (owned, active) and the same pair of sKeyItemTiers.
+    The kit replaces what the boot left (Debug 2 already owns and activates
+    three), so the 3-active limit holds."""
+    if not kit:
+        return
+    bits = key_item_bits()
+    owned = [0, 0, 0, 0]
+    tiers = [0, 0, 0, 0]
+    for name, tier, active in kit:
+        bit = bits[name]
+        owned[bit // 8] |= 1 << bit % 8
+        if active:
+            owned[(bit + 1) // 8] |= 1 << (bit + 1) % 8
+        tiers[bit // 8] = tiers[bit // 8] & ~(3 << bit % 8) | tier << bit % 8
+    harness.write_sram_bytes("sKeyItemsBitfield", owned)
+    harness.write_sram_bytes("sKeyItemTiers", tiers)
+
+
+def boot(harness: RedRogueHarness, seed: int, battle_count: int = 1,
+         difficulty: str | None = None, ironman: bool = False, profile: Profile | None = None) -> None:
     """Debug 2 boot to the lobby, with the RNG seeded just before the lobby
-    rolls its first two doors, so the seed decides the whole run."""
+    rolls its first two doors, so the seed decides the whole run. The
+    difficulty is set in the lobby, before any stage builds a party."""
     seeded = {"done": False}
 
     def seed_once(_context) -> None:
@@ -1442,9 +1721,11 @@ def boot(harness: RedRogueHarness, seed: int, battle_count: int = 1) -> None:
     harness.register_hook("SelectAndPatchLobbyExit", seed_once)
     harness.boot_to_lobby(battle_count=battle_count)
     harness.unregister_hook("SelectAndPatchLobbyExit", seed_once)
+    apply_options(harness, difficulty, ironman, profile)
 
 
-def boot_new_game(harness: RedRogueHarness, seed: int) -> None:
+def boot_new_game(harness: RedRogueHarness, seed: int, difficulty: str | None = None,
+                  ironman: bool = False, profile: Profile | None = None) -> None:
     """Power on with no debug menu: the agent itself goes through the title
     screen, NEW GAME, naming and the intro tour. The RNG is seeded when
     StartNewGame runs, so the seed decides the starters and everything after."""
@@ -1456,6 +1737,18 @@ def boot_new_game(harness: RedRogueHarness, seed: int) -> None:
             harness.seed_rng([seed >> 24, seed >> 16, seed >> 8, seed])
 
     harness.register_hook("StartNewGame", seed_once)
+    if difficulty is not None or ironman or profile is not None:
+        # PrepareOakSpeech re-runs InitOptions (NORMAL) unless the OPTION
+        # screen was opened first, so set it at the first overworld frame:
+        # after the speech, before Oak's Lab builds any party.
+        chosen = {"done": False}
+
+        def choose_difficulty(_context) -> None:
+            if not chosen["done"]:
+                chosen["done"] = True
+                apply_options(harness, difficulty, ironman, profile)
+
+        harness.register_hook("JoypadOverworld", choose_difficulty)
 
 
 def play(
@@ -1478,6 +1771,10 @@ def play(
     snapshots: int = 3,
     branch_frames: int = 3000,
     freeze_frames: int | None = None,
+    coverage: bool = False,
+    difficulty: str | None = None,
+    vary: bool = False,
+    save_checks: bool = False,
 ) -> dict[str, object]:
     """Boot (Debug 2 lobby, or a real new game), play and return the report.
     A failure (see FAILURES) also writes a screenshot and state dump under
@@ -1485,11 +1782,21 @@ def play(
     `sram` is the cartridge RAM at power-on (32 KB; zeroes if None), for
     sram_fuzz.py. With `branches`, the run snapshots its key moments and then
     plays that many random-input branches from up to `snapshots` of each kind
-    (autoplay_branch.py); the report's "branches" holds what they found."""
+    (autoplay_branch.py); the report's "branches" holds what they found. With
+    `coverage`, every code label is hooked until it first runs, and the report's
+    "coverage" lists the labels that ran (coverage_inventory.py, autoplay_coverage.py)."""
     import autoplay_branch  # it imports this module
 
+    # --vary: this seed's own profile (battle policy, ironman, errands, starter).
+    profile = draw_profile(seed) if vary else None
+    # HARD, the balance baseline, unless asked; --vary mixes difficulties.
+    if difficulty is None:
+        difficulty = profile.difficulty if profile else "HARD"
+    elif profile is not None:
+        profile.difficulty = difficulty
+
     started = time.monotonic()
-    reel = autoplay_branch.SnapshotReel() if branches else None
+    reel = autoplay_branch.SnapshotReel() if branches or save_checks else None
     ram_path = None
     if sram is not None:
         ram_path = ARTIFACTS / f"autoplay_seed{seed}_{os.getpid()}.sram"
@@ -1499,15 +1806,19 @@ def play(
     if ram_path is not None:
         ram_path.unlink()
     try:
+        ironman = bool(profile and profile.ironman)
         if new_game:
-            boot_new_game(harness, seed)
+            boot_new_game(harness, seed, difficulty, ironman, profile)
         else:
-            boot(harness, seed, battle_count)
+            boot(harness, seed, battle_count, difficulty, ironman, profile)
         agent = AutoplayAgent(harness, seed=seed, battle_policy=battle_policy,
                               door_policy=door_policy, stall_frames=stall_frames, log=log,
                               heartbeat=heartbeat, menu_input=menu_input, menu_chaos=menu_chaos,
+                              profile=profile,
                               snapshot=None if reel is None else lambda kind, info: reel.offer(
                                   kind, harness.pyboy.frame_count, info, harness.save_state))
+        # After the agent's and the checks' own hooks, which keep their addresses.
+        hits, skipped = harness.track_coverage(coverage_hooks()) if coverage else (set(), [])
         error = None
         try:
             agent.run(runs=runs, stages=stages, max_frames=max_frames)
@@ -1520,6 +1831,12 @@ def play(
         data["anomalies"] = agent.checks.anomalies
         data["menus"] = agent.menu_stats
         data["checks"] = agent.checks.summary()
+        if profile is not None:
+            data["profile"] = {**asdict(profile), "errands_run": agent.errand_counts}
+        stored = harness.read8("wOptions2") & parse_rgbds_constants(
+            ROOT / "constants/ram_constants.asm")["DIFFICULTY_MASK"]
+        data["difficulty"] = next((name for name in DIFFICULTIES if parse_rgbds_constants(
+            ROOT / "constants/ram_constants.asm")[f"DIFFICULTY_{name}"] == stored), stored)
         if agent.checks.first_anomaly_state is not None:
             path = ARTIFACTS / f"autoplay_seed{seed}_anomaly.state"
             path.write_bytes(agent.checks.first_anomaly_state)
@@ -1527,13 +1844,25 @@ def play(
         if report.failed:
             image, state = harness.write_failure_artifacts(f"autoplay_seed{seed}")
             data["artifacts"] = {"image": str(image), "state": str(state)}
+        hits = set(hits)
     finally:
         harness.close()
-    if reel is not None:
+    if save_checks:
+        import save_reload
+
+        lobbies = [s for s in reel.select(SAVE_CHECK_LOBBIES) if s.kind == "lobby"]
+        if heartbeat is not None:
+            heartbeat.write_text(json.dumps({"frame": None, "mode": "save checks", "map": None,
+                                             "position": None}) + "\n", encoding="utf-8")
+        data["save_checks"] = save_reload.run_save_checks(seed, lobbies)
+    if reel is not None and branches:
         options = {} if freeze_frames is None else {"freeze_frames": freeze_frames}
         data["branches"] = autoplay_branch.run_snapshots(
             seed, reel.select(snapshots), branches=branches, frames=branch_frames,
-            heartbeat=heartbeat, **options)
+            heartbeat=heartbeat, coverage=coverage, **options)
+        hits |= set(data["branches"].pop("coverage_hits", ()))
+    if coverage:
+        data["coverage"] = {"hit": sorted(hits), "skipped": skipped}
     data["wall_seconds"] = round(time.monotonic() - started, 1)
     return data
 
@@ -1559,6 +1888,16 @@ def main(argv: list[str] | None = None) -> int:
                         help="random-input branches per snapshot (battle, reward, gift, lobby)")
     parser.add_argument("--snapshots", type=int, default=3, help="snapshots branched per kind")
     parser.add_argument("--branch-frames", type=int, default=3000)
+    parser.add_argument("--coverage", action="store_true",
+                        help="record which code labels run (autoplay_coverage.py reports them)")
+    parser.add_argument("--save-checks", action="store_true",
+                        help="save at lobby arrivals, reload on a fresh emulator, compare, and cut "
+                             "power mid-save (save_reload.py)")
+    parser.add_argument("--vary", action="store_true",
+                        help="play this seed's own profile: battle policy, ironman, lobby and bag "
+                             "errands, items in battle, starter (Profile, draw_profile)")
+    parser.add_argument("--difficulty", choices=DIFFICULTIES, default=None,
+                        help="LEVELS setting (default HARD, the balance baseline; --vary mixes them)")
     parser.add_argument("--report", type=Path, default=None,
                         help="report path (default artifacts/autoplay_seed<N>.json)")
     parser.add_argument("--quiet", action="store_true", help="do not print events as they happen")
@@ -1571,7 +1910,7 @@ def main(argv: list[str] | None = None) -> int:
         battle_policy=args.battle_policy, door_policy=args.door_policy,
         menu_input=args.menu_input, menu_chaos=args.menu_chaos,
         branches=args.branches, snapshots=args.snapshots, branch_frames=args.branch_frames,
-        log=None if args.quiet else print,
+        coverage=args.coverage, difficulty=args.difficulty, vary=args.vary, save_checks=args.save_checks, log=None if args.quiet else print,
     )
     path = args.report or ARTIFACTS / f"autoplay_seed{args.seed}.json"
     path.parent.mkdir(parents=True, exist_ok=True)

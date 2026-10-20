@@ -6,6 +6,7 @@ static tests guard the one way that design can silently break - a form losing
 an evolution it ought to have - and the ROM tests drive the real lookup and the
 real evolution loop.
 """
+import io
 import sys
 import unittest
 
@@ -265,8 +266,8 @@ class PartyMenuEvoStoneTest(HarnessTestCase):
         ('FARFETCHD', 0, 'LEAF_STONE', False),    # plain Farfetch'd: empty list
     )
 
-    # Each boot drives only half the cases: the harness parks reliably for about
-    # nine call_routine hijacks, and the party menu redraw is a heavy one.
+    # Keep the existing test IDs, but isolate every case below. Splitting the
+    # cases alone does not prevent redraw scratch state leaking into the lobby.
     def test_able_follows_the_mons_own_list_first_half(self):
         self.check(self.CASES[:5])
 
@@ -292,9 +293,14 @@ class PartyMenuEvoStoneTest(HarnessTestCase):
         # recorded before either, so return from each.
         h.register_hook('PrintText', emulate_ret)
         h.register_hook('Delay3', emulate_ret)
+        # Capture the parked machine with its hooks installed. Re-parking after
+        # a redraw resumes the interrupted lobby with menu-modified scratch RAM;
+        # restore the whole baseline instead of accumulating that state.
+        baseline = io.BytesIO()
+        h.save_state(baseline)
         for species, form, stone, expected in cases:
             with self.subTest(species=species, form=form, stone=stone):
-                h.park_before_hijack()
+                h.load_state(baseline)
                 shown.clear()
                 h.write8('wPartyCount', 1)
                 h.write8('wPartySpecies', SPECIES[species])

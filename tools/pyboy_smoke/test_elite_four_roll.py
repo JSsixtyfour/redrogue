@@ -8,12 +8,10 @@ bitmask, and the Champion depends on what the Elite Four draw happened to take.
 A clean link proves none of it (feedback_build_success_not_correctness), and the
 predecessor of this code shipped a silent routing bug for weeks.
 
-Group control. RogueGetActiveGroupMask short-circuits to "every group" when
-BIT_DEBUG2_MODE is set in wStatusFlags6, and otherwise derives unlocks from
-the persistent activation events and ANDs in the player's SRAM toggle byte.
-That gives two clean levers that do not interfere: the debug bit selects the
-POOL, and the activation/defeat events independently drive the forced
-first-clear Champion.
+Group control. Ordinary SRAM toggles filter permanent story unlocks; tagged
+CHEAT/Debug 2 overrides select content without setting those story events.
+Active groups and persistent Champion-defeat events drive the guaranteed
+first-clear Champion, reserving Lance before the Elite Four draw.
 
 Roll budget. call_routine corrupts the machine after roughly ten invocations on
 one boot (project_call_routine_harness_limits), so no method below rolls more
@@ -186,19 +184,44 @@ class Elite4RollTest(HarnessTestCase):
             )
             self.assertIn(champion, CHAMPION_POOL)
 
-    def test_first_johto_clear_forces_lance_unless_he_is_in_the_four(self) -> None:
+    def test_first_johto_clear_always_reserves_lance_as_champion(self) -> None:
         """Johto active with Lance's first-clear event still unset."""
         self._boot(johto=True, unlock_stage=1)
         for _ in range(6):
             members, champion = self._roll()
-            if "LANCE" in members:
-                self.assertNotEqual(champion, "LANCE")
-            else:
-                self.assertEqual(
-                    champion,
-                    "LANCE",
-                    "Lance was available and unforced on the first Johto clear",
-                )
+            self.assertNotIn("LANCE", members)
+            self.assertEqual(champion, "LANCE")
+
+    def test_first_johto_clear_reserves_lance_with_koga_excluded(self) -> None:
+        self._boot(johto=True, unlock_stage=1)
+        self._set_lineup({0: self.classes["JANINE"]})
+        for _ in range(6):
+            members, champion = self._roll()
+            self.assertEqual(len(set(members)), NUM_E4)
+            self.assertNotIn("LANCE", members)
+            self.assertNotIn("KOGA_E4", members)
+            self.assertEqual(champion, "LANCE")
+
+    def test_cheat_groups_force_first_champions_without_story_unlocks(self) -> None:
+        import io
+
+        self._boot(johto=False)
+        h = self.harness
+        baseline = io.BytesIO()
+        h.save_state(baseline)
+        for mask, champion in ((3, "LANCE"), (5, "PROF_OAK"), (7, "PROF_OAK")):
+            with self.subTest(mask=mask):
+                h.load_state(baseline)
+                h.write_sram_bytes("sRogueSpeciesGroupsEnabled", [0x80 | mask])
+                members, actual = self._roll()
+                self.assertEqual(actual, champion)
+                self.assertNotIn(actual, members)
+
+    def test_first_warp_clear_takes_priority_over_undefeated_lance(self) -> None:
+        self._boot(johto=True, unlock_stage=2, defeat_stage=0)
+        for _ in range(5):
+            _, champion = self._roll()
+            self.assertEqual(champion, "PROF_OAK")
 
     def test_first_warp_clear_forces_oak(self) -> None:
         """Time Warp active with Oak's first-clear event still unset.

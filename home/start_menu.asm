@@ -83,7 +83,11 @@ RedisplayStartMenu::
 	cp 5
 	jp z, StartMenu_Option
 
-; EXIT falls through to here
+	; The final row is END RUN in a run, EXIT in the hub/link contexts.
+	; Carry clear means NO/B: restore the selected row and menu parameters.
+	rfarcall RogueStartMenuEndRun
+	jp nc, RedisplayStartMenu
+
 CloseStartMenu::
 	call Joypad
 	ldh a, [hJoyPressed]

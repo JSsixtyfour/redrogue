@@ -183,6 +183,7 @@ class BranchDriver:
         h.load_state(io.BytesIO(state))
         self.checks.reset()
         self.events = []
+        h.hook_errors.clear()
         rng = random.Random(key)
         buttons, weights = zip(*BUTTONS)
         start = h.pyboy.frame_count
@@ -214,6 +215,9 @@ class BranchDriver:
                 h.pyboy.button_release(button)
                 h.tick(rng.randint(1, MAX_GAP))
                 self.checks.after_step()
+                if h.hook_errors:
+                    outcome, detail = "error", "a hook callback raised: " + h.hook_errors[0].strip().splitlines()[-1]
+                    break
                 if self.checks.crash is not None:
                     crash = self.checks.crash
                     where = crash.get("from") or crash.get("pc") or {}
@@ -265,7 +269,8 @@ def replay_command(path: Path, key: str, frames: int) -> str:
 
 
 def run_snapshots(seed: int, snapshots: list[Snapshot], *, branches: int, frames: int,
-                  freeze_frames: int = FREEZE_FRAMES, heartbeat: Path | None = None) -> dict[str, object]:
+                  freeze_frames: int = FREEZE_FRAMES, heartbeat: Path | None = None,
+                  coverage: bool = False) -> dict[str, object]:
     """Every branch of every snapshot, in a fresh emulator. Returns the
     findings (with replay commands) and per-kind totals."""
     started = time.monotonic()
@@ -275,6 +280,7 @@ def run_snapshots(seed: int, snapshots: list[Snapshot], *, branches: int, frames
     longest_quiet = {"frames": 0}
     try:
         driver = BranchDriver(harness, freeze_frames=freeze_frames)
+        hits = harness.track_coverage(autoplay.coverage_hooks())[0] if coverage else set()
         for snapshot in snapshots:
             written = False
             for branch in range(branches):
@@ -309,6 +315,7 @@ def run_snapshots(seed: int, snapshots: list[Snapshot], *, branches: int, frames
         "totals": totals,
         "longest_quiet": longest_quiet,
         "findings": findings,
+        **({"coverage_hits": sorted(hits)} if coverage else {}),
         "wall_seconds": round(time.monotonic() - started, 1),
     }
 

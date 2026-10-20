@@ -394,26 +394,32 @@ FinalTeamArchiveWriteHeaderChecksum:
 	ld [sFinalTeamArchiveHeaderChecksum], a
 	ret
 
-; d = record index. Carry set iff its checksum matches.
+; d = record index. Carry set iff it holds a team and its checksum matches.
+; Preserves d and e: the random pick builds its valid-record mask in e.
+; An all-zero record (a slot never captured) checksums to $FF, the same byte
+; that marks a slot empty, so the checksum alone passed it: the AI then fielded
+; an empty party and the battle looped on sending out nothing (autoplay,
+; 2026-10-20). The party count byte (the record's first) rules it out.
 FinalTeamArchiveRecordIsValid:
 	push de
 	ld a, d
 	call FinalTeamArchiveRecordAddress
+	ld a, [hl]                    ; wPartyCount as captured
+	and a
+	jr z, .invalidPop
 	ld bc, FINAL_TEAM_RECORD_SIZE
-	call FinalTeamArchiveChecksum
+	call FinalTeamArchiveChecksum ; clobbers d
 	pop de
-	push af
 	ld hl, sFinalTeamArchiveRecordChecksums
 	ld b, 0
 	ld c, d
 	add hl, bc
-	ld a, [hl]
-	ld e, a
-	pop af
-	cp e
+	cp [hl]
 	jr nz, .invalid
 	scf
 	ret
+.invalidPop
+	pop de
 .invalid
 	and a ; checksum inequality must never leak cp's carry as "valid"
 	ret

@@ -112,6 +112,7 @@ class RedRogueHarness:
         self.sym_sha256 = hashlib.sha256(self.sym_path.read_bytes()).hexdigest()
         self._validate_rom_and_symbols(rom_data)
         self._recent_hooks: list[dict[str, object]] = []
+        self.hook_errors: list[str] = []  # tracebacks of hook callbacks that raised
         self._registered_hooks: list[tuple[int, int]] = []
         self._hook_callbacks: dict[tuple[int, int], list[object]] = {}
         self.hardware_mode = "CGB" if cgb_mode else "DMG"
@@ -231,13 +232,14 @@ class RedRogueHarness:
                 "rebuild pokeblue_debug.gbc before running PyBoy"
             )
 
-    def _coverage_callback(self, label: str):
+    def _coverage_callback(self, label: str, key: tuple[int, int] | None = None):
         """Records the first hit, then detaches: only reachability is wanted,
         and a hook left on a hot label (AIGetPlayerMoveN runs hundreds of times
         per decision) made a suite ~80x slower (measured 2026-09-30). PyBoy
         cannot deregister a hook from inside its own callback, so the detach is
-        queued and done between frames (_drain_coverage)."""
-        key = self.symbols.get(label)
+        queued and done between frames (_drain_coverage). `key` hooks another
+        address than the label's own (coverage_inventory.hook_plan)."""
+        key = key or self.symbols.get(label)
 
         def hit(_context) -> None:
             if label not in self._coverage_hits:
@@ -256,6 +258,21 @@ class RedRogueHarness:
                 self._registered_hooks.remove(key)
                 self._hook_callbacks.pop(key, None)
                 self.pyboy.hook_deregister(*key)
+
+    def track_coverage(self, hooks: dict[str, tuple[int, int]]) -> tuple[set[str], list[str]]:
+        """Hook each label, at the (bank, address) given for it, until its
+        first execution (the same hit-once-and-detach hooks as
+        REDROGUE_AI_COVERAGE). Returns the live set of labels hit so far, and
+        the labels skipped because their address already holds a hook ($DB)
+        put there directly through pyboy.hook_register. Only code may be
+        hooked, and no hook next to another: coverage_inventory.hook_plan."""
+        skipped = []
+        for label, key in hooks.items():
+            if key not in self._hook_callbacks and self.pyboy.memory[key[0], key[1]] == 0xDB:
+                skipped.append(label)
+                continue
+            self._register_at(key, self._coverage_callback(label, key))
+        return self._coverage_hits, skipped
 
     def _write_coverage(self) -> None:
         import inspect
@@ -281,8 +298,10 @@ class RedRogueHarness:
         self.pyboy.stop(save=False)
 
     def register_hook(self, label: str, callback) -> None:
-        bank, address = self.symbols.get(label)
-        key = (bank, address)
+        self._register_at(self.symbols.get(label), callback)
+
+    def _register_at(self, key: tuple[int, int], callback) -> None:
+        bank, address = key
         if key in self._hook_callbacks:
             self._hook_callbacks[key].append(callback)
             return
@@ -290,7 +309,16 @@ class RedRogueHarness:
 
         def dispatch(context, hook_key=key) -> None:
             for registered_callback in tuple(self._hook_callbacks[hook_key]):
-                registered_callback(context)
+                try:
+                    registered_callback(context)
+                except Exception:
+                    # PyBoy prints a hook's exception and keeps running, so a
+                    # broken callback would otherwise surface much later as
+                    # something else (a stall). Callers check hook_errors.
+                    import traceback
+
+                    self.hook_errors.append(traceback.format_exc(limit=4))
+                    raise
 
         self.pyboy.hook_register(bank, address, dispatch, None)
         self._registered_hooks.append(key)

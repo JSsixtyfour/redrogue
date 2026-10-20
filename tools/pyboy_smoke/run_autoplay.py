@@ -73,6 +73,11 @@ def run_seed(seed: int, options: dict[str, object]) -> dict[str, object]:
         "anomalies": data["anomalies"],
         "menus": data["menus"],
         "branches": data.get("branches"),
+        "difficulty": data.get("difficulty"),
+        "profile": data.get("profile"),
+        "save_findings": (data.get("save_checks") or {}).get("findings", []),
+        "power_cuts": [(cut["cut"], cut["loads"]) for cut in (data.get("save_checks") or {}).get("power_cuts", [])],
+        "coverage": (data.get("coverage") or {}).get("hit"),
         "report": str(path),
     }
 
@@ -237,6 +242,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--branch-frames", type=int, default=3000, help="frames each branch plays")
     parser.add_argument("--freeze-frames", type=int, default=None,
                         help="frames without an input poll before a branch counts as frozen")
+    parser.add_argument("--save-checks", action="store_true",
+                        help="save, reload and power-cut checks at lobby arrivals (save_reload.py)")
+    parser.add_argument("--vary", action="store_true",
+                        help="each seed plays its own profile (battle policy, ironman, errands, "
+                             "items in battle, starter); see autoplay.Profile")
+    parser.add_argument("--difficulty", choices=autoplay.DIFFICULTIES, default=None,
+                        help="LEVELS setting (default HARD, the balance baseline; --vary mixes them)")
+    parser.add_argument("--coverage", action="store_true",
+                        help="record which code labels run and write artifacts/coverage_summary.json "
+                             "(autoplay_coverage.py)")
     parser.add_argument("--timeout", type=float, default=900,
                         help="seconds before a seed counts as hung and is killed")
     args = parser.parse_args(argv)
@@ -255,6 +270,10 @@ def main(argv: list[str] | None = None) -> int:
         "snapshots": args.snapshots,
         "branch_frames": args.branch_frames,
         "freeze_frames": args.freeze_frames,
+        "coverage": args.coverage,
+        "difficulty": args.difficulty,
+        "vary": args.vary,
+        "save_checks": args.save_checks,
     }
     rows = []
     for row in run_all(seeds, options, max(1, args.jobs), args.timeout):
@@ -271,6 +290,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"       branch {finding['key']}: {finding['outcome']} {finding['detail']}"
                   + "".join(f"; {a['check']}: {a['detail']}" for a in finding["anomalies"][:2]))
     rows.sort(key=lambda row: row["seed"])
+    # Each seed's label list goes to the coverage map, not the batch summary.
+    hit_lists = {f"seed{row['seed']}": row.pop("coverage") for row in rows if row.get("coverage")}
 
     outcomes: dict[str, int] = {}
     for row in rows:
@@ -305,12 +326,29 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  anomaly in {seeds_with_it} seed(s): {finding}")
     if branching:
         print_branching(branching)
+    if args.save_checks:
+        save_findings = [(row["seed"], finding) for row in rows for finding in row.get("save_findings") or []]
+        loads: dict[str, int] = {}
+        for row in rows:
+            for _cut, outcome in row.get("power_cuts") or []:
+                loads[outcome] = loads.get(outcome, 0) + 1
+        print(f"  save checks: power cuts load {loads}; {len(save_findings)} finding(s)")
+        for seed, finding in save_findings[:12]:
+            print(f"    seed {seed}: {finding['check']}: " + json.dumps(
+                {k: v for k, v in finding.items() if k != "check"})[:300])
+    if args.coverage:
+        import autoplay_coverage
+
+        if hit_lists:
+            autoplay_coverage.print_summary(autoplay_coverage.write_summary(hit_lists), top=12)
+            print(f"  coverage map -> {autoplay_coverage.SUMMARY}")
     for row in failures:
         flags = " --new-game" * args.new_game + f" --runs {args.runs}" * (args.runs != 1)
         why = row["outcome"] if row["outcome"] in autoplay.FAILURES else "anomaly"
         print(f"  reproduce: python3 tools/pyboy_smoke/autoplay.py --seed {row['seed']}{flags}"
               f"   # {why} at {row['map']}")
-    return 1 if failures or (branching and branching["findings"]) else 0
+    save_failed = any(row.get("save_findings") for row in rows)
+    return 1 if failures or save_failed or (branching and branching["findings"]) else 0
 
 
 if __name__ == "__main__":

@@ -53,8 +53,10 @@ DrawStartMenu::
 	call PrintStartMenuItem
 	ld de, StartMenuOptionText
 	call PrintStartMenuItem
-	ld de, StartMenuExitText
-	call PlaceString
+	; Pass the final row through de: the farcall replaces hl on entry.
+	ld d, h
+	ld e, l
+	rfarcall RoguePrintStartMenuExit
 	ld hl, wStatusFlags5
 	res BIT_NO_TEXT_DELAY, [hl]
 	ret
@@ -73,9 +75,6 @@ StartMenuSaveText:
 
 StartMenuResetText:
 	db "RESET@"
-
-StartMenuExitText:
-	db "EXIT@"
 
 StartMenuOptionText:
 	db "OPTION@"
