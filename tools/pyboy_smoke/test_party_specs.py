@@ -29,6 +29,9 @@ are capped at 8 builds, and anything needing more statistical power than that is
 asserted deterministically instead - see test_uber_filter_reads_the_spec_flag,
 which drives the filter predicate directly rather than sampling draws.
 """
+import io
+import re
+
 from source_constants import parse_rgbds_constants, parse_trainer_class_indexes
 from test_smoke import HarnessTestCase, REPO_ROOT
 
@@ -812,3 +815,122 @@ class PartySpecRoundCoverageSmokeTest(HarnessTestCase):
                 return
             self.assertEqual(forms[-1], 0, f"a non-Umbreon ace carries form {forms[-1]}")
         self.fail("six Karen builds drew no Umbreon ace; the form byte went untested")
+
+
+class RolledMovesetSmokeTest(HarnessTestCase):
+    """PartyGenRollMoveset fills all four slots when the pool allows it, and
+    never leaves a mon with no moves.
+
+    Found by the autoplay soak test (seed 10, 2026-10-19): Whitney's ELITE-row
+    team dealt its TM-only slot to a Ditto. TM-only rolls left out the
+    level-up pool, Ditto has no TMs, so it came out with no moves and the
+    battle froze in SelectEnemyMove's random pick. The same omission made
+    every TM-only pick count against tm_cap, so GYM_LATE (cap 3) left every
+    TM-only slot one move short. And PartyGenPickOne, out of draws, only
+    looked at its final draw, so an unlucky last draw ended the roll early."""
+
+    MIX_ID_OFFSET = RequireFlagsSmokeTest.MIX_ID_OFFSET
+
+    def _roll(self, species_name, moves, source, mix="MIX_ELITE", level=30, seed=None):
+        h = self.harness
+        assert h is not None
+        if not getattr(self, "_booted", False):
+            h.boot_fight2(seed=1)
+            self._baseline = io.BytesIO()
+            h.save_state(self._baseline)
+            self._booted = True
+        h.load_state(self._baseline)
+        if seed is not None:
+            h.seed_rng(seed)
+        species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
+        move_ids = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
+        sources = parse_rgbds_constants(REPO_ROOT / "constants/party_spec_constants.asm")
+        RequireFlagsSmokeTest._set_synthetic_header(self, _mix_id(mix))
+        h.write8("wEnemyPartyCount", 1)
+        h.write8("wPartyGenSlot", 0)
+        h.write8("wEnemyMon1", species[species_name])
+        h.write8("wEnemyMon1CatchRate", 0)  # form 0
+        h.write8("wEnemyMon1Level", level)
+        h.write8("wCurEnemyLevel", level)  # GetLevelUpMovesFar's level cap
+        for i in range(4):
+            name = moves[i] if i < len(moves) else None
+            h.write8("wEnemyMon1Moves", move_ids[name] if name else 0, offset=i)
+        h.write8("wPartyGenSource", sources[source])
+        h.call_routine("PartyGenRollMoveset", limit=6000)
+        names = {value: name for name, value in move_ids.items()}
+        rolled = [names.get(m, m) for m in h.read_bytes("wEnemyMon1Moves", 4)]
+        return rolled, h.read_bytes("wEnemyMon1PP", 4)
+
+    def test_tm_only_roll_on_a_species_with_no_tms_keeps_a_move(self):
+        moves, pp = self._roll("DITTO", ["TRANSFORM"], "MSRC_RANDOM_TM_ONLY")
+        self.assertEqual(moves, ["TRANSFORM", "NO_MOVE", "NO_MOVE", "NO_MOVE"])
+        self.assertGreater(pp[0] & 0x3F, 0)
+
+    @staticmethod
+    def _tm_moves(species_name):
+        """The moves in a species' tmhm list (its base stats file)."""
+        text = (REPO_ROOT / f"data/pokemon/base_stats/{species_name.lower()}.asm").read_text()
+        match = re.search(r"tmhm(.*?); end", text, re.S)
+        body = match.group(1).replace("\\", " ") if match else ""
+        return {name.strip() for name in re.split(r"[,\s]+", body) if name.strip()}
+
+    def test_tm_only_roll_takes_tms_first(self):
+        # ELITE's tm_cap is 4: every slot comes from the TM pool. (Drawing from
+        # TMs and learned moves together, Pikachu came out all-TM in 19 of 30.)
+        tms = self._tm_moves("PIKACHU")
+        for seed in range(10):
+            with self.subTest(seed=seed):
+                moves, _ = self._roll("PIKACHU", [], "MSRC_RANDOM_TM_ONLY", mix="MIX_ELITE",
+                                      seed=[seed, 7, 3, seed * 13])
+                self.assertTrue(all(move in tms for move in moves), moves)
+
+    def test_tm_only_roll_falls_back_to_the_learnset_past_its_tm_cap(self):
+        # GYM_LATE's tm_cap is 3: three TM-only moves, then the fourth slot
+        # from the learnset (or a TM the mon also learns, which costs no cap),
+        # never left empty.
+        tms = self._tm_moves("GENGAR")
+        for seed in range(5):
+            with self.subTest(seed=seed):
+                moves, _ = self._roll("GENGAR", [], "MSRC_RANDOM_TM_ONLY", mix="MIX_GYM_LATE",
+                                      seed=[seed, 7, 3, seed * 13])
+                self.assertNotIn("NO_MOVE", moves)
+                self.assertGreaterEqual(sum(move in tms for move in moves), 3, moves)
+
+    def test_a_roll_that_finds_nothing_keeps_the_mons_moves(self):
+        # No species can empty its own pool any more (every one has a
+        # level-1 move off the excluded list), so empty both candidate
+        # segments by hand once they are counted: the guard behind the roll
+        # must still leave the mon AddPartyMon's moves.
+        h = self.harness
+        assert h is not None
+
+        def empty_pools(_context):
+            h.write8("wPartyGenCandidateCount", 0)
+            h.write8("wPartyGenTMCount", 0)
+
+        h.register_hook("PartyGenRollMoveset.tmsDone", empty_pools)
+        moves, pp = self._roll("PIKACHU", ["THUNDERSHOCK", "GROWL"], "MSRC_RANDOM_TM")
+        h.unregister_hook("PartyGenRollMoveset.tmsDone", empty_pools)
+        self.assertEqual(moves, ["THUNDERSHOCK", "GROWL", "NO_MOVE", "NO_MOVE"])
+        self.assertTrue(all(value & 0x3F for value in pp[:2]), pp)
+
+    def test_running_out_of_draws_still_takes_an_eligible_move(self):
+        # ELITE's rank weights reject most of Kangaskhan's level-up moves, so a
+        # pick often spends its whole draw budget; 5 of 30 rolls came out short
+        # while only the final draw was considered.
+        for seed in range(20):
+            with self.subTest(seed=seed):
+                moves, _ = self._roll("KANGASKHAN", [], "MSRC_RANDOM", seed=[seed, 7, 3, seed * 13])
+                self.assertNotIn("NO_MOVE", moves)
+
+    def test_enemy_with_no_moves_struggles_instead_of_freezing(self):
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        move_ids = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
+        for i in range(4):
+            h.write8("wEnemyMonMoves", 0, offset=i)
+        h.write8("wEnemyDisabledMove", 0)
+        h.write8("wEnemySelectedMove", 0)
+        h.call_routine("SelectEnemyMove", limit=2000)
+        self.assertEqual(h.read8("wEnemySelectedMove"), move_ids["STRUGGLE"])

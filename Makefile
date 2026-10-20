@@ -65,6 +65,7 @@ RGBGFXFLAGS  ?= -Weverything
 	audits_long \
 	space \
 	ai_scenarios \
+	autoplay \
 	balance_report \
 	release \
 	save_schema \
@@ -170,6 +171,11 @@ ai_scenarios: pokeblue_debug.gbc
 
 ai_benchmark: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_ai_benchmark.py $(BENCHMARK_ARGS)
+
+# Soak test: the autoplay agent plays seeded runs from the lobby to the Champion
+# in parallel and fails on any stalled or crashed run. AUTOPLAY_ARGS='--seeds 1-64'.
+autoplay: pokeblue_debug.gbc
+	python3 tools/pyboy_smoke/run_autoplay.py $(AUTOPLAY_ARGS)
 
 balance_report:
 	python3 tools/balance/model.py --runs 200 --selfcheck

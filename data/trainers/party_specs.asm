@@ -149,7 +149,8 @@ DEF GYM_BAND4_MIX       EQU MIX_ELITE
 ;              plain level-up roll, keeping the opening gyms soft.
 ;   GYM_MID    3 mons: ace set (NORMAL only), one random, one random+TM, all on
 ;              RANK_ROW_NORMAL with tm_cap 2.
-;   GYM_LATE   4 mons: two sets (NORMAL or HARD), one random+TM, one TM-only.
+;   GYM_LATE   4 mons: two sets (NORMAL or HARD), one random+TM, one TM-only
+;              (TMs up to tm_cap, then learned moves; see MSRC_RANDOM_TM_ONLY).
 ;   ELITE      5-6 mons: three sets (HARD or ELITE), one random+TM, one
 ;              TM-only; gym 8's sixth mon takes the random+TM fallback.
 ;

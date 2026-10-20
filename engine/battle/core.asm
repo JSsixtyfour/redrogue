@@ -3397,6 +3397,14 @@ SelectEnemyMove:
 	ld a, [hld]
 	and a
 	jr nz, .atLeastTwoMovesAvailable
+	; No moves at all must not reach .chooseRandomMove, which retries until it
+	; draws a non-empty slot and so would never return. Party generation once
+	; built a moveless Ditto (a TM-only roll on a species with no TMs) and froze
+	; Whitney's battle; PartyGenRollMoveset now prevents that, this is the net.
+	ld a, [hl] ; 1st enemy move
+	and a
+	ld a, STRUGGLE
+	jr z, .done
 	ld a, [wEnemyDisabledMove]
 	and a
 	ld a, STRUGGLE ; struggle if the only move is disabled

@@ -1691,7 +1691,8 @@ PartyGenApplyMoveset:
 ;                        "any of them", not "the good ones")
 ;   MSRC_RANDOM          level-up segment, rank-weighted
 ;   MSRC_RANDOM_TM       both segments, rank-weighted, tm_cap on TM-only moves
-;   MSRC_RANDOM_TM_ONLY  TM segment only, rank-weighted
+;   MSRC_RANDOM_TM_ONLY  TM segment first, rank-weighted, tm_cap on TM-only
+;                        moves; once it gives no more, the level-up segment
 ; ===========================================================================
 PartyGenRollMoveset:
 	ld a, LOSS_ORIGIN_GENERATED    ; also the MSRC_SET no-match fallback above
@@ -1708,15 +1709,13 @@ PartyGenRollMoveset:
 	call GetMonHeader
 
 ; --- level-up candidates ---
-	ld a, [wPartyGenSource]
-	cp MSRC_RANDOM_TM_ONLY
-	jr z, .noLevelUpSegment
+; Every rolled source loads these, MSRC_RANDOM_TM_ONLY included: it falls back
+; to them once its TMs give out, and PartyGenIsTMOnly needs them to tell a
+; TM-only move from one the mon also learns (which does not spend tm_cap).
+; Leaving them out made every TM pick count against tm_cap and left nothing
+; to fall back on: GYM_LATE's cap of 3 left each TM-only slot one move short,
+; and Ditto (no TMs) with none.
 	farcall GetLevelUpMovesFar     ; WRAM in, WRAM out; see that routine's header
-	jr .levelUpDone
-.noLevelUpSegment
-	xor a
-	ld [wPartyGenCandidateCount], a
-.levelUpDone
 
 ; --- TM/HM candidates ---
 	ld a, [wPartyGenSource]
@@ -1733,6 +1732,19 @@ PartyGenRollMoveset:
 	xor a
 	ld [wPartyGenTMUsed], a
 
+; Keep AddPartyMon's four moves on the stack, for the case where the roll
+; below picks nothing at all (see .movesFinal).
+	call PartyGenSlotMonMoves
+	ld a, [hli]
+	ld d, a
+	ld a, [hli]
+	ld e, a
+	push de                        ; moves 1-2
+	ld a, [hli]
+	ld d, a
+	ld e, [hl]
+	push de                        ; moves 3-4
+
 ; Clear the four move slots. Two reasons: the "is this move already chosen"
 ; test reads them, so a leftover learnset move would wrongly exclude itself
 ; from the new pool; and if the pool runs dry the slot must end up NO_MOVE
@@ -1745,7 +1757,7 @@ PartyGenRollMoveset:
 	call PartyGenPickOne           ; a = move id, 0 if nothing selectable
 	pop bc
 	and a
-	jr z, .movesFinal              ; pool exhausted; the rest stay NO_MOVE
+	jr z, .poolDry
 	push bc
 	call PartyGenWriteMove
 	pop bc
@@ -1753,7 +1765,53 @@ PartyGenRollMoveset:
 	ld a, c
 	cp NUM_MOVES
 	jr c, .pickLoop
+	jr .movesFinal
+.poolDry
+; MSRC_RANDOM_TM_ONLY's learnset fallback: its TMs are used up (or tm_cap is
+; reached), so the remaining slots come from the moves the mon learns. A zero
+; TM count is what switches PartyGenDrawCandidate to the level-up segment;
+; .rolled counts the TMs again for PartyGenApplyRequireFlags.
+	ld a, [wPartyGenSource]
+	cp MSRC_RANDOM_TM_ONLY
+	jr nz, .movesFinal             ; pool exhausted; the rest stay NO_MOVE
+	ld a, [wPartyGenTMCount]
+	and a
+	jr z, .movesFinal              ; the fallback is exhausted too
+	xor a
+	ld [wPartyGenTMCount], a
+	jr .pickLoop
 .movesFinal:
+; c = slots filled. Zero means the pool had nothing this mon can use, e.g. the
+; mix's filters rejected every candidate. (PartyGenCountTMs below clobbers c,
+; so this test comes first.) A mon with no moves at all froze the
+; battle (SelectEnemyMove's random pick never finds a move: Whitney's Ditto,
+; back when TM-only rolls left out the level-up pool), so it keeps
+; AddPartyMon's moves instead.
+	pop de                         ; moves 3-4
+	pop hl                         ; moves 1-2
+	ld a, c
+	and a
+	jr nz, .rolled
+	push de
+	push hl
+	ld a, h
+	ld c, 0
+	call PartyGenWriteMove         ; preserves de only
+	pop hl
+	ld a, l
+	ld c, 1
+	call PartyGenWriteMove
+	pop de
+	ld a, d
+	ld c, 2
+	call PartyGenWriteMove
+	ld a, e
+	ld c, 3
+	call PartyGenWriteMove
+.rolled
+	ld a, [wPartyGenSource]
+	cp MSRC_RANDOM_TM_ONLY
+	call z, PartyGenCountTMs       ; undo .poolDry's zero for the pass below
 ; The four move slots are final here on every path (pool exhausted early or
 ; all four filled). require_flags gets its one guaranteed pass now, after
 ; every write and before this mon counts as done.
@@ -2087,11 +2145,16 @@ ASSERT MAX_LEVEL + SET_LEVEL_SLACK_BELOW < 256, \
 ; ===========================================================================
 PartyGenPickOne:
 	ld b, PARTY_GEN_MAX_DRAWS
+	xor a
+	push af                        ; the last eligible draw, 0 = none yet
 .draw
 	call PartyGenDrawCandidate     ; e = move id (0 = ineligible), c = weight
 	ld a, e
 	and a
 	jr z, .next
+	pop af
+	ld a, e
+	push af                        ; remember it
 	ld a, [wPartyGenSource]
 	cp MSRC_LEARNSET_FULL
 	jr z, .accept                  ; unweighted source
@@ -2102,11 +2165,18 @@ PartyGenPickOne:
 .next
 	dec b
 	jr nz, .draw
-; Budget spent. Take the last eligible draw if there was one.
-	ld a, e
+; Budget spent. Take the last ELIGIBLE draw if there was one. This used to
+; test only the final draw, so whenever that one draw was ineligible the pick
+; came back empty with eligible moves left, and the roll stopped filling slots.
+; Nothing the draws test changes within one pick, so that move is still legal.
+	pop af
 	and a
 	ret z
+	ld e, a
+	jr .charge
 .accept
+	pop af                         ; drop the remembered draw
+.charge
 	call PartyGenChargeTMOnly      ; spends tm_cap if e is a TM-only move
 	ld a, e
 	ret
@@ -2127,6 +2197,20 @@ PartyGenPickOne:
 ; ===========================================================================
 PartyGenDrawCandidate:
 	push bc
+; MSRC_RANDOM_TM_ONLY draws from the TM segment alone while it has one, then
+; (PartyGenRollMoveset zeroes the count) from the level-up segment alone.
+	ld a, [wPartyGenSource]
+	cp MSRC_RANDOM_TM_ONLY
+	jr nz, .bothSegments
+	ld a, [wPartyGenTMCount]
+	and a
+	jr z, .bothSegments            ; with no TMs, both segments is the level-up one
+	ld c, a
+	call Rangerandom               ; a = 0 .. TM count-1; preserves bc/de
+	ld hl, wPartyGenCandidateCount
+	add [hl]                       ; past the level-up segment
+	jr .drawn
+.bothSegments
 	ld a, [wPartyGenCandidateCount]
 	ld c, a
 	ld a, [wPartyGenTMCount]
@@ -2134,6 +2218,7 @@ PartyGenDrawCandidate:
 	jr z, .none
 	ld c, a
 	call Rangerandom               ; a = 0 .. total-1; preserves bc/de
+.drawn
 	ld hl, wPartyGenCandidateCount
 	cp [hl]
 	jr c, .levelUpSegment

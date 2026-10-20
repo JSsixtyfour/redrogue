@@ -29,13 +29,19 @@
 	; TM/HM pool, with at most `tm_cap` of the four taken from TM-only moves.
 	; A move that is both level-learnable and a TM does not spend tm_cap.
 	const MSRC_RANDOM_TM       ; 3
-	; TM/HM pool ONLY, level-up moves excluded entirely.
+	; TMs first, with a learnset fallback: rank-weighted picks from the TM/HM
+	; pool alone until it gives no more (used up, or tm_cap TM-only moves
+	; taken), then from the level-up pool for the remaining slots. tm_cap is a
+	; maximum, as for MSRC_RANDOM_TM; a TM the mon also learns by level does
+	; not spend it. Ditto (no TMs) rolls Transform. It used to draw from the
+	; TM/HM pool only, which left GYM_LATE's TM-only slots a move short (cap 3)
+	; and Ditto with no moves at all, freezing the battle.
 	;
 	; Gen 1 TMs have NO level requirement: any compatible species can learn any
-	; TM at any level, so a TM-only slot at level 8 can legitimately roll
-	; Blizzard or Hyper Beam. That is a difficulty lever, not a bug, and
-	; `rank_row` is what holds it in check. Pair a low-level TM-only slot with a
-	; low rank row unless the spike is intended.
+	; TM at any level, so a low-level TM slot can legitimately roll Blizzard or
+	; Hyper Beam. That is a difficulty lever, not a bug, and `rank_row` is what
+	; holds it in check. Pair a low-level TM-only slot with a low rank row
+	; unless the spike is intended.
 	const MSRC_RANDOM_TM_ONLY  ; 4
 	; A curated set from the generated corpus, filtered by tier mask and level
 	; band (widened once by SET_LEVEL_SLACK_* when nothing fits exactly). MUST

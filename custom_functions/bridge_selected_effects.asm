@@ -80,35 +80,6 @@ BridgeActiveMonHasSelectedEffect::
 	ld d, a
 	jp BridgeOwnerHasSelectedEffect
 
-; Called after GetCurrentMove has loaded wPlayerMovePower. Carry is set after
-; printing the rejection only when Body Armor blocks a zero-power move.
-BridgeBodyArmorBlocksSelectedMove::
-	ld a, [wLinkState]
-	cp LINK_STATE_BATTLING
-	ret z
-	ld e, BRIDGE_SELECTED_EFFECT_BODY_ARMOR
-	call BridgeActiveMonHasSelectedEffect
-	ret nc
-	ld a, [wPlayerMovePower]
-	and a
-	ret nz
-	ld a, [wPlayerMoveEffect]
-	cp SPECIAL_DAMAGE_EFFECT
-	ret z
-	cp SUPER_FANG_EFFECT
-	ret z
-	cp BIDE_EFFECT
-	ret z
-	ld hl, .blockedText
-	call PrintText
-	call LoadScreenTilesFromBuffer1
-	scf
-	ret
-.blockedText
-	text "BODY ARMOR"
-	line "BLOCKS STATUS!"
-	prompt
-
 ; In: d = owner, e = effect.
 ; Out: carry set only when that exact owner/effect pair exists. Preserves de.
 BridgeOwnerHasSelectedEffect:

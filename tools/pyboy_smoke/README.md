@@ -105,7 +105,8 @@ Current integration coverage walks through Lobby Door 1 into Route 1, enters
 the first trainer's sight line, wins the battle through battle-menu inputs,
 handles replacement and natural level-up prompts, and verifies experience,
 move-learning checks, the trainer event, battle count, and return to the route
-script.
+script. It also plays the first three stages of a seeded autoplay run (see
+below).
 
 ## AI scenarios
 
@@ -168,3 +169,75 @@ byte is absent. Seed 17 is a versioned party-generation golden: it detects RNG
 call-order drift before party construction and is intentionally independent of
 AI behavior. The first enemy sent out is not guaranteed to be generated party
 slot 0, so battle-state tests must read the active slot instead of assuming it.
+
+## Autoplay soak test
+
+`make autoplay` plays whole runs with an agent that reads game state from RAM
+and drives the joypad itself, from the Debug 2 lobby to the Hall of Fame, one
+seed per run, in parallel:
+
+```sh
+make autoplay                                   # seeds 1-8
+make autoplay AUTOPLAY_ARGS='--seeds 1-64 --jobs 6'
+make autoplay AUTOPLAY_ARGS='--seeds 1-16 --new-game --runs 3'
+python3 tools/pyboy_smoke/autoplay.py --seed 15  # one run, events printed live
+```
+
+By default a seed starts in the Debug 2 lobby with its debug party. With
+`--new-game` it starts from power-on: title screen, NEW GAME, naming, the intro
+tour and Oak's Lab. `--runs N` keeps playing: a run is won at the Hall of Fame
+or lost when a blackout sends the player to the Silph Co dorm (losing to the
+Oak's Lab rival does not end it), and between runs the agent walks the hub
+(dorm, B1F, VR) into the next one. The summary adds balance numbers over all
+finished runs: champion rate, stages cleared, and where and to whom runs were
+lost.
+
+A seed ends `champion` or `blackout` (one run; a game result, not a
+failure), `completed` (`--runs N` or `--stages N` reached), or fails: `stalled` (no game
+progress for `--stall-frames`, a softlock suspect), `frame_limit`, or `error`.
+Each seed writes `artifacts/autoplay_seed<N>.json`: outcome, stages, an event
+log (doors, maps, battles, reward and gift picks, `no_path`), and the last 200
+inputs. Failed runs also get a screenshot and state dump, and
+`artifacts/autoplay_summary.json` has a row per seed. The target fails if any
+run failed. A full run is about 250,000 frames, roughly 25 seconds.
+
+Runs are deterministic for a ROM and seed: the seed is applied just before the
+lobby rolls its first doors, so rerunning a seed reproduces its report.
+
+Each agent step (`autoplay.py`) depends on the mode:
+
+- overworld: `autoplay_world.py` builds the walk grid from `wOverworldMap`, the
+  tileset's blockset and passable list, ledges and tile-pair collisions, plus
+  arrow tiles (`DecodeArrowMovementRLE` tables) and same-map warp pads as
+  teleports. BFS walks to the first reachable goal group: the lobby nurse and a
+  random lobby door, the map's unbeaten trainers (from the header table the
+  map script passes to `ExecuteCurMapScriptInTable`), leaders, bosses and gift
+  givers (talked to once), then the room's forward exit, ranked lobby,
+  `LAST_MAP`, `ROGUE_MAP`, unvisited side room. Last resort: talk to everyone.
+- battle and dialogue: press only while the game polls `JoypadLowSensitivity`.
+  Moves and switches come from a `benchmark_policies` policy (`--battle-policy`,
+  default `type_switcher`; a Disabled move is treated as out of PP),
+  set on the menu cursor at `MoveSelectionMenu`/`DisplayBattleMenu` as the AI
+  benchmark does. Reward and gift pickers take a random offer, then NO THANKS
+  if the menu reopens (Debug 2's party and box are full).
+- busy: walking, scripted movement and fades; wait.
+
+Hidden sprites come from `IsObjectHidden`'s own answer, hooked at
+`IsObjectHidden.hidden`, not a reimplementation of its stage-map rules.
+
+A step that sets off a script twice (a "don't go away" tile) is avoided for
+the rest of the visit, and after `EXPLORE_AFTER_FRAMES` without progress the
+agent talks to everyone before trying exits again (Oak's Lab wants a starter
+chosen first).
+
+Items: Potions cannot be used in battle, so between fights the agent opens
+START > ITEM and uses the cheapest healing item that covers a mon below half
+HP (a Revive on a fainted one), and once per lobby visit it buys healing items
+from the recovery clerk (stock is randomized) up to four, or a Revive. Both are
+menu errands driven by button presses and abandoned after `PLAN_STEP_LIMIT`.
+
+Limits: the agent never visits the lobby's other NPCs (TMs, daycare, tutors,
+trades), never chooses rewards or doors on merit (both random), never upgrades
+key items between runs, and only picks up item balls as a last resort. Its
+`--new-game` balance numbers therefore describe this agent as much as the
+game.
