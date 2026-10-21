@@ -44,6 +44,10 @@ AIEnemyTrainerChooseMoves:
 	add hl, bc    ; advance pointer to forbidden move
 	ld [hl], AI_SCORE_DISABLED ; forbid disabled move
 .noMoveDisabled
+; Enemies spend PP (2026-10-20, enemy_move_pp.asm). A move with none left is
+; excluded by the legality filter after the layers, not given a score here:
+; its score stays what the layers make it, so the layers see the same slots
+; they always did.
 ; AI Overhaul Phase 1: which scoring layers run is now driven by the
 ; battle-count-derived SKILL TIER, not by the trainer class. AIGetLayerWord
 ; returns the tier's 16-bit layer bitmask; layers execute in bit order.
@@ -105,6 +109,8 @@ AIEnemyTrainerChooseMoves:
 	and $f
 	cp b
 	jr z, .advanceMinimum
+	call AIEnemySlotHasPP
+	jr z, .advanceMinimum ; no PP left
 	ld a, [hl]
 	cp c
 	jr nc, .advanceMinimum
@@ -125,6 +131,8 @@ AIEnemyTrainerChooseMoves:
 	and $f
 	cp b
 	jr z, .exclude
+	call AIEnemySlotHasPP
+	jr z, .exclude ; no PP left
 	ld a, [hl]
 	cp c
 	jr nz, .exclude
@@ -147,6 +155,23 @@ AIEnemyTrainerChooseMoves:
 ;	ld hl, wEnemyMonMoves    ; use original move set
 ;	predef SingleCPUSpeed ; restore battle's single speed; preserves hl
 ;	ret
+
+; nz if enemy move slot b (1-4) has PP left. Preserves bc, de, hl. The same
+; test as EnemySlotHasPP (enemy_move_pp.asm, bank $2C), local to this bank so
+; the legality loops can call it; SelectEnemyMove's random draw relies on the
+; two agreeing, or it could redraw forever.
+AIEnemySlotHasPP:
+	push hl
+	push bc
+	ld hl, wEnemyMonPP - 1
+	ld c, b
+	ld b, 0
+	add hl, bc
+	ld a, [hl]
+	and PP_MASK
+	pop bc
+	pop hl
+	ret
 
 ; Scoring layers, indexed by bit position in the tier's layer word. The order
 ; here IS the execution order (see constants/ai_constants.asm). Entries marked

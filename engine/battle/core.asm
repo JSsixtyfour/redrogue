@@ -1756,6 +1756,13 @@ EnemySendOutFirstMon:
 	ld a, [wEnemyMonSpecies2]
 	ld [wCurPartySpecies], a
 	ld [wCurSpecies], a
+	; Keep the form for the pic. LoadEnemyMonData's publish is one-shot and was
+	; spent on its own header, so this reload got the base species' pic: Erika's
+	; Toedscruel came out as a Tentacruel (measured 2026-10-20: form context 0
+	; and TentacruelPicFront at LoadMonFrontSprite). Same fix as the party-menu
+	; reload in this file.
+	ld hl, wEnemyMon
+	call PublishFormContext
 	call GetMonHeader
 	ld de, vFrontPic
 	rfarcall LoadEnemyFrontSprite
@@ -3393,56 +3400,12 @@ SelectEnemyMove:
 	ld a, $ff
 	jr .done
 .canSelectMove
-	ld hl, wEnemyMonMoves+1 ; 2nd enemy move
-	ld a, [hld]
-	and a
-	jr nz, .atLeastTwoMovesAvailable
-	; No moves at all must not reach .chooseRandomMove, which retries until it
-	; draws a non-empty slot and so would never return. Party generation once
-	; built a moveless Ditto (a TM-only roll on a species with no TMs) and froze
-	; Whitney's battle; PartyGenRollMoveset now prevents that, this is the net.
-	ld a, [hl] ; 1st enemy move
-	and a
-	ld a, STRUGGLE
-	jr z, .done
-	ld a, [wEnemyDisabledMove]
-	and a
-	ld a, STRUGGLE ; struggle if the only move is disabled
-	jr nz, .done
-.atLeastTwoMovesAvailable
-	ldh a, [hIsInBattle]
-	dec a
-	jr z, .chooseRandomMove ; wild encounter
-	callfar AIEnemyTrainerChooseMoves
-.chooseRandomMove
-	push hl
-	call BattleRandom
-	ld b, 1 ; 25% chance to select move 1
-	cp 25 percent
-	jr c, .moveChosen
-	inc hl
-	inc b ; 25% chance to select move 2
-	cp 50 percent
-	jr c, .moveChosen
-	inc hl
-	inc b ; 25% chance to select move 3
-	cp 75 percent - 1
-	jr c, .moveChosen
-	inc hl
-	inc b ; 25% chance to select move 4
-.moveChosen
-	ld a, b
-	dec a
-	ld [wEnemyMoveListIndex], a
-	ld a, [wEnemyDisabledMove]
-	swap a
-	and $f
-	cp b
-	ld a, [hl]
-	pop hl
-	jr z, .chooseRandomMove ; move disabled, try again
-	and a
-	jr z, .chooseRandomMove ; move non-existent, try again
+	; Struggle with no PP left, else the AI's (or a wild mon's random) choice
+	; among moves with PP: enemies spend PP since 2026-10-20. In bank $2C
+	; (enemy_move_pp.asm) because Battle Core is full; it also covers a mon with
+	; no moves at all (the moveless-Ditto freeze), which has no PP either.
+	farcall ChooseEnemyMove
+	ld a, [wEnemySelectedMove] ; through .done, which the harness hooks
 .done
 	ld [wEnemySelectedMove], a
 	ret
@@ -6756,8 +6719,9 @@ EnemyCanExecuteMove:
 	xor a
 	ld [wMonIsDisobedient], a
 	call DisplayUsedMoveText
-	farcall AITrackExecutedEnemyMove ; AI_BACKLOG L1: move history records what
-	                                 ; executed. No args - see ai_predicates.asm.
+	farcall EnemyMoveExecuted ; AI_BACKLOG L1 move history (AITrackExecutedEnemyMove),
+	                          ; then DecrementPP: enemies spend PP. No args -
+	                          ; see enemy_move_pp.asm.
 	ld a, [wEnemyMoveEffect]
 	ld hl, ResidualEffects1
 	ld de, $1
@@ -7447,9 +7411,7 @@ LoadEnemyMonData:
 	ld [wLearningMovesFromDayCare], a
 	predef WriteMonMoves ; get moves based on current level
 .loadMovePPs
-	ld hl, wEnemyMonMoves
-	ld de, wEnemyMonPP - 1
-	predef LoadMovePPs
+	farcall LoadEnemyMonPP ; a trainer's mon keeps its party PP; enemy_move_pp.asm
 	ld hl, wMonHBaseStats
 	ld de, wEnemyMonBaseStats
 	ld b, NUM_STATS

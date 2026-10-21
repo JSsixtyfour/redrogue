@@ -2,7 +2,8 @@
 every pointer, and each kind of bad pointer is reported when planted."""
 import autoplay
 import autoplay_screen
-from test_smoke import HarnessTestCase
+from source_constants import parse_rgbds_constants
+from test_smoke import HarnessTestCase, REPO_ROOT
 
 
 class AutoplayScreenTest(HarnessTestCase):
@@ -54,6 +55,16 @@ class AutoplayScreenTest(HarnessTestCase):
     def test_byte_that_is_not_a_text_command(self) -> None:
         self.screen.check_text_command(0x30, self.harness.address("wStringBuffer"))
         self.assertTrue(self.found("text_command"), self.checks.anomalies)
+
+    def test_enemy_form_pic(self) -> None:
+        species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")["TENTACRUEL"]
+        form_pic = self.harness.symbols.get("ToedscruelPicFront")
+        base_pic = self.harness.symbols.get("TentacruelPicFront")
+        self.screen.check_enemy_pic(species, 1, *form_pic)
+        self.screen.check_enemy_pic(species, 0, *base_pic)
+        self.assertEqual(self.found("enemy_pic"), [])
+        self.screen.check_enemy_pic(species, 1, *base_pic)  # the EnemySendOut bug: form 1, base pic
+        self.assertTrue(any("TentacruelPicFront" in d for d in self.found("enemy_pic")), self.checks.anomalies)
 
     def test_graphics_copied_from_code(self) -> None:
         code_bank, code_address = self.harness.symbols.get("Random")

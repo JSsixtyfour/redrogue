@@ -2804,8 +2804,8 @@ ChinchouEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 27, LANTURN
 	db 0
-; Learnset - canon Gen 2 levels; FLAIL/SPARK do not exist in Gen 1, filled
-; with METRONOME.
+; Learnset - canon Gen 2 levels; FLAIL/SPARK do not exist in Gen 1, replaced
+; with THUNDERSHOCK/BUBBLEBEAM.
 	db 5, SUPERSONIC
 	db 13, THUNDERSHOCK ; was FLAIL
 	db 17, WATER_GUN
@@ -4238,7 +4238,7 @@ GirafarigEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - TACKLE/GROWL/CONFUSION/STOMP already granted at level 1;
-; BATON_PASS/CRUNCH do not exist in Gen 1, filled with METRONOME.
+; BATON_PASS/CRUNCH do not exist in Gen 1, replaced with METRONOME/PSYCHIC_M.
 	db 11, BITE
 	db 15, CONFUSION
     db 18, STOMP
@@ -4344,9 +4344,8 @@ SnubbullEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 23, GRANBULL
 	db 0
-; Learnset - TACKLE already granted at level 1 (SCARY_FACE's slot is
-; METRONOME, see base_stats/snubbull.asm); CHARM does not exist in Gen 1 and
-; ROAR is Gen 1's useless WHIRLWIND, both filled with METRONOME.
+; Learnset - TACKLE/LEER already granted at level 1; CHARM does not exist in
+; Gen 1 and ROAR is Gen 1's useless WHIRLWIND, replaced with GROWL/HEADBUTT.
 	db 4, TAIL_WHIP
 	db 8, GROWL ; was CHARM
     db 11, LICK
@@ -4361,8 +4360,8 @@ SnubbullEvosMoves:
 GranbullEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - TACKLE/TAIL_WHIP already granted at level 1 (SCARY_FACE's slot
-; is METRONOME, see base_stats/granbull.asm)
+; Learnset - TACKLE/LEER/TAIL_WHIP already granted at level 1; CHARM/ROAR
+; replaced with GROWL/HEADBUTT as in Snubbull.
 	db 4, TAIL_WHIP
 	db 8, GROWL ; was CHARM
     db 11, LICK
@@ -4449,8 +4448,8 @@ SneaselEvosMoves:
 ; is used as the closest fit - see WeavileEvosMoves's own note.
 	db EVOLVE_ITEM, ICE_STONE, 1, WEAVILE
 	db 0
-; Learnset - SCRATCH/LEER already granted at level 1; FAINT_ATTACK/BEAT_UP do
-; not exist in Gen 1, replaced with SWIFT/METRONOME.
+; Learnset - SCRATCH/LEER already granted at level 1; FAINT_ATTACK does not
+; exist in Gen 1, replaced with SWIFT; BEAT_UP (Lv57) was dropped.
 	db 9, QUICK_ATTACK
 	db 17, SCREECH
 	db 25, SWIFT ; was FAINT_ATTACK
@@ -4467,7 +4466,7 @@ TeddiursaEvosMoves:
 	db EVOLVE_LEVEL, 30, URSARING
 	db 0
 ; Learnset - SCRATCH/LEER already granted at level 1; FAINT_ATTACK/SNORE do
-; not exist in Gen 1, replaced with SWIFT/METRONOME.
+; not exist in Gen 1, replaced with SWIFT/BODY_SLAM.
 	db 8, LICK
 	db 15, FURY_SWIPES
 	db 22, SWIFT ; was FAINT_ATTACK
@@ -4579,8 +4578,8 @@ RemoraidEvosMoves:
 ; Evolutions
 	db EVOLVE_LEVEL, 25, OCTILLERY
 	db 0
-; Learnset - WATER_GUN already granted at level 1; LOCK_ON does not exist in
-; Gen 1, filled with METRONOME.
+; Learnset - BUBBLE already granted at level 1; LOCK_ON does not exist in
+; Gen 1, WATER_GUN takes its Lv11 slot.
     db 11, WATER_GUN
 	db 22, BUBBLEBEAM
 	db 24, AURORA_BEAM
@@ -4596,7 +4595,7 @@ OctilleryEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - WATER_GUN already granted at level 1; OCTAZOOKA does not exist
-; in Gen 1, filled with METRONOME.
+; in Gen 1, replaced with SMOKESCREEN.
 	db 11, CONSTRICT
 	db 22, BUBBLEBEAM
 	db 24, AURORA_BEAM
@@ -4780,7 +4779,7 @@ MiltankEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - TACKLE already granted at level 1; MILK_DRINK/ROLLOUT/HEAL_BELL
-; do not exist in Gen 1, filled with METRONOME.
+; do not exist in Gen 1, replaced with ROCK_THROW/SOFTBOILED/JUMP_KICK.
 	db 4, GROWL
 	db 8, DEFENSE_CURL
 	db 13, STOMP

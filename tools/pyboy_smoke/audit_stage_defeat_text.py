@@ -76,11 +76,10 @@ DONE = 0x57
 # map script, the two stage-NPC headers, the expected defeat dispatcher, and
 # the PickText helper that dispatcher must call.
 #
-# The Cemetery deliberately shares the CAVE's dispatcher: maps.asm puts both
-# files in the one "Maps 6" SECTION and a section cannot straddle a bank, so
-# the reference is always in-bank. Bank 17 had 95 free bytes when this landed
-# and a second copy does not fit. Asserting the shared symbol here is what
-# keeps that deliberate choice from looking like a mistake later.
+# The Cemetery shares the CAVE's dispatcher through a local text_far wrapper
+# since the Cave moved to its own SECTION. Same-bank headers must still point
+# directly at their dispatcher; cross-bank headers must use an exact local
+# wrapper targeting that dispatcher's bank and address.
 MAPS = [
     ("Cave", ["PCStageNpc1Header", "PCStageNpc2Header"],
      "PCStageEventDefeatText", "PCStageEventPickText"),
@@ -117,6 +116,20 @@ def load(rom_name: str):
 def offset(bank: int, addr: int) -> int:
     """Flat ROM offset for a bank:address pair."""
     return addr if bank == 0 else bank * 0x4000 + (addr - 0x4000)
+
+
+def defeat_pointer_ok(rom, header_bank, ptr, dispatcher_bank, dispatcher_addr):
+    """Validate a direct pointer or the complete local far-text wrapper."""
+    if header_bank == dispatcher_bank:
+        return ptr == dispatcher_addr
+    if not 0x4000 <= ptr <= 0x7FFB:
+        return False
+    off = offset(header_bank, ptr)
+    # dab encodes address little endian, then bank. Require text_end too.
+    return rom[off:off + 5] == bytes([
+        TX_FAR, dispatcher_addr & 0xFF, dispatcher_addr >> 8,
+        dispatcher_bank, TX_END,
+    ])
 
 
 def reverse_charmap() -> dict[int, str]:
@@ -165,7 +178,7 @@ def read_far_string(rom, bank, addr, limit=256):
 def main() -> int:
     failures: list[str] = []
 
-    for rom_name in ("pokered", "pokeblue"):
+    for rom_name in ("pokered", "pokeblue", "pokeblue_debug"):
         if not (REPO_ROOT / (rom_name + ".gbc")).exists():
             continue
         rom, addrs = load(rom_name)
@@ -190,17 +203,18 @@ def main() -> int:
                 for label, slot in (("win", END_BATTLE_WIN),
                                     ("lose", END_BATTLE_LOSE)):
                     ptr = raw[slot] | (raw[slot + 1] << 8)
-                    ok = ptr == d_addr
+                    ok = defeat_pointer_ok(rom, h_bank, ptr, d_bank, d_addr)
                     print("  %-9s %-20s end-battle(%-4s) -> $%04x  %s"
                           % (area, h, label, ptr,
                              "ok" if ok else "WRONG, want $%04x" % d_addr))
                     if not ok:
                         failures.append(
-                            "%s: %s end-battle(%s) points at $%04x, not %s "
-                            "($%04x). The hideout dispatcher calls PrintText, "
-                            "which blanks the box the trainer's name was just "
-                            "written into."
-                            % (area, h, label, ptr, dispatcher, d_addr))
+                            "%s: %s end-battle(%s) points at $%02x:$%04x; "
+                            "expected %s ($%02x:$%04x) directly in the same "
+                            "bank, or an exact local text_far / text_end "
+                            "wrapper when banks differ."
+                            % (area, h, label, h_bank, ptr, dispatcher,
+                               d_bank, d_addr))
 
             # ---- B: the dispatcher's opcodes -------------------------------
             off = offset(d_bank, d_addr)

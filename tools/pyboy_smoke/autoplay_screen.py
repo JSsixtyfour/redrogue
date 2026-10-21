@@ -20,6 +20,12 @@ where the game takes those pointers:
   counts too.
 - graphics: CopyVideoData*, FarCopyData* sources in ROM must not lie inside
   code (coverage_inventory's code labels): tiles copied from code are garbled.
+- enemy_pic: the enemy's front pic (LoadMonFrontSprite called from
+  LoadEnemyFrontSprite or InitWildBattle) must be its own species' pic for its
+  form (the form record's, from MON_CATCH_RATE bits 5-6). Found 2026-10-20: a
+  trainer's form mon sent out after a faint showed the base species (Erika's
+  Toedscruel as a Tentacruel), because EnemySendOut reloaded the header after
+  the one-shot form context was spent.
 
 Each finding is a checks.anomaly; record=True instead counts every pointer
 seen by kind and verdict, to measure a check before trusting it. Measured
@@ -35,9 +41,11 @@ elsewhere (smoke tests) they run only if already cached, or with `code` given.
 """
 from __future__ import annotations
 
+import re
 from bisect import bisect_right
 
 import coverage_inventory
+from source_constants import parse_rgbds_constants
 
 TX_FAR = 0x17
 TX_LAST = TX_FAR
@@ -87,6 +95,38 @@ class ScreenChecks:
             self.h.register_hook(label, self._on_copy_video)
         for label in ("FarCopyData", "FarCopyData2", "FarCopyDataDouble"):
             self.h.register_hook(label, self._on_far_copy)
+        self.front_pics = self._front_pics()
+        # Return addresses of the enemy's front-pic loads: the instruction after
+        # each `call LoadMonFrontSprite` (3 bytes) in these two routines.
+        self.enemy_pic_returns = set()
+        for caller in ("LoadEnemyFrontSprite", "InitWildBattle"):
+            bank, start, end = symbols.routine_range(caller)
+            for address in range(start, end - 2):
+                if (self._rom_byte(bank, address) == 0xCD
+                        and self._rom_byte(bank, address + 1) | self._rom_byte(bank, address + 2) << 8
+                        == symbols.address("LoadMonFrontSprite")):
+                    self.enemy_pic_returns.add((bank, address + 3))
+        self.h.register_hook("LoadMonFrontSprite", self._on_front_pic)
+
+    def _front_pics(self) -> dict[tuple[int, int], tuple[int, int]]:
+        """(species, form) -> (bank, address) of its front pic, from the base
+        stats files (form 0) and the form records."""
+        root = self.h.repo_root
+        species = parse_rgbds_constants(root / "constants/pokemon_constants.asm")
+        pics = {}
+        for folder, key in (("base_stats", None), ("forms", "form")):
+            for path in (root / "data/pokemon" / folder).glob("*.asm"):
+                text = path.read_text(encoding="utf-8")
+                pic = re.search(r"dw\s+(\w+PicFront)", text)
+                if key:
+                    which = re.search(r"form_record\s+(\w+),\s*(\d+)", text)
+                    name, form = (which.group(1), int(which.group(2))) if which else (None, 0)
+                else:
+                    which = re.search(r"db\s+DEX_(\w+)", text)
+                    name, form = (which.group(1) if which else None), 0
+                if pic and name in species and pic.group(1) in self.h.symbols._symbols:
+                    pics[(species[name], form)] = self.h.symbols.get(pic.group(1))
+        return pics
 
     # ---------------------------------------------------------------- helpers
 
@@ -199,6 +239,29 @@ class ScreenChecks:
         registers = self.h.pyboy.register_file
         if registers.C and self.code_checks:
             self.check_source("gfx_source", registers.B, self._de())
+
+    def check_enemy_pic(self, species: int, form: int, bank: int, address: int) -> None:
+        expected = self.front_pics.get((species, form))
+        if expected is None:
+            self._note("enemy_pic", "ok", "")  # a species or form without its own record
+        elif expected != (bank, address):
+            shown = self.h.symbols.nearest(bank, address)
+            want = self.h.symbols.nearest(*expected)
+            self._note("enemy_pic", "wrong front pic", f"species ${species:02X} form {form} showed {shown}, not {want}")
+        else:
+            self._note("enemy_pic", "ok", "")
+
+    def _on_front_pic(self, _context) -> None:
+        sp = self.h.pyboy.register_file.SP
+        ret = self.mem[sp] | self.mem[sp + 1] << 8
+        if (self._bank_for(ret), ret) not in self.enemy_pic_returns:
+            return  # the status screen, the Pokedex, the fusion merge: not the enemy
+        if self.h.read8("wEnemyBattleStatus3") & 1 << 3:  # TRANSFORMED: shows its target
+            return
+        form = (self.h.read8("wEnemyMonCatchRate") & 0x60) >> 5  # FORM_MASK, MON_CATCH_RATE bits 5-6
+        bank = self.h.read8("wMonHPicBank")
+        address = self.h.read8("wMonHFrontSprite") | self.h.read8("wMonHFrontSprite", offset=1) << 8
+        self.check_enemy_pic(self.h.read8("wCurSpecies"), form, bank, address)
 
     def _on_far_copy(self, _context) -> None:
         registers = self.h.pyboy.register_file

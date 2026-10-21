@@ -1346,12 +1346,8 @@ DisableEffect:
 	and a
 	ld hl, wBattleMonPP
 	jr nz, .enemyTurn
-	ld a, [wLinkState]
-	cp LINK_STATE_BATTLING
-	pop hl ; wEnemyMonMoves
-	jr nz, .playerTurnNotLinkBattle
-; player's turn, Link Battle
-	push hl
+; player's turn: enemies spend PP (enemy_move_pp.asm), so only an enemy move
+; with PP left can be disabled, as vanilla did in link battles alone
 	ld hl, wEnemyMonPP
 .enemyTurn
 	push hl
@@ -1369,8 +1365,6 @@ DisableEffect:
 	pop hl
 	and a
 	jr z, .pickMoveToDisable ; pick another move if this one had 0 PP
-.playerTurnNotLinkBattle
-; non-link battle enemies have unlimited PP so the previous checks aren't needed
 	call BattleRandom
 	and $7
 	inc a ; 1-8 turns disabled

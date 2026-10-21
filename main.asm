@@ -647,6 +647,7 @@ INCLUDE "engine/events/hidden_events/pokecenter_pc.asm"
 SECTION "Battle Engine 11", ROMX
 
 INCLUDE "engine/battle/decrement_pp.asm"
+INCLUDE "engine/battle/enemy_move_pp.asm"
 INCLUDE "gfx/version.asm"
 
 
