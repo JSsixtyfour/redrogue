@@ -187,6 +187,26 @@ AIRedundantTargetHasSubstitute:
 	pop hl
 	ret
 
+; nz if the player's Substitute stops this WHOLE move: one is up and the move
+; deals no damage. A damaging move hits the doll; only its rider is lost (the
+; side-effect routines in effects.asm skip behind a doll, and MoveHitTest misses
+; only Dream Eater and Leech Seed). AI_SMART already declines to reward a rider
+; that cannot land. Measured 2026-10-21 (test_ai_redundant_substitute.py): Body
+; Slam, Ice Beam, Bite, Psybeam and Aurora Beam were each pushed to the score
+; cap behind a Substitute, so the AI walked away from the attacks that break it.
+; Clobbers a.
+AIRedundantSubBlocksWholeMove:
+	call AIRedundantTargetHasSubstitute
+	ret z
+	ld a, [wEnemyMovePower]
+	and a
+	jr z, .blocked
+	xor a ; a damaging move: not blocked
+	ret
+.blocked
+	inc a ; a = 1: nz
+	ret
+
 ; --- Handlers -------------------------------------------------------------
 ; Each returns a = 0 (do nothing) or a discourage magnitude in a.
 
@@ -218,10 +238,10 @@ AIRedundant_Paralyze:
 .heavy
 	ld a, AI_REDUNDANT_HEAVY
 	ret
-; A damaging move whose poison SIDE effect (Twineedle etc.) is blocked
-; entirely when the target has a Substitute up (Substitute blocks the WHOLE
-; move here, not just the poison chance - PoisonEffect in effects.asm), so
-; that case stays a heavy discourage.
+; A damaging move with a poison SIDE effect (Smog, Sludge, Poison Sting). A
+; Substitute stops only the poison chance, not the hit, so it is not redundant
+; behind one (AIRedundantSubBlocksWholeMove; this used to say the doll blocked
+; the WHOLE move, and penalised it heavily).
 ;
 ; Phase 3 Step 3: when only the RIDER is blocked (target already statused, or
 ; is Poison-type so poison cannot apply) this handler no longer discourages at
@@ -234,7 +254,7 @@ AIRedundant_Paralyze:
 ; surfaced this (Seismic Toss beating a higher-damage Body Slam solely because
 ; Body Slam's paralysis could not land on a same-typed target).
 AIRedundant_PoisonSide:
-	call AIRedundantTargetHasSubstitute
+	call AIRedundantSubBlocksWholeMove
 	jr nz, .heavy
 	xor a
 	ret
@@ -242,8 +262,8 @@ AIRedundant_PoisonSide:
 	ld a, AI_REDUNDANT_HEAVY
 	ret
 
-; Body Slam / Ice Beam / Thunder-family side effects: a Substitute blocks the
-; WHOLE move, so that stays a heavy discourage.
+; Body Slam / Ice Beam / Thunder-family side effects: a Substitute stops only the
+; rider, so the hit is not redundant behind one (see AIRedundantSubBlocksWholeMove).
 ;
 ; Phase 3 Step 3: when only the RIDER is blocked (move's type matches one of
 ; the target's types - the engine's own same-type-immunity rule in
@@ -251,7 +271,7 @@ AIRedundant_PoisonSide:
 ; longer discourages at all. See AIRedundant_PoisonSide just above for the full
 ; reasoning; it is identical here.
 AIRedundant_BurnFreezeParaSide:
-	call AIRedundantTargetHasSubstitute
+	call AIRedundantSubBlocksWholeMove
 	jr nz, .heavy
 	xor a
 	ret
@@ -329,8 +349,13 @@ AIRedundant_StatUp:
 ; tests), then re-subtracts to reach 0-5. wPlayerMonStatMods shares
 ; wEnemyMonStatMods' Attack/Defense/Speed/Special/Accuracy/Evasion order.
 AIRedundant_StatDown:
-	call AIRedundantTargetHasSubstitute
+	call AIRedundantSubBlocksWholeMove
 	jr nz, .heavy
+; A damaging stat-down SIDE effect (Aurora Beam, Acid, Bubble...) still deals its
+; damage at the -6 floor, so only the pure stat-down move is redundant there.
+	ld a, [wEnemyMovePower]
+	and a
+	jr nz, .notRedundant
 	ld a, [wEnemyMoveEffect]
 	cp ATTACK_DOWN_SIDE_EFFECT
 	jr nc, .side
@@ -349,20 +374,21 @@ AIRedundant_StatDown:
 	ld a, [hl]
 	cp $1
 	jr z, .heavy
+.notRedundant
 	xor a
 	ret
 .heavy
 	ld a, AI_REDUNDANT_HEAVY
 	ret
 
-; Effects whose ENTIRE mechanism is "does nothing at all if the target has a
-; Substitute up" and has no other redundancy condition worth checking here:
-; flinch/confusion side effects. Drain attacks still damage the doll.
+; Flinch/confusion SIDE effects (Bite, Psybeam...): the doll stops the rider, not
+; the hit, so these are redundant only if a non-damaging move ever maps here
+; (AIRedundantSubBlocksWholeMove). Drain attacks still damage the doll.
 ; Stat-down moves used to share
 ; this handler too; they now have their own (AIRedundant_StatDown, above),
 ; which adds the floor check F17 introduced.
 AIRedundant_SubOnly:
-	call AIRedundantTargetHasSubstitute
+	call AIRedundantSubBlocksWholeMove
 	jr nz, .heavy
 	xor a
 	ret

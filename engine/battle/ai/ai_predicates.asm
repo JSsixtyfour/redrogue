@@ -318,11 +318,8 @@ AIEnemyHasReliableFirstKO::
 	jr z, .noKO
 	ld a, [wEnemyMoveListIndex]
 	inc a
-	ld c, a
-	ld a, [wEnemyDisabledMove]
-	swap a
-	and $f
-	cp c
+	ld b, a
+	call AIEnemySlotIsLive ; trainer_ai.asm: disabled or out of PP (Struggle leaves the index stale)
 	jr z, .noKO
 
 	ld hl, wEnemyMoveNum
@@ -2013,6 +2010,10 @@ AIHasSuperEffectiveMove::
 	ld a, [hli]
 	and a
 	jr z, .no ; move list is packed, so an empty slot ends it
+	call AIEnemyCountdownSlotIsLive ; a disabled / 0-PP move is no threat to the stay
+	jr z, .next
+	dec hl
+	ld a, [hli] ; the liveness test clobbered a; ReadMove wants the move id
 	push hl
 	push bc
 	call ReadMove

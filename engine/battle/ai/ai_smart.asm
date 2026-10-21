@@ -260,6 +260,10 @@ AISmart_Sleep:
 	ld a, [hli]
 	and a
 	jr z, .scanDone
+	call AIEnemyCountdownSlotIsLive ; trainer_ai.asm: a dead Dream Eater is no follow-up
+	jr z, .notFoundThisSlot
+	dec hl
+	ld a, [hli] ; the liveness test clobbered a; ReadMove wants the move id
 	push hl
 	push bc
 	push de

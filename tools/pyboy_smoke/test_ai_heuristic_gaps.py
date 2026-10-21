@@ -96,6 +96,7 @@ class _MoveLayerGapsBase(_AIGapsBase):
         for slot in range(4):
             h.write8("wEnemyMonMoves",
                      self.moves[moves[slot]] if slot < len(moves) else 0, offset=slot)
+            h.write8("wEnemyMonPP", 15, offset=slot)  # a slot with no PP is dead (S2)
 
     def redundant_score(self, move, writes=None):
         """Score of a lone move from AILayerRedundant: 20 = legal, 79 = heavy
@@ -198,15 +199,16 @@ class AIRedundantGapsTest(_MoveLayerGapsBase):
         self.assertEqual(self.redundant_score(
             "POISONPOWDER", {"wPlayerBattleStatus2": 1 << self.battle["HAS_SUBSTITUTE_UP"]}), 79)
 
-    def test_poison_side_only_substitute_blocks_it(self):
-        # AIRedundant_PoisonSide: a Substitute blocks the whole move (heavy);
-        # a statused/Poison-type target only blocks the RIDER, not the hit
-        # itself (Phase 3 Step 3) - the move stays legal.
+    def test_poison_side_hit_still_lands_on_a_substitute(self):
+        # AIRedundant_PoisonSide: a Substitute, a statused or a Poison-type target
+        # each block only the RIDER, never the hit, so the move stays legal
+        # (Phase 3 Step 3; the Substitute case since 2026-10-21, S1: the doll
+        # takes the damage, test_ai_redundant_substitute.py).
         self.assertEqual(self.redundant_score("POISON_STING"), 20)
         self.assertEqual(self.redundant_score(
             "POISON_STING", {"wBattleMonStatus": 1 << self.battle["PAR"]}), 20)
         self.assertEqual(self.redundant_score(
-            "POISON_STING", {"wPlayerBattleStatus2": 1 << self.battle["HAS_SUBSTITUTE_UP"]}), 79)
+            "POISON_STING", {"wPlayerBattleStatus2": 1 << self.battle["HAS_SUBSTITUTE_UP"]}), 20)
 
     def test_reflect_already_up_eliminated(self):
         self.assertEqual(self.redundant_score("REFLECT"), 20)
@@ -227,11 +229,12 @@ class AIRedundantGapsTest(_MoveLayerGapsBase):
         self.assertEqual(self.redundant_score(
             "SHARPEN", {"wEnemyMonAttackMod": 13}), 79)  # exactly +6: boundary
 
-    def test_sub_only_family_blocked_only_by_substitute(self):
-        # AIRedundant_SubOnly covers flinch/confusion riders.
+    def test_sub_only_family_hit_still_lands_on_a_substitute(self):
+        # AIRedundant_SubOnly covers flinch/confusion riders. The doll stops the
+        # rider, not the hit (2026-10-21, S1), so Bite stays legal behind one.
         self.assertEqual(self.redundant_score("BITE"), 20)
         self.assertEqual(self.redundant_score(
-            "BITE", {"wPlayerBattleStatus2": 1 << self.battle["HAS_SUBSTITUTE_UP"]}), 79)
+            "BITE", {"wPlayerBattleStatus2": 1 << self.battle["HAS_SUBSTITUTE_UP"]}), 20)
         # Drain attacks still deal damage to a doll, despite providing no heal.
         self.assertEqual(self.redundant_score(
             "ABSORB", {"wPlayerBattleStatus2": 1 << self.battle["HAS_SUBSTITUTE_UP"]}), 20)
@@ -249,12 +252,12 @@ class AIRedundantGapsTest(_MoveLayerGapsBase):
             "SUBSTITUTE", {"wEnemyMonHP": (200,), "wEnemyMonMaxHP": (200,),
                            "wEnemyBattleStatus2": 1 << self.battle["HAS_SUBSTITUTE_UP"]}), 79)
 
-    def test_burn_freeze_para_side_substitute_is_heavy(self):
-        # AIRedundant_BurnFreezeParaSide positive gap: a Substitute blocks the
-        # WHOLE move (heavy). The rider-only-blocked negative is already
-        # covered (test_ai_personality's blackbelt test).
+    def test_burn_freeze_para_side_hit_still_lands_on_a_substitute(self):
+        # AIRedundant_BurnFreezeParaSide: a Substitute stops only the burn chance;
+        # Fire Punch still hits the doll, so it is not redundant (2026-10-21, S1:
+        # this used to assert the heavy penalty the review measured as wrong).
         self.assertEqual(self.redundant_score(
-            "FIRE_PUNCH", {"wPlayerBattleStatus2": 1 << self.battle["HAS_SUBSTITUTE_UP"]}), 79)
+            "FIRE_PUNCH", {"wPlayerBattleStatus2": 1 << self.battle["HAS_SUBSTITUTE_UP"]}), 20)
 
     def test_dream_eater_sleeping_target_is_legal(self):
         # AIRedundant_DreamEater negative gap: asleep target is left alone.
@@ -710,6 +713,7 @@ class AIThreatDecisionGapsTest(_AIGapsBase):
         for slot in range(4):
             h.write8("wEnemyMonMoves",
                      self.moves[moves[slot]] if slot < len(moves) else 0, offset=slot)
+            h.write8("wEnemyMonPP", 15, offset=slot)  # a slot with no PP is dead (S2)
         for slot in range(4):
             h.write8("wBuffer", 20, offset=slot)
         h.write8("wAIPlayerKOCache", self.ai["AI_KO_CACHE_EMPTY"])
@@ -853,6 +857,7 @@ class AIPlanGapsTest(_AIGapsBase):
         for slot in range(4):
             move = self.moves[moves[slot]] if slot < len(moves) else 0
             h.write8("wEnemyMonMoves", move, offset=slot)
+            h.write8("wEnemyMonPP", 15, offset=slot)  # a slot with no PP is dead (S2)
         h.call_routine("AIClassifyMoveset", limit=240)
 
         types = player_types or (self.types["NORMAL"], self.types["NORMAL"])

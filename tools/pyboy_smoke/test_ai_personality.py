@@ -43,6 +43,17 @@ class AIPersonalityTest(unittest.TestCase):
             ai_tier=2,
         )
         self.h.boot_fight2(seed=1)
+        # F4 (2026-10-21): a profile applies on a coin flip per decision. The
+        # fixtures pick the side by setting A just after the draw (default: heads,
+        # the profile applies, which is what every fixture before F4 assumed).
+        self.lean = True
+        self.coins = []
+
+        def coin(_context):
+            self.coins.append(self.lean)
+            self.h.pyboy.register_file.A = 0x80 if self.lean else 0x00
+
+        self.h.register_hook("AIRunPersonality.coinDrawn", coin)
         self.battle_state = BytesIO()
         self.h.save_state(self.battle_state)
 
@@ -60,9 +71,11 @@ class AIPersonalityTest(unittest.TestCase):
     def dispatch(
         self, records, move_names, trainer_class, *, trainer_no=1, tier=0,
         disabled_slot=None, player_types=None, player_hp=None, player_status=0,
-        enemy_hp=None, rng_seed=None, cached_profile=None,
+        enemy_hp=None, rng_seed=None, cached_profile=None, lean=True,
     ):
-        """Run the production chooser from the same parked FIGHT 2 state."""
+        """Run the production chooser from the same parked FIGHT 2 state.
+        `lean` picks the F4 coin's side (True: the profile applies)."""
+        self.lean = lean
         h = self.h
         h.load_state(self.battle_state)
         for slot in range(4):
@@ -156,7 +169,7 @@ class AIPersonalityTest(unittest.TestCase):
             self.ai["AI_PERSONALITY_OFFENSE"],
         )
         self.h.write8("wBuffer", self.ai["AI_SCORE_DISABLED"], offset=0)
-        self.call("AIRunPersonality")
+        self.call("AIApplySoftPersonality")
         self.assertEqual(
             self.scores(),
             [
@@ -172,7 +185,7 @@ class AIPersonalityTest(unittest.TestCase):
             self.trainer_classes["BLACKBELT"], 2,
             self.ai["AI_PERSONALITY_OFFENSE"],
         )
-        self.call("AIRunPersonality")
+        self.call("AIApplySoftPersonality")
         self.assertEqual(
             self.scores(),
             [
@@ -187,7 +200,7 @@ class AIPersonalityTest(unittest.TestCase):
             ("TACKLE",), self.trainer_classes["BLACKBELT"], 2,
             self.ai["AI_PERSONALITY_OFFENSE"],
         )
-        self.call("AIRunPersonality")
+        self.call("AIApplySoftPersonality")
         self.assertEqual(
             self.scores(),
             [
@@ -200,7 +213,7 @@ class AIPersonalityTest(unittest.TestCase):
     def test_final_ai_remains_neutral(self):
         self.prime()
         self.h.write8("wTrainerClass", self.trainer_classes["FINAL_AI"])
-        self.call("AIRunPersonality")
+        self.call("AIApplySoftPersonality")
         self.assertEqual(self.scores(), [self.ai["AI_SCORE_BASE"]] * 4)
 
     def test_individual_override_precedes_class_default_and_none_is_explicit(self):
@@ -450,7 +463,7 @@ class AIPersonalityTest(unittest.TestCase):
             if scores is not None:
                 for slot, score in enumerate(scores):
                     h.write8("wBuffer", score, offset=slot)
-            self.call("AIRunPersonality")
+            self.call("AIApplySoftPersonality")
             return self.scores()
 
         base = self.ai["AI_SCORE_BASE"]
@@ -549,13 +562,26 @@ class AIPersonalityTest(unittest.TestCase):
         self.assertTrue(neutral_plan["candidates"])
         self.assertEqual(hiker_plan["candidates"], neutral_plan["candidates"])
 
+    def test_f4_coin_tails_plays_neutral_and_heads_applies_the_profile(self):
+        # F4 (2026-10-21 AI review): the profile is a lean, not a loop. One coin
+        # per decision; on tails the HIKER scores exactly like a neutral class.
+        decisions = self.h.hook_ai_scores()
+        args = (decisions, ("TACKLE", "BARRIER"))
+        neutral = self.dispatch(*args, self.trainer_classes["BLACKBELT"], tier=0, enemy_hp=(600, 600))
+        tails = self.dispatch(*args, self.trainer_classes["HIKER"], tier=0, enemy_hp=(600, 600), lean=False)
+        heads = self.dispatch(*args, self.trainer_classes["HIKER"], tier=0, enemy_hp=(600, 600))
+        self.assertEqual(self.coins, [False, True])  # one draw per profiled decision, none for neutral
+        self.assertEqual(tails["eligible_slots"], neutral["eligible_slots"])
+        self.assertEqual(tails["scores"], neutral["scores"])
+        self.assertEqual(heads["eligible_slots"], [1])
+
     def test_psychic_profile_favors_disruption_not_setup_healing_or_empty_slots(self):
         self.prime_cached_personality(
             ("TACKLE", "HYPNOSIS", "CONFUSE_RAY", "SWORDS_DANCE"),
             self.trainer_classes["PSYCHIC_TR"], 2,
             self.ai["AI_PERSONALITY_CONTROL"],
         )
-        self.call("AIRunPersonality")
+        self.call("AIApplySoftPersonality")
         self.assertEqual(self.scores(), [
             self.ai["AI_SCORE_BASE"],
             self.ai["AI_SCORE_BASE"] - self.ai["AI_NUDGE"],
@@ -568,7 +594,7 @@ class AIPersonalityTest(unittest.TestCase):
             self.trainer_classes["PSYCHIC_TR"], 2,
             self.ai["AI_PERSONALITY_CONTROL"],
         )
-        self.call("AIRunPersonality")
+        self.call("AIApplySoftPersonality")
         self.assertEqual(self.scores(), [
             self.ai["AI_SCORE_BASE"] - self.ai["AI_NUDGE"],
             self.ai["AI_SCORE_BASE"] - self.ai["AI_NUDGE"],
@@ -580,7 +606,7 @@ class AIPersonalityTest(unittest.TestCase):
             ("HYPNOSIS",), self.trainer_classes["PSYCHIC_TR"], 2,
             self.ai["AI_PERSONALITY_CONTROL"],
         )
-        self.call("AIRunPersonality")
+        self.call("AIApplySoftPersonality")
         self.assertEqual(self.scores(), [
             self.ai["AI_SCORE_BASE"] - self.ai["AI_NUDGE"],
             self.ai["AI_SCORE_BASE"],

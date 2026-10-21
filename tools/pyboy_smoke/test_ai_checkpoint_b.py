@@ -330,6 +330,9 @@ class AICheckpointBTest(unittest.TestCase):
         h.write8("wPlayerSubstituteHP", sub_hp)
         h.write8("wEnemyMonMoves", self.moves["TACKLE"])
         h.write8("wEnemyMonMoves", self.moves["BODY_SLAM"], offset=1)
+        # The FIGHT 2 mon only knows Tackle, so slot 2 has no PP; AI_DAMAGE now
+        # skips a slot it could not use (2026-10-21, S2).
+        h.write8("wEnemyMonPP", 15, offset=1)
         for slot in range(2, 4):
             h.write8("wEnemyMonMoves", 0, offset=slot)
         for slot in range(4):
@@ -588,6 +591,7 @@ class AICheckpointBTest(unittest.TestCase):
         for slot in range(4):
             move = self.moves[moves[slot]] if slot < len(moves) else 0
             h.write8("wEnemyMonMoves", move, offset=slot)
+            h.write8("wEnemyMonPP", 15, offset=slot)  # a slot with no PP is dead (S2)
         h.call_routine("AIClassifyMoveset", limit=240)
 
         # Install the board after classification so the parked battle loop cannot

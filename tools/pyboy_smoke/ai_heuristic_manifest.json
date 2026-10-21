@@ -347,11 +347,11 @@
    }
   },
   "AIRedundant_BurnFreezeParaSide": {
-   "summary": "AI_REDUNDANT handler: damaging move with a burn/freeze/para rider: only a Substitute blocks it.",
+   "summary": "AI_REDUNDANT handler: damaging move with a burn/freeze/para rider: never redundant (a Substitute stops only the rider; 2026-10-21 S1).",
    "positive": {
-    "requirement": "Substitute: heavy discourage",
+    "requirement": "Substitute up: the hit still lands, no penalty",
     "tests": [
-     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_burn_freeze_para_side_substitute_is_heavy"
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_burn_freeze_para_side_hit_still_lands_on_a_substitute"
     ]
    },
    "negative": {
@@ -557,17 +557,17 @@
    }
   },
   "AIRedundant_PoisonSide": {
-   "summary": "AI_REDUNDANT handler: damaging move with a poison rider: only a Substitute blocks it.",
+   "summary": "AI_REDUNDANT handler: damaging move with a poison rider: never redundant (a Substitute stops only the rider; 2026-10-21 S1).",
    "positive": {
-    "requirement": "Substitute: heavy discourage",
+    "requirement": "Substitute up: the hit still lands, no penalty",
     "tests": [
-     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_poison_side_only_substitute_blocks_it"
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_poison_side_hit_still_lands_on_a_substitute"
     ]
    },
    "negative": {
     "requirement": "rider-only block (statused/Poison-type): no penalty",
     "tests": [
-     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_poison_side_only_substitute_blocks_it"
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_poison_side_hit_still_lands_on_a_substitute"
     ]
    }
   },
@@ -587,11 +587,12 @@
    }
   },
   "AIRedundant_StatDown": {
-   "summary": "AI_REDUNDANT handler: stat-down: Substitute, or the stat already at -6 (F17).",
+   "summary": "AI_REDUNDANT handler: stat-down: a pure stat-down move behind a Substitute, or at -6 (F17); a damaging side effect never (2026-10-21 S1).",
    "positive": {
     "requirement": "stat at floor: eliminated",
     "tests": [
-     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_stat_down_at_floor_eliminated_above_floor_legal"
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_stat_down_at_floor_eliminated_above_floor_legal",
+     "test_ai_redundant_substitute.RedundantSubstituteTest.test_the_attack_floor_blocks_growl_but_not_aurora_beam"
     ]
    },
    "negative": {
@@ -629,17 +630,17 @@
    }
   },
   "AIRedundant_SubOnly": {
-   "summary": "AI_REDUNDANT handler: flinch/confusion riders and drain: blocked only by a Substitute.",
+   "summary": "AI_REDUNDANT handler: flinch/confusion riders: the hit lands on a Substitute, so never redundant (2026-10-21 S1).",
    "positive": {
-    "requirement": "Substitute: discourage",
+    "requirement": "Substitute up: the hit still lands, no penalty",
     "tests": [
-     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_sub_only_family_blocked_only_by_substitute"
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_sub_only_family_hit_still_lands_on_a_substitute"
     ]
    },
    "negative": {
     "requirement": "no Substitute: legal",
     "tests": [
-     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_sub_only_family_blocked_only_by_substitute"
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_sub_only_family_hit_still_lands_on_a_substitute"
     ]
    }
   },

@@ -94,6 +94,9 @@ AIEnemyTrainerChooseMoves:
 ; than only appearing once its tier happens to include AI_PLAN.
 	call AIRunPersonality
 .loopFindMinimumEntries
+; The harness reads the layer + personality scores at this label (hook_ai_scores,
+; hook_ai_personality_timing), so the reliable-KO pass runs just past it.
+	call AIReliableKOWins
 ; Find the minimum among legal, existing slots. Legality is checked here even
 ; if a personality layer wrote scores directly, bypassing the score helpers.
 	ld hl, wBuffer
@@ -173,6 +176,101 @@ AIEnemySlotHasPP:
 	pop hl
 	ret
 
+; nz if enemy move slot b (1-4) can be chosen: it holds a move, is not the
+; disabled one, and has PP. The same three tests as the legality filter in
+; AIEnemyTrainerChooseMoves. Preserves bc, de, hl.
+AIEnemySlotIsLive:
+	push hl
+	push bc
+	ld hl, wEnemyMonMoves - 1
+	ld c, b
+	ld b, 0
+	add hl, bc
+	ld a, [hl]
+	pop bc
+	pop hl
+	and a
+	ret z ; empty slot
+	ld a, [wEnemyDisabledMove]
+	swap a
+	and $f
+	cp b
+	jp nz, AIEnemySlotHasPP
+	xor a ; disabled: z
+	ret
+
+; AIEnemySlotIsLive for a scan that counts b down from NUM_MOVES (the slot is
+; NUM_MOVES + 1 - b). Flags are the answer: nz = live. Preserves bc, de, hl.
+AIEnemyCountdownSlotIsLive:
+	push bc
+	ld a, NUM_MOVES + 1
+	sub b
+	ld b, a
+	call AIEnemySlotIsLive
+	pop bc
+	ret
+
+; A reliable KO always wins outright (2026-10-21, AI review). AI_DAMAGE gives a
+; reliable kill AI_KILL, but the layers are capped one at a time, not in sum:
+; seed 39 (autoplay swarm) had WILL's non-lethal, 85%-accurate Fire Blast reach
+; the same score as a reliable Body Slam KO through AI_SMART's burn-rider bonus
+; (-2) plus AI_DAMAGE's unreliable-kill tier (-3), and the tie-break threw the
+; KO away half the time (the #55 shape again, with a different pair of layers).
+; So after every layer and the personality: every slot that is not a live
+; reliable KO is raised to at least the best live KO's score + 1. Scores are only
+; ever raised, the KO slots keep their own order (AI_KILL_FIRST etc.), and a KO
+; slot that is disabled or out of PP does not count. The themed Gambler keeps
+; its own rules, as it does for plans. Clobbers af, bc, de, hl.
+AIReliableKOWins:
+	ld a, [wAIReliableKOFound]
+	and a
+	ret z
+	ld e, a ; e = the slots that reliably kill (bit 0 = slot 1)
+	ld a, [wTrainerClass]
+	cp GAMBLER
+	jr nz, .findBestKill
+	ld a, [wMoneyMatchState]
+	bit BIT_MONEY_MATCH_ACTIVE, a
+	ret z ; Gambler's Paradise themed AI, as in AIRunPersonality
+.findBestKill
+	ld hl, wBuffer
+	ld b, 1 ; slot 1-4
+	ld c, $ff ; c = lowest live KO score
+	ld d, e
+.nextKill
+	srl d ; carry = this slot reliably kills
+	jr nc, .skipKill
+	call AIEnemySlotIsLive
+	jr z, .skipKill
+	ld a, [hl]
+	cp c
+	jr nc, .skipKill
+	ld c, a
+.skipKill
+	inc hl
+	inc b
+	ld a, b
+	cp NUM_MOVES + 1
+	jr nz, .nextKill
+	ld a, c
+	inc a
+	ret z ; no live reliable KO
+	ld c, a ; c = the best KO's score + 1
+	ld hl, wBuffer
+	ld b, NUM_MOVES
+.nextSlot
+	srl e
+	jr c, .keep ; a KO slot keeps its score
+	ld a, [hl]
+	cp c
+	jr nc, .keep
+	ld [hl], c
+.keep
+	inc hl
+	dec b
+	jr nz, .nextSlot
+	ret
+
 ; Scoring layers, indexed by bit position in the tier's layer word. The order
 ; here IS the execution order (see constants/ai_constants.asm). Entries marked
 ; "stub" are placeholders for later phases and currently just return.
@@ -224,6 +322,29 @@ AIRunPersonality:
 	ret z
 	cp NUM_AI_PERSONALITIES
 	ret nc
+; A lean, not a loop (F4, 2026-10-21 AI review). The one-point nudge made the
+; favoured move the strict minimum on every tied turn: the swarm measured
+; OFFENSE/CONTROL changing the chosen move in 27-64% of decisions and CONTROL
+; behind most status-move streaks at T0/T1, with no measurable gain in pressure.
+; So the profile applies on half of its decisions: one Random per decision, and
+; only when a real profile would apply. Random preserves bc, de and hl.
+	ld b, a
+	call Random
+.coinDrawn ; harness hook point (test_ai_personality sets A here to pick the side)
+	add a ; carry = the draw's top bit: a fair coin
+	ret nc ; this decision plays without the lean
+	ld a, b
+	jr AIDispatchSoftPersonality
+
+; The profile without the coin: test_ai_personality's profile-logic fixtures
+; call this so they need no RNG control. Same resolve as AIRunPersonality.
+AIApplySoftPersonality::
+	call AIGetSoftPersonality
+	and a
+	ret z
+	cp NUM_AI_PERSONALITIES
+	ret nc
+AIDispatchSoftPersonality: ; a = profile, 1 .. NUM_AI_PERSONALITIES - 1
 	dec a
 	add a
 	ld hl, AISoftPersonalityPointers

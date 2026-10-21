@@ -206,6 +206,26 @@ TurnRewindRestore::
 	ld a, [wBattleMonStatus]
 	ld [hl], a
 
+; ...and PP, which the restore above refunds in wBattleMonPP. Without this the
+; battle copy stayed one ahead of the party copy, and when the battle copy next
+; reached 0, DecrementPP took the party byte from 0 to $FF (PP 63, all PP Ups):
+; autoplay seed 124 (--vary --runs 2), Oddish's Absorb, measured 2026-10-21.
+; A Transformed mon's battle PP belongs to the copied moves, not the party mon,
+; so skip it then, exactly as DecrementPP does.
+	ld a, [wPlayerBattleStatus3]
+	bit TRANSFORMED, a
+	jr nz, .ppSynced
+	ld a, [wPlayerMonNumber]
+	ld bc, PARTYMON_STRUCT_LENGTH
+	ld hl, wPartyMon1PP
+	call AddNTimes
+	ld d, h
+	ld e, l
+	ld hl, wBattleMonPP
+	ld bc, NUM_MOVES
+	call CopyData
+.ppSynced
+
 	xor a
 	ld [rRAMG], a
 	ld a, 1

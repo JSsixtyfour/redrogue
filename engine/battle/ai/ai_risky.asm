@@ -54,6 +54,10 @@ AILayerRisky:
 	ld a, [hli]
 	and a
 	jr z, .noGuaranteedWin ; ran out of moves - none guarantee a win
+	call AIEnemyCountdownSlotIsLive ; trainer_ai.asm: a disabled / 0-PP slot is no win
+	jr z, .scanSkip
+	dec hl
+	ld a, [hli] ; the liveness test clobbered a; ReadMove wants the move id
 	push hl
 	push bc
 	call ReadMove ; a = move id, already loaded above; ReadMove itself
@@ -74,6 +78,7 @@ AILayerRisky:
 .notGuaranteed
 	pop bc
 	pop hl
+.scanSkip
 	dec b
 	jr nz, .scanGuaranteedWin
 .noGuaranteedWin

@@ -62,6 +62,16 @@ AILayerDamage:
 	push de ; STACK: [de=movelistPtr, hl=scorePtr]
 	push bc ; STACK: [bc=loopCounter, de=movelistPtr, hl=scorePtr]
 	call ReadMove ; loads this move into the wEnemyMove* block for the simulator
+; A slot the legality filter will drop (disabled, or out of PP now that enemies
+; spend it) earns nothing here: no kill tier, no reliable-KO bit (which would
+; withhold AI_PLAN's push for a kill that cannot be used) and no best-damage
+; nudge stolen from a usable move (2026-10-21 AI review, S2). bc (the loop
+; counter) is on the stack, so b is free; .noChange unwinds it as usual.
+	ld a, [wBuffer + AI_BUF_CURSLOT]
+	inc a
+	ld b, a ; slot 1-4
+	call AIEnemySlotIsLive ; trainer_ai.asm, same bank
+	jp z, .noChange
 ; Fixed-damage moves carry base power 1, or 0 for Night Shade, so a plain power
 ; test would skip Night Shade as a status move and wave the rest through as
 ; trivial. The simulator knows their real values, so let them past the guard.
@@ -203,9 +213,10 @@ AILayerDamage:
 	jr nc, .unreliableKill
 ; Tell AI_PLAN a reliable kill is on the board, so no plan steers past it
 ; (FOLLOWUPS #55: a plan directive stacked with AI_SMART's opinion of the same
-; status move tied a kill). `ld` sets no flags.
-	ld a, 1
-	ld [wAIReliableKOFound], a
+; status move tied a kill). Since 2026-10-21 it is a per-slot mask, so the final
+; pass (AIReliableKOWins, trainer_ai.asm) knows WHICH slots kill. Flags don't
+; matter here: AIEnemyActsFirstWith below sets its own carry.
+	call AIMarkReliableKOSlot
 ; F16 (2026-09-02): a RELIABLE kill that also ACTS FIRST outranks a bigger
 ; reliable kill that does not. When two moves both kill, raw damage is the wrong
 ; tiebreak - turn order is, because the bigger one is worthless if the player
@@ -397,4 +408,25 @@ AIExpectedShieldProgress:
 	pop af
 	dec a
 	jr nz, .addHit
+	ret
+
+; Set the current slot's bit (wBuffer + AI_BUF_CURSLOT, 0-3) in
+; wAIReliableKOFound. Clobbers af; preserves bc, de, hl.
+AIMarkReliableKOSlot:
+	push bc
+	ld a, [wBuffer + AI_BUF_CURSLOT]
+	ld b, a
+	inc b ; b = slot + 1
+	ld a, 1
+.shift ; a = 1 << slot
+	dec b
+	jr z, .set
+	add a
+	jr .shift
+.set
+	ld b, a
+	ld a, [wAIReliableKOFound]
+	or b
+	ld [wAIReliableKOFound], a
+	pop bc
 	ret
