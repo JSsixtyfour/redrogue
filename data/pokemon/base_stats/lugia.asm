@@ -20,7 +20,7 @@
 	     FLY,          SURF,         STRENGTH,     ICE_BEAM,     BLIZZARD,     \
 	     DRAGON_RAGE,  EARTHQUAKE,   THUNDER,      DREAM_EATER,  THUNDERBOLT,  \
 	     BODY_SLAM,    LIGHT_SCREEN, BUBBLEBEAM,   THUNDER_WAVE, PSYWAVE,      \
-	     WATER_GUN,    RAZOR_WIND
+	     WATER_GUN,    RAZOR_WIND,   MEGA_DRAIN
 	; end   
 
 	db BANK(LugiaPicFront) ; pic bank

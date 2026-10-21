@@ -78,6 +78,8 @@ def run_seed(seed: int, options: dict[str, object]) -> dict[str, object]:
         "save_findings": (data.get("save_checks") or {}).get("findings", []),
         "power_cuts": [(cut["cut"], cut["loads"]) for cut in (data.get("save_checks") or {}).get("power_cuts", [])],
         "coverage": (data.get("coverage") or {}).get("hit"),
+        "ai_battles": data.get("ai_battles"),
+        "ai_telemetry_errors": data.get("ai_telemetry_errors"),
         "report": str(path),
     }
 
@@ -219,6 +221,29 @@ def print_branching(branching: dict[str, object]) -> None:
         print(f"    replay: {finding['replay']}")
 
 
+def print_ai(ai: dict[str, object], args) -> None:
+    timing = ai["timing"]
+    print(f"\nAI telemetry: {ai['battles']} trainer battles, {ai['decisions']} decisions, {ai['turns']} turns; "
+          f"decision mean {timing['decision_mean_cycles']} p95 {timing['decision_p95_cycles']} "
+          f"max {timing['decision_max_cycles']} cycles; TrainerAI move path p95 "
+          f"{timing['trainer_ai_move_p95_cycles']} max {timing['trainer_ai_move_max_cycles']}, "
+          f"{timing['trainer_ai_move_over_frame_calls']} over a frame")
+    for tier, group in ai["by_tier"].items():
+        print(f"  tier {tier}: {group['battles']} battles, player win rate {group['player_win_rate']}, "
+              f"missed-KO rate {group['missed_ko_rate']}, switch rate {group['enemy_switch_rate']}, "
+              f"{group['status_spam_battles']} status-spam, {group['struggle_battles']} struggle")
+    if ai["flag_counts"]:
+        print("  flags: " + ", ".join(f"{name} {n}" for name, n in ai["flag_counts"].items()))
+    if ai["telemetry_errors"]:
+        print(f"  TELEMETRY ERRORS in seeds {sorted(ai['telemetry_errors'])}: see the summary")
+    extra = (" --new-game" * args.new_game + " --vary" * args.vary + f" --runs {args.runs}" * (args.runs != 1)
+             + f" --player {args.player}" * (args.player != "basic"))
+    for item in ai["flagged"][:8]:
+        print(f"  flagged: seed {item['seed']} run {item['run_index']} {item['opponent']} {item['flags']} "
+              f"moves {item['moves']}")
+        print(f"    reproduce: python3 tools/pyboy_smoke/autoplay.py --seed {item['seed']}{extra} --ai-telemetry")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Soak-test Red Rogue with the autoplay agent.")
     parser.add_argument("--seeds", default="1-8", help="e.g. 1-16 or 3,9,12")
@@ -258,6 +283,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="build to play; the release builds need --new-game")
     parser.add_argument("--player", choices=autoplay.PLAYERS, default="basic",
                         help="strong: rewards and gifts on merit, matchup switches")
+    parser.add_argument("--ai-telemetry", action="store_true",
+                        help="record the enemy AI's choices per trainer battle and add an \"ai\" block "
+                             "to the summary (ai_telemetry.py); flags are findings, not failures")
     args = parser.parse_args(argv)
     if args.rom != autoplay.DEBUG_ROM and not args.new_game:
         parser.error(f"--rom {args.rom} has no Debug 2 menu; add --new-game")
@@ -285,6 +313,7 @@ def main(argv: list[str] | None = None) -> int:
         "save_checks": args.save_checks,
         "rom": args.rom,
         "player": args.player,
+        "ai_telemetry": args.ai_telemetry,
     }
     rows = []
     for row in run_all(seeds, options, max(1, args.jobs), args.timeout):
@@ -303,6 +332,9 @@ def main(argv: list[str] | None = None) -> int:
     rows.sort(key=lambda row: row["seed"])
     # Each seed's label list goes to the coverage map, not the batch summary.
     hit_lists = {f"seed{row['seed']}": row.pop("coverage") for row in rows if row.get("coverage")}
+    # Likewise the AI battle records: they go to the summary's "ai" block, not each row.
+    ai_battles = [battle for row in rows for battle in row.pop("ai_battles", None) or []]
+    ai_errors = {row["seed"]: row["ai_telemetry_errors"] for row in rows if row.pop("ai_telemetry_errors", None)}
 
     outcomes: dict[str, int] = {}
     for row in rows:
@@ -321,13 +353,21 @@ def main(argv: list[str] | None = None) -> int:
         for anomaly in row["anomalies"]:
             key = f"{anomaly['check']}: {anomaly['detail']}"
             anomalies[key] = anomalies.get(key, 0) + 1
+    ai = None
+    if args.ai_telemetry:
+        import ai_telemetry
+
+        ai = ai_telemetry.summarize(ai_battles)
+        ai["telemetry_errors"] = {str(seed): errors for seed, errors in ai_errors.items()}
     summary = {"options": options, "outcomes": outcomes, "balance": balance, "menus": menus,
-               "branching": branching,
+               "branching": branching, "ai": ai,
                "anomalies": dict(sorted(anomalies.items(), key=lambda item: -item[1])), "runs": rows}
     path = autoplay.ARTIFACTS / ("autoplay_summary.json" if args.rom == autoplay.DEBUG_ROM
                                  else f"autoplay_summary_{args.rom}.json")
     path.write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
     print_statistics(balance)
+    if ai is not None:
+        print_ai(ai, args)
     if menus:
         print("  menus answered with presses: " + ", ".join(
             f"{kind} {c['choices']} ({c['moves']} cursor moves, {c['stray']} stray)"

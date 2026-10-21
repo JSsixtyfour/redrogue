@@ -19,7 +19,8 @@
 	     FIRE_BLAST,   SWIFT,        SKY_ATTACK,   REST,         SUBSTITUTE,   \
 	     FLY,          STRENGTH,     SOLARBEAM,    THUNDER,      EARTHQUAKE,   \
 	     PSYCHIC_M,    FLASH,        DREAM_EATER,  THUNDERBOLT,  BODY_SLAM,    \
-	     LIGHT_SCREEN, THUNDER_WAVE, RAZOR_WIND,   PSYWAVE
+	     LIGHT_SCREEN, THUNDER_WAVE, RAZOR_WIND,   PSYWAVE,      MEGA_DRAIN,   \
+         DRAGON_RAGE
 	; end
 
 	db BANK(HoOhPicFront) ; pic bank

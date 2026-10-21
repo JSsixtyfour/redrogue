@@ -16,12 +16,13 @@
 	; tm/hm learnset - from tmp/kep/data/pokemon/base_stats/electivire.asm;
 	; TELEPORT is not a valid TM/HM in this project (same class of error as
 	; Slowking's TELEPORT in batch 4), dropped rather than substituted
-	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
-	     DOUBLE_EDGE,  HYPER_BEAM,   SUBMISSION,   COUNTER,      SEISMIC_TOSS, \
-	     RAGE,         THUNDERBOLT,  THUNDER,      EARTHQUAKE,   FISSURE,      \
-	     PSYCHIC_M,    MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     METRONOME,    SWIFT,        SKULL_BASH,   REST,         THUNDER_WAVE, \
-	     PSYWAVE,      ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     FLASH
+	tmhm MEGA_PUNCH,   LIGHT_SCREEN, MEGA_KICK,    TOXIC,        BODY_SLAM,    \
+	     TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   SUBMISSION,   COUNTER,      \
+	     SEISMIC_TOSS, RAGE,         THUNDERBOLT,  THUNDER,      EARTHQUAKE,   \
+	     FISSURE,      PSYCHIC_M,    MIMIC,        DOUBLE_TEAM,  REFLECT,      \
+	     BIDE,         METRONOME,    SWIFT,        SKULL_BASH,   REST,         \
+	     THUNDER_WAVE, PSYWAVE,      ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     \
+	     FLASH
 	; end
 
 	db BANK(ElectivirePicFront) ; pic bank

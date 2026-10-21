@@ -261,18 +261,6 @@ SaveMenu:
 	and a
 	ret nz
 .save
-    ;now save the status of the gamma shader
-	ld a, [hGBC]
-	and a
-	jr z, .doneGamma
-	cp 2
-	jr z, .onGamma
-.offGamma
-	ResetEvent EVENT_GAMMA_SHADER
-	jr .doneGamma
-.onGamma
-	SetEvent EVENT_GAMMA_SHADER
-.doneGamma
 	call SaveGameData
 	ld c, 10
 	call DelayFrames
@@ -307,21 +295,28 @@ OlderFileWillBeErasedText:
 	text_end
 
 SaveMainData:
+	call OpenSaveData
+	call CopyMainSaveData
+	call CopyCurrentBoxSaveData
+	jp FinishSaveData
+
+; Partial-save entrypoints keep their original region/checksum contracts.
+; Full saves share only the raw copies, publishing one final checksum.
+OpenSaveData:
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	ld a, BMODE_ADVANCED
 	ld [rBMODE], a
 	ASSERT BANK("Save Data") == BMODE_ADVANCED
 	ld [rRAMB], a
-	call WriteSaveHeader
+	jp WriteSaveHeader
+
+CopyMainSaveData:
 	; Capture raw theft SRAM before copying Main Data and checksumming it.
 	; Do not do this in partial party/box saves: they must retain the last
 	; complete save's theft snapshot, just as they retain its run state.
 	ASSERT BANK(sStolenRecord) == BANK(sMainData)
-	ld hl, sStolenRecord
-	ld de, wStolenSaveSnapshot
-	ld bc, sStolenRecordEnd - sStolenRecord
-	call CopyData
+	call CaptureStolenSaveData
 
 	ld hl, wPlayerName
 	ld de, sPlayerName
@@ -336,19 +331,23 @@ SaveMainData:
 	ld bc, wSpriteDataEnd - wSpriteDataStart
 	call CopyData
 
-; this part is redundant, SaveCurrentBoxData is always called next
-	ld hl, wBoxDataStart
-	ld de, sCurBoxData
-	ld bc, wBoxDataEnd - wBoxDataStart
-	call CopyData
-
 	ldh a, [hTileAnimations]
 	ld [sTileAnimations], a
-	ldh a, [hCurMap]        ; hCurMap is HRAM (not in wMainData), save it explicitly
+	ldh a, [hCurMap]
 	ld [sCurMap], a
+	ret
+
+CaptureStolenSaveData:
+	ld hl, sStolenRecord
+	ld de, wStolenSaveSnapshot
+	ld bc, sStolenRecordEnd - sStolenRecord
+	jp CopyData
+
+FinishSaveData:
 	ld hl, sGameData
 	ld bc, sGameDataEnd - sGameData
 	call CalcCheckSum
+StoreSaveChecksum:
 	ld [sMainDataCheckSum], a
 	xor a
 	ld [rBMODE], a
@@ -356,57 +355,138 @@ SaveMainData:
 	ret
 
 SaveCurrentBoxData:
-	ld a, RAMG_SRAM_ENABLE
-	ld [rRAMG], a
-	ld a, BMODE_ADVANCED
-	ld [rBMODE], a
-	ASSERT BANK("Save Data") == BMODE_ADVANCED
-	ld [rRAMB], a
-	call WriteSaveHeader
+	call OpenSaveData
+	call CopyCurrentBoxSaveData
+	jp FinishSaveData
+
+CopyCurrentBoxSaveData:
 	ld hl, wBoxDataStart
 	ld de, sCurBoxData
 	ld bc, wBoxDataEnd - wBoxDataStart
-	call CopyData
-	ld hl, sGameData
-	ld bc, sGameDataEnd - sGameData
-	call CalcCheckSum
-	ld [sMainDataCheckSum], a
-	xor a
-	ld [rBMODE], a
-	ld [rRAMG], a
-	ret
+	jp CopyData
 
 SavePartyAndDexData:
-	ld a, RAMG_SRAM_ENABLE
-	ld [rRAMG], a
-	ld a, BMODE_ADVANCED
-	ld [rBMODE], a
-	ASSERT BANK("Save Data") == BMODE_ADVANCED
-	ld [rRAMB], a
-	call WriteSaveHeader
-	ld hl, wPartyDataStart
-	ld de, sPartyData
-	ld bc, wPartyDataEnd - wPartyDataStart
-	call CopyData
+	call OpenSaveData
+	call CopyPartySaveData
 	ld hl, wPokedexOwned ; pokédex only
 	ld de, sMainData
 	ld bc, wPokedexSeenEnd - wPokedexOwned
 	call CopyData
-	ld hl, sGameData
-	ld bc, sGameDataEnd - sGameData
-	call CalcCheckSum
-	ld [sMainDataCheckSum], a
-	xor a
-	ld [rBMODE], a
-	ld [rRAMG], a
-	ret
+	jp FinishSaveData
+
+CopyPartySaveData:
+	ld hl, wPartyDataStart
+	ld de, sPartyData
+	ld bc, wPartyDataEnd - wPartyDataStart
+	jp CopyData
+
+; Lengths remain linker-resolved WRAM spans, as in the partial writers.
+; a carries the running, uncomplemented checksum between regions.
+MACRO copy_save_data_with_checksum
+	ld hl, \1
+	ld de, \2
+	ld bc, \3
+	call CopySaveDataAndSum
+ENDM
 
 SaveGameData::
+	; All full-save callers must capture the live CGB gamma setting, including
+	; internal saves that never pass through SaveMenu. DMG keeps the saved bit.
+	ldh a, [hGBC]
+	and a
+	jr z, .doneGamma
+	cp 2
+	jr z, .onGamma
+	ResetEvent EVENT_GAMMA_SHADER
+	jr .doneGamma
+.onGamma
+	SetEvent EVENT_GAMMA_SHADER
+.doneGamma
 	ld a, $2
 	ld [wSaveFileStatus], a
-	call SaveMainData
-	call SaveCurrentBoxData
-	jp SavePartyAndDexData
+	call OpenSaveData
+	call CaptureStolenSaveData
+	xor a
+.copyName
+	copy_save_data_with_checksum wPlayerName, sPlayerName, NAME_LENGTH
+.copyMain
+	copy_save_data_with_checksum wMainDataStart, sMainData, wMainDataEnd - wMainDataStart
+.copySprites
+	copy_save_data_with_checksum wSpriteDataStart, sSpriteData, wSpriteDataEnd - wSpriteDataStart
+.copyParty
+	copy_save_data_with_checksum wPartyDataStart, sPartyData, wPartyDataEnd - wPartyDataStart
+.copyBox
+	copy_save_data_with_checksum wBoxDataStart, sCurBoxData, wBoxDataEnd - wBoxDataStart
+.copyMap
+	ld c, a
+	ldh a, [hTileAnimations]
+	ld [sTileAnimations], a
+	add c
+	ld c, a
+	ldh a, [hCurMap]
+	ld [sCurMap], a
+	add c
+.commit
+	cpl
+	ld bc, 0
+	ld hl, sGameDataEnd
+	jp StoreSaveChecksum
+
+PURGE copy_save_data_with_checksum
+
+; Copy bc bytes from hl to de; add each written byte to a (mod 256).
+; The low count is copied first (0-3 bytes, then four-byte batches), then b
+; whole 256-byte pages. Each page uses 64 batches, without overreading.
+; The stack keeps page counts while c holds the sum; VBlank preserves all
+; these registers. No temporary RAM or interrupt masking is needed.
+CopySaveDataAndSum:
+	push bc
+	ld b, c
+	ld c, a
+	push bc
+	ld a, b
+	and 3
+	ld b, a
+	call nz, .tail
+	pop af ; a = original low count; c retains the updated checksum
+	srl a
+	srl a
+	ld b, a
+	and a
+	call nz, .batch4
+	pop af ; a = original high count; the restored flags are not consumed
+	and a
+	jr z, .done
+.pages
+	push af
+	ld b, 64
+	call .batch4
+	pop af
+	dec a
+	jr nz, .pages
+.done
+	ld a, c
+	ret
+.tail
+	ld a, [hli]
+	ld [de], a
+	inc de
+	add c
+	ld c, a
+	dec b
+	jr nz, .tail
+	ret
+.batch4
+	REPT 4
+	ld a, [hli]
+	ld [de], a
+	inc de
+	add c
+	ld c, a
+	ENDR
+	dec b
+	jr nz, .batch4
+	ret
 
 CalcCheckSum:
 ;Check Sum (result[1 byte] is complemented)

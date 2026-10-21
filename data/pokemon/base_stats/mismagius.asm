@@ -10,15 +10,15 @@
 	INCBIN "gfx/pokemon/front/mismagius.dim" ; sprite dimensions
 	dw MismagiusPicFront, MismagiusPicBack
 
-	db LICK, METRONOME, NO_MOVE, NO_MOVE ; level 1 learnset - FILLER, expand later
+	db LICK, PSYWAVE, NO_MOVE, NO_MOVE ; level 1 learnset - PSYWAVE is canon Mismagius Lv 1 (Gen 4)
 	db GROWTH_FAST ; growth rate - matches Misdreavus
 
 	; tm/hm learnset - modeled on Gengar's (the closest Gen 1 Ghost-type)
-	tmhm FLASH,   THUNDER_WAVE,    TOXIC,        SUBSTITUTE,    SWIFT,    \
-	     DOUBLE_EDGE,  HYPER_BEAM,      RAGE,         MEGA_DRAIN,   THUNDERBOLT,    \
-	     THUNDER,      PSYCHIC_M,       MIMIC,        DOUBLE_TEAM,  BIDE,        \
-	     MIMIC,        DOUBLE_TEAM,     BIDE,         DREAM_EATER,  REST,       \
-	     PSYWAVE
+	tmhm LIGHT_SCREEN, FLASH,        THUNDER_WAVE, TOXIC,        SUBSTITUTE,   \
+	     SWIFT,        DOUBLE_EDGE,  HYPER_BEAM,   RAGE,         MEGA_DRAIN,   \
+	     THUNDERBOLT,  THUNDER,      PSYCHIC_M,    MIMIC,        DOUBLE_TEAM,  \
+	     BIDE,         MIMIC,        DOUBLE_TEAM,  BIDE,         DREAM_EATER,  \
+	     REST,         PSYWAVE
 	; end
 
 	db BANK(MismagiusPicFront) ; pic bank

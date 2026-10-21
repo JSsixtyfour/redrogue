@@ -16,10 +16,10 @@
 	; tm/hm learnset - modeled on Chansey/Snorlax (defensive Normal-type)
 	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
 	     DOUBLE_EDGE,  HYPER_BEAM,   SEISMIC_TOSS, RAGE,         EARTHQUAKE,   \
-	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         ICE_BEAM, \
-	     REST,         SUBSTITUTE,   SURF,         STRENGTH,     BLIZZARD, \
-         THUNDERBOLT,  THUNDER,      COUNTER,      THUNDER_WAVE, ROCK_SLIDE, \
-         METRONOME,    SUBMISSION
+	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         ICE_BEAM,     \
+	     SOFTBOILED,   REST,         SUBSTITUTE,   SURF,         STRENGTH,     \
+	     BLIZZARD,     THUNDERBOLT,  THUNDER,      COUNTER,      THUNDER_WAVE, \
+	     ROCK_SLIDE,   METRONOME,    SUBMISSION
 	; end
 
 	db BANK(MiltankPicFront) ; pic bank

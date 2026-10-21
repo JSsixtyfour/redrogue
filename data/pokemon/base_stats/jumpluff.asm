@@ -10,14 +10,14 @@
 	INCBIN "gfx/pokemon/front/jumpluff.dim" ; sprite dimensions
 	dw JumpluffPicFront, JumpluffPicBack
 
-	db SPLASH, METRONOME, TAIL_WHIP, TACKLE ; level 1 learnset - SYNTHESIS filled with METRONOME
+	db SPLASH, TAIL_WHIP, TACKLE, NO_MOVE ; level 1 learnset - SYNTHESIS dropped (RECOVER at Lv 16 covers healing)
 	db GROWTH_MEDIUM_SLOW ; growth rate
 
 	; tm/hm learnset
-		tmhm SWORDS_DANCE, TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
+	tmhm SWORDS_DANCE, TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
 	     MEGA_DRAIN,   SOLARBEAM,    MIMIC,        DOUBLE_TEAM,  REFLECT,      \
 	     BIDE,         REST,         SUBSTITUTE,   CUT,          FLASH,        \
-         LIGHT_SCREEN, HYPER_BEAM
+	     LIGHT_SCREEN, HYPER_BEAM
 	; end
 
 	db BANK(JumpluffPicFront) ; pic bank

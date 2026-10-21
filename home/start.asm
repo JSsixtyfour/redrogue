@@ -4,8 +4,8 @@ _Start::
 ; after we jump to it. The boot-time A value is the only chance to detect CGB,
 ; so the answer is carried through the wipe in E instead: Init's clear loop uses
 ; only hl/bc/a, and DisableLCD on the way there uses only a/b, so de survives.
-; Init writes wOnCGB from E once the wipe is done. See SoftReset, which reloads
-; E the same way so a soft reset does not lose the flag.
+; Init writes wOnCGB from E once the wipe is done. Power-on enters at
+; InitFromBoot; every later restart enters at Init, which reloads E from wOnCGB.
 	cp BOOTUP_A_CGB
 	ld e, FALSE
 	jr nz, .ok
@@ -13,4 +13,4 @@ _Start::
 .ok
 	ld a, e
 	ldh [hGBC], a
-	jp Init
+	jp InitFromBoot

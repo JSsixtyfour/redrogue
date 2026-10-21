@@ -1758,6 +1758,7 @@ SentretEvosMoves:
 	db 25, SLAM
 	db 33, REST
 	db 41, AMNESIA
+    db 47, DOUBLE_EDGE
 	db 0
 ; Tutoring Learnset - none
 	db 0
@@ -1892,7 +1893,6 @@ MeowthEvosMoves:
 	db 22, SCREECH
 	db 29, TAKE_DOWN
 	db 34, SLASH
-	db 45, HYPER_BEAM
 	db 0
 ; Tutoring Learnset  
     db 2, DEFENSE_CURL
@@ -1928,6 +1928,7 @@ FurretEvosMoves:
 	db 28, SLAM
 	db 38, REST
 	db 48, AMNESIA
+    db 51, DOUBLE_EDGE
 	db 0
 ; Tutoring Learnset - none
 	db 0
@@ -4242,12 +4243,12 @@ GirafarigEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - TACKLE/GROWL/CONFUSION/STOMP already granted at level 1;
-; BATON_PASS/CRUNCH do not exist in Gen 1, replaced with METRONOME/PSYCHIC_M.
+; BATON_PASS/CRUNCH do not exist in Gen 1, replaced with AGILITY/PSYCHIC_M.
 	db 11, BITE
 	db 15, CONFUSION
     db 18, STOMP
 	db 20, HEADBUTT
-	db 30, METRONOME ; was BATON_PASS
+	db 30, AGILITY ; was BATON_PASS
 	db 41, PSYBEAM
 	db 54, PSYCHIC_M ; was CRUNCH
 	db 0
@@ -4812,6 +4813,7 @@ BlisseyEvosMoves:
 	db 38, MINIMIZE
 	db 44, DEFENSE_CURL
 	db 48, LIGHT_SCREEN
+	db 50, MEGA_PUNCH
 	db 54, DOUBLE_EDGE
 	db 0
 ; Tutoring Learnset - none
@@ -5149,13 +5151,17 @@ PorygonZEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset - TACKLE/SHARPEN/CONVERSION already granted at level 1;
-; NASTY_PLOT does not exist in Gen 1, filled with METRONOME.
+; NASTY_PLOT does not exist in Gen 1; DEFENSE_CURL (kept to match Porygon2),
+; METRONOME (glitch flavor) and HYPER_BEAM (canon Porygon-Z level-up move)
+; share Lv 45, and THUNDER stands in for ZAP_CANNON at Lv 50.
 	db 23, PSYBEAM
 	db 28, RECOVER
 	db 35, AGILITY
 	db 42, TRI_ATTACK
 	db 45, DEFENSE_CURL
-    db 50, METRONOME
+	db 45, METRONOME
+	db 45, HYPER_BEAM
+	db 50, THUNDER ; was NASTY_PLOT (Zap Cannon stand-in)
 	db 0
 ; Tutoring Learnset - none
 	db 0

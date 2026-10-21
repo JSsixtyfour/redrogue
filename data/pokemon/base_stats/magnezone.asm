@@ -16,10 +16,10 @@
 	; tm/hm learnset - from tmp/kep/data/pokemon/base_stats/magnezone.asm;
 	; TELEPORT is not a valid TM/HM in this project (same class of error as
 	; Slowking's TELEPORT in batch 4), dropped rather than substituted
-	tmhm TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   RAGE,         \
-	     THUNDERBOLT,  THUNDER,      MIMIC,        DOUBLE_TEAM,  REFLECT,      \
-	     BIDE,         SWIFT,        REST,         THUNDER_WAVE, SUBSTITUTE,   \
-	     FLASH
+	tmhm LIGHT_SCREEN, TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
+	     RAGE,         THUNDERBOLT,  THUNDER,      MIMIC,        DOUBLE_TEAM,  \
+	     REFLECT,      BIDE,         SWIFT,        REST,         THUNDER_WAVE, \
+	     TRI_ATTACK,   SUBSTITUTE,   FLASH
 	; end
 
 	db BANK(MagnezonePicFront) ; pic bank

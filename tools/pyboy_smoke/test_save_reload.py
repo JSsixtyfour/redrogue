@@ -27,5 +27,6 @@ class SaveReloadTest(HarnessTestCase):
     def test_power_cuts_are_classified(self) -> None:
         cuts = save_reload.power_cuts(self.harness, self.lobby, self.lobby)
         outcomes = {cut["cut"].split(" at ")[1]: cut["loads"] for cut in cuts}
-        self.assertEqual(outcomes["after the save"], "new")
-        self.assertTrue(set(outcomes.values()) <= {"new", "old", "mixed", "refused"}, outcomes)
+        # Both snapshots are the same fixture, so all completed regions agree.
+        self.assertEqual(outcomes["after the save"], "unchanged")
+        self.assertTrue(set(outcomes.values()) <= {"new", "old", "unchanged", "mixed", "refused"}, outcomes)

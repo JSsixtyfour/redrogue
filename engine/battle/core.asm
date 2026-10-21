@@ -2047,6 +2047,13 @@ LoadBattleMonFromParty:
 	call CopyData
 	ld a, [wBattleMonSpecies2]
 	ld [wCurSpecies], a
+	; Repair Ghost variants from saves made before evolution preserved the type.
+	ld hl, wBattleMonCatchRate
+	bit BIT_GHOST_VARIANT, [hl]
+	jr z, .ghostTypeRestored
+	ld a, GHOST
+	ld [wBattleMonType2], a
+.ghostTypeRestored
 	; Phase 2R: wBattleMon already holds the switched-in mon (copied just above),
 	; so its form bits are live here. Publish before the header load or a formed
 	; player mon fights with its BASE species' stats, types and sprite.
@@ -2097,6 +2104,12 @@ LoadEnemyMonFromParty:
 	call CopyData
 	ld a, [wEnemyMonSpecies]
 	ld [wCurSpecies], a
+	ld hl, wEnemyMonCatchRate
+	bit BIT_GHOST_VARIANT, [hl]
+	jr z, .ghostTypeRestored
+	ld a, GHOST
+	ld [wEnemyMonType2], a
+.ghostTypeRestored
 	ld hl, wEnemyMon ; Phase 2R: form bits arrived with the struct copy above
 	call PublishFormContext
 	call GetMonHeader

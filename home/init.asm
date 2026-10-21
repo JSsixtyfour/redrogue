@@ -3,13 +3,21 @@ SoftReset::
 	call GBPalWhiteOut
 	ld c, 32
 	call DelayFrames
-	; Carry the CGB flag through Init's WRAM0 wipe in E, exactly as _Start does.
-	; Must be the last thing before the fallthrough: the calls above clobber de.
-	ld a, [wOnCGB]
-	ld e, a
 	; fallthrough
 
 Init::
+; Every in-game restart enters here (SoftReset, and the `jp Init` at the end of
+; the credits, Hall of Fame, AI Lair, cable club and clear-save paths): carry
+; the CGB flag through the WRAM0 wipe below in E. Those callers used to arrive
+; with whatever E held, so a DMG came back from the credits with wOnCGB nonzero
+; and ran the CGB palette code, whose "WRAM bank 2" workspace ($D000-$D035) is
+; plain bank 1 on a DMG: it overwrote wBattleMonNick and wBattleMon (FOLLOWUPS
+; #84, measured 2026-10-21: wOnCGB = $CA with hGBC = 0).
+	ld a, [wOnCGB]
+	ld e, a
+InitFromBoot::
+; Power-on only (_Start): E already holds the boot-time CGB answer, and WRAM
+; is still uninitialised, so wOnCGB must not be read.
 ;  Program init.
 	di
 

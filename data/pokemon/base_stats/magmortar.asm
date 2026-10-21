@@ -19,9 +19,9 @@
 	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
 	     DOUBLE_EDGE,  HYPER_BEAM,   SUBMISSION,   COUNTER,      SEISMIC_TOSS, \
 	     RAGE,         THUNDERBOLT,  THUNDER,      EARTHQUAKE,   FISSURE,      \
-	     PSYCHIC_M,    MIMIC,        DOUBLE_TEAM,  BIDE,         METRONOME,    \
-	     FIRE_BLAST,   SKULL_BASH,   REST,         PSYWAVE,      ROCK_SLIDE,   \
-	     SUBSTITUTE,   STRENGTH
+	     PSYCHIC_M,    FLAMETHROWER, MIMIC,        DOUBLE_TEAM,  BIDE,         \
+	     METRONOME,    FIRE_BLAST,   SKULL_BASH,   REST,         PSYWAVE,      \
+	     ROCK_SLIDE,   SUBSTITUTE,   STRENGTH
 	; end
 
 	db BANK(MagmortarPicFront) ; pic bank

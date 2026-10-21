@@ -530,7 +530,7 @@ def wbuffer0_writer_reach(p: Program):
             last[par] = None
     # A soft reset reaches everything (Init -> title -> new game) but never
     # returns to the caller, so it cannot hand a clobbered wBuffer+0 back.
-    noreturn = {"SoftReset", "Init", "TrySoftReset"}
+    noreturn = {"SoftReset", "Init", "InitFromBoot", "TrySoftReset"}
     reach = {p.parent_of(it) for it in items
              if it.kind == "instr" and it.op == "ld" and len(it.args) == 2
              and _WBUF0.match(it.args[0].strip()) and p.parent_of(it)}

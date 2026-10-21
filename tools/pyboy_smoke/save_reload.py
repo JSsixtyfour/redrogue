@@ -1,11 +1,10 @@
 """Save and reload checks: does a save bring back exactly what was saved, and
 what does a power cut in the middle of saving leave?
 
-Every save path (START > SAVE, the hub and Hall of Fame autosaves, rentals,
-the options menu) runs SaveGameData, which writes three parts in turn:
-SaveMainData, SaveCurrentBoxData, SavePartyAndDexData. Each part rewrites the
-one checksum over the whole save (sGameData). For key moments of an autoplay
-run (lobby arrivals, from autoplay_branch.SnapshotReel):
+Full saves run SaveGameData. The original writer published a checksum after
+each of three component saves; the optimized writer shares raw-copy helpers
+and publishes one final checksum. Both lifecycles are sampled below. For key
+moments of an autoplay run (lobby arrivals, from SnapshotReel):
 
 - round trip: run SaveGameData, boot a fresh emulator on nothing but that
   cartridge RAM, and when TryLoadSaveFile finishes compare every saved region
@@ -26,6 +25,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -157,7 +157,10 @@ class Reboot:
     menu check the save, and (if it loads) CONTINUE into the overworld."""
 
     def __init__(self, sram: bytes):
-        self.path = Path(tempfile.mkstemp(suffix=".sram", dir=autoplay.ARTIFACTS)[1])
+        autoplay.ARTIFACTS.mkdir(parents=True, exist_ok=True)
+        fd, path = tempfile.mkstemp(suffix=".sram", dir=autoplay.ARTIFACTS)
+        os.close(fd)
+        self.path = Path(path)
         self.path.write_bytes(sram)
         self.h = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS, ram_path=self.path, rom=autoplay.ROM)
         self.path.unlink()
@@ -192,13 +195,23 @@ class Reboot:
 
 def classify(h: RedRogueHarness, old: dict[str, bytes], new: dict[str, bytes],
              loaded: dict[str, bytes]) -> dict[str, str]:
-    """Each region: "new", "old" or "other", allowing EXPECTED_LOAD_CHANGES."""
+    """Each region: new, old, unchanged or other, allowing expected changes.
+
+    A region equal in both snapshots cannot establish a mixed checkpoint.
+    """
     result = {}
     for name in new:
         def matches(image: dict[str, bytes]) -> bool:
             return not [d for d in differences(h, {name: image[name]}, {name: loaded[name]}, only=name)]
-        result[name] = "new" if matches(new) else "old" if matches(old) else "other"
+        is_new, is_old = matches(new), matches(old)
+        result[name] = ("unchanged" if is_new and is_old else "new" if is_new
+                        else "old" if is_old else "other")
     return result
+
+
+def checkpoint_kind(regions: dict[str, str]) -> str:
+    kinds = set(regions.values()) - {"unchanged"}
+    return "unchanged" if not kinds else kinds.pop() if len(kinds) == 1 else "mixed"
 
 
 def round_trip(h: RedRogueHarness, snapshot, driver: autoplay_branch.BranchDriver | None,
@@ -249,7 +262,12 @@ def power_cuts(h: RedRogueHarness, older, newer) -> list[dict[str, object]]:
             cuts.append((f"{name} #{counts[name]}", sram_image(h)))
         return capture
 
-    hooks = [(label, cut(label)) for label in ("SaveCurrentBoxData", "SavePartyAndDexData", "CalcCheckSum")]
+    labels = ("SaveCurrentBoxData", "SavePartyAndDexData", "CopyMainSaveData",
+              "CopyCurrentBoxSaveData", "CopyPartySaveData", "FinishSaveData", "CalcCheckSum",
+              "SaveGameData.copyName", "SaveGameData.copyMain", "SaveGameData.copySprites",
+              "SaveGameData.copyParty", "SaveGameData.copyBox", "SaveGameData.copyMap",
+              "SaveGameData.commit", "StoreSaveChecksum")
+    hooks = [(label, cut(label)) for label in labels if label in h.symbols._symbols]
     for label, callback in hooks:
         h.register_hook(label, callback)
     try:
@@ -267,8 +285,7 @@ def power_cuts(h: RedRogueHarness, older, newer) -> list[dict[str, object]]:
                 outcome, regions = "refused", {}
             else:
                 regions = classify(h, old, new, boot.loaded)
-                kinds = set(regions.values())
-                outcome = kinds.pop() if len(kinds) == 1 else "mixed"
+                outcome = checkpoint_kind(regions)
             results.append({"cut": f"{older.name}->{newer.name} at {name}", "loads": outcome,
                             "regions": regions})
         finally:
@@ -289,10 +306,9 @@ def run_save_checks(seed: int, snapshots: list, *, play_after: bool = True) -> d
             if trip.get("problem") or trip.get("differences") or trip.get("after_load"):
                 findings.append({"check": "round_trip", **trip})
         for older, newer in zip(lobbies, lobbies[1:]):
-            # Reported, not failed: a cut between SaveGameData's three parts
-            # loading a mix of old and new is the save format itself (one
-            # checksum, rewritten by each part, as in vanilla), a design
-            # question rather than a regression.
+            # Keep interruptions separate from ordinary round-trip findings.
+            # Release acceptance must inspect mixed/other outcomes explicitly;
+            # a successful command alone does not certify power-cut safety.
             cut_results.extend(power_cuts(h, older, newer))
     finally:
         h.close()

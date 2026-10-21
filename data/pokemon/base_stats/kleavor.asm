@@ -15,9 +15,10 @@
 
 	; tm/hm learnset - from tmp/kep/data/pokemon/base_stats/kleavor.asm,
 	; already Gen 1 valid
-	tmhm SWORDS_DANCE, TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
-	     RAGE,         MIMIC,        DOUBLE_TEAM,  BIDE,         SWIFT,        \
-	     SKULL_BASH,   REST,         ROCK_SLIDE,   SUBSTITUTE,   CUT
+	tmhm SWORDS_DANCE, LIGHT_SCREEN, TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  \
+	     HYPER_BEAM,   RAGE,         MIMIC,        DOUBLE_TEAM,  BIDE,         \
+	     SWIFT,        SKULL_BASH,   REST,         ROCK_SLIDE,   SUBSTITUTE,   \
+	     CUT
 	; end
 
 	db BANK(KleavorPicFront) ; pic bank

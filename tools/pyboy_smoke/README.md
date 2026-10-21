@@ -203,6 +203,38 @@ the last 200 inputs. Failed runs also get a screenshot and state dump, and
 run failed or reported an anomaly. A full run is about 250,000 frames, roughly
 25 seconds.
 
+### AI telemetry
+
+`--ai-telemetry` (on `autoplay.py` and `run_autoplay.py`) records one AI record per
+**trainer** battle (`ai_telemetry.py`) and adds an `ai` block to
+`autoplay_summary.json` (per-seed rows stay small; the records are in each seed's
+report as `ai_battles`). It is read-only: the same seed plays identically with and
+without it (checked 2026-10-21: outcome, frames, stages, battles won and
+`last_inputs` equal; CPU cost about 1%). It reuses the harness's AI hooks
+(`hook_ai_scores`, `hook_ai_personality_timing`, `hook_trainer_ai_calls`) and adds
+two: `SelectEnemyMove.done` and `MainInBattleLoop`.
+
+A record holds the opponent, tier, rolled personality, result (0 = the player won, 1 = a blackout
+happened; `wBattleResult` itself stays 0 on a blackout), turns, the enemy's move ids in order, Struggle turns (and those with a
+reserve alive), the most slots out of PP, enemy switches, KO candidates and missed
+KOs and redundant picks (`run_ai_benchmark.classify_decisions`), `personality_flips`
+(decisions where the personality layer changed the set of minimum-score slots), the
+longest repeat of one move (`max_streak`) and of one power-0 move (`max_status_streak`),
+decision cycles, and TrainerAI move-path cycles. `flags` are findings to read, not
+failures (the exit code is unchanged):
+
+| Flag | Meaning |
+|---|---|
+| `missed_ko` | a DAMAGE-layer reliable KO existed and another slot was selected |
+| `status_spam` | the same power-0 move by the same enemy mon 4+ times in a row |
+| `struggle_with_reserve` | Struggle selected while a reserve was alive |
+| `over_frame_trainer_ai` | a TrainerAI move-path call over 70,224 cycles (turn 1 with new reveals routinely is) |
+| `redundant_pick` | the selected slot carried a Redundant-layer penalty |
+| `telemetry_error` | a telemetry hook raised during the battle |
+
+`python3 tools/pyboy_smoke/test_ai_telemetry.py` covers the pure record/summary code.
+`--coverage` skips the labels that sit next to telemetry hooks.
+
 ### Bug detectors
 
 `autoplay_checks.py` rides along on every run and looks for bugs that do not

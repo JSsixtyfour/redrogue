@@ -262,6 +262,7 @@ class AutoplayAgent:
         snapshot: Callable[[str, dict[str, object]], None] | None = None,
         profile: Profile | None = None,
         player: str = "basic",
+        ai_telemetry=None,
     ):
         if profile is not None:
             battle_policy = profile.battle_policy
@@ -274,6 +275,10 @@ class AutoplayAgent:
         if menu_input not in MENU_INPUTS:
             raise ValueError(f"unknown menu input {menu_input!r}")
         self.h = harness
+        # --ai-telemetry: ai_telemetry.BattleAITelemetry, read-only; one record per trainer battle.
+        self.ai_telemetry = ai_telemetry
+        self.ai_battles: list[dict[str, object]] = []
+        self.ai_blackouts_at_start = 0
         self.mem = harness.pyboy.memory
         self.rng = random.Random(seed)
         self.battle_policy = battle_policy
@@ -1176,14 +1181,34 @@ class AutoplayAgent:
                 species = self.h.read8("wEnemyMonSpecies2")
                 self.last_opponent = "wild " + self.species_names.get(species, str(species))
             self.event("battle_start", opponent=self.last_opponent)
+            if self.ai_telemetry is not None:
+                self.ai_telemetry.begin_battle(self.last_opponent)
+                self.ai_blackouts_at_start = self.report.blackouts
             self.snapshot_pending = "battle"
             self.enemy_seen = None
         elif self.in_battle and not in_battle:
             self.event("battle_end", result=self.h.read8("wBattleResult"))
+            if self.ai_telemetry is not None:
+                self.record_ai_battle(self.h.read8("wBattleResult"))
             self.checks.on_battle_end()
             if self.errand is not None and self.errand["kind"] == "battle":
                 self.end_errand("battle over")
         self.in_battle = in_battle
+
+    def record_ai_battle(self, result: int) -> None:
+        # wBattleResult stays 0 on a blackout (that path never writes it), so a
+        # blackout during the battle is what marks the player's loss (1).
+        if self.report.blackouts > self.ai_blackouts_at_start:
+            result = 1
+        record = self.ai_telemetry.end_battle(result)
+        if record is None:
+            return
+        record["run_index"] = len(self.report.runs)
+        record["battle_index"] = len(self.ai_battles)
+        self.ai_battles.append(record)
+        if record["flags"]:
+            self.log(f"  ai: {record['opponent']} tier {record['tier']} flags {record['flags']} "
+                     f"moves {record['moves'][:12]}")
 
     def on_map_change(self, current_map: int) -> None:
         previous, self.current_map = self.current_map, current_map
@@ -1837,6 +1862,7 @@ def play(
     save_checks: bool = False,
     rom: str = DEBUG_ROM,
     player: str = "basic",
+    ai_telemetry: bool = False,
 ) -> dict[str, object]:
     """Boot (Debug 2 lobby, or a real new game), play and return the report.
     A failure (see FAILURES) also writes a screenshot and state dump under
@@ -1885,7 +1911,12 @@ def play(
             boot_new_game(harness, seed, difficulty, ironman, profile)
         else:
             boot(harness, seed, battle_count, difficulty, ironman, profile)
-        agent = AutoplayAgent(harness, seed=seed, battle_policy=battle_policy,
+        telemetry = None
+        if ai_telemetry:
+            import ai_telemetry as ai_telemetry_module
+
+            telemetry = ai_telemetry_module.BattleAITelemetry(harness, ROOT)
+        agent = AutoplayAgent(harness, seed=seed, ai_telemetry=telemetry, battle_policy=battle_policy,
                               door_policy=door_policy, stall_frames=stall_frames, log=log,
                               heartbeat=heartbeat, menu_input=menu_input, menu_chaos=menu_chaos,
                               profile=profile, player=player,
@@ -1906,6 +1937,9 @@ def play(
         data["menus"] = agent.menu_stats
         data["checks"] = agent.checks.summary()
         data["player"] = player
+        if telemetry is not None:
+            data["ai_battles"] = [{**battle, "seed": seed} for battle in agent.ai_battles]
+            data["ai_telemetry_errors"] = telemetry.errors[:20]
         if profile is not None:
             data["profile"] = {**asdict(profile), "errands_run": agent.errand_counts}
         stored = harness.read8("wOptions2") & parse_rgbds_constants(
@@ -1977,6 +2011,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="build to play; the release builds need --new-game")
     parser.add_argument("--player", choices=PLAYERS, default="basic",
                         help="strong: rewards and gifts on merit, matchup switches (PLAYERS)")
+    parser.add_argument("--ai-telemetry", action="store_true",
+                        help="record one AI record per trainer battle (ai_telemetry.py); read-only")
     parser.add_argument("--report", type=Path, default=None,
                         help="report path (default artifacts/autoplay_seed<N>.json)")
     parser.add_argument("--quiet", action="store_true", help="do not print events as they happen")
@@ -1989,7 +2025,7 @@ def main(argv: list[str] | None = None) -> int:
         battle_policy=args.battle_policy, door_policy=args.door_policy,
         menu_input=args.menu_input, menu_chaos=args.menu_chaos,
         branches=args.branches, snapshots=args.snapshots, branch_frames=args.branch_frames,
-        coverage=args.coverage, difficulty=args.difficulty, vary=args.vary, save_checks=args.save_checks, rom=args.rom, player=args.player, log=None if args.quiet else print,
+        coverage=args.coverage, difficulty=args.difficulty, vary=args.vary, save_checks=args.save_checks, rom=args.rom, player=args.player, ai_telemetry=args.ai_telemetry, log=None if args.quiet else print,
     )
     path = args.report or ARTIFACTS / f"{stem(args.seed)}.json"
     path.parent.mkdir(parents=True, exist_ok=True)

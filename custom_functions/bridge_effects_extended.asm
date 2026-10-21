@@ -301,10 +301,15 @@ GetEnemyCatchRateByte::
 	call AddNTimes
 	ld a, [hl]
 	ld e, a
+	bit BIT_GHOST_VARIANT, a
+	ld a, GHOST
+	jr nz, .storeVariantType ; repair old evolved ghosts from the flag
+	ld a, e
 	and (1 << BIT_GHOST_VARIANT) | (1 << BIT_TYPE_VARIANT)
 	jr z, .done
 	dec hl                 ; MON_TYPE2
 	ld a, [hl]
+.storeVariantType
 	ld [wEnemyMonType2], a
 	jr .done
 .wild

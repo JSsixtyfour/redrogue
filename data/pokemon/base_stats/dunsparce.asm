@@ -18,7 +18,7 @@
 	     DOUBLE_EDGE,  THUNDER_WAVE, REFLECT,      METRONOME,    SOLARBEAM,    \
 	     COUNTER,      RAGE,         THUNDERBOLT,  THUNDER,      FISSURE,      \
 	     MIMIC,        DOUBLE_TEAM,  BIDE,         SKULL_BASH,   REST,         \
-	     ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     DREAM_EATER
+	     ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     DREAM_EATER,  MEGA_DRAIN    \
 	; end
 
 	db BANK(DunsparcePicFront) ; pic bank
