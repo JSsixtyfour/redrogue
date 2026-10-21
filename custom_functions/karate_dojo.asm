@@ -247,10 +247,11 @@ KarateLimberPrefix:  db "LIMBER @"
 KarateMysticPrefix:  db "MYSTIC @"
 KarateNoThanksText:  db "NO THANKS@"
 
+; Descriptions must fit 2 lines: a `cont` prompt blocks inside the menu loop
+; before HandleMenuInput redraws the cursor (arrow lags the shown text).
 KarateNoGuardDesc:
-	text "Its moves never"
-	line "miss, and neither"
-	cont "do the foe's!"
+	text "Its moves and the"
+	line "foe's never miss!"
 	done
 
 KarateLimberDesc:
@@ -259,9 +260,8 @@ KarateLimberDesc:
 	done
 
 KarateMysticDesc:
-	text "Its ATTACK and"
-	line "SPECIAL stats are"
-	cont "swapped."
+	text "Swaps its ATTACK"
+	line "and SPECIAL stats."
 	done
 
 KarateNoThanksDesc:
