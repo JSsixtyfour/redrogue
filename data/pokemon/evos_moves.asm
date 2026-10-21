@@ -435,6 +435,7 @@ NidokingEvosMoves:
 	db 6, POISON_STING
 	db 8, HORN_ATTACK
 	db 12, DOUBLE_KICK
+    db 24, DIG
 	db 25, THRASH
 	db 27, FOCUS_ENERGY
 	db 32, SLUDGE
@@ -646,6 +647,7 @@ NidoqueenEvosMoves:
 	db 6, POISON_STING
 	db 8, HEADBUTT
 	db 12, DOUBLE_KICK
+    db 24, DIG
 	db 25, BODY_SLAM
 	db 32, SLUDGE
 	db 40, EARTHQUAKE
@@ -4749,6 +4751,7 @@ Porygon2EvosMoves:
 	db 23, PSYBEAM
 	db 28, RECOVER
 	db 35, AGILITY
+    db 40, BARRIER
 	db 42, TRI_ATTACK
 	db 45, DEFENSE_CURL
 	db 0
@@ -5042,10 +5045,12 @@ MagnezoneEvosMoves:
 	db 24, SWIFT
 	db 27, REFLECT
 	db 33, THUNDERBOLT
+    db 37, TRI_ATTACK
 	db 43, SCREECH
 	db 50, THUNDER
     db 52, HEADBUTT ; was IRON_HEAD
 	db 0
+; tutoring 
 	db 0
 
 TangrowthEvosMoves:
@@ -5053,15 +5058,28 @@ TangrowthEvosMoves:
 	db 0
 ; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
 ; CONSTRICT/BIND/ABSORB already granted at level 1.
-	db 13, BIND
-	db 19, ABSORB
-	db 24, VINE_WHIP
-	db 28, POISONPOWDER
-	db 31, STUN_SPORE
-	db 34, SLEEP_POWDER
-	db 40, SLAM
+	db 19, VINE_WHIP
+	db 21, POISONPOWDER
+	db 23, STUN_SPORE
+	db 25, SLEEP_POWDER
+	db 32, MEGA_DRAIN
+    db 35, SLAM
+	db 42, BODY_SLAM
+	db 45, GROWTH
+	db 48, BIND
 	db 0
 ; Tutoring Learnset - none
+	db 0
+    
+    	
+	db 19, VINE_WHIP
+	db 21, POISONPOWDER
+	db 23, STUN_SPORE
+	db 25, SLEEP_POWDER
+	db 32, MEGA_DRAIN
+	db 42, BODY_SLAM
+	db 45, GROWTH
+	db 48, BIND
 	db 0
 
 RhyperiorEvosMoves:
@@ -5137,12 +5155,13 @@ MagmortarEvosMoves:
 	db 0
 ; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
 ; EMBER already granted at level 1.
-	db 36, LEER
-	db 39, CONFUSE_RAY
-	db 43, FIRE_PUNCH
-	db 48, SMOKESCREEN
-	db 52, SMOG
-	db 55, FLAMETHROWER
+	db 10, SMOG
+	db 15, LEER
+	db 20, CONFUSE_RAY
+	db 31, FIRE_PUNCH
+	db 40, SMOKESCREEN
+	db 43, FLAMETHROWER
+	db 54, FIRE_BLAST
 	db 0
 ; Tutoring Learnset - none
 	db 0
@@ -5157,10 +5176,11 @@ PorygonZEvosMoves:
 	db 23, PSYBEAM
 	db 28, RECOVER
 	db 35, AGILITY
+    db 40, BARRIER
 	db 42, TRI_ATTACK
-	db 45, DEFENSE_CURL
-	db 45, METRONOME
-	db 45, HYPER_BEAM
+    db 45, METRONOME
+	db 46, DEFENSE_CURL
+	db 47, HYPER_BEAM
 	db 50, THUNDER ; was NASTY_PLOT (Zap Cannon stand-in)
 	db 0
 ; Tutoring Learnset - none

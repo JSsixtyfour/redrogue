@@ -18,7 +18,7 @@
 	     DOUBLE_EDGE,  SWORDS_DANCE, RAGE,         MEGA_DRAIN,   SOLARBEAM,    \
 	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        \
 	     REST,         COUNTER,      DIG,          SUBMISSION,   LIGHT_SCREEN, \
-	     FLASH
+	     FLASH,        PSYWAVE
 	; end
 
 	db BANK(LedybaPicFront) ; pic bank

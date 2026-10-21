@@ -17,7 +17,7 @@
 	tmhm FLASH,        TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   \
 	     WATER_GUN,    ICE_BEAM,     RAGE,         THUNDERBOLT,  THUNDER,      \
 	     MIMIC,        DOUBLE_TEAM,  LIGHT_SCREEN, REFLECT,      BIDE,         \
-	     REST,         THUNDER_WAVE, SUBSTITUTE,   SURF
+	     REST,         THUNDER_WAVE, SUBSTITUTE,   SURF,         PSYWAVE
 	; end
 
 	db BANK(ChinchouPicFront) ; pic bank

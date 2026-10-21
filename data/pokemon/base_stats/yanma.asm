@@ -17,7 +17,7 @@
 	tmhm RAZOR_WIND,   SUBSTITUTE,   TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  \
 	     HYPER_BEAM,   RAGE,         MEGA_DRAIN,   SOLARBEAM,    MIMIC,        \
 	     DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        REST,         \
-	     FLASH
+	     FLASH,        PSYWAVE
 	; end
 
 	db BANK(YanmaPicFront) ; pic bank
