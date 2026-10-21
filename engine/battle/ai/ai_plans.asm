@@ -999,24 +999,38 @@ AIRun_SwordsDance:
 ;         class. Returning in de is mandatory, not stylistic: this is farcalled
 ;         from AIClassifyMoveset in bank $0E, and de is the only register pair
 ;         that survives a farcall in both directions.
-; Clobbers af, bc, hl.
+; Indexed by effect id (Phase 6, 2026-10-21): this replaced an IsInArray walk of
+; ~4 scans and ~5k cycles a T3 decision, at a cost of ~50 B of bank $2C.
+; SPACE NOTE: a candidate cut if $2C gets tight. Restoring the dbw table and the
+; IsInArray scan (git history before 2026-10-21) gives the bytes back for that
+; time; see ROM_BIBLE's 2026-10-21 Phase 6 entry.
+; Clobbers af, hl.
 AIPlanLookupEffect::
 	ld a, e
-	ld c, a
-	ld hl, AIMoveClassTable
-	ld de, AI_MOVECLASS_ENTRY_SIZE
-	call IsInArray
-	jr nc, .none
-	inc hl ; step past the effect byte IsInArray matched on
+	ld de, 0
+	cp NUM_MOVE_EFFECTS + 1
+	ret nc
+	ld hl, AIMoveClassIndex
+	add l
+	ld l, a
+	jr nc, .indexed
+	inc h
+.indexed
+	ld a, [hl]
+	and a
+	ret z ; no class: de = 0
+	dec a
+	add a
+	ld hl, AIMoveClassHandlers ; the distinct class masks (ai_effect_value rows)
+	add l
+	ld l, a
+	jr nc, .gotMask
+	inc h
+.gotMask
 	ld a, [hli]
 	ld d, [hl]
 	ld e, a
 	ret
-.none
-	ld de, 0
-	ret
-
-DEF AI_MOVECLASS_ENTRY_SIZE EQU 3 ; effect id (1) + class mask (2)
 
 ; Keyed on the EFFECT byte the engine itself dispatches on, so a class can never
 ; disagree with what a move actually does - see constants/ai_constants.asm for
@@ -1027,38 +1041,38 @@ DEF AI_MOVECLASS_ENTRY_SIZE EQU 3 ; effect id (1) + class mask (2)
 ; alone. Only moves whose PURPOSE is something other than "deal damage" need an
 ; entry here, plus the two fixed-damage families, which deal damage while
 ; carrying a base power of zero and so would otherwise classify as nothing.
-AIMoveClassTable:
-	dbw SLEEP_EFFECT,           AICLASS_SLEEP
-	dbw PARALYZE_EFFECT,        AICLASS_PARALYZE
-	dbw POISON_EFFECT,          AICLASS_POISON
-	dbw CONFUSION_EFFECT,       AICLASS_CONFUSE
-	dbw TRAPPING_EFFECT,        AICLASS_TRAP
-	dbw HEAL_EFFECT,            AICLASS_RECOVERY
-	dbw SPEED_UP1_EFFECT,       AICLASS_BOOST_SPD
-	dbw SPEED_UP2_EFFECT,       AICLASS_BOOST_SPD
-	dbw ATTACK_UP1_EFFECT,      AICLASS_BOOST_ATK
-	dbw ATTACK_UP2_EFFECT,      AICLASS_BOOST_ATK
-	dbw SPECIAL_UP1_EFFECT,     AICLASS_BOOST_SPC
-	dbw SPECIAL_UP2_EFFECT,     AICLASS_BOOST_SPC
-	dbw DEFENSE_UP1_EFFECT,     AICLASS_BOOST_DEF
-	dbw DEFENSE_UP2_EFFECT,     AICLASS_BOOST_DEF
-	dbw LIGHT_SCREEN_EFFECT,    AICLASS_SCREEN
-	dbw REFLECT_EFFECT,         AICLASS_SCREEN
-	dbw MIST_EFFECT,            AICLASS_SCREEN
-	dbw SUBSTITUTE_EFFECT,      AICLASS_SUB
-	dbw EXPLODE_EFFECT,         AICLASS_EXPLODE | AICLASS_DAMAGE
-	dbw OHKO_EFFECT,            AICLASS_OHKO
-	dbw LEECH_SEED_EFFECT,      AICLASS_DRAIN
+	ai_dispatch_begin AIMoveClass
+	ai_effect_value SLEEP_EFFECT,           AICLASS_SLEEP
+	ai_effect_value PARALYZE_EFFECT,        AICLASS_PARALYZE
+	ai_effect_value POISON_EFFECT,          AICLASS_POISON
+	ai_effect_value CONFUSION_EFFECT,       AICLASS_CONFUSE
+	ai_effect_value TRAPPING_EFFECT,        AICLASS_TRAP
+	ai_effect_value HEAL_EFFECT,            AICLASS_RECOVERY
+	ai_effect_value SPEED_UP1_EFFECT,       AICLASS_BOOST_SPD
+	ai_effect_value SPEED_UP2_EFFECT,       AICLASS_BOOST_SPD
+	ai_effect_value ATTACK_UP1_EFFECT,      AICLASS_BOOST_ATK
+	ai_effect_value ATTACK_UP2_EFFECT,      AICLASS_BOOST_ATK
+	ai_effect_value SPECIAL_UP1_EFFECT,     AICLASS_BOOST_SPC
+	ai_effect_value SPECIAL_UP2_EFFECT,     AICLASS_BOOST_SPC
+	ai_effect_value DEFENSE_UP1_EFFECT,     AICLASS_BOOST_DEF
+	ai_effect_value DEFENSE_UP2_EFFECT,     AICLASS_BOOST_DEF
+	ai_effect_value LIGHT_SCREEN_EFFECT,    AICLASS_SCREEN
+	ai_effect_value REFLECT_EFFECT,         AICLASS_SCREEN
+	ai_effect_value MIST_EFFECT,            AICLASS_SCREEN
+	ai_effect_value SUBSTITUTE_EFFECT,      AICLASS_SUB
+	ai_effect_value EXPLODE_EFFECT,         AICLASS_EXPLODE | AICLASS_DAMAGE
+	ai_effect_value OHKO_EFFECT,            AICLASS_OHKO
+	ai_effect_value LEECH_SEED_EFFECT,      AICLASS_DRAIN
 ; Dream Eater and the draining moves deal damage AND recover with it, so they
 ; carry both classes. Dream Eater is not AICLASS_SLEEP: it does not CAUSE sleep,
 ; it consumes it, and a sleep plan that steered toward it would be picking the
 ; move that only works after the plan has already succeeded.
-	dbw DRAIN_HP_EFFECT,        AICLASS_DRAIN | AICLASS_DAMAGE
-	dbw DREAM_EATER_EFFECT,     AICLASS_DRAIN | AICLASS_DAMAGE
+	ai_effect_value DRAIN_HP_EFFECT,        AICLASS_DRAIN | AICLASS_DAMAGE
+	ai_effect_value DREAM_EATER_EFFECT,     AICLASS_DRAIN | AICLASS_DAMAGE
 ; Fixed damage: Seismic Toss, Night Shade, Sonic Boom, Dragon Rage, Psywave and
 ; Super Fang all have a base power of zero, so the classifier's power test never
 ; fires for them. They are unambiguously damaging moves and several are among
 ; the best ones a low-Attack mon owns (Phase 3 Step 3), so they are named here.
-	dbw SPECIAL_DAMAGE_EFFECT,  AICLASS_DAMAGE
-	dbw SUPER_FANG_EFFECT,      AICLASS_DAMAGE
-	db -1
+	ai_effect_value SPECIAL_DAMAGE_EFFECT,  AICLASS_DAMAGE
+	ai_effect_value SUPER_FANG_EFFECT,      AICLASS_DAMAGE
+	ai_dispatch_end

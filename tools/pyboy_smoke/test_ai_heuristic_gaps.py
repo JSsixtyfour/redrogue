@@ -354,11 +354,25 @@ class AISmartGapsTest(_MoveLayerGapsBase):
         self.assertEqual(self.smart_score(
             "POISON_STING", {"wBattleMonStatus": 1 << self.battle["PAR"]}), 20)
 
-    def test_screen_healthy_allowed_damaged_discouraged(self):
-        self.assertEqual(self.smart_score(
-            "LIGHT_SCREEN", {"wEnemyMonHP": (200,), "wEnemyMonMaxHP": (200,)}), 20)
-        self.assertEqual(self.smart_score(
-            "LIGHT_SCREEN", {"wEnemyMonHP": (199,), "wEnemyMonMaxHP": (200,)}), 21)
+    def screen_score(self, move, player_move, hp=200):
+        """AISmart_Screen against a player whose one believed move is player_move
+        (revealed slot 0). maxHP 200: half is 100."""
+        self.h.reveal_player_moves(0, [0], clear=True)
+        return self.smart_score(move, {"wBattleMonMoves": self.moves[player_move],
+                                       "wEnemyMonHP": (hp,)})
+
+    def test_screen_matching_category_encouraged_while_healthy(self):
+        # B11 (2026-10-21): Reflect against a physical attacker, Light Screen
+        # against a special one; at half HP still encouraged, below it no change.
+        self.assertEqual(self.screen_score("REFLECT", "BODY_SLAM"), 19)
+        self.assertEqual(self.screen_score("LIGHT_SCREEN", "PSYCHIC_M"), 19)
+        self.assertEqual(self.screen_score("REFLECT", "BODY_SLAM", hp=100), 19)
+        self.assertEqual(self.screen_score("REFLECT", "BODY_SLAM", hp=99), 20)
+
+    def test_screen_wrong_category_discouraged(self):
+        self.assertEqual(self.screen_score("REFLECT", "PSYCHIC_M"), 22)
+        self.assertEqual(self.screen_score("LIGHT_SCREEN", "BODY_SLAM"), 22)
+        self.assertEqual(self.screen_score("LIGHT_SCREEN", "BODY_SLAM", hp=99), 22)
 
     def test_sleep_with_dream_eater_in_moveset_encouraged_more(self):
         # Read the score BEFORE AISmartCrossCutting runs (as smart_score

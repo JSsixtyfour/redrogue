@@ -43,15 +43,11 @@ AILayerSmart:
 	push bc ; STACK: [bc=loopCounter, de=movelistPtr, hl=scorePtr]
 	call ReadMove ; sets wEnemyMoveEffect/Power/Type/Accuracy/wEnemyMoveNum
 	ld a, [wEnemyMoveEffect]
-	ld c, a
-	ld hl, AISmartEffectTable
-	ld de, 3 ; effect id (1) + handler pointer (2)
-	call IsInArray
+	ld c, a ; handlers may read the effect in c, as IsInArray left it
+	ld hl, AISmartEffectIndex
+	ld de, AISmartEffectHandlers
+	call AIDispatchLookup ; hl = handler address (ai_score_helpers.asm)
 	jr nc, .notFound
-	inc hl
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a ; hl = handler address
 	call .callHandler ; a = 0 or magnitude; carry = direction (see header)
 	pop bc ; restore loopCounter - POP rr never touches a or flags
 	pop de ; restore movelistPtr - same
@@ -177,63 +173,63 @@ AISmartCrossCutting::
 	call AIDiscourage
 	ret
 
-; Effect -> handler table, IsInArray's dbw shape, same convention as
-; ai_redundant.asm's AIRedundantEffectTable.
-AISmartEffectTable:
-	dbw SLEEP_EFFECT, AISmart_Sleep
-	dbw DREAM_EATER_EFFECT, AISmart_DreamEater
-	dbw EXPLODE_EFFECT, AISmart_Explode
-	dbw HEAL_EFFECT, AISmart_Heal
-	dbw SUBSTITUTE_EFFECT, AISmart_Substitute
-	dbw POISON_EFFECT, AISmart_Poison
-	dbw HYPER_BEAM_EFFECT, AISmart_HyperBeam
-	dbw OHKO_EFFECT, AISmart_OHKO
-	dbw SUPER_FANG_EFFECT, AISmart_SuperFang
-	dbw DRAIN_HP_EFFECT, AISmart_DrainHP
-	dbw PARALYZE_EFFECT, AISmart_Paralyze
-	dbw TRAPPING_EFFECT, AISmart_Trapping
-	dbw LIGHT_SCREEN_EFFECT, AISmart_Screen
-	dbw REFLECT_EFFECT, AISmart_Screen
-	dbw HAZE_EFFECT, AISmart_Haze
-	dbw CONFUSION_EFFECT, AISmart_Confusion
+; Effect -> handler table, ai_dispatch rows (macros/ai_dispatch.asm), same
+; convention as ai_redundant.asm's AIRedundantEffect table.
+	ai_dispatch_begin AISmartEffect
+	ai_dispatch SLEEP_EFFECT, AISmart_Sleep
+	ai_dispatch DREAM_EATER_EFFECT, AISmart_DreamEater
+	ai_dispatch EXPLODE_EFFECT, AISmart_Explode
+	ai_dispatch HEAL_EFFECT, AISmart_Heal
+	ai_dispatch SUBSTITUTE_EFFECT, AISmart_Substitute
+	ai_dispatch POISON_EFFECT, AISmart_Poison
+	ai_dispatch HYPER_BEAM_EFFECT, AISmart_HyperBeam
+	ai_dispatch OHKO_EFFECT, AISmart_OHKO
+	ai_dispatch SUPER_FANG_EFFECT, AISmart_SuperFang
+	ai_dispatch DRAIN_HP_EFFECT, AISmart_DrainHP
+	ai_dispatch PARALYZE_EFFECT, AISmart_Paralyze
+	ai_dispatch TRAPPING_EFFECT, AISmart_Trapping
+	ai_dispatch LIGHT_SCREEN_EFFECT, AISmart_Screen
+	ai_dispatch REFLECT_EFFECT, AISmart_Screen
+	ai_dispatch HAZE_EFFECT, AISmart_Haze
+	ai_dispatch CONFUSION_EFFECT, AISmart_Confusion
 ; F14, 2026-09-02: two-turn moves and evasion, scored blind before this.
-	dbw CHARGE_EFFECT, AISmart_Charge
-	dbw FLY_EFFECT, AISmart_InvulnerableCharge
-	dbw EVASION_UP1_EFFECT, AISmart_Evasion
-	dbw EVASION_UP2_EFFECT, AISmart_Evasion
+	ai_dispatch CHARGE_EFFECT, AISmart_Charge
+	ai_dispatch FLY_EFFECT, AISmart_InvulnerableCharge
+	ai_dispatch EVASION_UP1_EFFECT, AISmart_Evasion
+	ai_dispatch EVASION_UP2_EFFECT, AISmart_Evasion
 ; Phase 3 Step 3: secondary-effect bonuses. AI_REDUNDANT used to discourage
 ; these moves when the rider specifically could not land (already statused,
 ; type immunity); that logic moved here as the mirror bonus - see
 ; AIRedundant_PoisonSide / AIRedundant_BurnFreezeParaSide in ai_redundant.asm
 ; for the removed half of this and why keeping both double-counted.
-	dbw PARALYZE_SIDE_EFFECT1, AISmart_BurnFreezeParaSide
-	dbw PARALYZE_SIDE_EFFECT2, AISmart_BurnFreezeParaSide
-	dbw BURN_SIDE_EFFECT1, AISmart_BurnFreezeParaSide
-	dbw BURN_SIDE_EFFECT2, AISmart_BurnFreezeParaSide
-	dbw FREEZE_SIDE_EFFECT1, AISmart_BurnFreezeParaSide
-	dbw FREEZE_SIDE_EFFECT2, AISmart_BurnFreezeParaSide
-	dbw POISON_SIDE_EFFECT1, AISmart_PoisonSide
-	dbw POISON_SIDE_EFFECT2, AISmart_PoisonSide
-	dbw CONFUSION_SIDE_EFFECT, AISmart_ConfusionSide
-	dbw FLINCH_SIDE_EFFECT1, AISmart_FlinchSide
-	dbw FLINCH_SIDE_EFFECT2, AISmart_FlinchSide
-	dbw RECOIL_EFFECT, AISmart_RecoilEffect
-	dbw ATTACK_DOWN_SIDE_EFFECT, AISmart_StatDownSide
-	dbw DEFENSE_DOWN_SIDE_EFFECT, AISmart_StatDownSide
-	dbw SPEED_DOWN_SIDE_EFFECT, AISmart_StatDownSide
-	dbw SPECIAL_DOWN_SIDE_EFFECT, AISmart_StatDownSide
+	ai_dispatch PARALYZE_SIDE_EFFECT1, AISmart_BurnFreezeParaSide
+	ai_dispatch PARALYZE_SIDE_EFFECT2, AISmart_BurnFreezeParaSide
+	ai_dispatch BURN_SIDE_EFFECT1, AISmart_BurnFreezeParaSide
+	ai_dispatch BURN_SIDE_EFFECT2, AISmart_BurnFreezeParaSide
+	ai_dispatch FREEZE_SIDE_EFFECT1, AISmart_BurnFreezeParaSide
+	ai_dispatch FREEZE_SIDE_EFFECT2, AISmart_BurnFreezeParaSide
+	ai_dispatch POISON_SIDE_EFFECT1, AISmart_PoisonSide
+	ai_dispatch POISON_SIDE_EFFECT2, AISmart_PoisonSide
+	ai_dispatch CONFUSION_SIDE_EFFECT, AISmart_ConfusionSide
+	ai_dispatch FLINCH_SIDE_EFFECT1, AISmart_FlinchSide
+	ai_dispatch FLINCH_SIDE_EFFECT2, AISmart_FlinchSide
+	ai_dispatch RECOIL_EFFECT, AISmart_RecoilEffect
+	ai_dispatch ATTACK_DOWN_SIDE_EFFECT, AISmart_StatDownSide
+	ai_dispatch DEFENSE_DOWN_SIDE_EFFECT, AISmart_StatDownSide
+	ai_dispatch SPEED_DOWN_SIDE_EFFECT, AISmart_StatDownSide
+	ai_dispatch SPECIAL_DOWN_SIDE_EFFECT, AISmart_StatDownSide
 ; AI_BACKLOG.md B2 (2026-09-29): Speed control scored by turn order.
-	dbw SPEED_DOWN1_EFFECT, AISmart_SpeedDown1
-	dbw SPEED_DOWN2_EFFECT, AISmart_SpeedDown2
-	dbw SPEED_UP1_EFFECT, AISmart_SpeedUp1
-	dbw SPEED_UP2_EFFECT, AISmart_SpeedUp2
+	ai_dispatch SPEED_DOWN1_EFFECT, AISmart_SpeedDown1
+	ai_dispatch SPEED_DOWN2_EFFECT, AISmart_SpeedDown2
+	ai_dispatch SPEED_UP1_EFFECT, AISmart_SpeedUp1
+	ai_dispatch SPEED_UP2_EFFECT, AISmart_SpeedUp2
 ; SPECIAL_DAMAGE_EFFECT deliberately has NO handler as of Phase 3 Step 3. It
 ; used to be encouraged whenever the target was above half HP, which was
 ; backwards reasoning - fixed damage is a constant, so a healthier target makes
 ; it relatively WORSE, not better. Now that AIEstimateDamage returns these moves'
 ; real values, AI_DAMAGE ranks them correctly on damage alone and any extra
 ; nudge here would just double-count.
-	db -1
+	ai_dispatch_end
 
 ; --- Handlers ---------------------------------------------------------
 ; Each returns a = 0 (no change), or a = magnitude with carry set (encourage)
@@ -335,6 +331,19 @@ AISmart_Explode:
 ; Recover/Softboiled: good when low, wasteful when healthy. AI_Redundant
 ; already eliminates the at-max-HP case. Source: pokecrystal AI_Smart_Heal.
 AISmart_Heal:
+	ld a, [wEnemyMoveNum]
+	cp REST
+	jr nz, .byHP
+	ld a, [wEnemyMonStatus]
+	and ~SLP_MASK
+	jr z, .byHP
+	; Rest also cures burn, paralysis, poison and freeze (heal.asm), worth a
+	; turn on its own once below half HP; healthy, it is merely no longer
+	; discouraged (S5, 2026-10-21).
+	call AIEnemyHPBelowHalf
+	jr c, .encourage
+	jr .noChange
+.byHP
 	call AIEnemyHPBelowQuarter
 	jr c, .encourage
 	call AIEnemyHPBelowHalf
@@ -613,13 +622,32 @@ AISmart_Evasion:
 	scf
 	ret
 
-; Light Screen / Reflect are a turn-1 investment; using one while already
-; damaged wastes the setup turn on a body that may not live to benefit.
-; Source: pokecrystal.
+; Light Screen / Reflect (AI_BACKLOG B11, 2026-10-21). A screen halves only its
+; own category, so it is scored against the player's dominant believed attack
+; (AIPlayerIsPhysicalThreat: carry physical, else special; with no damaging move
+; believed it also reports special, which type-guessing makes rare). Matching:
+; encouraged at half HP or more, where the body likely lives to benefit; below
+; half, no change. Wrong category: strongly discouraged, it blocks nothing that
+; is coming. Before B11 this was HP-only (pokecrystal: discouraged once
+; damaged), so a Reflect against a pure Slash user scored like Double Team.
 AISmart_Screen:
-	call AIEnemyHPAtMax
+	call AIPlayerIsPhysicalThreat ; clobbers af, bc, de, hl; the dispatcher saved them
+	ld a, [wEnemyMoveEffect] ; ld keeps the carry
+	jr c, .physical
+	cp LIGHT_SCREEN_EFFECT
+	jr z, .matches
+	jr .wrongCategory
+.physical
+	cp REFLECT_EFFECT
+	jr nz, .wrongCategory
+.matches
+	call AIEnemyHPBelowHalf
 	jr c, .noChange
 	ld a, AI_NUDGE
+	scf
+	ret
+.wrongCategory
+	ld a, AI_STRONG
 	and a
 	ret
 .noChange

@@ -439,6 +439,21 @@
     ]
    }
   },
+  "AIRedundant_Transform": {
+   "summary": "AI_REDUNDANT handler: Transform when either side is already transformed (it fails).",
+   "positive": {
+    "requirement": "either side transformed: eliminated",
+    "tests": [
+     "test_ai_s5_small.S5SmallTest.test_transform_redundant_once_either_side_is_transformed"
+    ]
+   },
+   "negative": {
+    "requirement": "neither transformed: legal",
+    "tests": [
+     "test_ai_s5_small.S5SmallTest.test_transform_redundant_once_either_side_is_transformed"
+    ]
+   }
+  },
   "AIRedundant_Heal": {
    "summary": "AI_REDUNDANT handler: Recover/Softboiled at max HP only.",
    "positive": {
@@ -951,7 +966,8 @@
    "positive": {
     "requirement": "low HP: heal encouraged",
     "tests": [
-     "test_ai_heuristic_gaps.AISmartGapsTest.test_heal_hp_bands"
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_heal_hp_bands",
+     "test_ai_s5_small.S5SmallTest.test_rest_with_a_status_to_cure"
     ]
    },
    "negative": {
@@ -1086,17 +1102,17 @@
    }
   },
   "AISmart_Screen": {
-   "summary": "AI_SMART handler: Reflect/Light Screen is a turn-1 investment; discouraged once damaged.",
+   "summary": "AI_SMART handler: a screen is scored against the player's dominant attack category (B11).",
    "positive": {
-    "requirement": "healthy: allowed",
+    "requirement": "matching category at half HP or more: encouraged",
     "tests": [
-     "test_ai_heuristic_gaps.AISmartGapsTest.test_screen_healthy_allowed_damaged_discouraged"
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_screen_matching_category_encouraged_while_healthy"
     ]
    },
    "negative": {
-    "requirement": "damaged: discouraged",
+    "requirement": "wrong category: discouraged",
     "tests": [
-     "test_ai_heuristic_gaps.AISmartGapsTest.test_screen_healthy_allowed_damaged_discouraged"
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_screen_wrong_category_discouraged"
     ]
    }
   },

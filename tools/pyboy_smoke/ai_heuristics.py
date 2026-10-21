@@ -6,8 +6,8 @@ and the coverage claims. So the inventory is parsed from the dispatch tables
 that decide what can run:
 
 - layer:        AIScoringPointers (trainer_ai.asm), one per scoring layer;
-- smart:        AISmartEffectTable handlers (ai_smart.asm);
-- redundant:    AIRedundantEffectTable handlers (ai_redundant.asm);
+- smart:        AISmartEffect ai_dispatch handlers (ai_smart.asm);
+- redundant:    AIRedundantEffect ai_dispatch handlers (ai_redundant.asm);
 - plan:         AIPlanTable fitness/run pairs (ai_plans.asm);
 - personality:  AISoftPersonalityPointers (trainer_ai.asm, Codex's track);
 - item:         every `jp AIUse*` in trainer_ai.asm's class item routines;
@@ -46,12 +46,16 @@ DECISIONS = {
 
 
 def _table_entries(text: str, table: str, pattern: str) -> list[str]:
+    """Rows of a labelled table, or of an ai_dispatch table (macros/ai_dispatch.asm)
+    when `table` is the name given to ai_dispatch_begin."""
     lines = text.splitlines()
-    start = next(i for i, line in enumerate(lines) if line.startswith(f"{table}:"))
+    start = next(i for i, line in enumerate(lines)
+                 if line.startswith(f"{table}:") or line.strip() == f"ai_dispatch_begin {table}")
     found = []
     for line in lines[start + 1:]:
         code = line.split(";", 1)[0].strip()
-        if re.match(r"^[A-Za-z_]\w*:", code) or code.startswith("assert") or code == "db -1":
+        if (re.match(r"^[A-Za-z_]\w*:", code) or code.startswith("assert") or code == "db -1"
+                or code == "ai_dispatch_end"):
             break
         match = re.match(pattern, code)
         if match:
@@ -89,10 +93,10 @@ def inventory(root: Path, with_source: bool = True) -> dict[str, dict[str, objec
     for label in _table_entries(trainer_ai, "AIScoringPointers", r"dw\s+(\w+)"):
         add(label, "layer", [label])
     smart = (ai / "ai_smart.asm").read_text(encoding="utf-8")
-    for label in _table_entries(smart, "AISmartEffectTable", r"dbw\s+\w+,\s*(\w+)"):
+    for label in _table_entries(smart, "AISmartEffect", r"ai_dispatch\s+\w+,\s*(\w+)"):
         add(label, "smart", [label])
     redundant = (ai / "ai_redundant.asm").read_text(encoding="utf-8")
-    for label in _table_entries(redundant, "AIRedundantEffectTable", r"dbw\s+\w+,\s*(\w+)"):
+    for label in _table_entries(redundant, "AIRedundantEffect", r"ai_dispatch\s+\w+,\s*(\w+)"):
         add(label, "redundant", [label])
     plans = (ai / "ai_plans.asm").read_text(encoding="utf-8")
     for fit in _table_entries(plans, "AIPlanTable", r"ai_plan\s+[^,]+,\s*(\w+),\s*\w+"):

@@ -1363,7 +1363,7 @@ DisableEffect:
 	add hl, bc
 	ld a, [hl]
 	pop hl
-	and a
+	and PP_MASK
 	jr z, .pickMoveToDisable ; pick another move if this one had 0 PP
 	call BattleRandom
 	and $7

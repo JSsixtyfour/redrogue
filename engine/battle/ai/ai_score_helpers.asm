@@ -70,3 +70,33 @@ AIDiscourage::
 	ld [hl], a
 	pop bc
 	ret
+
+; Handler lookup in an ai_dispatch table (macros/ai_dispatch.asm). INPUT: a = a
+; move effect, hl = <Name>Index, de = <Name>Handlers. OUTPUT: carry and hl = the
+; handler when the effect has one; carry clear otherwise, including an effect id
+; past NUM_MOVE_EFFECTS. Constant time: it replaced an IsInArray walk that cost
+; 22-34k cycles a T3 decision (Phase 6, 2026-10-21).
+; Clobbers af, hl.
+AIDispatchLookup::
+	cp NUM_MOVE_EFFECTS + 1
+	ret nc
+	add l
+	ld l, a
+	jr nc, .indexed
+	inc h
+.indexed
+	ld a, [hl]
+	and a ; no handler: z, carry clear
+	ret z
+	dec a
+	add a ; at most 127 handlers per table (ai_dispatch_end asserts it)
+	add e
+	ld l, a
+	ld a, d
+	adc 0
+	ld h, a
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	scf
+	ret

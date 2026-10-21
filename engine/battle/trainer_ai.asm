@@ -199,6 +199,17 @@ AIEnemySlotIsLive:
 	xor a ; disabled: z
 	ret
 
+; A Struggle turn is a decision too (S3, 2026-10-21). ChooseEnemyMove's Struggle
+; exit (enemy_move_pp.asm, bank $2C) skips AIEnemyTrainerChooseMoves, so without
+; this the caches still held the LAST real decision's answers, and on an
+; enemy-first turn the keep bit (core.asm .enemyMovesFirst) told TrainerAI they
+; were current. Measured: a full-HP decision cached "the player cannot KO us";
+; at 1 HP and out of PP, TrainerAI's switch check read that NO (fresh: YES).
+; It also opens the move history, so the Struggle is recorded. Farcalled.
+AIStartStruggleDecision::
+	call AITrackLastMove
+	jp AIClearDecisionCaches
+
 ; AIEnemySlotIsLive for a scan that counts b down from NUM_MOVES (the slot is
 ; NUM_MOVES + 1 - b). Flags are the answer: nz = live. Preserves bc, de, hl.
 AIEnemyCountdownSlotIsLive:

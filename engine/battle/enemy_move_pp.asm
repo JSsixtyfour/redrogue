@@ -47,6 +47,7 @@ LoadEnemyMonPP::
 ChooseEnemyMove::
 	call EnemyHasMoveWithPP
 	jr nz, .choose
+	farcall AIStartStruggleDecision ; trainer_ai.asm: a new decision, empty caches
 	ld a, STRUGGLE
 	ld [wEnemySelectedMove], a
 	ret

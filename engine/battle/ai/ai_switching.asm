@@ -253,8 +253,12 @@ AIRankSendOutCandidatesBelow:
 ;         treats as "not better". The penalties go first because they are cheap
 ;         and each type-chart walk is ~8k cycles (measured 2026-09-29).
 ; Writes wEnemyMonType1/2 and wPlayerMoveType (the caller saves them).
+; B10: a mon with no damaging move left to use scores AI_SEND_OUT_SPENT outright.
 ; Clobbers af, bc, d, hl.
 AIScoreSendOutMon:
+	call AIMonHasDamagingPP
+	ld e, AI_SEND_OUT_SPENT
+	ret nc
 	push hl
 	inc hl
 	ld a, [hli]
@@ -344,6 +348,51 @@ AIScoreSendOutMon:
 .skipThreat
 	dec b
 	jr nz, .nextThreat
+	ret
+
+; B10 (2026-10-21): carry if the mon at hl (struct base, c = its MaxHP offset,
+; as AIScoreSendOutMon takes them) has a damaging move with PP left. A trainer's
+; PP now persists across switches (enemy_move_pp.asm), so a long battle leaves
+; reserves that can only Struggle or use status moves. Preserves bc, hl.
+AIMonHasDamagingPP:
+	push hl
+	push bc
+	ld a, c
+	cp MON_MAXHP
+	ld a, MON_PP - MON_MOVES
+	jr z, .gotPPDistance
+	ld a, wEnemyMonPP - wEnemyMonMoves
+.gotPPDistance
+	ASSERT MON_MOVES == wEnemyMonMoves - wEnemyMon
+	ld c, a
+	ld de, MON_MOVES
+	add hl, de
+	ld b, NUM_MOVES
+.nextMove
+	ld a, [hl]
+	and a
+	jr z, .advance ; empty slot
+	ld e, a
+	push hl
+	push bc
+	ld b, 0
+	add hl, bc
+	ld a, [hl]
+	and PP_MASK ; carry clear
+	jr z, .noPP
+	farcall AIMoveIdDealsDamage ; carry = damaging; survives the return
+.noPP
+	pop bc
+	pop hl
+	jr c, .done
+.advance
+	inc hl
+	dec b
+	jr nz, .nextMove
+	and a
+.done
+	pop bc
+	pop hl
 	ret
 
 ; Carry SET if some living reserve scores strictly better than the active mon
@@ -523,6 +572,18 @@ AIShouldSwitch::
 	jp c, .switch
 	jp .stay
 .noKOThreat
+; B8 (2026-10-21): Struggling, with no KO threat. Struggle hurts us and does
+; little, so switch to a reserve that can still attack (B10 ranks the spent
+; ones last) and survives the believed threat, unless Struggle reliably KOs
+; first. Under a KO threat trigger 2 above already decides, with B10's ranking.
+	ld a, [wEnemySelectedMove]
+	cp STRUGGLE
+	jr nz, .notStruggling
+	farcall AIEnemyHasReliableFirstKO
+	jp c, .stay
+	call AIReplacementIsBetterAndSurvives
+	jp c, .switch
+.notStruggling
 	call .trappedAndSlower
 	jr nc, .noTrap
 	farcall AIEnemyHasReliableFirstKO

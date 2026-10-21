@@ -320,3 +320,27 @@ AIBuildPlayerThreatTypes::
 	ld a, [wBattleMonType1]
 	ld [wBuffer + AI_BUF_THREATTYPES], a
 	ret
+
+; B10: carry if move id e (nonzero) has power, counting fixed-damage moves.
+; Farcall target for AIMonHasDamagingPP (bank $2C), which cannot read Moves.
+; Runs per reserve move in the switch ranking, so it multiplies by shifts:
+; AddNTimes loops once per move id (measured +6k cycles a ranking).
+; Clobbers af, de, hl.
+AIMoveIdDealsDamage::
+	ld a, e
+	dec a
+	ld l, a
+	ld h, 0
+	add hl, hl
+	ld d, h
+	ld e, l
+	add hl, hl
+	add hl, de ; (id - 1) * 6
+	ASSERT MOVE_LENGTH == 6
+	ld de, Moves + 2 ; power
+	ASSERT BANK(Moves) == BANK(@)
+	add hl, de
+	ld a, [hl]
+	cp 1 ; carry iff power 0
+	ccf
+	ret

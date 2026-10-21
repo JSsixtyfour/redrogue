@@ -14,9 +14,10 @@ TACKLE, GROWL = 33, 45  # only their power matters below: given by POWERS
 POWERS = {TACKLE: 35, GROWL: 0, STRUGGLE: 50}
 
 
-def selection(move, pos=0, *, reserves=1, pp_out=0, personality=None):
+def selection(move, pos=0, *, reserves=1, pp_out=0, personality=None, forced=False):
     return {"move": move, "enemy_pos": pos, "reserves_alive": reserves, "pp_out": pp_out,
-            "personality": personality, "slot": 0, "struggle": move == STRUGGLE, "frame": 0}
+            "personality": personality, "slot": 0, "struggle": move == STRUGGLE, "frame": 0,
+            "forced": forced}
 
 
 def decision(number, scores, *, selected, damage_delta=None, redundant_delta=None, cycles=1000, tier=3):
@@ -70,6 +71,19 @@ class BattleRecordTest(unittest.TestCase):
         picks = [selection(GROWL)] * 3 + [selection(TACKLE)] + [selection(GROWL)] * 3
         self.assertEqual(record(picks)["max_status_streak"]["length"], 3)
 
+    def test_forced_picks_break_the_status_streak(self) -> None:
+        # Seed 117: two free Withdraws, then the player Disabled the other move.
+        picks = [selection(GROWL)] * 2 + [selection(GROWL, forced=True)] * 8
+        result = record(picks)
+        self.assertEqual(result["max_status_streak"]["length"], 2)
+        self.assertNotIn("status_spam", result["flags"])
+        self.assertEqual(result["forced_picks"], 8)
+        self.assertEqual(result["max_streak"]["length"], 10)  # context still sees the run
+
+    def test_free_picks_after_a_forced_one_start_a_new_run(self) -> None:
+        picks = [selection(GROWL, forced=True)] + [selection(GROWL)] * STATUS_SPAM_STREAK
+        self.assertIn("status_spam", record(picks)["flags"])
+
     def test_struggle_flags_only_with_a_reserve(self) -> None:
         self.assertEqual(record([selection(STRUGGLE, reserves=0)])["struggle_with_reserve"], 0)
         self.assertNotIn("struggle_with_reserve", record([selection(STRUGGLE, reserves=0)])["flags"])
@@ -115,6 +129,13 @@ class BattleRecordTest(unittest.TestCase):
         self.assertEqual(sorted(result["decision_cycles"]["all"]), [50_000, 310_000])
         self.assertEqual(result["decision_cycles"]["over_frame"], 1)
         self.assertEqual(result["tier"], 3)
+
+    def test_a_forced_redundant_pick_is_not_counted(self) -> None:
+        # Seed 117's scores: Withdraw 78, Disabled Tackle 80, two empty slots at 20.
+        forced = decision(1, [78, 80, 20, 20], selected=0, redundant_delta=[58, 0, 0, 0])
+        result = record([selection(GROWL, forced=True)], decisions=[forced])
+        self.assertEqual(result["redundant_picks"], 0)
+        self.assertNotIn("redundant_pick", result["flags"])
 
     def test_over_frame_trainer_ai_uses_the_move_path_only(self) -> None:
         animation = {"caller_path": "enemy_first", "outcome": "item_or_switch", "cycles": 11_000_000}

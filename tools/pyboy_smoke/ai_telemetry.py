@@ -41,10 +41,11 @@ NO_SELECTION = 0xFF  # SelectEnemyMove's "unable to select a move" value
 STATUS_SPAM_STREAK = 4  # the same power-0 move, by the same enemy mon, this many times in a row
 FLAG_RULES = {
     "missed_ko": "missed_ko > 0 (a DAMAGE-layer reliable KO exists and another slot was selected)",
-    "status_spam": f"the same power-0 move by the same enemy mon {STATUS_SPAM_STREAK}+ times in a row",
+    "status_spam": f"the same power-0 move by the same enemy mon {STATUS_SPAM_STREAK}+ times in a row"
+                   " (forced picks, the only usable move, break the run)",
     "struggle_with_reserve": "Struggle selected while a reserve was alive",
     "over_frame_trainer_ai": f"a TrainerAI move-path call over {FRAME_CYCLES} cycles",
-    "redundant_pick": "the selected slot carried a positive Redundant-layer penalty",
+    "redundant_pick": "the selected slot carried a positive Redundant-layer penalty (not when forced)",
     "telemetry_error": "a telemetry hook raised during the battle",
 }
 
@@ -72,21 +73,34 @@ def _min_slots(scores: list[int]) -> frozenset[int]:
     return frozenset(slot for slot in pool if scores[slot] == best)
 
 
+def _forced_decision(record: dict[str, object]) -> bool:
+    """One usable slot: the rest are empty, or have no PP or are disabled (pre-marked
+    AI_SCORE_DISABLED). Empty slots keep an ordinary score (measured: [78, 80, 20, 20]
+    for Withdraw, Disabled Tackle, two empty slots), so the moves decide which count."""
+    return sum(bool(move) and score < AI_SCORE_DISABLED
+               for score, move in zip(record["scores"], record["moves"])) == 1
+
+
 def _streaks(selections: list[dict[str, object]], move_powers: dict[int, int]) -> tuple[dict, dict]:
-    """Longest run of the same move by the same enemy mon: any move, and power-0 moves only."""
+    """Longest run of the same move by the same enemy mon: any move, and power-0 moves only.
+    A forced pick (the only usable move, e.g. the other one Disabled) is no choice, so it
+    breaks the power-0 run (seed 117: ten Withdraws, six of them under the player's Disable)."""
     best_any = {"move": None, "length": 0}
     best_status = {"move": None, "length": 0}
     run_key: tuple[object, object] | None = None
-    length = 0
+    length = status_length = 0
     for selection in selections:
         move = selection["move"]
         key = (selection.get("enemy_pos"), move)
+        status_length = status_length + 1 if key == run_key else 1
         length = length + 1 if key == run_key else 1
         run_key = key
+        if selection.get("forced"):
+            status_length = 0
         if length > best_any["length"]:
             best_any = {"move": move, "length": length}
-        if move_powers.get(move, 1) == 0 and length > best_status["length"]:
-            best_status = {"move": move, "length": length}
+        if move_powers.get(move, 1) == 0 and status_length > best_status["length"]:
+            best_status = {"move": move, "length": status_length}
     return best_any, best_status
 
 
@@ -110,6 +124,8 @@ def battle_record(
     """One battle's AI record from that battle's slices of the harness lists."""
     first = first_decision_records(decisions)
     classified = classify_decisions(decisions)
+    forced = {int(r["decision"]) for r in first if _forced_decision(r)}
+    chosen_freely = classify_decisions([r for r in decisions if int(r["decision"]) not in forced])
     tiers = Counter(int(record["tier"]) for record in first)
     # Only real choices: SelectEnemyMove's $FF is "no selection this turn".
     chosen = [s for s in selections if s["move"] != NO_SELECTION]
@@ -159,7 +175,8 @@ def battle_record(
         "enemy_switches": enemy_switches,
         "ko_candidates": classified["damage_layer_ko_candidates"],
         "missed_ko": classified["damage_layer_missed_ko_candidates"],
-        "redundant_picks": classified["selected_redundant_penalty_decisions"],
+        "redundant_picks": chosen_freely["selected_redundant_penalty_decisions"],
+        "forced_picks": sum(bool(s.get("forced")) for s in chosen),
         "personality_flips": flips,
         "max_status_streak": streak_status,
         "max_streak": streak_any,
@@ -314,6 +331,9 @@ class BattleAITelemetry:
             return
         moves = h.read_bytes("wEnemyMonMoves", 4)
         pp = h.read_bytes("wEnemyMonPP", 4)
+        disabled_slot = h.read8("wEnemyDisabledMove") >> 4  # 1-4, 0 = none
+        usable = sum(bool(m) and (p & 0x3F) > 0 and slot + 1 != disabled_slot
+                     for slot, (m, p) in enumerate(zip(moves, pp)))
         position = h.read8("wEnemyMonPartyPos")
         base = h.address("wEnemyMons")
         reserves = 0
@@ -328,6 +348,7 @@ class BattleAITelemetry:
                 "move": move,
                 "slot": h.read8("wEnemyMoveListIndex"),  # stale on Struggle
                 "struggle": move == self.struggle,
+                "forced": usable == 1 and move != self.struggle,
                 "pp_out": sum(bool(m) and (p & 0x3F) == 0 for m, p in zip(moves, pp)),
                 "enemy_pos": position,
                 "reserves_alive": reserves,

@@ -226,11 +226,15 @@ failures (the exit code is unchanged):
 | Flag | Meaning |
 |---|---|
 | `missed_ko` | a DAMAGE-layer reliable KO existed and another slot was selected |
-| `status_spam` | the same power-0 move by the same enemy mon 4+ times in a row |
+| `status_spam` | the same power-0 move by the same enemy mon 4+ times in a row (a forced pick breaks the run) |
 | `struggle_with_reserve` | Struggle selected while a reserve was alive |
 | `over_frame_trainer_ai` | a TrainerAI move-path call over 70,224 cycles (turn 1 with new reveals routinely is) |
-| `redundant_pick` | the selected slot carried a Redundant-layer penalty |
+| `redundant_pick` | the selected slot carried a Redundant-layer penalty (forced picks are not counted) |
 | `telemetry_error` | a telemetry hook raised during the battle |
+
+A selection is `forced` when only one slot has a move, PP left and is not disabled (2026-10-21).
+A forced pick breaks a `status_spam` run and is not counted in `redundant_pick`; records carry
+`forced_picks`. Reason: seed 117's Withdraw x10 was the player's Disable on the other move, not a bug.
 
 `python3 tools/pyboy_smoke/test_ai_telemetry.py` covers the pure record/summary code.
 `--coverage` skips the labels that sit next to telemetry hooks.

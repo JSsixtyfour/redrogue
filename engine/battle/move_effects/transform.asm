@@ -21,10 +21,11 @@ TransformEffect_:
 	jp nz, .failed
 	; Fails if the user or the target has already transformed, as in later
 	; generations. Two mons that only know Transform would otherwise copy
-	; each other forever: each Transform refills the user's PP to 5, and an
-	; enemy never runs out of PP in Gen 1, so no one Struggles, and a trainer
-	; battle cannot be fled (found by the autoplay bot, 2026-10-20). Now a
-	; transformed mon's Transform fails, its PP drains, and Struggle ends it.
+	; each other forever: each Transform refills the user's PP to 5, so no one
+	; ever runs dry and Struggles, and a trainer battle cannot be fled (found
+	; by the autoplay bot, 2026-10-20). Now a transformed mon's Transform
+	; fails, its PP drains (enemies spend PP too, enemy_move_pp.asm), and
+	; Struggle ends it.
 	ld a, [wPlayerBattleStatus3]
 	push hl
 	ld hl, wEnemyBattleStatus3
@@ -247,10 +248,11 @@ SuperTransformEffect_:
 	jp nz, .failed
 	; Fails if the user or the target has already transformed, as in later
 	; generations. Two mons that only know Transform would otherwise copy
-	; each other forever: each Transform refills the user's PP to 5, and an
-	; enemy never runs out of PP in Gen 1, so no one Struggles, and a trainer
-	; battle cannot be fled (found by the autoplay bot, 2026-10-20). Now a
-	; transformed mon's Transform fails, its PP drains, and Struggle ends it.
+	; each other forever: each Transform refills the user's PP to 5, so no one
+	; ever runs dry and Struggles, and a trainer battle cannot be fled (found
+	; by the autoplay bot, 2026-10-20). Now a transformed mon's Transform
+	; fails, its PP drains (enemies spend PP too, enemy_move_pp.asm), and
+	; Struggle ends it.
 	ld a, [wPlayerBattleStatus3]
 	push hl
 	ld hl, wEnemyBattleStatus3

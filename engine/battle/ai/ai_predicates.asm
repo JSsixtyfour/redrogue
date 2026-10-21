@@ -316,11 +316,14 @@ AIEnemyHasReliableFirstKO::
 	jr z, .noKO
 	and a
 	jr z, .noKO
+	cp STRUGGLE
+	jr z, .slotIsLive ; no slot: it is what a mon with no PP left uses (B8)
 	ld a, [wEnemyMoveListIndex]
 	inc a
 	ld b, a
 	call AIEnemySlotIsLive ; trainer_ai.asm: disabled or out of PP (Struggle leaves the index stale)
 	jr z, .noKO
+.slotIsLive
 
 	ld hl, wEnemyMoveNum
 	ld de, wBuffer + AI_BUF_MOVESAVE
@@ -1682,22 +1685,29 @@ AIAdjustDamageForDelivery:
 	pop bc
 	ret
 
-; Returns de = a * one-hit estimate. The supported maximum is 5 * 999.
+; Returns de = a * one-hit estimate. The supported maximum is 5 * 999, so a
+; repeated add (a is a hit count, 0-5) replaces HOME Multiply, which cost ~14
+; calls a decision (Phase 6, 2026-10-21). Clobbers af, b; preserves hl.
 .multiplyEstimateByA
 	ld b, a
-	xor a
-	ldh [hMultiplicand], a
+	ld de, 0
+	and a
+	ret z
+	push hl
 	ld a, [wAIDamageEstimate]
-	ldh [hMultiplicand + 1], a
+	ld h, a
 	ld a, [wAIDamageEstimate + 1]
-	ldh [hMultiplicand + 2], a
-	ld a, b
-	ldh [hMultiplier], a
-	call Multiply
-	ldh a, [hProduct + 2]
-	ld d, a
-	ldh a, [hProduct + 3]
+	ld l, a
+.addEstimate
+	ld a, e
+	add l
 	ld e, a
+	ld a, d
+	adc h
+	ld d, a
+	dec b
+	jr nz, .addEstimate
+	pop hl
 	ret
 
 ; Possible delivery needs a MAXIMUM, but the shared estimator reports Psywave's

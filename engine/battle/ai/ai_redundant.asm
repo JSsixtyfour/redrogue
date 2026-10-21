@@ -73,15 +73,11 @@ AILayerRedundant:
 	push bc ; STACK: [bc=loopCounter, de=movelistPtr, hl=scorePtr]
 	call ReadMove ; sets wEnemyMoveEffect/Power/Type/Accuracy
 	ld a, [wEnemyMoveEffect]
-	ld c, a
-	ld hl, AIRedundantEffectTable
-	ld de, 3 ; effect id (1) + handler pointer (2)
-	call IsInArray
+	ld c, a ; handlers may read the effect in c, as IsInArray left it
+	ld hl, AIRedundantEffectIndex
+	ld de, AIRedundantEffectHandlers
+	call AIDispatchLookup ; hl = handler address (ai_score_helpers.asm)
 	jr nc, .notFound
-	inc hl
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a ; hl = handler address
 	call .callHandler ; a = 0 (no-op) or a discourage magnitude; every other
 	                   ; register is fair game for the handler to clobber
 	pop bc ; restore loopCounter - does not touch a
@@ -100,77 +96,79 @@ AILayerRedundant:
 .callHandler
 	jp hl
 
-; Effect -> handler table, IsInArray's dbw shape (1-byte key + 2-byte target).
+; Effect -> handler table: one ai_dispatch row per effect, built into an index
+; by effect id (macros/ai_dispatch.asm; it was an IsInArray scan until 2026-10-21).
 ; Every handler: INPUT none beyond wEnemyMove*/wBattleMon*/wEnemyMon* already
 ; being live from ReadMove and the ongoing battle; OUTPUT a = 0 (leave the
 ; score alone) or a magnitude for AIDiscourage. Clobbers whatever it needs;
 ; the dispatcher above only guarantees de (the score pointer) survives.
-AIRedundantEffectTable:
-	dbw EFFECT_01, AIRedundant_AlreadyStatused
-	dbw SLEEP_EFFECT, AIRedundant_AlreadyStatused
-	dbw POISON_EFFECT, AIRedundant_Poison
-	dbw PARALYZE_EFFECT, AIRedundant_Paralyze
-	dbw POISON_SIDE_EFFECT1, AIRedundant_PoisonSide
-	dbw POISON_SIDE_EFFECT2, AIRedundant_PoisonSide
-	dbw BURN_SIDE_EFFECT1, AIRedundant_BurnFreezeParaSide
-	dbw BURN_SIDE_EFFECT2, AIRedundant_BurnFreezeParaSide
-	dbw FREEZE_SIDE_EFFECT1, AIRedundant_BurnFreezeParaSide
-	dbw FREEZE_SIDE_EFFECT2, AIRedundant_BurnFreezeParaSide
-	dbw PARALYZE_SIDE_EFFECT1, AIRedundant_BurnFreezeParaSide
-	dbw PARALYZE_SIDE_EFFECT2, AIRedundant_BurnFreezeParaSide
-	dbw FLINCH_SIDE_EFFECT1, AIRedundant_SubOnly
-	dbw FLINCH_SIDE_EFFECT2, AIRedundant_SubOnly
-	dbw CONFUSION_EFFECT, AIRedundant_ConfusionEffect
-	dbw CONFUSION_SIDE_EFFECT, AIRedundant_SubOnly
-	dbw DREAM_EATER_EFFECT, AIRedundant_DreamEater
-	dbw LEECH_SEED_EFFECT, AIRedundant_LeechSeed
+	ai_dispatch_begin AIRedundantEffect
+	ai_dispatch EFFECT_01, AIRedundant_AlreadyStatused
+	ai_dispatch SLEEP_EFFECT, AIRedundant_AlreadyStatused
+	ai_dispatch POISON_EFFECT, AIRedundant_Poison
+	ai_dispatch PARALYZE_EFFECT, AIRedundant_Paralyze
+	ai_dispatch POISON_SIDE_EFFECT1, AIRedundant_PoisonSide
+	ai_dispatch POISON_SIDE_EFFECT2, AIRedundant_PoisonSide
+	ai_dispatch BURN_SIDE_EFFECT1, AIRedundant_BurnFreezeParaSide
+	ai_dispatch BURN_SIDE_EFFECT2, AIRedundant_BurnFreezeParaSide
+	ai_dispatch FREEZE_SIDE_EFFECT1, AIRedundant_BurnFreezeParaSide
+	ai_dispatch FREEZE_SIDE_EFFECT2, AIRedundant_BurnFreezeParaSide
+	ai_dispatch PARALYZE_SIDE_EFFECT1, AIRedundant_BurnFreezeParaSide
+	ai_dispatch PARALYZE_SIDE_EFFECT2, AIRedundant_BurnFreezeParaSide
+	ai_dispatch FLINCH_SIDE_EFFECT1, AIRedundant_SubOnly
+	ai_dispatch FLINCH_SIDE_EFFECT2, AIRedundant_SubOnly
+	ai_dispatch CONFUSION_EFFECT, AIRedundant_ConfusionEffect
+	ai_dispatch CONFUSION_SIDE_EFFECT, AIRedundant_SubOnly
+	ai_dispatch DREAM_EATER_EFFECT, AIRedundant_DreamEater
+	ai_dispatch LEECH_SEED_EFFECT, AIRedundant_LeechSeed
 ; AI_OVERHAUL_PLAN.md follow-up F17, 2026-09-02: stat-down effects get their
 ; OWN handler now (floor check added - see AIRedundant_StatDown below), split
 ; out of AIRedundant_SubOnly, which remains for the three effects that truly
 ; have no other redundancy condition.
-	dbw ATTACK_DOWN1_EFFECT, AIRedundant_StatDown
-	dbw DEFENSE_DOWN1_EFFECT, AIRedundant_StatDown
-	dbw SPEED_DOWN1_EFFECT, AIRedundant_StatDown
-	dbw SPECIAL_DOWN1_EFFECT, AIRedundant_StatDown
-	dbw ACCURACY_DOWN1_EFFECT, AIRedundant_StatDown
-	dbw EVASION_DOWN1_EFFECT, AIRedundant_StatDown
-	dbw ATTACK_DOWN2_EFFECT, AIRedundant_StatDown
-	dbw DEFENSE_DOWN2_EFFECT, AIRedundant_StatDown
-	dbw SPEED_DOWN2_EFFECT, AIRedundant_StatDown
-	dbw SPECIAL_DOWN2_EFFECT, AIRedundant_StatDown
-	dbw ACCURACY_DOWN2_EFFECT, AIRedundant_StatDown
-	dbw EVASION_DOWN2_EFFECT, AIRedundant_StatDown
-	dbw ATTACK_DOWN_SIDE_EFFECT, AIRedundant_StatDown
-	dbw DEFENSE_DOWN_SIDE_EFFECT, AIRedundant_StatDown
-	dbw SPEED_DOWN_SIDE_EFFECT, AIRedundant_StatDown
-	dbw SPECIAL_DOWN_SIDE_EFFECT, AIRedundant_StatDown
+	ai_dispatch ATTACK_DOWN1_EFFECT, AIRedundant_StatDown
+	ai_dispatch DEFENSE_DOWN1_EFFECT, AIRedundant_StatDown
+	ai_dispatch SPEED_DOWN1_EFFECT, AIRedundant_StatDown
+	ai_dispatch SPECIAL_DOWN1_EFFECT, AIRedundant_StatDown
+	ai_dispatch ACCURACY_DOWN1_EFFECT, AIRedundant_StatDown
+	ai_dispatch EVASION_DOWN1_EFFECT, AIRedundant_StatDown
+	ai_dispatch ATTACK_DOWN2_EFFECT, AIRedundant_StatDown
+	ai_dispatch DEFENSE_DOWN2_EFFECT, AIRedundant_StatDown
+	ai_dispatch SPEED_DOWN2_EFFECT, AIRedundant_StatDown
+	ai_dispatch SPECIAL_DOWN2_EFFECT, AIRedundant_StatDown
+	ai_dispatch ACCURACY_DOWN2_EFFECT, AIRedundant_StatDown
+	ai_dispatch EVASION_DOWN2_EFFECT, AIRedundant_StatDown
+	ai_dispatch ATTACK_DOWN_SIDE_EFFECT, AIRedundant_StatDown
+	ai_dispatch DEFENSE_DOWN_SIDE_EFFECT, AIRedundant_StatDown
+	ai_dispatch SPEED_DOWN_SIDE_EFFECT, AIRedundant_StatDown
+	ai_dispatch SPECIAL_DOWN_SIDE_EFFECT, AIRedundant_StatDown
 ; F17: stat-UP effects had NO entry at all before this - the AI never checked
 ; whether its own stat was already at the Gen 1 cap ($D/13) before spending a
 ; turn on Swords Dance/Amnesia/etc past the point it does anything. No
 ; Substitute check: a stat-up move affects the USER, not the target, so the
 ; player's Substitute is irrelevant here.
-	dbw ATTACK_UP1_EFFECT, AIRedundant_StatUp
-	dbw DEFENSE_UP1_EFFECT, AIRedundant_StatUp
-	dbw SPEED_UP1_EFFECT, AIRedundant_StatUp
-	dbw SPECIAL_UP1_EFFECT, AIRedundant_StatUp
-	dbw ACCURACY_UP1_EFFECT, AIRedundant_StatUp
-	dbw EVASION_UP1_EFFECT, AIRedundant_StatUp
-	dbw ATTACK_UP2_EFFECT, AIRedundant_StatUp
-	dbw DEFENSE_UP2_EFFECT, AIRedundant_StatUp
-	dbw SPEED_UP2_EFFECT, AIRedundant_StatUp
-	dbw SPECIAL_UP2_EFFECT, AIRedundant_StatUp
-	dbw ACCURACY_UP2_EFFECT, AIRedundant_StatUp
-	dbw EVASION_UP2_EFFECT, AIRedundant_StatUp
-	dbw LIGHT_SCREEN_EFFECT, AIRedundant_LightScreen
-	dbw REFLECT_EFFECT, AIRedundant_Reflect
-	dbw MIST_EFFECT, AIRedundant_Mist
-	dbw FOCUS_ENERGY_EFFECT, AIRedundant_FocusEnergy
-	dbw SUBSTITUTE_EFFECT, AIRedundant_Substitute
-	dbw DISABLE_EFFECT, AIRedundant_Disable
-	dbw HEAL_EFFECT, AIRedundant_Heal
-	dbw OHKO_EFFECT, AIRedundant_OHKO
-	dbw HAZE_EFFECT, AIRedundant_Haze
-	db -1 ; IsInArray terminator - NOT 0, matches home/array2.asm's convention
+	ai_dispatch ATTACK_UP1_EFFECT, AIRedundant_StatUp
+	ai_dispatch DEFENSE_UP1_EFFECT, AIRedundant_StatUp
+	ai_dispatch SPEED_UP1_EFFECT, AIRedundant_StatUp
+	ai_dispatch SPECIAL_UP1_EFFECT, AIRedundant_StatUp
+	ai_dispatch ACCURACY_UP1_EFFECT, AIRedundant_StatUp
+	ai_dispatch EVASION_UP1_EFFECT, AIRedundant_StatUp
+	ai_dispatch ATTACK_UP2_EFFECT, AIRedundant_StatUp
+	ai_dispatch DEFENSE_UP2_EFFECT, AIRedundant_StatUp
+	ai_dispatch SPEED_UP2_EFFECT, AIRedundant_StatUp
+	ai_dispatch SPECIAL_UP2_EFFECT, AIRedundant_StatUp
+	ai_dispatch ACCURACY_UP2_EFFECT, AIRedundant_StatUp
+	ai_dispatch EVASION_UP2_EFFECT, AIRedundant_StatUp
+	ai_dispatch LIGHT_SCREEN_EFFECT, AIRedundant_LightScreen
+	ai_dispatch REFLECT_EFFECT, AIRedundant_Reflect
+	ai_dispatch MIST_EFFECT, AIRedundant_Mist
+	ai_dispatch FOCUS_ENERGY_EFFECT, AIRedundant_FocusEnergy
+	ai_dispatch SUBSTITUTE_EFFECT, AIRedundant_Substitute
+	ai_dispatch DISABLE_EFFECT, AIRedundant_Disable
+	ai_dispatch HEAL_EFFECT, AIRedundant_Heal
+	ai_dispatch OHKO_EFFECT, AIRedundant_OHKO
+	ai_dispatch HAZE_EFFECT, AIRedundant_Haze
+	ai_dispatch TRANSFORM_EFFECT, AIRedundant_Transform
+	ai_dispatch_end
 
 ; --- Shared primitive: does the TARGET (opponent of whoever's turn it is,
 ; always the player from this AI's perspective) have a Substitute up? ---
@@ -576,6 +574,21 @@ AIRedundant_OHKO:
 	ld a, AI_REDUNDANT_HEAVY
 	ret
 .faster
+	xor a
+	ret
+
+; Transform fails if either side is already transformed (transform.asm), so it
+; is a wasted turn. S5, 2026-10-21. Clobbers a.
+AIRedundant_Transform:
+	ld a, [wPlayerBattleStatus3]
+	ld b, a
+	ld a, [wEnemyBattleStatus3]
+	or b
+	bit TRANSFORMED, a
+	jr z, .notRedundant
+	ld a, AI_REDUNDANT_HEAVY
+	ret
+.notRedundant
 	xor a
 	ret
 

@@ -32,6 +32,7 @@ AILayerDamage:
 	xor a
 	ld [wBuffer + AI_BUF_BESTDMG], a
 	ld [wBuffer + AI_BUF_BESTDMG + 1], a
+	ld [wBuffer + AI_BUF_DMGTIERS], a ; every slot AI_DMG_TIER_NONE
 	ld a, $ff
 	ld [wBuffer + AI_BUF_BESTSLOT], a
 
@@ -176,6 +177,8 @@ AILayerDamage:
 	ld b, 2
 	call AIDamageReachesFraction
 	jr c, .quarter
+	ld a, AI_DMG_TIER_CHIP
+	call AIDamageRecordTier
 .noChange
 	xor a
 	jr .priorityBonus
@@ -189,6 +192,8 @@ AILayerDamage:
 ; ranking above overwrote, so it comes back from bc (2026-09-30: this used to
 ; re-run AIEstimateDamage, a whole damage formula per killing move, for an
 ; identical result). The loop's hl/de/bc are on the stack.
+	ld a, AI_DMG_TIER_HIGH
+	call AIDamageRecordTier ; preserves bc, the one-hit max
 ;
 ; Two-turn moves (CHARGE_EFFECT: Solar Beam, Razor Wind, Skull Bash, Sky Attack,
 ; Dig; FLY_EFFECT: Fly) deal nothing THIS turn, so they never earn a kill tier
@@ -245,9 +250,13 @@ AILayerDamage:
 	ld a, AI_STRONG
 	jr .apply
 .half
+	ld a, AI_DMG_TIER_HIGH
+	call AIDamageRecordTier
 	ld a, AI_STRONG
 	jr .priorityBonus
 .quarter
+	ld a, AI_DMG_TIER_QUARTER
+	call AIDamageRecordTier
 	ld a, AI_NUDGE
 .priorityBonus
 ; F16 (2026-09-02): a small, UNCONDITIONAL preference for a priority move at
@@ -300,6 +309,7 @@ AILayerDamage:
 	ld a, [wBuffer + AI_BUF_BESTSLOT]
 	cp NUM_MOVES
 	ret nc ; still $ff: no damaging move in this set
+	call AIDamageScarceAlternative
 	ld hl, wBuffer
 	ld d, 0
 	ld e, a
@@ -330,6 +340,101 @@ AILayerDamage:
 	ld [wBuffer + AI_BUF_BESTDMG + 1], a
 	ld a, [wBuffer + AI_BUF_CURSLOT]
 	ld [wBuffer + AI_BUF_BESTSLOT], a
+	ret
+
+; B9 scarce-PP tiebreak (2026-10-21 AI review). Enemies spend PP and a party
+; keeps what it spent, so the best move's last PP is worth saving when another
+; move does the same job. INPUT: a = the best-damage slot (0-3). OUTPUT: a = the
+; slot to give the best-damage nudge: the first OTHER slot in the same damage
+; tier with more than AI_SCARCE_PP left, when the best has AI_SCARCE_PP or less
+; and is not a reliable KO; otherwise the best slot itself. A different tier is
+; never matched, so this only reorders moves the tiers already call equal.
+; Clobbers af, bc, de, hl.
+AIDamageScarceAlternative:
+	ld e, a
+	call .slotPP
+	cp AI_SCARCE_PP + 1
+	jr nc, .keep
+	ld b, e
+	inc b
+	ld a, [wAIReliableKOFound]
+.koBit
+	rrca
+	dec b
+	jr nz, .koBit
+	jr c, .keep ; the best slot reliably KOs: spend the PP
+	ld a, e
+	call AIDamageSlotTier
+	ld d, a ; d = the tier to match
+	ld c, 0
+.candidate
+	ld a, c
+	cp e
+	jr z, .next
+	call AIDamageSlotTier
+	cp d
+	jr nz, .next
+	push de
+	ld e, c
+	call .slotPP
+	pop de
+	cp AI_SCARCE_PP + 1
+	jr c, .next
+	ld a, c
+	ret
+.next
+	inc c
+	ld a, c
+	cp NUM_MOVES
+	jr c, .candidate
+.keep
+	ld a, e
+	ret
+; e = slot -> a = its PP. Clobbers d (zeroed), hl.
+.slotPP
+	ld hl, wEnemyMonPP
+	ld d, 0
+	add hl, de
+	ld a, [hl]
+	and PP_MASK
+	ret
+
+; a = an AI_DMG_TIER_* for the slot in AI_BUF_CURSLOT: OR it into
+; AI_BUF_DMGTIERS. Preserves bc, de, hl.
+AIDamageRecordTier:
+	push bc
+	ld b, a
+	ld a, [wBuffer + AI_BUF_CURSLOT]
+	inc a
+	ld c, a
+.shift
+	dec c
+	jr z, .placed
+	sla b
+	sla b
+	jr .shift
+.placed
+	ld a, [wBuffer + AI_BUF_DMGTIERS]
+	or b
+	ld [wBuffer + AI_BUF_DMGTIERS], a
+	pop bc
+	ret
+
+; a = slot (0-3) -> a = its AI_DMG_TIER_*. Preserves bc, de, hl.
+AIDamageSlotTier:
+	push bc
+	ld c, a
+	inc c
+	ld a, [wBuffer + AI_BUF_DMGTIERS]
+.shift
+	dec c
+	jr z, .found
+	rrca
+	rrca
+	jr .shift
+.found
+	and %11
+	pop bc
 	ret
 
 ; INPUT: de = the enemy move's one-hit maximum. OUTPUT: bc = the expected damage

@@ -240,6 +240,19 @@ DEF AI_BUF_CURSLOT    EQU 17 ; 1 byte: the slot being scored right now, stashed
 ; make one silently depend on the other's timing.
 DEF AI_BUF_BESTPARTYSCORE EQU 18 ; 1 byte: best type multiplier seen ($ff = none)
 DEF AI_BUF_BESTPARTYSLOT  EQU 19 ; 1 byte: slot it belongs to ($ff = none yet)
+; B10 (2026-10-21): AIScoreSendOutMon's score for a mon with no damaging move
+; left to use. Above every real score (at most 135) and below the $ff "no
+; bound", so it ranks last but is still chosen when nothing else is alive.
+DEF AI_SEND_OUT_SPENT EQU $fe
+; B9 (2026-10-21): AI_DAMAGE's per-slot damage tiers, 2 bits per slot (slot N at
+; bits 2N-2N+1), for the scarce-PP tiebreak at .applyBest. Shares +18 with the
+; send-out ranking, which runs at switch time, never inside a move-scoring pass.
+DEF AI_BUF_DMGTIERS EQU AI_BUF_BESTPARTYSCORE
+DEF AI_DMG_TIER_NONE    EQU 0 ; status move, dead slot, or not scored
+DEF AI_DMG_TIER_CHIP    EQU 1 ; damaging, below a quarter of the player's HP
+DEF AI_DMG_TIER_QUARTER EQU 2
+DEF AI_DMG_TIER_HIGH    EQU 3 ; half, or a kill (both AI_STRONG and up)
+DEF AI_SCARCE_PP EQU 2 ; at or below this, the best-damage nudge looks elsewhere
 ; Phase 5: the four per-slot MOVE CLASS masks, two bytes each, little-endian.
 ; This region was reserved through Phase 4 as AI_BUF_PARTY (six party scores)
 ; plus AI_BUF_SCOREBACKUP (a four-byte pre-min-find score backup) and NEITHER
