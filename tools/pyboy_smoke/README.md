@@ -332,6 +332,14 @@ make compare_builds COMPARE_ARGS='--seeds 1-24 --runs 2 --vary'
   overworld frame, saves, reloads on a fresh emulator with only that cartridge
   RAM, compares every saved region byte for byte, then cuts power at each step
   of a save and classifies each reboot as old, new, mixed or refused.
+- `--player strong`: takes rewards and gifts on merit instead of at random
+  (`autoplay_team.TeamJudge`: base stat total, form-aware, plus type coverage
+  the party lacks; a reward trade nets out the mon given; gifts by kind, read
+  from the giver's list in ROM), and in trainer battles switches out of a
+  losing matchup to a clearly better-matched reserve when a new enemy mon
+  comes out (`benchmark_policies.choose_matchup_switch`). `--player merit`
+  takes the offers on merit only. Sweep the same seeds with `basic` (the
+  default) and `strong` to tell "too hard" from "the bot plays badly".
 - `--rom pokeblue|pokered` (needs `--new-game`): plays a release build;
   artifacts get a `_pokeblue` / `_pokered` suffix. `compare_builds.py` plays the
   same seeds on all three builds and flags failures or anomalies only one

@@ -256,6 +256,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="seconds before a seed counts as hung and is killed")
     parser.add_argument("--rom", choices=autoplay.ROMS, default=autoplay.DEBUG_ROM,
                         help="build to play; the release builds need --new-game")
+    parser.add_argument("--player", choices=autoplay.PLAYERS, default="basic",
+                        help="strong: rewards and gifts on merit, matchup switches")
     args = parser.parse_args(argv)
     if args.rom != autoplay.DEBUG_ROM and not args.new_game:
         parser.error(f"--rom {args.rom} has no Debug 2 menu; add --new-game")
@@ -282,6 +284,7 @@ def main(argv: list[str] | None = None) -> int:
         "vary": args.vary,
         "save_checks": args.save_checks,
         "rom": args.rom,
+        "player": args.player,
     }
     rows = []
     for row in run_all(seeds, options, max(1, args.jobs), args.timeout):
@@ -353,7 +356,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  coverage map -> {autoplay_coverage.SUMMARY}")
     for row in failures:
         flags = (" --new-game" * args.new_game + f" --runs {args.runs}" * (args.runs != 1)
-                 + f" --rom {args.rom}" * (args.rom != autoplay.DEBUG_ROM))
+                 + f" --rom {args.rom}" * (args.rom != autoplay.DEBUG_ROM)
+                 + f" --player {args.player}" * (args.player != "basic"))
         why = row["outcome"] if row["outcome"] in autoplay.FAILURES else "anomaly"
         print(f"  reproduce: python3 tools/pyboy_smoke/autoplay.py --seed {row['seed']}{flags}"
               f"   # {why} at {row['map']}")

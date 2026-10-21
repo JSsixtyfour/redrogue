@@ -312,6 +312,36 @@ def matchup(rules: Rules, mon: Mon, enemy: Mon) -> float:
     return ours - theirs
 
 
+MATCHUP_SWITCH_MARGIN = 0.3  # matchup() points a reserve must beat the active mon by
+
+
+def choose_matchup_switch(rules: Rules, state: State, margin: float = MATCHUP_SWITCH_MARGIN) -> int | None:
+    """Party slot to switch to when a new enemy mon comes out, or None: the
+    living reserve with the best matchup, if it survives the enemy's best move
+    on the way in, the active mon's matchup is losing (<= 0), and the reserve
+    beats it by `margin`. The stronger
+    autoplay player (--player strong) asks this once per enemy mon in trainer
+    battles, so it opens with the right mon rather than waiting until the
+    active one is about to be KO'd (choose_switch)."""
+    best = None
+    for slot, mon in enumerate(state.party):
+        if slot == state.active_slot or not mon.hp:
+            continue
+        if enemy_best_damage(rules, state.enemy, mon) >= mon.hp:
+            continue  # would die on entry
+        score = matchup(rules, mon, state.enemy)
+        if best is None or score > best[0]:
+            best = (score, slot)
+    current = matchup(rules, state.player, state.enemy)
+    # Only out of a losing matchup: swapping out a mon that is already winning
+    # hands the enemy a free hit for nothing. Measured 2026-10-20 (Debug 2
+    # seeds 25-72): switching on margin alone cut the champion rate from 53%
+    # to 30%, losses piling up in the Elite Four and against Oak.
+    if best is None or current > 0 or best[0] <= current + margin:
+        return None
+    return best[1]
+
+
 def choose_switch(rules: Rules, state: State, policy: str, switched_last_turn: bool) -> int | None:
     """Party slot to switch to at the battle menu, or None to fight."""
     if policy not in SWITCHING_POLICIES or switched_last_turn:

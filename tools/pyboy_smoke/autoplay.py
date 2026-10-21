@@ -48,6 +48,7 @@ from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
 import autoplay_checks
+import autoplay_team
 import autoplay_world as world
 import benchmark_policies
 from harness import RedRogueHarness
@@ -109,6 +110,13 @@ PLAN_STEP_LIMIT = 80  # menu presses before a plan is abandoned
 MENU_NAV_LIMIT = 24  # presses for a menu cursor to reach its target
 STALEMATE_TURNS = 6  # battle menus in a row with neither side's HP changing
 MENU_INPUTS = ("real", "cursor")
+# basic: the bot as it was (random rewards and gifts, switches only to dodge a
+# KO). strong: takes rewards and gifts on merit (autoplay_team.TeamJudge) and,
+# in trainer battles, switches to the best-matched mon when a new enemy mon
+# comes out (benchmark_policies.choose_matchup_switch). Compare the two to
+# tell "too hard" from "the bot plays badly". merit: the offers alone, to
+# measure the two halves apart.
+PLAYERS = ("basic", "merit", "strong")
 # DIFFICULTY_* names (constants/ram_constants.asm). Autoplay plays HARD unless
 # told otherwise: balance is tuned there, and a fresh boot's NORMAL caps the AI
 # at tier 2, so THREAT, PLAN and RISKY never ran (the coverage map found them).
@@ -253,9 +261,14 @@ class AutoplayAgent:
         menu_chaos: float = 0.0,
         snapshot: Callable[[str, dict[str, object]], None] | None = None,
         profile: Profile | None = None,
+        player: str = "basic",
     ):
         if profile is not None:
             battle_policy = profile.battle_policy
+        if player not in PLAYERS:
+            raise ValueError(f"unknown player {player!r}")
+        if player in ("merit", "strong"):
+            offer_policy = "merit"
         if battle_policy not in benchmark_policies.POLICIES:
             raise ValueError(f"unknown battle policy {battle_policy!r}")
         if menu_input not in MENU_INPUTS:
@@ -292,6 +305,9 @@ class AutoplayAgent:
         self.errand_counts: dict[str, int] = {}
 
         self.rules = benchmark_policies.load_rules(ROOT)
+        self.player = player
+        self.judge = autoplay_team.TeamJudge(ROOT, harness, self.rules) if offer_policy == "merit" else None
+        self.enemy_seen: tuple[int, int] | None = None  # the enemy mon the last matchup switch looked at
         maps = parse_map_constants(ROOT / "constants/map_constants.asm")
         self.map_names = {value: name for name, value in maps.items()}
         self.lobby_map = maps["INDIGO_PLATEAU_LOBBY"]
@@ -453,6 +469,8 @@ class AutoplayAgent:
             target = benchmark_policies.choose_switch(
                 self.rules, benchmark_policies.read_state(self.h),
                 self.battle_policy, self.switched_last_turn)
+        if target is None and self.player == "strong":
+            target = self.matchup_switch()
         if target is None:
             target = self.break_stalemate()
         self.switched_last_turn = target is not None
@@ -469,6 +487,21 @@ class AutoplayAgent:
         else:
             self.set_menu_goal("battle_menu", ("DisplayBattleMenu",), choice,
                                self._battle_menu_button, chaos=("up", "down", "left", "right"))
+
+    def matchup_switch(self) -> int | None:
+        """--player strong: once per enemy mon in a trainer battle, switch to
+        a reserve that matches up clearly better (choose_matchup_switch)."""
+        if not self.h.read8("wIsTrainerBattle") or self.switched_last_turn:
+            return None
+        enemy = (self.h.read8("wEnemyMonPartyPos"), self.h.read8("wEnemyMonSpecies"))
+        if enemy == self.enemy_seen:
+            return None
+        self.enemy_seen = enemy
+        target = benchmark_policies.choose_matchup_switch(self.rules, benchmark_policies.read_state(self.h))
+        if target is not None:
+            self.event("matchup_switch", enemy=self.species_names.get(enemy[1]),
+                       active=self.species_names.get(self.h.read8("wBattleMonSpecies")), to_slot=target)
+        return target
 
     def break_stalemate(self) -> int | None:
         """A turn after turn where no one's HP moves (two Dittos that only
@@ -708,6 +741,9 @@ class AutoplayAgent:
         showing = self.choice_showings[kind]
         if showing > 1 or no_thanks == 0:
             choice = no_thanks
+        elif self.offer_policy == "merit":
+            choice = self.judge.reward_choice() if kind == "reward" else self.judge.gift_choice()
+            choice = min(choice, no_thanks)
         elif self.offer_policy == "random":
             choice = self.rng.randrange(no_thanks)
         else:
@@ -1141,6 +1177,7 @@ class AutoplayAgent:
                 self.last_opponent = "wild " + self.species_names.get(species, str(species))
             self.event("battle_start", opponent=self.last_opponent)
             self.snapshot_pending = "battle"
+            self.enemy_seen = None
         elif self.in_battle and not in_battle:
             self.event("battle_end", result=self.h.read8("wBattleResult"))
             self.checks.on_battle_end()
@@ -1799,6 +1836,7 @@ def play(
     vary: bool = False,
     save_checks: bool = False,
     rom: str = DEBUG_ROM,
+    player: str = "basic",
 ) -> dict[str, object]:
     """Boot (Debug 2 lobby, or a real new game), play and return the report.
     A failure (see FAILURES) also writes a screenshot and state dump under
@@ -1832,7 +1870,12 @@ def play(
         ram_path.write_bytes(sram)
     import coverage_inventory
     # The screen checks' code rules (autoplay_screen.py); a ~70 s walk only after a rebuild.
-    coverage_inventory.code_labels(ROM)
+    # Optional: without it those rules are skipped. /mnt/c reads can fail
+    # transiently under load (ENODATA, seen 2026-10-20), which must not end a run.
+    try:
+        coverage_inventory.code_labels(ROM)
+    except OSError:
+        pass
     harness = RedRogueHarness(ROOT, ARTIFACTS, ram_path=ram_path, rom=ROM)
     if ram_path is not None:
         ram_path.unlink()
@@ -1845,7 +1888,7 @@ def play(
         agent = AutoplayAgent(harness, seed=seed, battle_policy=battle_policy,
                               door_policy=door_policy, stall_frames=stall_frames, log=log,
                               heartbeat=heartbeat, menu_input=menu_input, menu_chaos=menu_chaos,
-                              profile=profile,
+                              profile=profile, player=player,
                               snapshot=None if reel is None else lambda kind, info: reel.offer(
                                   kind, harness.pyboy.frame_count, info, harness.save_state))
         # After the agent's and the checks' own hooks, which keep their addresses.
@@ -1862,6 +1905,7 @@ def play(
         data["anomalies"] = agent.checks.anomalies
         data["menus"] = agent.menu_stats
         data["checks"] = agent.checks.summary()
+        data["player"] = player
         if profile is not None:
             data["profile"] = {**asdict(profile), "errands_run": agent.errand_counts}
         stored = harness.read8("wOptions2") & parse_rgbds_constants(
@@ -1931,6 +1975,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="LEVELS setting (default HARD, the balance baseline; --vary mixes them)")
     parser.add_argument("--rom", choices=ROMS, default=DEBUG_ROM,
                         help="build to play; the release builds need --new-game")
+    parser.add_argument("--player", choices=PLAYERS, default="basic",
+                        help="strong: rewards and gifts on merit, matchup switches (PLAYERS)")
     parser.add_argument("--report", type=Path, default=None,
                         help="report path (default artifacts/autoplay_seed<N>.json)")
     parser.add_argument("--quiet", action="store_true", help="do not print events as they happen")
@@ -1943,7 +1989,7 @@ def main(argv: list[str] | None = None) -> int:
         battle_policy=args.battle_policy, door_policy=args.door_policy,
         menu_input=args.menu_input, menu_chaos=args.menu_chaos,
         branches=args.branches, snapshots=args.snapshots, branch_frames=args.branch_frames,
-        coverage=args.coverage, difficulty=args.difficulty, vary=args.vary, save_checks=args.save_checks, rom=args.rom, log=None if args.quiet else print,
+        coverage=args.coverage, difficulty=args.difficulty, vary=args.vary, save_checks=args.save_checks, rom=args.rom, player=args.player, log=None if args.quiet else print,
     )
     path = args.report or ARTIFACTS / f"{stem(args.seed)}.json"
     path.parent.mkdir(parents=True, exist_ok=True)

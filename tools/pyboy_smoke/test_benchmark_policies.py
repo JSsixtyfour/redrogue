@@ -136,6 +136,34 @@ class BenchmarkPolicyTest(unittest.TestCase):
         state = self.state(active, enemy, [active, reserve])
         self.assertIsNone(bp.choose_switch(self.rules, state, "type_switcher", False))
 
+    # --- matchup switch (autoplay --player strong) ---------------------------
+    def test_matchup_switch_brings_in_the_clearly_better_mon(self):
+        active = self.mon(["FIRE"], ["EMBER"])
+        reserve = self.mon(["GRASS"], ["VINE_WHIP"])
+        enemy = self.mon(["WATER", "ROCK"], ["WATER_GUN"])
+        state = self.state(active, enemy, [active, reserve])
+        self.assertEqual(bp.choose_matchup_switch(self.rules, state), 1)
+
+    def test_matchup_switch_stays_when_the_gain_is_small(self):
+        active = self.mon(["NORMAL"], ["TACKLE"])
+        reserve = self.mon(["NORMAL"], ["BODY_SLAM"])
+        state = self.state(active, self.mon(["NORMAL"], ["TACKLE"]), [active, reserve])
+        self.assertIsNone(bp.choose_matchup_switch(self.rules, state))
+
+    def test_matchup_switch_keeps_a_mon_that_is_already_winning(self):
+        active = self.mon(["WATER"], ["SURF"])
+        reserve = self.mon(["GRASS"], ["RAZOR_LEAF"], stats=(100, 100, 100, 200))
+        enemy = self.mon(["ROCK", "GROUND"], ["TACKLE"])
+        state = self.state(active, enemy, [active, reserve])
+        self.assertGreater(bp.matchup(self.rules, active, enemy), 0)
+        self.assertIsNone(bp.choose_matchup_switch(self.rules, state))
+
+    def test_matchup_switch_never_sends_in_a_mon_that_dies_on_entry(self):
+        active = self.mon(["FIRE"], ["EMBER"])
+        reserve = self.mon(["GRASS"], ["VINE_WHIP"], hp=5)
+        enemy = self.mon(["WATER", "ROCK"], ["WATER_GUN"])
+        self.assertIsNone(bp.choose_matchup_switch(self.rules, self.state(active, enemy, [active, reserve])))
+
     def test_only_the_switching_policy_switches(self):
         active = self.mon(["FIRE"], ["EMBER"], hp=30)
         reserve = self.mon(["GRASS"], ["TACKLE"])
