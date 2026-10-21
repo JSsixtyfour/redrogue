@@ -15,9 +15,9 @@
 
 	; tm/hm learnset
 	tmhm RAZOR_WIND,   SUBSTITUTE,   TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  \
-	     HYPER_BEAM,   RAGE,         MIMIC,        DOUBLE_TEAM,  REFLECT,      \
-	     BIDE,         SWIFT,        SKY_ATTACK,   REST,         FLY,          \
-         THUNDER_WAVE, PSYCHIC_M,      DREAM_EATER
+	     RAGE,         MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
+	     SWIFT,        SKY_ATTACK,   REST,         FLY,          THUNDER_WAVE, \
+	     DREAM_EATER
 	; end
 
 	db BANK(MurkrowPicFront) ; pic bank

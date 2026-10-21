@@ -15,9 +15,9 @@
 
 	; tm/hm learnset
 	tmhm RAZOR_WIND,   SUBSTITUTE,   TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  \
-	     HYPER_BEAM,   RAGE,         MEGA_DRAIN,   SOLARBEAM,    PSYCHIC_M,    \
-	     PSYWAVE,      MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     SWIFT,        REST,         FLASH,        SWORDS_DANCE, 
+	     HYPER_BEAM,   RAGE,         MEGA_DRAIN,   SOLARBEAM,    PSYWAVE,      \
+	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        \
+	     REST,         FLASH,        SWORDS_DANCE
 	; end
 
 	db BANK(YanmaPicFront) ; pic bank

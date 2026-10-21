@@ -16,10 +16,10 @@
 	; tm/hm learnset - modeled on Machamp/Primeape (Fighting-type physical
 	; attackers)
 	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
-	     DOUBLE_EDGE,  HYPER_BEAM,   SUBMISSION,   COUNTER,      SEISMIC_TOSS, \
-	     RAGE,         MIMIC,        DOUBLE_TEAM,  BIDE,         EARTHQUAKE,        \
-	     SKULL_BASH,   REST,         SUBSTITUTE,   CUT,          STRENGTH,  \
-         ROCK_SLIDE,   SWORDS_DANCE, DIG
+	     DOUBLE_EDGE,  SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         \
+	     MIMIC,        DOUBLE_TEAM,  BIDE,         EARTHQUAKE,   SKULL_BASH,   \
+	     REST,         SUBSTITUTE,   CUT,          STRENGTH,     ROCK_SLIDE,   \
+	     SWORDS_DANCE
 	; end
 
 	db BANK(HeracrossPicFront) ; pic bank

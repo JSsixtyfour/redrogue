@@ -14,11 +14,11 @@
 	db GROWTH_FAST ; growth rate
 
 	; tm/hm learnset
-	tmhm FLASH,   THUNDER_WAVE,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
-	     DOUBLE_EDGE,  HYPER_BEAM,      RAGE,         MEGA_DRAIN,   THUNDERBOLT,    \
-	     THUNDER,      PSYCHIC_M,       MIMIC,        DOUBLE_TEAM,  BIDE,        \
-	     MIMIC,        DOUBLE_TEAM,     BIDE,         DREAM_EATER,  REST,       \
-	     PSYWAVE,      SWIFT,           SUBSTITUTE
+	tmhm FLASH,        THUNDER_WAVE, TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
+	     DOUBLE_EDGE,  RAGE,         MEGA_DRAIN,   THUNDERBOLT,  THUNDER,      \
+	     PSYCHIC_M,    MIMIC,        DOUBLE_TEAM,  BIDE,         MIMIC,        \
+	     DOUBLE_TEAM,  BIDE,         DREAM_EATER,  REST,         PSYWAVE,      \
+	     SWIFT,        SUBSTITUTE
 	; end
 
 	db BANK(MisdreavusPicFront) ; pic bank

@@ -16,8 +16,8 @@
 	; tm/hm learnset - modeled on Rhyhorn (Ground)
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
 	     EARTHQUAKE,   FISSURE,      DIG,          MIMIC,        DOUBLE_TEAM,  \
-	     BIDE,         SKULL_BASH,   REST,         SUBSTITUTE,   STRENGTH,      \
-         WATER_GUN,    ROCK_SLIDE
+	     BIDE,         SKULL_BASH,   REST,         SUBSTITUTE,   STRENGTH,     \
+	     WATER_GUN,    ROCK_SLIDE
 	; end
 
 	db BANK(PhanpyPicFront) ; pic bank

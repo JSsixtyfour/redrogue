@@ -19,7 +19,7 @@
 	     BIDE,         SELFDESTRUCT, SKULL_BASH,   REST,         EXPLOSION,    \
 	     ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     SWIFT,        SWIFT,		   \
 		 COUNTER,      MEGA_PUNCH,   MEGA_KICK,    COUNTER,      SEISMIC_TOSS, \
-		 HYPER_BEAM,   SUBMISSION
+		 SUBMISSION
 	; end
 
 	db BANK(SudowoodoPicFront) ; pic bank

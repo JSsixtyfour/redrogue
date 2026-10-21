@@ -31,10 +31,9 @@
 
 	; tm/hm learnset
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
-	     RAGE,         LIGHT_SCREEN,  CUT,      MIMIC,        DOUBLE_TEAM,     \
+	     RAGE,         LIGHT_SCREEN, CUT,          MIMIC,        DOUBLE_TEAM,  \
 	     REFLECT,      BIDE,         SWIFT,        SKULL_BASH,   REST,         \
-	     THUNDER_WAVE, SUBSTITUTE,   FLASH,        DIG,          PSYCHIC_M,	   \
-		 DREAM_EATER												    \
+	     THUNDER_WAVE, SUBSTITUTE,   FLASH,        PSYCHIC_M,    DREAM_EATER
 	; end
 
 	db BANK(UmbreonPicFront) ; pic bank

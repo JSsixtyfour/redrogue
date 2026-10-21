@@ -18,7 +18,7 @@
 	     LIGHT_SCREEN, MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
 	     MEGA_PUNCH, SWIFT,        REST,         THUNDER_WAVE, MEGA_KICK,    \
 	     SUBSTITUTE,   FLASH,        BODY_SLAM,    SUBMISSION,   SEISMIC_TOSS,  \
-		 DOUBLE_EDGE,  DRAGON_RAGE,  DIG,          STRENGTH,     COUNTER,      \  
+		 DOUBLE_EDGE,  DRAGON_RAGE,  STRENGTH,     COUNTER,      \  
 	; end
 
 	db BANK(FlaaffyPicFront) ; pic bank

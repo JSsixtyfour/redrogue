@@ -16,10 +16,10 @@
 	; tm/hm learnset
 	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
 	     DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     BLIZZARD,     \
-	     SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         DIG,          \
-	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SKULL_BASH,   \
-	     REST,         SUBSTITUTE,   SURF,         STRENGTH,	 SWIFT,		   \
-		 LIGHT_SCREEN, HYPER_BEAM
+	     SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         MIMIC,        \
+	     DOUBLE_TEAM,  REFLECT,      BIDE,         SKULL_BASH,   REST,         \
+	     SUBSTITUTE,   SURF,         STRENGTH,     SWIFT,        LIGHT_SCREEN, \
+	     HYPER_BEAM
 	; end
 
 	db BANK(AzumarillPicFront) ; pic bank

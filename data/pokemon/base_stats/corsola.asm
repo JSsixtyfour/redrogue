@@ -15,10 +15,10 @@
 
 	; tm/hm learnset
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   \
-	     WATER_GUN,    ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         \
-	     MIMIC,        DOUBLE_TEAM,  BIDE,         SKULL_BASH,   REST,         \
-	     ROCK_SLIDE,   SUBSTITUTE,   SURF,         STRENGTH,     DIG,          \
-         REFLECT,      LIGHT_SCREEN, EARTHQUAKE,   PSYCHIC_M
+	     WATER_GUN,    ICE_BEAM,     HYPER_BEAM,   RAGE,         MIMIC,        \
+	     DOUBLE_TEAM,  BIDE,         SKULL_BASH,   REST,         ROCK_SLIDE,   \
+	     SUBSTITUTE,   SURF,         STRENGTH,     REFLECT,      LIGHT_SCREEN, \
+	     EARTHQUAKE,   PSYCHIC_M
 	; end
 
 	db BANK(CorsolaPicFront) ; pic bank

@@ -16,8 +16,8 @@
 	; tm/hm learnset - modeled on Marowak (Ground) plus Ice coverage
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
 	     ICE_BEAM,     BLIZZARD,     RAGE,         EARTHQUAKE,   FISSURE,      \
-	     DIG,          MIMIC,        DOUBLE_TEAM,  BIDE,         SKULL_BASH,   \
-	     REST,         SUBSTITUTE,   STRENGTH,    ROCK_SLIDE
+	     MIMIC,        DOUBLE_TEAM,  BIDE,         SKULL_BASH,   REST,         \
+	     SUBSTITUTE,   STRENGTH,     ROCK_SLIDE
 	; end
 
 	db BANK(PiloswinePicFront) ; pic bank

@@ -15,9 +15,9 @@
 
 	; tm/hm learnset
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  ICE_BEAM,     \
-	     BLIZZARD,     RAGE,         EARTHQUAKE,   FISSURE,      DIG,          \
-	     MIMIC,        DOUBLE_TEAM,  BIDE,         SKULL_BASH,   REST,         \
-	     SUBSTITUTE,   STRENGTH,     ROCK_SLIDE
+	     BLIZZARD,     RAGE,         EARTHQUAKE,   FISSURE,      MIMIC,        \
+	     DOUBLE_TEAM,  BIDE,         SKULL_BASH,   REST,         SUBSTITUTE,   \
+	     STRENGTH,     ROCK_SLIDE
 	; end
 
 	db BANK(SwinubPicFront) ; pic bank

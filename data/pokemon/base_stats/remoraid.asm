@@ -15,10 +15,9 @@
 
 	; tm/hm learnset - modeled on Tentacruel (Water)
 	tmhm TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    \
-	     ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         MIMIC,        \
-	     DOUBLE_TEAM,  BIDE,         SKULL_BASH,   REST,         SUBSTITUTE,   \
-	     SURF,         PSYCHIC_M,    FLAMETHROWER, FIRE_BLAST,   SWIFT,        \ 
-         THUNDER_WAVE
+	     ICE_BEAM,     HYPER_BEAM,   RAGE,         MIMIC,        DOUBLE_TEAM,  \
+	     BIDE,         SKULL_BASH,   REST,         SUBSTITUTE,   SURF,         \
+	     FLAMETHROWER, SWIFT,        THUNDER_WAVE
 	; end
 
 	db BANK(RemoraidPicFront) ; pic bank

@@ -14,10 +14,10 @@
 	db GROWTH_SLOW ; growth rate
 
 	; tm/hm learnset - modeled on Aerodactyl (Rock/Flying)
-	tmhm RAZOR_WIND,   TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
-	     RAGE,         MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     SWIFT,        SKY_ATTACK,   REST,         SUBSTITUTE,   FLY,          \
-         ROCK_SLIDE,   SWORDS_DANCE, CUT,          FLASH
+	tmhm RAZOR_WIND,   TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
+	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        \
+	     SKY_ATTACK,   REST,         SUBSTITUTE,   FLY,          ROCK_SLIDE,   \
+	     SWORDS_DANCE, CUT
 	; end
 
 	db BANK(SkarmoryPicFront) ; pic bank

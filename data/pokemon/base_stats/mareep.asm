@@ -18,7 +18,7 @@
 	     LIGHT_SCREEN, MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
 	     STRENGTH, 	SWIFT,        REST,         THUNDER_WAVE, COUNTER,    \
 	     SUBSTITUTE,   FLASH,        BODY_SLAM,    SUBMISSION,   SEISMIC_TOSS,  \
-		 DOUBLE_EDGE,  DIG,          STRENGTH,     COUNTER      \
+		 DOUBLE_EDGE,  STRENGTH,     COUNTER      \
 	; end
 
 	db BANK(MareepPicFront) ; pic bank

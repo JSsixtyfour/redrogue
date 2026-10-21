@@ -18,8 +18,8 @@
 	     WATER_GUN,    HYPER_BEAM,   PAY_DAY,      RAGE,         THUNDERBOLT,  \
 	     THUNDER,      MIMIC,        DOUBLE_TEAM,  BIDE,         SWIFT,        \
 	     SKULL_BASH,   REST,         SUBSTITUTE,   MEGA_PUNCH,   MEGA_KICK,    \
-		 COUNTER,      SEISMIC_TOSS, DIG,          THUNDER_WAVE, METRONOME,    \
-		 CUT,          STRENGTH,     DREAM_EATER,  SOLARBEAM
+	     COUNTER,      SEISMIC_TOSS, THUNDER_WAVE, METRONOME,    CUT,          \
+	     STRENGTH,     DREAM_EATER
 	; end
 
 	db BANK(AipomPicFront) ; pic bank

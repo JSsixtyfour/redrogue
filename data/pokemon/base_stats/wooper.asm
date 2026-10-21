@@ -14,11 +14,11 @@
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
-	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    STRENGTH,     SURF, \
-	     DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     BLIZZARD,     \
-	     HYPER_BEAM,   PAY_DAY,      EARTHQUAKE, ROCK_SLIDE,	FLASH,         \ 
-	     RAGE,         DIG,          MIMIC,        DOUBLE_TEAM,  BIDE,         \
-	     SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE        \
+	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    STRENGTH,     SURF,         \
+	     DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     HYPER_BEAM,   \
+	     PAY_DAY,      EARTHQUAKE,   ROCK_SLIDE,   FLASH,        RAGE,         \
+	     DIG,          MIMIC,        DOUBLE_TEAM,  BIDE,         SWIFT,        \
+	     SKULL_BASH,   REST,         SUBSTITUTE
 	; end
 
 	db BANK(WooperPicFront) ; pic bank
