@@ -14,10 +14,10 @@
 	db GROWTH_FAST ; growth rate
 
 	; tm/hm learnset
-	tmhm TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         MEGA_DRAIN,   \
-	     SOLARBEAM,    PSYCHIC_M,    MIMIC,        DOUBLE_TEAM,  REFLECT,      \
-	     BIDE,         REST,         PSYWAVE,      SUBSTITUTE,   LIGHT_SCREEN, \
-         DIG,          SWIFT,        HYPER_BEAM                                \
+	tmhm SWORDS_DANCE, TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
+	     MEGA_DRAIN,   SOLARBEAM,    PSYCHIC_M,    MIMIC,        DOUBLE_TEAM,  \
+	     REFLECT,      BIDE,         REST,         SUBSTITUTE,   DIG,          \
+	     SWIFT,        HYPER_BEAM,   FLASH,        PSYWAVE
 	; end
 
 	db BANK(AriadosPicFront) ; pic bank

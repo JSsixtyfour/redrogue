@@ -114,9 +114,11 @@ RedrawPartyMenu_::
 .evolutionStoneMenu
 	push hl
 	farcall CanLoadedMonEvolveWithStone
-	ld de, .notAbleToEvolveText
-	jr nc, .placeEvolutionStoneString
 	ld de, .ableToEvolveText
+	jr c, .placeEvolutionStoneString
+	ld de, .notAbleToEvolveText
+	jr z, .placeEvolutionStoneString
+	ld de, .lockedEvolutionText
 .placeEvolutionStoneString
 	ld bc, 20 + 9 ; down 1 row and right 9 columns
 	pop hl
@@ -129,6 +131,8 @@ RedrawPartyMenu_::
 	db "ABLE@"
 .notAbleToEvolveText
 	db "NOT ABLE@"
+.lockedEvolutionText
+	db "LOCKED@"
 .afterDrawingMonEntries
 	ld b, SET_PAL_PARTY_MENU
 	call RunPaletteCommand

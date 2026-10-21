@@ -14,10 +14,10 @@
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset - modeled on Rhyhorn (Ground)
-	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
-	     EARTHQUAKE,   FISSURE,      DIG,          MIMIC,        DOUBLE_TEAM,  \
-	     BIDE,         SKULL_BASH,   REST,         SUBSTITUTE,   STRENGTH,     \
-	     WATER_GUN,    ROCK_SLIDE
+	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  COUNTER,      \
+	     RAGE,         EARTHQUAKE,   FISSURE,      DIG,          MIMIC,        \
+	     DOUBLE_TEAM,  BIDE,         SKULL_BASH,   REST,         SUBSTITUTE,   \
+	     STRENGTH,     WATER_GUN,    ROCK_SLIDE
 	; end
 
 	db BANK(PhanpyPicFront) ; pic bank

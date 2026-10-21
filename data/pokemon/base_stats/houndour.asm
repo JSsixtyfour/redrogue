@@ -14,10 +14,10 @@
 	db GROWTH_SLOW ; growth rate
 
 	; tm/hm learnset - modeled on Ninetales (Fire)
-	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
-	     RAGE,         DIG,          MIMIC,        DOUBLE_TEAM,  REFLECT,      \
-	     BIDE,         FIRE_BLAST,   SWIFT,        SKULL_BASH,   REST,         \
-	     SUBSTITUTE,   FLAMETHROWER
+	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  COUNTER,      \
+	     RAGE,         SOLARBEAM,    DIG,          MIMIC,        DOUBLE_TEAM,  \
+	     REFLECT,      BIDE,         FIRE_BLAST,   SWIFT,        SKULL_BASH,   \
+	     DREAM_EATER,  REST,         SUBSTITUTE,   FLAMETHROWER
 	; end
 
 	db BANK(HoundourPicFront) ; pic bank

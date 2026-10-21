@@ -1702,7 +1702,7 @@ DragoniteEvosMoves:
     db 25, DRAGON_RAGE
 	db 30, SLAM
 	db 55, WING_ATTACK
-	db 60, HYPER_BEAM
+	db 57, HYPER_BEAM
 	db 0
 ; Tutoring Learnset  
     db 2, FIRE_PUNCH
@@ -2107,7 +2107,7 @@ DratiniEvosMoves:
 	db 20, AGILITY
     db 25, DRAGON_RAGE
 	db 30, SLAM
-	db 60, HYPER_BEAM
+	db 50, HYPER_BEAM
 	db 0
 ; Tutoring Learnset  
     db 2, HEADBUTT
@@ -2130,7 +2130,7 @@ DragonairEvosMoves:
     db 25, DRAGON_RAGE
 	db 30, SLAM
 	db 45, DRAGON_RAGE
-	db 60, HYPER_BEAM
+	db 56, HYPER_BEAM
 	db 0
 ; Tutoring Learnset  
     db 2, HEADBUTT
@@ -3475,11 +3475,15 @@ SeakingEvosMoves:
 BellossomEvosMoves:
 ; Evolutions
 	db 0
-; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid.
-; STUN_SPORE/SLEEP_POWDER already granted at level 1.
+; Learnset 
 	db 15, POISONPOWDER
 	db 17, STUN_SPORE
-	db 19, SLEEP_POWDER
+    db 21, ACID
+    db 25, MEGA_DRAIN
+    db 30, SLEEP_POWDER
+    db 35, PETAL_DANCE
+    db 40, SLUDGE
+    db 50, SOLARBEAM
 	db 0
 ; Tutoring Learnset - none
 	db 0
@@ -4500,12 +4504,12 @@ SlugmaEvosMoves:
 	db 0
 ; Learnset - SMOG already granted at level 1.
 	db 8, EMBER
+    db 12, HARDEN
 	db 15, ROCK_THROW
-	db 22, HARDEN
 	db 29, AMNESIA
 	db 36, FLAMETHROWER
-	db 43, ROCK_SLIDE
-	db 50, BODY_SLAM
+	db 40, ROCK_SLIDE
+	db 45, BODY_SLAM
 	db 0
 ; Tutoring Learnset - none
 	db 0
@@ -4515,12 +4519,12 @@ MagcargoEvosMoves:
 	db 0
 ; Learnset - SMOG/EMBER/ROCK_THROW already granted at level 1.
 	db 8, EMBER
+    db 12, HARDEN
 	db 15, ROCK_THROW
-	db 22, HARDEN
 	db 29, AMNESIA
 	db 36, FLAMETHROWER
-	db 48, ROCK_SLIDE
-	db 60, BODY_SLAM
+	db 42, ROCK_SLIDE
+	db 50, BODY_SLAM
 	db 0
 ; Tutoring Learnset - none
 	db 0
@@ -4683,13 +4687,16 @@ KingdraEvosMoves:
 	db 0
 ; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
 ; BUBBLE/SMOKESCREEN/LEER already granted at level 1.
-	db 19, SMOKESCREEN
-	db 24, LEER
-	db 30, WATER_GUN
-	db 32, PIN_MISSILE
-	db 36, QUICK_ATTACK
-	db 41, AGILITY
-	db 52, HYDRO_PUMP
+	db 10, WATER_GUN
+	db 14, SMOKESCREEN
+	db 18, LEER
+	db 22, BUBBLEBEAM
+	db 26, DRAGON_RAGE
+	db 30, AURORA_BEAM
+	db 33, WATERFALL
+	db 37, AGILITY
+	db 41, SLAM
+	db 45, HYDRO_PUMP
 	db 0
 ; Tutoring Learnset - none
 	db 0
@@ -4756,7 +4763,8 @@ StantlerEvosMoves:
 	db 23, STOMP
 	db 31, SAND_ATTACK
 	db 40, TAKE_DOWN
-	db 49, CONFUSE_RAY
+	db 43, CONFUSE_RAY
+    db 50, DOUBLE_EDGE
 	db 0
 ; Tutoring Learnset - none
 	db 0

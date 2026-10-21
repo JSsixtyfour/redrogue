@@ -14,11 +14,11 @@
 	db GROWTH_FAST ; growth rate
 
 	; tm/hm learnset
-	tmhm RAZOR_WIND,   SUBSTITUTE,   TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  \
-	     HYPER_BEAM,   RAGE,         MEGA_DRAIN,   SOLARBEAM,    PSYCHIC_M,    \
-	     PSYWAVE,      MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     SWIFT,        REST,         COUNTER,     DIG,          SUBMISSION,    \
-         LIGHT_SCREEN, FLASH,        SWORDS_DANCE
+	tmhm MEGA_PUNCH,   RAZOR_WIND,   SUBSTITUTE,   TOXIC,        TAKE_DOWN,    \
+	     DOUBLE_EDGE,  HYPER_BEAM,   RAGE,         MEGA_DRAIN,   SOLARBEAM,    \
+	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        \
+	     REST,         COUNTER,      DIG,          SUBMISSION,   LIGHT_SCREEN, \
+	     FLASH,        SWORDS_DANCE
 	; end
 
 	db BANK(LedianPicFront) ; pic bank

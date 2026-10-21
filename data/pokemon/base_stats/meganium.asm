@@ -15,9 +15,10 @@
 
 	; tm/hm learnset
 	tmhm SWORDS_DANCE, TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
-	     HYPER_BEAM,   RAGE,         MEGA_DRAIN,   SOLARBEAM,    MIMIC,        \
-	     DOUBLE_TEAM,  REFLECT,      BIDE,         REST,         SUBSTITUTE,   \
-	     CUT,          LIGHT_SCREEN, FLASH,        STRENGTH,     EARTHQUAKE
+	     HYPER_BEAM,   COUNTER,      RAGE,         MEGA_DRAIN,   SOLARBEAM,    \
+	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         REST,         \
+	     SUBSTITUTE,   CUT,          LIGHT_SCREEN, FLASH,        STRENGTH,     \
+	     EARTHQUAKE
 	; end
 
 	db BANK(MeganiumPicFront) ; pic bank

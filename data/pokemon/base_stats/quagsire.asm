@@ -18,8 +18,8 @@
 	     DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     HYPER_BEAM,   \
 	     STRENGTH,     SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         \
 	     EARTHQUAKE,   FISSURE,      DIG,          MIMIC,        DOUBLE_TEAM,  \
-	     BIDE,         SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE,   \
-	     SURF,         ROCK_SLIDE,   FLASH
+	     BIDE,         SKULL_BASH,   REST,         SUBSTITUTE,   SURF,         \
+	     ROCK_SLIDE,   FLASH
 	; end
 
 	db BANK(QuagsirePicFront) ; pic bank

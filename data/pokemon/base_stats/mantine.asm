@@ -16,8 +16,8 @@
 	; tm/hm learnset - modeled on Gyarados (Water)
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   \
 	     WATER_GUN,    ICE_BEAM,     BLIZZARD,     RAGE,         MIMIC,        \
-	     DOUBLE_TEAM,  REFLECT,      BIDE,         SKULL_BASH,   REST,         \
-	     SUBSTITUTE,   SURF,         FLY
+	     DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        SKULL_BASH,   \
+	     REST,         ROCK_SLIDE,   SUBSTITUTE,   SURF,         FLY
 	; end
 
 	db BANK(MantinePicFront) ; pic bank

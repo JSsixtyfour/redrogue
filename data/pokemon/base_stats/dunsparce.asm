@@ -16,10 +16,9 @@
 	; tm/hm learnset
 	tmhm DIG,          FLAMETHROWER, TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
 	     DOUBLE_EDGE,  THUNDER_WAVE, REFLECT,      METRONOME,    SOLARBEAM,    \
-	     SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         THUNDERBOLT,  \
-	     THUNDER,      FISSURE,      MIMIC,        DOUBLE_TEAM,  BIDE,         \
-	     SKULL_BASH,   REST,         ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     \
-	     DREAM_EATER
+	     COUNTER,      RAGE,         THUNDERBOLT,  THUNDER,      FISSURE,      \
+	     MIMIC,        DOUBLE_TEAM,  BIDE,         SKULL_BASH,   REST,         \
+	     ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     DREAM_EATER
 	; end
 
 	db BANK(DunsparcePicFront) ; pic bank

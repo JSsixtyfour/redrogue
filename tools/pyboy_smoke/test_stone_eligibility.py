@@ -69,6 +69,9 @@ class StoneEligibilityTest(HarnessTestCase):
                     h.call_routine('CanLoadedMonEvolveWithStone')
                     self.assertEqual(bool(h.last_call_registers['F'] & 0x10),
                                      not group or bool(enabled & group))
+                    if group and not enabled & group:
+                        self.assertFalse(h.last_call_registers['F'] & 0x80,
+                                         'Blocked target should report LOCKED (NZ)')
 
     def presentation_ret(self, _):
         h = self.harness
@@ -129,6 +132,15 @@ class StoneEligibilityTest(HarnessTestCase):
                 self.source(species, form, stone, enabled)
                 h.call_routine('CanLoadedMonEvolveWithStone')
                 self.assertEqual(bool(h.last_call_registers['F'] & 0x10), expected)
+                if not expected:
+                    self.assertEqual(bool(h.last_call_registers['F'] & 0x80),
+                                     species in ('VULPIX', 'JIGGLYPUFF'))
+
+    def test_mist_keeps_able_when_other_branches_are_locked(self):
+        self.baseline()
+        self.source('EEVEE', 0, 'MIST_STONE', 1)
+        self.harness.call_routine('CanLoadedMonEvolveWithStone')
+        self.assertTrue(self.harness.last_call_registers['F'] & 0x10)
 
     def test_mist_chooser_filters_locked_targets_and_reloads_selected_source(self):
         self.baseline()

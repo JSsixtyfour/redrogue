@@ -18,9 +18,9 @@
 	     RAGE,         PSYCHIC_M,    MIMIC,        DOUBLE_TEAM,  REFLECT,      \
 	     BIDE,         SWIFT,        SKY_ATTACK,   REST,         SUBSTITUTE,   \
 	     FLY,          SURF,         STRENGTH,     ICE_BEAM,     BLIZZARD,     \
-	     MEGA_DRAIN,   DRAGON_RAGE,  EARTHQUAKE,   THUNDER,      DREAM_EATER,  \
-	     THUNDERBOLT,  BODY_SLAM,    LIGHT_SCREEN, BUBBLEBEAM,   THUNDER_WAVE, \
-	     PSYWAVE,      WATER_GUN,    RAZOR_WIND
+	     DRAGON_RAGE,  EARTHQUAKE,   THUNDER,      DREAM_EATER,  THUNDERBOLT,  \
+	     BODY_SLAM,    LIGHT_SCREEN, BUBBLEBEAM,   THUNDER_WAVE, PSYWAVE,      \
+	     WATER_GUN,    RAZOR_WIND
 	; end   
 
 	db BANK(LugiaPicFront) ; pic bank

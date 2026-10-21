@@ -14,10 +14,11 @@
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
-	tmhm SELFDESTRUCT, TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
-	     LIGHT_SCREEN, RAGE,         MEGA_DRAIN,   SOLARBEAM,    MIMIC,        \
-	     DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        REST,         \
-	     SUBSTITUTE,   STRENGTH,     ROCK_SLIDE,   EXPLOSION,    HYPER_BEAM
+	tmhm COUNTER,      SELFDESTRUCT, TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
+	     DOUBLE_EDGE,  LIGHT_SCREEN, RAGE,         MEGA_DRAIN,   SOLARBEAM,    \
+	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        \
+	     REST,         SUBSTITUTE,   STRENGTH,     ROCK_SLIDE,   EXPLOSION,    \
+	     HYPER_BEAM
 	; end
 
 	db BANK(ForretressPicFront) ; pic bank

@@ -15,11 +15,11 @@
 
 	; tm/hm learnset - modeled on Persian (fast Normal-type physical
 	; attacker) plus Jynx's Ice-type coverage
-	tmhm TOXIC,        SWORDS_DANCE,    TAKE_DOWN,    DOUBLE_EDGE,  ICE_BEAM,     \
-	     BLIZZARD,     HYPER_BEAM,   RAGE,         MIMIC,        DOUBLE_TEAM,  \
-	     BIDE,         SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE,   \
-		 MEGA_PUNCH,   MEGA_KICK,    COUNTER,      DIG,          STRENGTH,     \
-		 SURF,         REFLECT,      DREAM_EATER,  METRONOME
+	tmhm TOXIC,        SWORDS_DANCE, TAKE_DOWN,    DOUBLE_EDGE,  ICE_BEAM,     \
+	     BLIZZARD,     RAGE,         MIMIC,        DOUBLE_TEAM,  BIDE,         \
+	     SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE,   MEGA_PUNCH,   \
+	     MEGA_KICK,    COUNTER,      DIG,          CUT,          STRENGTH,     \
+	     SURF,         REFLECT,      DREAM_EATER,  METRONOME,    HYPER_BEAM
 	; end
 
 	db BANK(SneaselPicFront) ; pic bank

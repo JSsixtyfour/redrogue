@@ -14,10 +14,11 @@
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset - modeled on Ninetales (Fire) plus Rock coverage
-	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
-	     RAGE,         MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     FIRE_BLAST,   SKULL_BASH,   REST,         ROCK_SLIDE,   SUBSTITUTE,   \
-	     STRENGTH,     FLAMETHROWER
+	tmhm LIGHT_SCREEN, TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
+	     HYPER_BEAM,   RAGE,         EARTHQUAKE,   MIMIC,        DOUBLE_TEAM,  \
+	     REFLECT,      BIDE,         SELFDESTRUCT, FIRE_BLAST,   SKULL_BASH,   \
+	     REST,         EXPLOSION,    ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     \
+	     FLAMETHROWER
 	; end
 
 	db BANK(MagcargoPicFront) ; pic bank

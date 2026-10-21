@@ -14,10 +14,10 @@
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
-	tmhm MEGA_DRAIN,   FLY,    TOXIC,        RAZOR_WIND,    SUBSTITUTE,     \
-	     THUNDER_WAVE,  SWIFT,   DREAM_EATER,      REST, DREAM_EATER,         \
-	     PSYCHIC_M,    LIGHT_SCREEN, MIMIC,        DOUBLE_TEAM,  REFLECT,      \
-	     PSYWAVE                                                               \
+	tmhm DOUBLE_EDGE,  SOLARBEAM,    SKY_ATTACK,   FLY,          TOXIC,        \
+	     RAZOR_WIND,   SUBSTITUTE,   THUNDER_WAVE, SWIFT,        DREAM_EATER,  \
+	     REST,         DREAM_EATER,  PSYCHIC_M,    LIGHT_SCREEN, MIMIC,        \
+	     DOUBLE_TEAM,  REFLECT,      PSYWAVE,      FLASH,        MEGA_DRAIN
 	; end
 
 	db BANK(NatuPicFront) ; pic bank

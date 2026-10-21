@@ -14,11 +14,10 @@
 	db GROWTH_SLOW ; growth rate
 
 	; tm/hm learnset
-	tmhm PSYWAVE,      FLASH,        TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
-	     DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     SUBMISSION,   \
-	     COUNTER,      SEISMIC_TOSS, RAGE,         THUNDERBOLT,  THUNDER,      \
+	tmhm FLASH,        TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   \
+	     WATER_GUN,    ICE_BEAM,     RAGE,         THUNDERBOLT,  THUNDER,      \
 	     MIMIC,        DOUBLE_TEAM,  LIGHT_SCREEN, REFLECT,      BIDE,         \
-	     REST,         THUNDER_WAVE, SUBSTITUTE,   SURF,         STRENGTH
+	     REST,         THUNDER_WAVE, SUBSTITUTE,   SURF
 	; end
 
 	db BANK(ChinchouPicFront) ; pic bank

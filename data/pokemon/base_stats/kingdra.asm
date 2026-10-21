@@ -13,11 +13,10 @@
 	db BUBBLE, SMOKESCREEN, LEER, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
-	; tm/hm learnset - from tmp/kep/data/pokemon/base_stats/kingdra.asm,
-	; already Gen 1 valid
+	; tm/hm learnset
 	tmhm TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    \
 	     ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         DRAGON_RAGE,  \
-	     MIMIC,        DOUBLE_TEAM,  BIDE,         SWIFT,        SKULL_BASH,   \
+	     MIMIC,        DOUBLE_TEAM,  BIDE,         SWIFT,        SKULL_BASH,    \
 	     REST,         SUBSTITUTE,   SURF
 	; end
 

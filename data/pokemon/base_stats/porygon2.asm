@@ -16,9 +16,9 @@
 	; tm/hm learnset
 	tmhm TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  ICE_BEAM,     BLIZZARD,     \
 	     HYPER_BEAM,   RAGE,         THUNDERBOLT,  THUNDER,      PSYCHIC_M,    \
-	     SUBSTITUTE,   MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     SWIFT,        SKULL_BASH,   REST,         THUNDER_WAVE, PSYWAVE,      \
-	     TRI_ATTACK,   FLASH
+	     DREAM_EATER,  SUBSTITUTE,   MIMIC,        DOUBLE_TEAM,  REFLECT,      \
+	     BIDE,         SWIFT,        SKULL_BASH,   REST,         THUNDER_WAVE, \
+	     PSYWAVE,      TRI_ATTACK,   FLASH
 	; end
 
 	db BANK(Porygon2PicFront) ; pic bank

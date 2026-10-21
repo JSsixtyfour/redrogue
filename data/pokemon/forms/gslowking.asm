@@ -26,14 +26,14 @@
 
 	; tm/hm learnset - from tmp/kep/data/pokemon/base_stats/slowking.asm, minus
 	; TELEPORT (not a valid TM/HM move here - KEP's TM list differs from ours)
-	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
-	     DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     BLIZZARD,     \
-	     HYPER_BEAM,   PAY_DAY,      SUBMISSION,   COUNTER,      SEISMIC_TOSS, \
-	     RAGE,         EARTHQUAKE,   FISSURE,      DIG,          PSYCHIC_M,    \
-	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         FLAMETHROWER, \
-	     FIRE_BLAST,   SWIFT,        SKULL_BASH,   REST,         THUNDER_WAVE, \
-	     PSYWAVE,      TRI_ATTACK,   SUBSTITUTE,   SURF,         STRENGTH,     \
-	     FLASH
+	tmhm MEGA_PUNCH,   LIGHT_SCREEN, MEGA_KICK,    TOXIC,        BODY_SLAM,    \
+	     TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     \
+	     BLIZZARD,     HYPER_BEAM,   PAY_DAY,      SUBMISSION,   COUNTER,      \
+	     SEISMIC_TOSS, RAGE,         EARTHQUAKE,   FISSURE,      DIG,          \
+	     PSYCHIC_M,    MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
+	     FLAMETHROWER, METRONOME,    FIRE_BLAST,   SWIFT,        SKULL_BASH,   \
+	     REST,         THUNDER_WAVE, PSYWAVE,      TRI_ATTACK,   SUBSTITUTE,   \
+	     SURF,         STRENGTH,     FLASH
 	; end
 
 	db BANK(GSlowkingPicFront) ; pic bank

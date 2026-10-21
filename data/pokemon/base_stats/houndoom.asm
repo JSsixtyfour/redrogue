@@ -15,9 +15,10 @@
 
 	; tm/hm learnset - modeled on Ninetales/Arcanine (Fire)
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
-	     RAGE,         DIG,          MIMIC,        DOUBLE_TEAM,  REFLECT,      \
-	     BIDE,         FIRE_BLAST,   SWIFT,        SKULL_BASH,   REST,         \
-	     SUBSTITUTE,   FLAMETHROWER
+	     COUNTER,      RAGE,         SOLARBEAM,    DIG,          MIMIC,        \
+	     DOUBLE_TEAM,  REFLECT,      BIDE,         FIRE_BLAST,   SWIFT,        \
+	     SKULL_BASH,   DREAM_EATER,  REST,         SUBSTITUTE,   FLAMETHROWER, \
+	     STRENGTH
 	; end
 
 	db BANK(HoundoomPicFront) ; pic bank

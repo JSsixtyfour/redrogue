@@ -1121,7 +1121,8 @@ IsEvolutionTargetAllowed:
 ; Stone-menu eligibility for the mon already loaded by RedrawPartyMenu_.
 ; Uses the real parser and target gates, including form lists and minimum level.
 ; Mist ignores method/level requirements, but never species-group restrictions.
-; OUT: carry SET = ABLE. Clobbers af, bc, de, hl, wEvoNewForm.
+; OUT: carry SET = ABLE; otherwise Z = NOT ABLE, NZ = region LOCKED.
+; Clobbers af, bc, de, hl, wEvoNewForm.
 CanLoadedMonEvolveWithStone::
 	ld de, wLoadedMon
 	farcall IsFusionMon
@@ -1138,10 +1139,12 @@ CanLoadedMonEvolveWithStone::
 	ld a, [wLoadedMonSpecies]
 	ld d, a
 	call GetEvoListForMon
+	xor a
+	push af                     ; remember any locked candidate across the scan
 .nextEntry
 	ld a, [hli]
 	and a
-	ret z                       ; terminator also clears carry
+	jr z, .done
 	ld b, a
 	call EvoEntryTakeForm
 	ld a, [wEvoStoneItemID]
@@ -1159,8 +1162,8 @@ CanLoadedMonEvolveWithStone::
 	inc hl                      ; target species
 	jr c, .skipTarget
 	call IsEvolutionTargetAllowed
-	ret c
-	jr .skipTarget
+	jr c, .able
+	jr .locked
 .mist
 	ld a, b
 	cp EVOLVE_ITEM
@@ -1173,20 +1176,32 @@ CanLoadedMonEvolveWithStone::
 	call IsEvolutionTargetAllowed
 	ld a, MIST_STONE
 	ld [wEvoStoneItemID], a
-	ret c
-	jr .skipTarget
+	jr c, .able
+	jr .locked
 .mistLevel
 	inc hl
 	call IsEvolutionTargetAllowed
-	ret c
+	jr c, .able
+.locked
+	pop af
+	ld a, 1
+	push af                     ; an allowed later candidate still takes priority
 	jr .skipTarget
 .skipLevelAndTarget
 	inc hl
 .skipTarget
 	inc hl
 	jr .nextEntry
+.done
+	pop af
+	and a                       ; carry clear; NZ only if a candidate was locked
+	ret
+.able
+	pop af
+	scf
+	ret
 .notAble
-	and a
+	xor a
 	ret
 
 ; GetEvoListForMon for readers in OTHER banks, which cannot follow its in-bank

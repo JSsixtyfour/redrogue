@@ -17,8 +17,8 @@
 	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
 	     DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     BLIZZARD,     \
 	     SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         MIMIC,        \
-	     DOUBLE_TEAM,  REFLECT,      BIDE,         SKULL_BASH,   REST,         \
-	     SUBSTITUTE,   SURF,         SWIFT,        LIGHT_SCREEN
+	     DOUBLE_TEAM,  REFLECT,      BIDE,         METRONOME,    SKULL_BASH,   \
+	     REST,         SUBSTITUTE,   SURF,         SWIFT,        LIGHT_SCREEN
 	; end
 
 	db BANK(MarillPicFront) ; pic bank

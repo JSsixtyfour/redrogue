@@ -15,9 +15,9 @@
 
 	; tm/hm learnset
 	tmhm SWORDS_DANCE, TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
-	     RAGE,         MEGA_DRAIN,   SOLARBEAM,    MIMIC,        DOUBLE_TEAM,  \
-	     REFLECT,      BIDE,         REST,         SUBSTITUTE,   CUT,          \
-	     LIGHT_SCREEN, FLASH
+	     COUNTER,      RAGE,         MEGA_DRAIN,   SOLARBEAM,    MIMIC,        \
+	     DOUBLE_TEAM,  REFLECT,      BIDE,         REST,         SUBSTITUTE,   \
+	     CUT,          LIGHT_SCREEN, FLASH
 	; end
 
 	db BANK(ChikoritaPicFront) ; pic bank

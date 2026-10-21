@@ -16,9 +16,8 @@
 	; tm/hm learnset
 	tmhm TOXIC,        TAKE_DOWN,    RAGE,         THUNDERBOLT,  THUNDER,      \
 	     LIGHT_SCREEN, MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     STRENGTH, 	SWIFT,        REST,         THUNDER_WAVE, COUNTER,    \
-	     SUBSTITUTE,   FLASH,        BODY_SLAM,    SUBMISSION,   SEISMIC_TOSS,  \
-		 DOUBLE_EDGE,  STRENGTH,     COUNTER      \
+	     STRENGTH,     SWIFT,        REST,         THUNDER_WAVE, SUBSTITUTE,   \
+	     FLASH,        BODY_SLAM,    DOUBLE_EDGE,  STRENGTH
 	; end
 
 	db BANK(MareepPicFront) ; pic bank

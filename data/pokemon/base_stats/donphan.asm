@@ -14,10 +14,10 @@
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset - modeled on Rhydon (Ground)
-	tmhm WATER_GUN,    STRENGTH,     TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
-	     DOUBLE_EDGE,  HYPER_BEAM,   RAGE,         EARTHQUAKE,   FISSURE,      \
-	     DIG,          MIMIC,        DOUBLE_TEAM,  BIDE,         SKULL_BASH,   \
-	     REST,         ROCK_SLIDE,   SUBSTITUTE
+	tmhm WATER_GUN,    COUNTER,      STRENGTH,     TOXIC,        BODY_SLAM,    \
+	     TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   RAGE,         EARTHQUAKE,   \
+	     FISSURE,      DIG,          MIMIC,        DOUBLE_TEAM,  BIDE,         \
+	     SKULL_BASH,   REST,         ROCK_SLIDE,   SUBSTITUTE
 	; end
 
 	db BANK(DonphanPicFront) ; pic bank

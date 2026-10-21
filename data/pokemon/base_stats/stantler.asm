@@ -14,10 +14,11 @@
 	db GROWTH_SLOW ; growth rate
 
 	; tm/hm learnset - modeled on Kangaskhan (Normal-type)
-	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
-	     DOUBLE_EDGE,  SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         \
-	     EARTHQUAKE,   MIMIC,        DOUBLE_TEAM,  BIDE,         REST,         \
-	     ROCK_SLIDE,   SUBSTITUTE,   STRENGTH
+	tmhm LIGHT_SCREEN, TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
+	     RAGE,         THUNDERBOLT,  EARTHQUAKE,   PSYCHIC_M,    MIMIC,        \
+	     DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        DREAM_EATER,  \
+	     REST,         THUNDER_WAVE, SUBSTITUTE,   STRENGTH,     FLASH,        \
+         PSYWAVE,      HYPER_BEAM
 	; end
 
 	db BANK(StantlerPicFront) ; pic bank

@@ -14,9 +14,10 @@
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset - modeled on Vulpix (Fire-type)
-	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
-	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         FIRE_BLAST,   \
-	     SKULL_BASH,   REST,         SUBSTITUTE,   FLAMETHROWER
+	tmhm LIGHT_SCREEN, TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
+	     RAGE,         MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
+	     SELFDESTRUCT, FIRE_BLAST,   SKULL_BASH,   REST,         ROCK_SLIDE,   \
+	     SUBSTITUTE,   FLAMETHROWER
 	; end
 
 	db BANK(SlugmaPicFront) ; pic bank

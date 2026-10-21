@@ -17,9 +17,8 @@
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  RAGE,         \
 	     EARTHQUAKE,   FISSURE,      DIG,          MIMIC,        DOUBLE_TEAM,  \
 	     BIDE,         SELFDESTRUCT, SKULL_BASH,   REST,         EXPLOSION,    \
-	     ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     SWIFT,        SWIFT,		   \
-		 COUNTER,      MEGA_PUNCH,   MEGA_KICK,    COUNTER,      SEISMIC_TOSS, \
-		 SUBMISSION
+	     ROCK_SLIDE,   SUBSTITUTE,   STRENGTH,     COUNTER,      MEGA_PUNCH,   \
+	     MEGA_KICK,    COUNTER,      SEISMIC_TOSS, SUBMISSION,   SWIFT
 	; end
 
 	db BANK(SudowoodoPicFront) ; pic bank

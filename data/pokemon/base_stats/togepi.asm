@@ -15,12 +15,12 @@
 
 	; tm/hm learnset
 	tmhm MEGA_PUNCH,   MEGA_KICK,    TOXIC,        BODY_SLAM,    TAKE_DOWN,    \
-	     DOUBLE_EDGE,  EGG_BOMB,     SOFTBOILED,   DREAM_EATER,  FLAMETHROWER, \
-	     SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         SOLARBEAM,    \
-	     THUNDERBOLT,  THUNDER,      PSYCHIC_M,    LIGHT_SCREEN, MIMIC,        \
-	     DOUBLE_TEAM,  REFLECT,      BIDE,         METRONOME,    FIRE_BLAST,   \
-	     SKULL_BASH,   REST,         THUNDER_WAVE, PSYWAVE,      TRI_ATTACK,   \
-	     SUBSTITUTE,   FLASH                                                   \
+	     DOUBLE_EDGE,  EGG_BOMB,     SWIFT,        SOFTBOILED,   DREAM_EATER,  \
+	     FLAMETHROWER, SUBMISSION,   COUNTER,      SEISMIC_TOSS, RAGE,         \
+	     SOLARBEAM,    THUNDERBOLT,  THUNDER,      PSYCHIC_M,    LIGHT_SCREEN, \
+	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         METRONOME,    \
+	     FIRE_BLAST,   SKULL_BASH,   REST,         THUNDER_WAVE, PSYWAVE,      \
+	     TRI_ATTACK,   SUBSTITUTE,   FLASH
 	; end
 
 	db BANK(TogepiPicFront) ; pic bank
