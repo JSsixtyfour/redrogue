@@ -95,7 +95,9 @@ AIEnemyTrainerChooseMoves:
 	call AIRunPersonality
 .loopFindMinimumEntries
 ; The harness reads the layer + personality scores at this label (hook_ai_scores,
-; hook_ai_personality_timing), so the reliable-KO pass runs just past it.
+; hook_ai_personality_timing), so the Explosion veto and the reliable-KO pass
+; run just past it. The veto goes first: it clears a vetoed slot's KO bit.
+	call AIExplosionTradeVeto
 	call AIReliableKOWins
 ; Find the minimum among legal, existing slots. Legality is checked here even
 ; if a personality layer wrote scores directly, bypassing the score helpers.
@@ -221,6 +223,131 @@ AIEnemyCountdownSlotIsLive:
 	pop bc
 	ret
 
+; z = the Gambler's Paradise themed AI: a Gambler outside a Money Match (a Money
+; Match Gambler plays as an ordinary route trainer, Phase M). The personality,
+; the reliable-KO pass and the Explosion veto all leave that AI its own rules.
+; Clobbers a.
+AIIsThemedGambler:
+	ld a, [wTrainerClass]
+	cp GAMBLER
+	ret nz
+	ld a, [wMoneyMatchState]
+	bit BIT_MONEY_MATCH_ACTIVE, a
+	ret
+
+; Explosion / Self-Destruct trade veto (2026-10-21, AI_EXPLOSION_PP_SPEC). The
+; measured driver of a healthy mon exploding is AI_DAMAGE's kill bonus (AI_KILL
+; or AI_KILL_FIRST plus the best-damage nudge), which no AI_SMART penalty can
+; offset: Golem at 60% HP scored Explosion 10 against 18-19 for everything else.
+; So this runs after every layer and the personality, just before the
+; reliable-KO pass. A live Explosion slot that is not worth the trade
+; (AIExplosionWorthIt) gets AI_SCORE_MAX, still below AI_SCORE_DISABLED, so a
+; mon with nothing else usable still explodes, and loses its wAIReliableKOFound
+; bit, so AIReliableKOWins cannot raise every other move above it. T0 keeps
+; vanilla behaviour. Clobbers af, bc, de, hl.
+AIExplosionTradeVeto:
+	ld a, [wAITier] ; tier + 1, 0 = unresolved
+	cp AI_TIER_COMPETENT + 1
+	ret c ; unresolved or T0
+	call AIIsThemedGambler
+	ret z
+	ld hl, wEnemyMonMoves
+	ld de, wBuffer
+	lb bc, 1, 1 ; b = slot 1-4, c = its bit in wAIReliableKOFound
+.nextSlot
+	ld a, [hl]
+	cp SELFDESTRUCT
+	jr z, .explodes
+	cp EXPLOSION
+	jr nz, .next
+.explodes
+	call AIEnemySlotIsLive ; preserves bc, de, hl
+	jr z, .next
+	push hl
+	push de
+	push bc
+	call AIExplosionWorthIt
+	pop bc
+	pop de
+	pop hl
+	jr c, .next
+	ld a, AI_SCORE_MAX
+	ld [de], a
+	ld a, [wAIReliableKOFound]
+	or c
+	xor c ; clear this slot's bit
+	ld [wAIReliableKOFound], a
+.next
+	inc hl
+	inc de
+	sla c
+	inc b
+	ld a, b
+	cp NUM_MOVES + 1
+	jr nz, .nextSlot
+	ret
+
+; Carry set if exploding from the slot whose wAIReliableKOFound bit is c is worth
+; the trade. T1 (the cheap guard): below half HP. T2/T3: below a quarter, or the
+; player can KO us this turn, or this slot reliably KOs the player's LAST live
+; mon. That last one wins the battle outright: HandlePlayerMonFainted
+; (core.asm) blacks the player out before it ever looks at our HP. Never into a
+; Substitute at any tier: the blast stops at the sub and the user still faints
+; (ExplodeEffect zeroes our HP unconditionally). Clobbers af, bc, de, hl.
+AIExplosionWorthIt:
+	ld a, [wPlayerBattleStatus2]
+	bit HAS_SUBSTITUTE_UP, a
+	jr nz, .no
+	ld a, [wAITier]
+	cp AI_TIER_SKILLED + 1
+	jp c, AIEnemyHPBelowHalf ; T1
+	push bc
+	call AIEnemyHPBelowQuarter ; clobbers bc
+	pop bc
+	ret c
+	push bc
+	call AIPlayerWouldKO ; cached for this decision
+	pop bc
+	ret c
+	ld a, [wAIReliableKOFound]
+	and c
+	ret z ; not a reliable KO (and carry clear)
+; OR every party mon's HP except the active one (wPlayerMonNumber, which d
+; counts down to).
+	ld hl, wPartyMon1HP
+	ld a, [wPartyCount]
+	ld e, a
+	ld a, [wPlayerMonNumber]
+	ld d, a
+	ld b, 0
+.partyMon
+	ld a, d
+	and a
+	jr z, .skipActive
+	ld a, [hli]
+	or [hl]
+	dec hl
+	or b
+	ld b, a
+.skipActive
+	dec d
+	ld a, l
+	add PARTYMON_STRUCT_LENGTH
+	ld l, a
+	jr nc, .sameHigh
+	inc h
+.sameHigh
+	dec e
+	jr nz, .partyMon
+	ld a, b
+	and a
+	ret nz ; a reserve is alive: the KO does not end the battle
+	scf
+	ret
+.no
+	and a
+	ret
+
 ; A reliable KO always wins outright (2026-10-21, AI review). AI_DAMAGE gives a
 ; reliable kill AI_KILL, but the layers are capped one at a time, not in sum:
 ; seed 39 (autoplay swarm) had WILL's non-lethal, 85%-accurate Fire Blast reach
@@ -237,11 +364,7 @@ AIReliableKOWins:
 	and a
 	ret z
 	ld e, a ; e = the slots that reliably kill (bit 0 = slot 1)
-	ld a, [wTrainerClass]
-	cp GAMBLER
-	jr nz, .findBestKill
-	ld a, [wMoneyMatchState]
-	bit BIT_MONEY_MATCH_ACTIVE, a
+	call AIIsThemedGambler ; clobbers only a
 	ret z ; Gambler's Paradise themed AI, as in AIRunPersonality
 .findBestKill
 	ld hl, wBuffer
@@ -321,11 +444,7 @@ AIScoringPointers:
 ; document's "trainer-class personality forces a plan and skips selection",
 ; expressed as a skip rather than as a plan-table entry.
 AIRunPersonality:
-	ld a, [wTrainerClass]
-	cp GAMBLER
-	jr nz, .softPersonality
-	ld a, [wMoneyMatchState]        ; a Money Match Gambler plays as an
-	bit BIT_MONEY_MATCH_ACTIVE, a   ; ordinary route trainer (Phase M)
+	call AIIsThemedGambler
 	jp z, AIMoveChoiceModification5 ; Gambler's Paradise themed AI
 .softPersonality
 	call AIGetSoftPersonality
@@ -1606,6 +1725,11 @@ GenericAI:
 
 ; end of individual trainer AI routines
 
+; The item-use routines below are assembled only with AI_TRAINER_ITEMS on
+; (2026-10-21): with it off nothing reaches them, and bank $0E needed the room
+; (the Explosion trade veto). Flipping the constant brings all of them back;
+; their tests skip on the same constant.
+IF AI_TRAINER_ITEMS
 DecrementAICount:
 	ld hl, wAICount
 	dec [hl]
@@ -1744,6 +1868,7 @@ AIPrintItemUseAndUpdateHPBar:
 	farcall DrawEnemyHUDAndHPBar ; Shin Red import Phase 13.4: redraw the enemy HUD
 	pop af
 	jp DecrementAICount
+ENDC ; AI_TRAINER_ITEMS
 
 AISwitchIfEnoughMons:
 ; enemy trainer switches if there are 2 or more unfainted mons in party
@@ -1834,6 +1959,7 @@ AIBattleWithdrawText:
 	text_far _AIBattleWithdrawText
 	text_end
 
+IF AI_TRAINER_ITEMS
 AIUseFullHeal:
 	call AIPlayRestoringSFX
 	call AICureStatus
@@ -1884,6 +2010,7 @@ AIUseGuardSpec:
 ;	set GETTING_PUMPED, [hl]
 ;	ld a, DIRE_HIT
 ;	jp AIPrintItemUse
+ENDC ; AI_TRAINER_ITEMS
 
 AICheckIfHPBelowFraction:
 ; return carry if enemy trainer's current HP is below 1 / a of the maximum
@@ -1911,6 +2038,7 @@ AICheckIfHPBelowFraction:
 	sub c
 	ret
 
+IF AI_TRAINER_ITEMS
 AIUseXAttack:
 	ld b, ATTACK_UP1_EFFECT
 	ld a, X_ATTACK
@@ -2026,3 +2154,4 @@ AIPrintItemUse_:
 AIBattleUseItemText:
 	text_far _AIBattleUseItemText
 	text_end
+ENDC ; AI_TRAINER_ITEMS

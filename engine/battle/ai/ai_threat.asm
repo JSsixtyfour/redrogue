@@ -260,7 +260,9 @@ AIHealWouldStillDie::
 ; Full Restore's full-HP heal. Carry SET when a T2/T3 trainer would still be
 ; KO'd after that heal; T0/T1 preserve vanilla item behavior and return clear.
 ; Uses the same visible-moveset and maximum-damage contract as AIHealWouldStillDie.
-; Clobbers af, bc, de, hl.
+; Clobbers af, bc, de, hl. Assembled only with AI_TRAINER_ITEMS on, like the
+; item routines that call it (trainer_ai.asm).
+IF AI_TRAINER_ITEMS
 AIItemHealWouldStillDie::
 	ld b, a
 	ld a, [wAITier]
@@ -308,6 +310,7 @@ AIItemHealWouldStillDie::
 .worthwhile
 	and a
 	ret
+ENDC ; AI_TRAINER_ITEMS
 
 ; B4 switch-in survival (AI_BACKLOG, 2026-09-29). Farcall target from
 ; AIReplacementIsBetter ($2C), NO register inputs: the reserve is the slot in

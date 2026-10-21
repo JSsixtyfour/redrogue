@@ -172,6 +172,8 @@ class RedRogueHarness:
             from ai_heuristics import coverage_labels
 
             for label in coverage_labels(self.repo_root):
+                if label not in self.symbols._symbols:
+                    continue  # e.g. the item routines with AI_TRAINER_ITEMS off
                 self.register_hook(label, self._coverage_callback(label))
 
     def _install_key1_speed_fix(self, rom_data: bytearray) -> None:

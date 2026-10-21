@@ -302,6 +302,9 @@ AISmart_DreamEater:
 ; nothing extra), good when nearly dead anyway (the trade was coming regardless).
 ; Source: pokecrystal AI_Smart_Selfdestruct, HP bands only (no party-count check
 ; here - Phase 4's switching engine is a better home for "is this our last mon").
+; These are only opinions: the decision is AIExplosionTradeVeto (trainer_ai.asm),
+; which runs after every layer, because a lethal Explosion's AI_DAMAGE kill bonus
+; outweighs the full-HP penalty below (measured 2026-10-21).
 AISmart_Explode:
 ; Into a Substitute the blast is absorbed (no spill past a breaking hit) and the
 ; user still faints: never a trade, whatever our HP (Codex follow-up L2,

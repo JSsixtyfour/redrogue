@@ -420,7 +420,7 @@ def run_tier(
         # is the move this benchmark actually selected for the turn.
         turns = harness.hook_turn_telemetry()
         switches = harness.hook_flag("SwitchEnemyMon")
-        items = [
+        items = [  # assembled only with AI_TRAINER_ITEMS on
             harness.hook_flag(label)
             for label in (
                 "AIUseFullRestore", "AIUsePotion", "AIUseSuperPotion",
@@ -430,6 +430,7 @@ def run_tier(
                 "AIUseGuardSpec", "AIUseXAttack",
                 "AIUseXDefend", "AIUseXSpeed",
             )
+            if label in harness.symbols._symbols
         ]
         victories = harness.hook_flag("TrainerBattleVictory")
         defeats = harness.hook_flag("HandlePlayerBlackOut")

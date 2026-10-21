@@ -164,6 +164,7 @@ class TrainerAIItemGateTest(RosterHarnessTestCase):
         self.assertTrue(self.reaches_dispatch(ai_tier=1, ace=False))
 
 
+@unittest.skipUnless(TRAINER_ITEMS, "AI_TRAINER_ITEMS is 0: the item routines are not assembled")
 class AIIncreaseStatGateTest(RosterHarnessTestCase):
     """Called via AIUseXAttack (which hardcodes its own b=effect/a=item id
     and needs no register input), not AIIncreaseStat directly - that routine
@@ -235,6 +236,7 @@ class AIIncreaseStatGateTest(RosterHarnessTestCase):
         )
 
 
+@unittest.skipUnless(TRAINER_ITEMS, "AI_TRAINER_ITEMS is 0: the item routines are not assembled")
 class AIHealItemPayoffTest(RosterHarnessTestCase):
     """Checkpoint D: T2+ skips healing that cannot survive the exchange."""
 

@@ -252,7 +252,8 @@ class AIFullFlowTest(unittest.TestCase):
                     self.word("wBattleMonHP", player_hp)
 
         h.hook_flag("TrainerAI", action=at_trainer_ai)
-        heal = h.hook_flag("AIUseFullHeal")
+        # Not assembled with trainer items off: nothing can reach it, so 0.
+        heal = h.hook_flag("AIUseFullHeal") if TRAINER_ITEMS else {"count": 0}
         no_item = h.hook_flag("TrainerAI.noItem")
         self.assertTrue(self.drive_turns(lambda: heal["count"] + no_item["count"] > 0))
         return heal["count"], no_item["count"]

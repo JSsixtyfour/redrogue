@@ -32,7 +32,13 @@ AILayerDamage:
 	xor a
 	ld [wBuffer + AI_BUF_BESTDMG], a
 	ld [wBuffer + AI_BUF_BESTDMG + 1], a
-	ld [wBuffer + AI_BUF_DMGTIERS], a ; every slot AI_DMG_TIER_NONE
+	ld [wBuffer + AI_BUF_POSSKO], a ; no slot a possible KO yet
+	ld hl, wBuffer + AI_BUF_SLOTDMG ; every slot 0: dead, status and two-turn read 0
+	ld b, NUM_MOVES * 2
+.clearDamage
+	ld [hli], a
+	dec b
+	jr nz, .clearDamage
 	ld a, $ff
 	ld [wBuffer + AI_BUF_BESTSLOT], a
 
@@ -177,8 +183,6 @@ AILayerDamage:
 	ld b, 2
 	call AIDamageReachesFraction
 	jr c, .quarter
-	ld a, AI_DMG_TIER_CHIP
-	call AIDamageRecordTier
 .noChange
 	xor a
 	jr .priorityBonus
@@ -192,8 +196,8 @@ AILayerDamage:
 ; ranking above overwrote, so it comes back from bc (2026-09-30: this used to
 ; re-run AIEstimateDamage, a whole damage formula per killing move, for an
 ; identical result). The loop's hl/de/bc are on the stack.
-	ld a, AI_DMG_TIER_HIGH
-	call AIDamageRecordTier ; preserves bc, the one-hit max
+	ld hl, wBuffer + AI_BUF_POSSKO ; hl is the loop's score pointer, stacked
+	call AIMarkSlotBit ; preserves bc, the one-hit max
 ;
 ; Two-turn moves (CHARGE_EFFECT: Solar Beam, Razor Wind, Skull Bash, Sky Attack,
 ; Dig; FLY_EFFECT: Fly) deal nothing THIS turn, so they never earn a kill tier
@@ -250,13 +254,9 @@ AILayerDamage:
 	ld a, AI_STRONG
 	jr .apply
 .half
-	ld a, AI_DMG_TIER_HIGH
-	call AIDamageRecordTier
 	ld a, AI_STRONG
 	jr .priorityBonus
 .quarter
-	ld a, AI_DMG_TIER_QUARTER
-	call AIDamageRecordTier
 	ld a, AI_NUDGE
 .priorityBonus
 ; F16 (2026-09-02): a small, UNCONDITIONAL preference for a priority move at
@@ -325,6 +325,32 @@ AILayerDamage:
 	ld d, a
 	ld a, [wAIDamageEstimate + 1]
 	ld e, a ; de = this move's expected damage
+; Keep it per slot for the scarce-PP test (AIDamageScarceAlternative). A two-turn
+; move delivers nothing this turn, so it stores 0 and can never stand in for the
+; best move. wEnemyMoveEffect is still this slot's, as at .kill.
+	push hl
+	ld a, [wBuffer + AI_BUF_CURSLOT]
+	add a
+	assert HIGH(wBuffer + AI_BUF_SLOTDMG) == HIGH(wBuffer + AI_BUF_SLOTDMG + NUM_MOVES * 2), \
+		"slot damage store indexes a page-aligned run"
+	add LOW(wBuffer + AI_BUF_SLOTDMG)
+	ld l, a
+	ld h, HIGH(wBuffer + AI_BUF_SLOTDMG)
+	ld a, [wEnemyMoveEffect]
+	cp CHARGE_EFFECT
+	jr z, .storeZero
+	cp FLY_EFFECT
+	jr z, .storeZero
+	ld [hl], d
+	inc hl
+	ld [hl], e
+	jr .stored
+.storeZero
+	xor a
+	ld [hli], a
+	ld [hl], a
+.stored
+	pop hl
 	ld a, [wBuffer + AI_BUF_BESTDMG]
 	ld b, a
 	ld a, [wBuffer + AI_BUF_BESTDMG + 1]
@@ -345,41 +371,58 @@ AILayerDamage:
 ; B9 scarce-PP tiebreak (2026-10-21 AI review). Enemies spend PP and a party
 ; keeps what it spent, so the best move's last PP is worth saving when another
 ; move does the same job. INPUT: a = the best-damage slot (0-3). OUTPUT: a = the
-; slot to give the best-damage nudge: the first OTHER slot in the same damage
-; tier with more than AI_SCARCE_PP left, when the best has AI_SCARCE_PP or less
-; and is not a reliable KO; otherwise the best slot itself. A different tier is
-; never matched, so this only reorders moves the tiers already call equal.
+; slot to give the best-damage nudge: when the best has AI_SCARCE_PP or less and
+; is not a reliable KO, the first OTHER slot with more than AI_SCARCE_PP left that
+;   - delivers this turn (a two-turn move stored 0 damage, see .trackBest),
+;   - needs the SAME number of hits to KO as the best slot, counted from expected
+;     damage against the player's current HP (the best needing more than
+;     AI_SCARCE_MAX_HITS keeps the nudge), and
+;   - is a possible KO if the best is (the hits are expected damage, so a best
+;     that kills only on a high roll counts as 2 hits and keeps that chance);
+; otherwise the best slot itself. Same hits, not a damage ratio: a 0.6x move that
+; still 2HKOs is as good as the best, a 0.9x one that turns a 3HKO into a 4HKO
+; costs a turn (measured, AI_EXPLOSION_PP_SPEC_2026-10-21.md Part B).
 ; Clobbers af, bc, de, hl.
 AIDamageScarceAlternative:
 	ld e, a
 	call .slotPP
 	cp AI_SCARCE_PP + 1
 	jr nc, .keep
-	ld b, e
-	inc b
-	ld a, [wAIReliableKOFound]
-.koBit
-	rrca
-	dec b
-	jr nz, .koBit
-	jr c, .keep ; the best slot reliably KOs: spend the PP
+	ld hl, wAIReliableKOFound
 	ld a, e
-	call AIDamageSlotTier
-	ld d, a ; d = the tier to match
+	call .slotBit
+	jr c, .keep ; the best slot reliably KOs: spend the PP
+	ld b, 0
+.hitsToKO ; b = the smallest n whose n hits of the best reach the player's HP
+	inc b
+	ld a, b
+	cp AI_SCARCE_MAX_HITS + 1
+	jr nc, .keep
+	ld a, e
+	call .reaches
+	jr nc, .hitsToKO
 	ld c, 0
 .candidate
 	ld a, c
 	cp e
 	jr z, .next
-	call AIDamageSlotTier
-	cp d
-	jr nz, .next
 	push de
 	ld e, c
 	call .slotPP
 	pop de
 	cp AI_SCARCE_PP + 1
 	jr c, .next
+	ld a, c
+	call .reaches ; b hits of this slot reach the player's HP
+	jr nc, .next
+	ld hl, wBuffer + AI_BUF_POSSKO
+	ld a, e
+	call .slotBit
+	jr nc, .takeIt ; the best is no possible KO: nothing to preserve
+	ld a, c
+	call .slotBit
+	jr nc, .next
+.takeIt
 	ld a, c
 	ret
 .next
@@ -398,44 +441,55 @@ AIDamageScarceAlternative:
 	ld a, [hl]
 	and PP_MASK
 	ret
-
-; a = an AI_DMG_TIER_* for the slot in AI_BUF_CURSLOT: OR it into
-; AI_BUF_DMGTIERS. Preserves bc, de, hl.
-AIDamageRecordTier:
+; hl = a mask byte, a = slot -> carry = that slot's bit. Preserves bc, de.
+.slotBit
 	push bc
 	ld b, a
-	ld a, [wBuffer + AI_BUF_CURSLOT]
-	inc a
-	ld c, a
-.shift
-	dec c
-	jr z, .placed
-	sla b
-	sla b
-	jr .shift
-.placed
-	ld a, [wBuffer + AI_BUF_DMGTIERS]
-	or b
-	ld [wBuffer + AI_BUF_DMGTIERS], a
+	inc b
+	ld a, [hl]
+.shiftBit
+	rrca
+	dec b
+	jr nz, .shiftBit
 	pop bc
 	ret
-
-; a = slot (0-3) -> a = its AI_DMG_TIER_*. Preserves bc, de, hl.
-AIDamageSlotTier:
+; a = slot, b = hits (1+) -> carry = b hits of that slot's stored expected damage
+; reach the player's current HP. Subtracts from the HP so no sum can overflow.
+; Preserves bc, de. Clobbers af, hl.
+.reaches
 	push bc
-	ld c, a
-	inc c
-	ld a, [wBuffer + AI_BUF_DMGTIERS]
-.shift
-	dec c
-	jr z, .found
-	rrca
-	rrca
-	jr .shift
-.found
-	and %11
+	push de
+	add a
+	add LOW(wBuffer + AI_BUF_SLOTDMG)
+	ld l, a
+	ld h, HIGH(wBuffer + AI_BUF_SLOTDMG)
+	ld a, [hli]
+	ld d, a
+	ld e, [hl]
+	ld a, [wBattleMonHP]
+	ld h, a
+	ld a, [wBattleMonHP + 1]
+	ld l, a
+.hit
+	ld a, l
+	sub e
+	ld l, a
+	ld a, h
+	sbc d
+	ld h, a
+	jr c, .done ; overshot: reached (carry set)
+	or l
+	jr z, .exact
+	dec b
+	jr nz, .hit
+	and a ; not reached: clear carry
+.done
+	pop de
 	pop bc
 	ret
+.exact
+	scf
+	jr .done
 
 ; INPUT: de = the enemy move's one-hit maximum. OUTPUT: bc = the expected damage
 ; the player's Substitute absorbs from it: f(n) = min(n * one hit, Sub HP)
@@ -515,9 +569,12 @@ AIExpectedShieldProgress:
 	jr nz, .addHit
 	ret
 
-; Set the current slot's bit (wBuffer + AI_BUF_CURSLOT, 0-3) in
-; wAIReliableKOFound. Clobbers af; preserves bc, de, hl.
+; Set the current slot's bit (wBuffer + AI_BUF_CURSLOT, 0-3) in the byte at hl.
+; AIMarkReliableKOSlot is the wAIReliableKOFound case. Clobbers af and hl;
+; preserves bc, de.
 AIMarkReliableKOSlot:
+	ld hl, wAIReliableKOFound
+AIMarkSlotBit:
 	push bc
 	ld a, [wBuffer + AI_BUF_CURSLOT]
 	ld b, a
@@ -529,9 +586,7 @@ AIMarkReliableKOSlot:
 	add a
 	jr .shift
 .set
-	ld b, a
-	ld a, [wAIReliableKOFound]
-	or b
-	ld [wAIReliableKOFound], a
+	or [hl]
+	ld [hl], a
 	pop bc
 	ret

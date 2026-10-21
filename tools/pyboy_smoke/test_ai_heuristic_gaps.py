@@ -14,6 +14,9 @@ from harness import RedRogueHarness
 from source_constants import parse_rgbds_constants, parse_trainer_constants
 
 ROOT = Path(__file__).resolve().parents[2]
+# The item routines are assembled only with AI_TRAINER_ITEMS on (2026-10-21).
+TRAINER_ITEMS = bool(parse_rgbds_constants(ROOT / "constants/ai_constants.asm")["AI_TRAINER_ITEMS"])
+ITEMS_OFF = "AI_TRAINER_ITEMS is 0: the item routines are not assembled"
 
 
 class _AIGapsBase(unittest.TestCase):
@@ -499,22 +502,26 @@ class AIItemGapsTest(_AIGapsBase):
         self.h.probe_routine_until(routine, lambda: bool(use["count"] or futile["count"]))
         return "use" if use["count"] else "futile"
 
+    @unittest.skipUnless(TRAINER_ITEMS, ITEMS_OFF)
     def test_hyper_potion_skipped_when_futile(self):
         self.assertEqual(self.probe_use_futile(
             "AIUseHyperPotion", 2,
             self.mon("MEWTWO", ["PSYCHIC_M"]), self.mon("RATTATA", ["TACKLE"])), "futile")
 
+    @unittest.skipUnless(TRAINER_ITEMS, ITEMS_OFF)
     def test_hyper_potion_used_when_it_helps(self):
         self.assertEqual(self.probe_use_futile(
             "AIUseHyperPotion", 2,
             self.mon("SNORLAX", ["SPLASH"]), self.mon("RATTATA", ["TACKLE"]),
             reveal=[0]), "use")
 
+    @unittest.skipUnless(TRAINER_ITEMS, ITEMS_OFF)
     def test_super_potion_skipped_when_futile(self):
         self.assertEqual(self.probe_use_futile(
             "AIUseSuperPotion", 2,
             self.mon("MEWTWO", ["PSYCHIC_M"]), self.mon("RATTATA", ["TACKLE"])), "futile")
 
+    @unittest.skipUnless(TRAINER_ITEMS, ITEMS_OFF)
     def test_super_potion_used_when_it_helps(self):
         self.assertEqual(self.probe_use_futile(
             "AIUseSuperPotion", 2,
@@ -544,24 +551,31 @@ class AIItemGapsTest(_AIGapsBase):
             return "maxed"
         return "would_die"
 
+    @unittest.skipUnless(TRAINER_ITEMS, ITEMS_OFF)
     def test_x_defend_idempotence_skips_a_capped_stat(self):
         self.assertEqual(self.probe_stat_gate("AIUseXDefend", 2, 13, False), "maxed")
 
+    @unittest.skipUnless(TRAINER_ITEMS, ITEMS_OFF)
     def test_x_defend_ko_gate_skips_setup_when_player_would_kill(self):
         self.assertEqual(self.probe_stat_gate("AIUseXDefend", 2, 7, True), "would_die")
 
+    @unittest.skipUnless(TRAINER_ITEMS, ITEMS_OFF)
     def test_x_defend_normal_case_proceeds(self):
         self.assertEqual(self.probe_stat_gate("AIUseXDefend", 2, 7, False), "proceed")
 
+    @unittest.skipUnless(TRAINER_ITEMS, ITEMS_OFF)
     def test_x_speed_idempotence_skips_a_capped_stat(self):
         self.assertEqual(self.probe_stat_gate("AIUseXSpeed", 2, 13, False), "maxed")
 
+    @unittest.skipUnless(TRAINER_ITEMS, ITEMS_OFF)
     def test_x_speed_ko_gate_skips_setup_when_player_would_kill(self):
         self.assertEqual(self.probe_stat_gate("AIUseXSpeed", 2, 7, True), "would_die")
 
+    @unittest.skipUnless(TRAINER_ITEMS, ITEMS_OFF)
     def test_x_speed_normal_case_proceeds(self):
         self.assertEqual(self.probe_stat_gate("AIUseXSpeed", 2, 7, False), "proceed")
 
+    @unittest.skipUnless(TRAINER_ITEMS, ITEMS_OFF)
     def test_guard_spec_reaches_the_unconditional_mist_set(self):
         # AIUseGuardSpec has no internal payoff gate (unlike the heal/X
         # items) and no seam before the bit write to probe either: its very
