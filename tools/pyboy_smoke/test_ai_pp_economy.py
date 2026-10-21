@@ -91,6 +91,13 @@ class SendOutRankingTest(_PPEconomyBase):
         self.spend_party_pp(1, [0])
         self.assertEqual(self.select(), (1, 20))
 
+    def test_night_shade_counts_as_an_attack(self) -> None:
+        # Night Shade has base power 0; only its SPECIAL_DAMAGE_EFFECT marks it as damage.
+        # shipped: (2, 20), the Night Shade reserve ranked as spent
+        self.boot_three(["TACKLE", "NIGHT_SHADE"])
+        self.spend_party_pp(1, [0])
+        self.assertEqual(self.select(), (1, 20))
+
     def test_all_spent_still_sends_out_the_earliest(self) -> None:
         self.boot_three()
         self.spend_party_pp(1)
@@ -123,6 +130,15 @@ class StruggleSwitchTest(_PPEconomyBase):
         self.boot(self.mon("SNORLAX"), [self.mon("PIKACHU"), self.mon("GEODUDE")], tier=2)
         self.harness.reveal_player_moves(0, [0], clear=True)
         self.assertFalse(self.should_switch("TACKLE"))
+
+    def test_struggling_mon_switches_to_a_night_shade_reserve(self) -> None:
+        # shipped: stays, because a Night Shade-only reserve scored AI_SEND_OUT_SPENT too
+        h = self.harness
+        self.boot(self.mon("SNORLAX"),
+                  [self.mon("PIKACHU"), self.mon("GEODUDE", ["NIGHT_SHADE"])], tier=2)
+        h.reveal_player_moves(0, [0], clear=True)
+        self.spend_active_pp()
+        self.assertTrue(self.should_switch())
 
     def test_struggling_stays_when_the_reserve_is_spent_too(self) -> None:
         self.boot_struggling()

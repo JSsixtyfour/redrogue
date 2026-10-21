@@ -322,6 +322,8 @@ AIBuildPlayerThreatTypes::
 	ret
 
 ; B10: carry if move id e (nonzero) has power, counting fixed-damage moves.
+; Night Shade has power 0, so it is caught by SPECIAL_DAMAGE_EFFECT (the same
+; exemption as ai_damage.asm); Sonicboom and the rest have power 1.
 ; Farcall target for AIMonHasDamagingPP (bank $2C), which cannot read Moves.
 ; Runs per reserve move in the switch ranking, so it multiplies by shifts:
 ; AddNTimes loops once per move id (measured +6k cycles a ranking).
@@ -337,10 +339,16 @@ AIMoveIdDealsDamage::
 	add hl, hl
 	add hl, de ; (id - 1) * 6
 	ASSERT MOVE_LENGTH == 6
-	ld de, Moves + 2 ; power
+	ld de, Moves + 1 ; effect, then power
 	ASSERT BANK(Moves) == BANK(@)
 	add hl, de
+	ld a, [hli]
+	cp SPECIAL_DAMAGE_EFFECT
+	jr z, .damaging ; Night Shade: power 0, fixed damage
 	ld a, [hl]
 	cp 1 ; carry iff power 0
 	ccf
+	ret
+.damaging
+	scf
 	ret

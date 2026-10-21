@@ -1085,6 +1085,8 @@ AIStatModifierRatios:
 ;     turn the comparison into a tie.
 ; The Attack/Special split, type matchups, STAB and screens all come from the
 ; engine formula, so no separate stat test is needed.
+; OUTPUT: carry = physical. No carry with a = 0 = no damaging move believed
+; (status and fixed damage only). No carry with a != 0 = special.
 ; Clobbers af, bc, de, hl.
 AIPlayerIsPhysicalThreat::
 	ld bc, 0 ; b = kinds seen (bit 0 physical, bit 1 special), c = slot
@@ -1112,7 +1114,8 @@ AIPlayerIsPhysicalThreat::
 	ld a, b
 	cp %11
 	jr z, .mixed
-	rra ; carry = physical only (%01); %00 and %10 give no carry
+	srl a ; carry = physical only (%01); %00 and %10 give no carry, and only %00 leaves a = 0
+	      ; (not rra: it would rotate the carry that cp %11 just set into bit 7)
 	ret
 
 .mixed
@@ -1181,21 +1184,27 @@ AIPlayerIsPhysicalThreat::
 	pop bc
 	ld a, b
 	rra ; carry = the dominant move is physical
+	ld a, %11 ; ld keeps the carry; nonzero, so a mixed set is never "no damaging move"
 	ret
 
 ; INPUT: a = move id (nonzero). OUTPUT: carry SET if it is damaging (power 2+,
 ; so status and fixed-damage moves are out), with a = its type. Preserves bc.
 .damagingType
-	push bc
 	dec a
-	ld hl, Moves + 2 ; power, then type
+	ld l, a
+	ld h, 0
+	add hl, hl
+	ld d, h
+	ld e, l
+	add hl, hl
+	add hl, de ; (id - 1) * 6
+	ASSERT MOVE_LENGTH == 6
+	ld de, Moves + 2 ; power, then type
 	ASSERT BANK(Moves) == BANK(@)
-	ld bc, MOVE_LENGTH
-	call AddNTimes
+	add hl, de
 	ld a, [hli]
 	cp 2 ; carry = power 0/1
 	ld a, [hl] ; type; ld keeps the flags
-	pop bc
 	ccf
 	ret
 

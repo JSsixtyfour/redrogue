@@ -43,9 +43,11 @@ AILayerRisky:
 	call AIPlayerWouldKO
 	ret nc ; not losing this badly - this layer has no opinion
 
-; Scan our own moveset for an already-reliable win: a move that acts first,
-; whose guaranteed damage (minimum roll, minimum hits) reaches the player, and
-; whose effective hit chance is at least 90%. If one exists, AI_DAMAGE (AI_KILL) and
+; Scan our own moveset for an already-reliable win: a move that acts first AND
+; delivers its damage this turn (not a charge or Fly), whose guaranteed damage
+; (minimum roll, minimum hits) reaches the player, and whose effective hit
+; chance is at least 90%.
+; If one exists, AI_DAMAGE (AI_KILL) and
 ; AI_THREAT's Quick Attack check have already found and scored it - RISKY has
 ; nothing useful to add and should not risk competing with it.
 	ld hl, wEnemyMonMoves
@@ -66,6 +68,11 @@ AILayerRisky:
 	ld a, [wEnemyMovePower]
 	and a
 	jr z, .notGuaranteed ; status move cannot KO
+	ld a, [wEnemyMoveEffect]
+	cp CHARGE_EFFECT
+	jr z, .notGuaranteed ; two-turn moves deliver nothing this turn
+	cp FLY_EFFECT
+	jr z, .notGuaranteed
 	call AIEnemyActsFirstWith
 	jr nc, .notGuaranteed
 	call AIEstimateEnemyDamage ; -> wAIDamageEstimate (one hit, cached)
@@ -189,9 +196,12 @@ AIAnyScoreBelowBaseline:
 	ld hl, wBuffer
 	ld b, NUM_MOVES
 .loop
-	ld a, [hli]
+	call AIEnemyCountdownSlotIsLive ; preserves bc, hl
+	ld a, [hli] ; ld keeps the flags
+	jr z, .next ; a dead slot's score is no real preference
 	cp AI_SCORE_BASE
 	jr c, .yes
+.next
 	dec b
 	jr nz, .loop
 	and a

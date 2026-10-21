@@ -64,14 +64,15 @@ AILayerSmart:
 	                     ; no-op, not a crash
 	call AIEncourage
 .crossCutting
+	push bc ; AISmartCrossCutting leaves the move id in b: keep the slot counter
 	call AISmartCrossCutting ; hl = scorePtr, untouched since the pops above
+	pop bc
 	jr .nextMove
 .notFound
 	pop bc
 	pop de
 	pop hl
-	call AISmartCrossCutting
-	jr .nextMove
+	jr .crossCutting
 .callHandler
 	jp hl
 
@@ -121,17 +122,16 @@ AISmartCrossCutting::
 	ld a, [wEnemyMovePower]
 	and a
 	jr nz, .fatigueCheck
-; AIGetMoveHitChance clobbers bc/de/hl. bc is fine to lose - the dispatcher's
-; own loop termination relies on the movelist pointer in DE hitting a zero
-; byte, not on the loop counter surviving in B (see AILayerSmart's header:
-; every handler is already allowed to clobber bc). DE and HL are NOT safe to
-; lose: DE is that same movelist pointer, and HL is the caller's score
-; pointer. Losing DE here was a real, shipped bug - it let the dispatcher walk
-; past the real move list into unrelated WRAM, calling ReadMove and this
-; routine repeatedly on garbage "moves" until the loop counter happened to hit
-; zero by chance, corrupting scores for slots that were never real moves.
-; Found by a scenario whose result touched wBuffer+3 despite only two moves
-; existing in the set.
+; AIGetMoveHitChance clobbers bc/de/hl. bc is fine to lose here: this routine
+; leaves the move id in b on every path anyway, and AILayerSmart saves its slot
+; counter around the whole call (a full moveset has no zero byte after it, so
+; that counter MUST survive; Pound, id 1, once ended the loop early). DE and
+; HL are NOT safe to lose: DE is the dispatcher's movelist pointer, and HL is
+; the caller's score pointer. Losing DE here was a real, shipped bug - it let
+; the dispatcher walk past the real move list into unrelated WRAM, calling
+; ReadMove and this routine repeatedly on garbage "moves", corrupting scores
+; for slots that were never real moves. Found by a scenario whose result
+; touched wBuffer+3 despite only two moves existing in the set.
 	push de
 	push hl
 	call AIGetMoveHitChance
@@ -624,20 +624,23 @@ AISmart_Evasion:
 
 ; Light Screen / Reflect (AI_BACKLOG B11, 2026-10-21). A screen halves only its
 ; own category, so it is scored against the player's dominant believed attack
-; (AIPlayerIsPhysicalThreat: carry physical, else special; with no damaging move
-; believed it also reports special, which type-guessing makes rare). Matching:
+; (AIPlayerIsPhysicalThreat: carry physical; no carry and a != 0 special; no carry
+; and a = 0 means no damaging move is believed, so no screen has an opinion). Matching:
 ; encouraged at half HP or more, where the body likely lives to benefit; below
 ; half, no change. Wrong category: strongly discouraged, it blocks nothing that
 ; is coming. Before B11 this was HP-only (pokecrystal: discouraged once
 ; damaged), so a Reflect against a pure Slash user scored like Double Team.
 AISmart_Screen:
 	call AIPlayerIsPhysicalThreat ; clobbers af, bc, de, hl; the dispatcher saved them
-	ld a, [wEnemyMoveEffect] ; ld keeps the carry
 	jr c, .physical
+	and a
+	jr z, .noChange ; no damaging attack believed: neither screen blocks anything
+	ld a, [wEnemyMoveEffect]
 	cp LIGHT_SCREEN_EFFECT
 	jr z, .matches
 	jr .wrongCategory
 .physical
+	ld a, [wEnemyMoveEffect]
 	cp REFLECT_EFFECT
 	jr nz, .wrongCategory
 .matches

@@ -910,7 +910,8 @@ AIMoveChoiceModification2:
 	jr .nextMove
 
 ; Sets wBuffer + AI_BUF_PHYSICAL to 1 if the active enemy mon owns at least one
-; damaging move that reads the Attack/Defense stats, else 0.
+; LIVE (not disabled, has PP) damaging move of power 2+ that reads the
+; Attack/Defense stats, else 0.
 ;
 ; Gen 1 decides physical vs special from the move's TYPE, not per move, and the
 ; type constants are laid out so the whole test is one comparison: everything
@@ -932,12 +933,16 @@ AIOwnsPhysicalMove:
 	ld a, [hli]
 	and a
 	jr z, .no ; move list is packed, so a zero ends it
+	call AIEnemyCountdownSlotIsLive
+	jr z, .nextSlot ; disabled or out of PP: a boost cannot help it
+	dec hl
+	ld a, [hli] ; the liveness test clobbered a; ReadMove wants the move id
 	push hl
 	push bc
 	call ReadMove
 	ld a, [wEnemyMovePower]
-	and a
-	jr z, .notThisOne ; status move
+	cp 2
+	jr c, .notThisOne ; status (0) or fixed damage / Super Fang (1): ignores Attack
 	ld a, [wEnemyMoveType]
 	cp SPECIAL
 	jr nc, .notThisOne ; special type: does not read Attack or Defense
@@ -948,6 +953,7 @@ AIOwnsPhysicalMove:
 .notThisOne
 	pop bc
 	pop hl
+.nextSlot
 	dec b
 	jr nz, .scan
 .no
@@ -1034,6 +1040,10 @@ AIMoveChoiceModification3:
 	ld a, [hli]
 	and a
 	jr z, .done
+	call AIEnemyCountdownSlotIsLive
+	jr z, .loopMoves ; a dead slot is no better alternative
+	dec hl
+	ld a, [hli] ; the liveness test clobbered a; ReadMove wants the move id
 	call ReadMove
 	ld a, [wEnemyMoveEffect]
 	cp SUPER_FANG_EFFECT
@@ -1061,7 +1071,7 @@ AIMoveChoiceModification3:
 	; Phase 2b: was `inc [hl]`.
 	ld a, AI_NUDGE
 	call AIDiscourage
-	jr .nextMove
+	jp .nextMove
 ; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
 ;AIMoveChoiceModification4:
 ;	ret
