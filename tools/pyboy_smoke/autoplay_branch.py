@@ -260,17 +260,19 @@ def replay_command(path: Path, key: str, frames: int) -> str:
     except ValueError:
         shown = path
     rom = "" if autoplay.ROM == autoplay.DEBUG_ROM else f" --rom {autoplay.ROM}"
+    cgb = " --cgb" if autoplay.CGB_MODE else ""
     return (f"python3 tools/pyboy_smoke/autoplay_branch.py --state {shown} "
-            f"--key {key} --frames {frames}{rom}")
+            f"--key {key} --frames {frames}{rom}{cgb}")
 
 
 def run_snapshots(seed: int, snapshots: list[Snapshot], *, branches: int, frames: int,
                   freeze_frames: int = FREEZE_FRAMES, heartbeat: Path | None = None,
-                  coverage: bool = False) -> dict[str, object]:
+                  coverage: bool = False, cgb_mode: bool = False) -> dict[str, object]:
     """Every branch of every snapshot, in a fresh emulator. Returns the
     findings (with replay commands) and per-kind totals."""
     started = time.monotonic()
-    harness = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS, rom=autoplay.ROM)
+    harness = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS, rom=autoplay.ROM,
+                              cgb_mode=cgb_mode)
     findings = []
     totals: dict[str, dict[str, int]] = {}
     longest_quiet = {"frames": 0}
@@ -308,6 +310,7 @@ def run_snapshots(seed: int, snapshots: list[Snapshot], *, branches: int, frames
         "snapshots": [{"name": s.name, "frame": s.frame, **s.info} for s in snapshots],
         "branches_per_snapshot": branches,
         "frames_per_branch": frames,
+        "hardware_mode": harness.hardware_mode,
         "totals": totals,
         "longest_quiet": longest_quiet,
         "findings": findings,
@@ -324,10 +327,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--freeze-frames", type=int, default=FREEZE_FRAMES)
     parser.add_argument("--rom", choices=autoplay.ROMS, default=autoplay.DEBUG_ROM,
                         help="the build the state was saved on")
+    parser.add_argument("--cgb", action="store_true",
+                        help="replay the state in CGB mode (default: DMG)")
     args = parser.parse_args(argv)
 
     autoplay.ROM = args.rom
-    harness = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS, rom=args.rom)
+    autoplay.CGB_MODE = args.cgb
+    harness = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS, rom=args.rom,
+                              cgb_mode=args.cgb)
     try:
         driver = BranchDriver(harness, freeze_frames=args.freeze_frames)
         result = driver.run(args.state.read_bytes(), args.key, args.frames)

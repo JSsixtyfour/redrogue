@@ -49,20 +49,22 @@ def parse_seeds(spec: str) -> list[int]:
     return seeds
 
 
-def report_path(seed: int) -> Path:
-    return autoplay.ARTIFACTS / f"{autoplay.stem(seed)}.json"
+def report_path(seed: int, *, rom: str | None = None, cgb_mode: bool | None = None) -> Path:
+    return autoplay.ARTIFACTS / f"{autoplay.stem(seed, rom=rom, cgb_mode=cgb_mode)}.json"
 
 
-def heartbeat_path(seed: int) -> Path:
-    return autoplay.ARTIFACTS / f"{autoplay.stem(seed)}.heartbeat.json"
+def heartbeat_path(seed: int, *, rom: str | None = None, cgb_mode: bool | None = None) -> Path:
+    return autoplay.ARTIFACTS / f"{autoplay.stem(seed, rom=rom, cgb_mode=cgb_mode)}.heartbeat.json"
 
 
 def run_seed(seed: int, options: dict[str, object]) -> dict[str, object]:
-    heartbeat = heartbeat_path(seed)
+    rom = str(options.get("rom", autoplay.DEBUG_ROM))
+    cgb_mode = bool(options.get("cgb_mode", False))
+    heartbeat = heartbeat_path(seed, rom=rom, cgb_mode=cgb_mode)
     heartbeat.parent.mkdir(parents=True, exist_ok=True)
     data = autoplay.play(seed, heartbeat=heartbeat, **options)
     heartbeat.unlink(missing_ok=True)
-    path = report_path(seed)
+    path = report_path(seed, rom=rom, cgb_mode=cgb_mode)
     path.write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")
     finish = next((e for e in reversed(data["events"]) if e["kind"] == "finish"), {})
     return {name: data[name] for name in SUMMARY_FIELDS} | {
@@ -80,17 +82,22 @@ def run_seed(seed: int, options: dict[str, object]) -> dict[str, object]:
         "coverage": (data.get("coverage") or {}).get("hit"),
         "ai_battles": data.get("ai_battles"),
         "ai_telemetry_errors": data.get("ai_telemetry_errors"),
+        "hardware_mode": data.get("hardware_mode", "CGB" if cgb_mode else "DMG"),
+        "screen_checks": data.get("screen_checks"),
         "report": str(path),
     }
 
 
-def hung_row(seed: int, timeout: float) -> dict[str, object]:
+def hung_row(seed: int, timeout: float, options: dict[str, object] | None = None) -> dict[str, object]:
     """A seed killed at the timeout: all that is left is its heartbeat."""
+    options = options or {}
+    rom = str(options.get("rom", autoplay.DEBUG_ROM))
+    cgb_mode = bool(options.get("cgb_mode", False))
     try:
-        beat = json.loads(heartbeat_path(seed).read_text(encoding="utf-8"))
+        beat = json.loads(heartbeat_path(seed, rom=rom, cgb_mode=cgb_mode).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         beat = {}
-    path = report_path(seed)
+    path = report_path(seed, rom=rom, cgb_mode=cgb_mode)
     path.write_text(json.dumps({"seed": seed, "outcome": "hung", "heartbeat": beat}, indent=1) + "\n",
                     encoding="utf-8")
     return {"seed": seed, "outcome": "hung", "stages_cleared": 0, "battles_won": 0,
@@ -98,11 +105,14 @@ def hung_row(seed: int, timeout: float) -> dict[str, object]:
             "detail": f"no result within {timeout:.0f}s (emulator hung, e.g. an illegal opcode); "
                       f"last heartbeat in mode {beat.get('mode')}",
             "run_records": [], "map": beat.get("map"), "position": beat.get("position"),
+            "hardware_mode": "CGB" if cgb_mode else "DMG",
             "anomalies": [], "report": str(path)}
 
 
 def _worker(seed: int, options: dict[str, object], results) -> None:
     try:
+        autoplay.ROM = str(options.get("rom", autoplay.DEBUG_ROM))
+        autoplay.CGB_MODE = bool(options.get("cgb_mode", False))
         results.put((seed, run_seed(seed, options)))
     except BaseException:
         results.put((seed, {"seed": seed, "outcome": "error", "stages_cleared": 0, "battles_won": 0,
@@ -132,7 +142,7 @@ def run_all(seeds: list[int], options: dict[str, object], jobs: int, timeout: fl
                     process.kill()
                     process.join()
                     del running[seed]
-                    yield hung_row(seed, timeout)
+                    yield hung_row(seed, timeout, options)
             continue
         running.pop(seed)[0].join()
         yield row
@@ -237,14 +247,15 @@ def print_ai(ai: dict[str, object], args) -> None:
     if ai["telemetry_errors"]:
         print(f"  TELEMETRY ERRORS in seeds {sorted(ai['telemetry_errors'])}: see the summary")
     extra = (" --new-game" * args.new_game + " --vary" * args.vary + f" --runs {args.runs}" * (args.runs != 1)
-             + f" --player {args.player}" * (args.player != "basic"))
+             + f" --player {args.player}" * (args.player != "basic")
+             + " --cgb" * args.cgb)
     for item in ai["flagged"][:8]:
         print(f"  flagged: seed {item['seed']} run {item['run_index']} {item['opponent']} {item['flags']} "
               f"moves {item['moves']}")
         print(f"    reproduce: python3 tools/pyboy_smoke/autoplay.py --seed {item['seed']}{extra} --ai-telemetry")
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Soak-test Red Rogue with the autoplay agent.")
     parser.add_argument("--seeds", default="1-8", help="e.g. 1-16 or 3,9,12")
     parser.add_argument("--runs", type=int, default=1,
@@ -275,21 +286,35 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--difficulty", choices=autoplay.DIFFICULTIES, default=None,
                         help="LEVELS setting (default HARD, the balance baseline; --vary mixes them)")
     parser.add_argument("--coverage", action="store_true",
-                        help="record which code labels run and write artifacts/coverage_summary.json "
+                        help="record which code labels run and write a mode-specific coverage summary "
                              "(autoplay_coverage.py)")
     parser.add_argument("--timeout", type=float, default=900,
                         help="seconds before a seed counts as hung and is killed")
     parser.add_argument("--rom", choices=autoplay.ROMS, default=autoplay.DEBUG_ROM,
                         help="build to play; the release builds need --new-game")
+    parser.add_argument("--cgb", action="store_true",
+                        help="run the emulator in CGB mode (default: DMG)")
     parser.add_argument("--player", choices=autoplay.PLAYERS, default="basic",
                         help="strong: rewards and gifts on merit, matchup switches")
     parser.add_argument("--ai-telemetry", action="store_true",
                         help="record the enemy AI's choices per trainer battle and add an \"ai\" block "
                              "to the summary (ai_telemetry.py); flags are findings, not failures")
+    return parser
+
+
+def coverage_summary_path(cgb_mode: bool) -> Path:
+    """Return the mode-specific coverage report without carrying stale state."""
+    name = "coverage_summary_cgb.json" if cgb_mode else "coverage_summary.json"
+    return autoplay.ARTIFACTS / name
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
     args = parser.parse_args(argv)
     if args.rom != autoplay.DEBUG_ROM and not args.new_game:
         parser.error(f"--rom {args.rom} has no Debug 2 menu; add --new-game")
     autoplay.ROM = args.rom  # report paths here; play() sets it in each worker
+    autoplay.CGB_MODE = args.cgb
     import coverage_inventory
     coverage_inventory.code_labels(args.rom)  # once, before the workers (autoplay_screen.py)
 
@@ -312,6 +337,7 @@ def main(argv: list[str] | None = None) -> int:
         "vary": args.vary,
         "save_checks": args.save_checks,
         "rom": args.rom,
+        "cgb_mode": args.cgb,
         "player": args.player,
         "ai_telemetry": args.ai_telemetry,
     }
@@ -362,8 +388,10 @@ def main(argv: list[str] | None = None) -> int:
     summary = {"options": options, "outcomes": outcomes, "balance": balance, "menus": menus,
                "branching": branching, "ai": ai,
                "anomalies": dict(sorted(anomalies.items(), key=lambda item: -item[1])), "runs": rows}
-    path = autoplay.ARTIFACTS / ("autoplay_summary.json" if args.rom == autoplay.DEBUG_ROM
-                                 else f"autoplay_summary_{args.rom}.json")
+    summary_name = "autoplay_summary" + ("" if args.rom == autoplay.DEBUG_ROM else f"_{args.rom}")
+    if args.cgb:
+        summary_name += "_cgb"
+    path = autoplay.ARTIFACTS / f"{summary_name}.json"
     path.write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
     print_statistics(balance)
     if ai is not None:
@@ -391,13 +419,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.coverage:
         import autoplay_coverage
 
+        autoplay_coverage.SUMMARY = coverage_summary_path(args.cgb)
         if hit_lists:
             autoplay_coverage.print_summary(autoplay_coverage.write_summary(hit_lists), top=12)
             print(f"  coverage map -> {autoplay_coverage.SUMMARY}")
     for row in failures:
         flags = (" --new-game" * args.new_game + f" --runs {args.runs}" * (args.runs != 1)
                  + f" --rom {args.rom}" * (args.rom != autoplay.DEBUG_ROM)
-                 + f" --player {args.player}" * (args.player != "basic"))
+                 + f" --player {args.player}" * (args.player != "basic")
+                 + " --vary" * args.vary + " --cgb" * args.cgb)
         why = row["outcome"] if row["outcome"] in autoplay.FAILURES else "anomaly"
         print(f"  reproduce: python3 tools/pyboy_smoke/autoplay.py --seed {row['seed']}{flags}"
               f"   # {why} at {row['map']}")

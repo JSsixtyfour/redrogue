@@ -51,6 +51,37 @@ TX_FAR = 0x17
 TX_LAST = TX_FAR
 FIRST_GLYPH = 0x60  # $60-$FF: font_extra and the font (constants/charmap.asm)
 ROM_END = 0x8000
+def visible_palette_rows_are_sane(rows: list[tuple[int, ...]]) -> bool:
+    """Whether at least one palette used by visible BG tiles has color steps.
+
+    Values are the CGB's 15-bit colors. Grayscale rows pass when they contain
+    distinct shades; only fully uniform visible rows are rejected.
+    """
+    return len({color for row in rows for color in row}) > 1
+
+
+def uniform_dmg_palette_mapping(value: int) -> bool:
+    """Whether rBGP maps every pixel shade to the same palette entry."""
+    return len({(value >> shift) & 0x03 for shift in (0, 2, 4, 6)}) == 1
+
+
+def read_cgb_bg_palette(memory, palette: int) -> tuple[int, ...]:
+    """Read one BG palette row as four 15-bit colors, preserving BGPI."""
+    if not 0 <= palette < 8:
+        raise ValueError(f"BG palette must be 0-7, got {palette}")
+    old_index = memory[0xFF68]
+    try:
+        colors = []
+        for color in range(4):
+            index = palette * 8 + color * 2
+            memory[0xFF68] = index
+            low = memory[0xFF69]
+            memory[0xFF68] = index + 1
+            high = memory[0xFF69]
+            colors.append(low | high << 8)
+        return tuple(colors)
+    finally:
+        memory[0xFF68] = old_index
 
 
 class ScreenChecks:
@@ -61,6 +92,11 @@ class ScreenChecks:
         self.record = record
         self.seen: dict[str, dict[str, int]] = {}  # record mode: kind -> verdict -> count
         self.calls: dict[str, int] = {}  # pointers checked per kind
+        self.palette_reload = 0
+        self.palette_checked: set[tuple[int, int]] = set()
+        self.palette_checked_maps: set[int] = set()
+        self.palette_skip_reasons: dict[str, int] = {}
+        self.palette_counts = {"samples": 0, "passed": 0, "failed": 0, "skipped": 0}
         symbols = self.h.symbols
         self.labels = {(bank, address) for bank, entries in symbols._by_bank.items()
                        for address, _ in entries}
@@ -107,6 +143,79 @@ class ScreenChecks:
                         == symbols.address("LoadMonFrontSprite")):
                     self.enemy_pic_returns.add((bank, address + 3))
         self.h.register_hook("LoadMonFrontSprite", self._on_front_pic)
+        self.h.register_hook("JoypadOverworld", self._check_visible_palette)
+        self.h.register_hook("LoadMapData", self._on_map_reload)
+
+    def summary(self) -> dict[str, object]:
+        """Visible BG palette checks performed during an autoplay run."""
+        return {"enabled": self.h.hardware_mode == "CGB", **self.palette_counts,
+                "maps_checked": sorted(self.palette_checked_maps),
+                "map_loads_checked": len(self.palette_checked),
+                "skip_reasons": dict(sorted(self.palette_skip_reasons.items()))}
+
+    def _skip_palette_check(self, reason: str) -> None:
+        self.palette_counts["skipped"] += 1
+        self.palette_skip_reasons[reason] = self.palette_skip_reasons.get(reason, 0) + 1
+
+    def _on_map_reload(self, _context) -> None:
+        self.palette_reload += 1
+
+    def _visible_bg_palette_indices(self, lcdc: int) -> list[int]:
+        """Return CGB palette IDs attached to BG tiles in the visible 20x18 area."""
+        memory = self.h.pyboy.memory
+        tilemap = 0x9C00 if lcdc & 0x08 else 0x9800
+        tile_x, tile_y = memory[0xFF43] // 8, memory[0xFF42] // 8
+        old_vbk = memory[0xFF4F] & 1
+        try:
+            memory[0xFF4F] = 1  # tile attributes occupy VRAM bank 1
+            attributes = [memory[tilemap + ((tile_y + row) & 31) * 32 + ((tile_x + col) & 31)]
+                          for row in range(18) for col in range(20)]
+        finally:
+            memory[0xFF4F] = old_vbk
+        return sorted({attribute & 0x07 for attribute in attributes})
+
+    def _read_bg_palette(self, palette: int) -> tuple[int, ...]:
+        return read_cgb_bg_palette(self.h.pyboy.memory, palette)
+
+    def _check_visible_palette(self, _context) -> None:
+        """Check screen-used BG palettes at a safe input poll on each map load."""
+        if self.h.hardware_mode != "CGB":
+            return
+        map_id = self.h.read8("hCurMap")
+        load = (map_id, self.palette_reload)
+        if load in self.palette_checked:
+            return
+        if (self.h.read8("hIsInBattle") or self.h.read8("hJoyIgnore") & 0xF0
+                or self.h.read8("hSimulatedJoypadStatesIndex")):
+            self._skip_palette_check("input not at idle overworld poll")
+            return
+        memory = self.h.pyboy.memory
+        lcdc = memory[0xFF40]
+        if not lcdc & 0x80 or not lcdc & 0x01:
+            self._skip_palette_check("LCD or BG disabled")
+            return
+        if memory[0xFF41] & 0x03 == 0x03:
+            self._skip_palette_check("PPU drawing visible line")
+            return
+        bgp = memory[0xFF47]
+        if uniform_dmg_palette_mapping(bgp):
+            self._skip_palette_check("uniform rBGP fade mapping")
+            return
+        indices = self._visible_bg_palette_indices(lcdc)
+        if not indices:
+            self._skip_palette_check("no visible BG tiles")
+            return
+        self.palette_checked.add(load)
+        self.palette_checked_maps.add(map_id)
+        rows = [self._read_bg_palette(index) for index in indices]
+        self.palette_counts["samples"] += 1
+        if visible_palette_rows_are_sane(rows):
+            self.palette_counts["passed"] += 1
+        else:
+            self.palette_counts["failed"] += 1
+            self._note("palette", "visible BG palettes are uniform",
+                       f"map ${map_id:02X} load {self.palette_reload}: palette IDs {indices} "
+                       "each contain one repeated color")
 
     def _front_pics(self) -> dict[tuple[int, int], tuple[int, int]]:
         """(species, form) -> (bank, address) of its front pic, from the base

@@ -156,13 +156,14 @@ class Reboot:
     """A fresh emulator on a cartridge RAM image: power on, let the main
     menu check the save, and (if it loads) CONTINUE into the overworld."""
 
-    def __init__(self, sram: bytes):
+    def __init__(self, sram: bytes, *, cgb_mode: bool = False):
         autoplay.ARTIFACTS.mkdir(parents=True, exist_ok=True)
         fd, path = tempfile.mkstemp(suffix=".sram", dir=autoplay.ARTIFACTS)
         os.close(fd)
         self.path = Path(path)
         self.path.write_bytes(sram)
-        self.h = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS, ram_path=self.path, rom=autoplay.ROM)
+        self.h = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS, ram_path=self.path,
+                                 rom=autoplay.ROM, cgb_mode=cgb_mode)
         self.path.unlink()
         self.status: int | None = None
         self.loaded: dict[str, bytes] | None = None
@@ -215,14 +216,14 @@ def checkpoint_kind(regions: dict[str, str]) -> str:
 
 
 def round_trip(h: RedRogueHarness, snapshot, driver: autoplay_branch.BranchDriver | None,
-               key: str) -> dict[str, object]:
+               key: str, *, cgb_mode: bool = False) -> dict[str, object]:
     h.load_state(io.BytesIO(snapshot.state))
     if not settle(h):
         return {"snapshot": snapshot.name, "status": None, "overworld": False,
                 "skipped": "no idle overworld frame to save at"}
     saved = save_now(h)
     sram = sram_image(h)
-    boot = Reboot(sram)
+    boot = Reboot(sram, cgb_mode=cgb_mode)
     try:
         boot.load()
         result = {"snapshot": snapshot.name, "status": boot.status, "overworld": boot.overworld}
@@ -241,7 +242,7 @@ def round_trip(h: RedRogueHarness, snapshot, driver: autoplay_branch.BranchDrive
         boot.close()
 
 
-def power_cuts(h: RedRogueHarness, older, newer) -> list[dict[str, object]]:
+def power_cuts(h: RedRogueHarness, older, newer, *, cgb_mode: bool = False) -> list[dict[str, object]]:
     """Save at `older`, then save again at `newer` and cut power at each step."""
     h.load_state(io.BytesIO(older.state))
     if not settle(h):
@@ -278,7 +279,7 @@ def power_cuts(h: RedRogueHarness, older, newer) -> list[dict[str, object]]:
     cuts.append(("after the save", sram_image(h)))
     results = []
     for name, sram in cuts:
-        boot = Reboot(sram)
+        boot = Reboot(sram, cgb_mode=cgb_mode)
         try:
             boot.load()
             if boot.status != 2:
@@ -293,15 +294,19 @@ def power_cuts(h: RedRogueHarness, older, newer) -> list[dict[str, object]]:
     return results
 
 
-def run_save_checks(seed: int, snapshots: list, *, play_after: bool = True) -> dict[str, object]:
+def run_save_checks(seed: int, snapshots: list, *, play_after: bool = True,
+                    cgb_mode: bool = False) -> dict[str, object]:
     lobbies = [s for s in snapshots if s.kind == "lobby"]
     findings, trips, cut_results = [], [], []
-    h = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS, rom=autoplay.ROM)
-    driver_harness = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS, rom=autoplay.ROM) if play_after else None
+    h = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS, rom=autoplay.ROM,
+                        cgb_mode=cgb_mode)
+    driver_harness = (RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS, rom=autoplay.ROM,
+                                     cgb_mode=cgb_mode) if play_after else None)
     try:
         driver = autoplay_branch.BranchDriver(driver_harness) if driver_harness else None
         for snapshot in lobbies:
-            trip = round_trip(h, snapshot, driver, f"reload/{seed}/{snapshot.name}")
+            trip = round_trip(h, snapshot, driver, f"reload/{seed}/{snapshot.name}",
+                              cgb_mode=cgb_mode)
             trips.append(trip)
             if trip.get("problem") or trip.get("differences") or trip.get("after_load"):
                 findings.append({"check": "round_trip", **trip})
@@ -309,7 +314,7 @@ def run_save_checks(seed: int, snapshots: list, *, play_after: bool = True) -> d
             # Keep interruptions separate from ordinary round-trip findings.
             # Release acceptance must inspect mixed/other outcomes explicitly;
             # a successful command alone does not certify power-cut safety.
-            cut_results.extend(power_cuts(h, older, newer))
+            cut_results.extend(power_cuts(h, older, newer, cgb_mode=cgb_mode))
     finally:
         h.close()
         if driver_harness is not None:
@@ -322,9 +327,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--stages", type=int, default=6)
     parser.add_argument("--new-game", action="store_true")
+    parser.add_argument("--cgb", action="store_true", help="run the emulator in CGB mode")
     args = parser.parse_args(argv)
     data = autoplay.play(args.seed, stages=args.stages, max_frames=1_000_000, new_game=args.new_game,
-                         save_checks=True)
+                         save_checks=True, cgb_mode=args.cgb)
     checks = data["save_checks"]
     print(json.dumps({k: checks[k] for k in ("findings",)}, indent=1))
     for cut in checks["power_cuts"]:

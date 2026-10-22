@@ -51,6 +51,14 @@ IF DEF(_DEBUG)
 	jr nz, .notFight2
 	farjp DebugFight2Entry
 .notFight2
+	; Debug starts bypass MainMenu, but must obtain the same discard consent.
+	push af
+	rfarcall ConfirmNewGameOverwrite
+	jr z, .overwriteConfirmed
+	pop af
+	jp DebugMenu
+.overwriteConfirmed
+	pop af
 	cp 3 ; DEBUG 2?
 	jr z, .debug2
 

@@ -332,6 +332,8 @@ LinkCanceledText:
 	text_end
 
 StartNewGame:
+	rfarcall ConfirmNewGameOverwrite
+	jp nz, MainMenu.mainMenuLoop
 	ld hl, wStatusFlags6
 	; Ensure debug mode is not used when starting a regular new game.
 	; Debug mode persists in saved games for both debug and non-debug builds, and is

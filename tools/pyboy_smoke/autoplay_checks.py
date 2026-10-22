@@ -11,7 +11,8 @@ end. These checks look for the quieter ones while it plays:
 - crash detection: the debug ROM pads every unused byte with $FF (`rst $38`),
   and `rst $00` is `rst $38` too, so a jump into padding, to NULL or into
   garbage arrives at $0038 (the crash screen). That vector is hooked, and
-  between agent steps the CPU must be running ROM with SP inside the stack.
+  between agent steps the CPU must be running ROM with SP inside the stack,
+  except inside validated CGB palette/map copy windows.
   Either ends the run as `crashed` with the crash site, its stack and labels.
   The overworld loop must also poll the joypad at one stack depth: a drift is
   a leaked push or a routine that returns past its caller.
@@ -42,6 +43,18 @@ CRASH_VECTOR = 0x0038
 CRASH_STACK_WORDS = 6
 MAX_ANOMALIES = 40  # distinct findings kept per report; counts keep going
 KEY_ITEM_MAX_TIER = 2  # internal; the Credit Exchange sells TIER 1-3 (credit_mart.asm)
+SCREEN_TILE_COUNT = 20 * 18  # constants: SCREEN_WIDTH * SCREEN_HEIGHT
+
+# CGB palette copies borrow SP as a data pointer. Keep these source-derived
+# windows narrow; unlike harness.SP_TRICK_ROUTINES, they also validate both
+# the live source pointer and the saved normal stack pointer.
+CGB_SP_COPY_WINDOWS = (
+    ("MakeOverworldBGMapAttributes", "MakeOverworldBGMapAttributes.w2ramCopyLoop2_Y",
+     "wTileMap", SCREEN_TILE_COUNT),
+    ("GBCBufferFastTransfer", "GBCBufferFastTransfer_BGPVBlank", 0xD500, 128),
+    ("GBCBufferFastTransfer_OBP0", "GBCBufferFastTransfer_OBP1", 0xD540, 32),
+    ("GBCBufferFastTransfer_OBP1", "CopyGBCFullPalBuffer2to3", 0xD560, 32),
+)
 
 # party_struct (macros/ram.asm)
 MON_SPECIES, MON_HP, MON_MOVES, MON_PP, MON_LEVEL, MON_MAXHP = 0x00, 0x01, 0x08, 0x1D, 0x21, 0x22
@@ -75,6 +88,17 @@ class GameChecks:
         self.stack_top = self.h.address("wStack")
         self.sp_trick_ranges = [self.h.symbols.routine_range(name)
                                 for name in self.h.SP_TRICK_ROUTINES if name in self.h.symbols._symbols]
+        self.sp_copy_windows = []
+        if self.h.hardware_mode == "CGB":
+            for start_label, end_label, source, size in CGB_SP_COPY_WINDOWS:
+                if start_label not in self.h.symbols._symbols or end_label not in self.h.symbols._symbols:
+                    continue
+                start_bank, start = self.h.symbols.get(start_label)
+                end_bank, end = self.h.symbols.get(end_label)
+                if start_bank != end_bank:
+                    continue
+                source_start = self.h.address(source) if isinstance(source, str) else source
+                self.sp_copy_windows.append((start_bank, start, end, source_start, source_start + size))
 
         self.anomalies: list[dict[str, object]] = []
         self.counts: dict[str, int] = {}
@@ -155,14 +179,27 @@ class GameChecks:
             "stack": [self._where(word) for word in words[1:]],
         }
 
-    def _in_sp_trick(self, pc: int) -> bool:
+    def _in_sp_trick(self, pc: int, sp: int) -> bool:
         bank = 0 if pc < 0x4000 else self.h.read8("hLoadedROMBank")
-        return any(bank == r_bank and start <= pc < end for r_bank, start, end in self.sp_trick_ranges)
+        if any(bank == r_bank and start <= pc < end for r_bank, start, end in self.sp_trick_ranges):
+            return True
+        if self.h.hardware_mode != "CGB":
+            return False
+        # These routines save their actual stack in hSPTemp before pointing SP
+        # at a tile or palette buffer. Reject a bad saved pointer or a live SP
+        # that leaves the exact data source window.
+        saved_sp = self.h.read8("hSPTemp") << 8 | self.h.read8("hSPTemp", 1)
+        if not self.stack_top - STACK_SIZE <= saved_sp <= self.stack_top:
+            return False
+        return any(bank == r_bank and start <= pc < end
+                   and source_start <= sp <= source_end
+                   and (sp - source_start) % 2 == 0
+                   for r_bank, start, end, source_start, source_end in self.sp_copy_windows)
 
     def after_step(self) -> None:
         """Between agent steps: the CPU must be in ROM (or HRAM's OAM DMA
-        routine) with SP inside the stack, bar the VBlank copies that borrow
-        SP to pop data."""
+        routine) with SP inside the stack, bar the known map/palette copies
+        that borrow SP to pop data."""
         if self.crash is not None:
             return
         registers = self.h.pyboy.register_file
@@ -175,7 +212,7 @@ class GameChecks:
         if self.stack_top - STACK_SIZE <= sp <= self.stack_top:
             self.stack_armed = True
             self.lowest_sp = min(self.lowest_sp, sp)
-        elif self.stack_armed and not self._in_sp_trick(pc):
+        elif self.stack_armed and not self._in_sp_trick(pc, sp):
             self.crash = {"kind": "stack_out_of_range", "detail": f"SP ${sp:04X} outside the stack",
                           "pc": self._where(pc)}
             return

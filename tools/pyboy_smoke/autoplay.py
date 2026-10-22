@@ -62,11 +62,15 @@ ARTIFACTS = Path(__file__).resolve().parent / "artifacts"
 DEBUG_ROM = "pokeblue_debug"
 ROMS = (DEBUG_ROM, "pokeblue", "pokered")
 ROM = DEBUG_ROM
+CGB_MODE = False
 
 
-def stem(seed: int) -> str:
+def stem(seed: int, *, rom: str | None = None, cgb_mode: bool | None = None) -> str:
     """artifacts/ file stem for a seed, with the build unless it is the debug one."""
-    return f"autoplay_seed{seed}" + ("" if ROM == DEBUG_ROM else f"_{ROM}")
+    build = ROM if rom is None else rom
+    cgb = CGB_MODE if cgb_mode is None else cgb_mode
+    return (f"autoplay_seed{seed}" + ("" if build == DEBUG_ROM else f"_{build}")
+            + ("_cgb" if cgb else ""))
 
 # crashed: autoplay_checks caught a crash; hung: the emulator stopped returning
 # (run_autoplay.py's per-seed timeout, an illegal opcode).
@@ -280,6 +284,7 @@ class AutoplayAgent:
         self.ai_battles: list[dict[str, object]] = []
         self.ai_blackouts_at_start = 0
         self.mem = harness.pyboy.memory
+        self.cgb_wram_wait_frames = 0
         self.rng = random.Random(seed)
         self.battle_policy = battle_policy
         self.door_policy = door_policy
@@ -856,6 +861,18 @@ class AutoplayAgent:
     def position(self) -> tuple[int, int]:
         return self.h.read8("wXCoord"), self.h.read8("wYCoord")
 
+    def game_world_reads_ready(self) -> bool:
+        """Whether D000-DFFF currently selects the game's main WRAM bank.
+
+        In CGB mode bank 0 aliases bank 1. The enhanced-color palette buffers
+        use banks 2 and 3, which overlap the address range holding map and
+        tileset state in bank 1. Agent reads from that range must wait until
+        SVBK selects bank 0 or 1.
+        """
+        if self.h.hardware_mode != "CGB":
+            return True
+        return self.mem[0xFF70] & 0x07 in (0, 1)
+
     def map_size(self) -> tuple[int, int]:
         """In steps."""
         return self.h.read8("wCurMapWidth") * 2, self.h.read8("wCurMapHeight") * 2
@@ -1037,7 +1054,8 @@ class AutoplayAgent:
         self.last_progress_frame = start_frame
         self.run_start["frame"] = start_frame
         self.event("start", map=self.map_name(self.h.read8("hCurMap")),
-                   battle_count=self.h.read8("wBattleCount"))
+                   battle_count=(self.h.read8("wBattleCount")
+                                 if self.game_world_reads_ready() else None))
         try:
             while True:
                 if len(self.report.runs) >= runs:
@@ -1055,8 +1073,10 @@ class AutoplayAgent:
                     self.finish("frame_limit", f"no result within {max_frames} frames")
                     break
                 if self.h.pyboy.frame_count - self.last_progress_frame > self.stall_frames:
+                    mode = (self.mode() if self.game_world_reads_ready()
+                            else "waiting for main WRAM bank")
                     self.finish("stalled", f"no progress for {self.stall_frames} frames "
-                                f"in mode {self.mode()}")
+                                f"in mode {mode}")
                     break
                 self.step()
                 if self.h.hook_errors:
@@ -1081,6 +1101,16 @@ class AutoplayAgent:
     def write_heartbeat(self) -> None:
         """Where the run is, for run_autoplay.py to report if the emulator
         hangs (the worker can then no longer report anything itself)."""
+        if not self.game_world_reads_ready():
+            state = {
+                "frame": self.h.pyboy.frame_count,
+                "map": None,
+                "position": None,
+                "mode": "waiting for main WRAM bank",
+                "last_events": self.report.events[-12:],
+            }
+            self.heartbeat.write_text(json.dumps(state) + "\n", encoding="utf-8")
+            return
         self.heartbeat.write_text(json.dumps({
             "frame": self.h.pyboy.frame_count,
             "map": self.map_name(self.h.read8("hCurMap")),
@@ -1110,7 +1140,8 @@ class AutoplayAgent:
         self.report.outcome = outcome
         self.report.detail = detail
         self.event("finish", outcome=outcome, detail=detail,
-                   map=self.map_name(self.h.read8("hCurMap")), position=self.position(),
+                   map=self.map_name(self.h.read8("hCurMap")),
+                   position=self.position() if self.game_world_reads_ready() else None,
                    last_menu=self.last_menu_caller)
 
     def note_progress(self) -> None:
@@ -1118,6 +1149,8 @@ class AutoplayAgent:
         # circles would never trip the watchdog; neither is a map change, or
         # two rooms ping-ponging would not (only a warp not taken before
         # counts).
+        if not self.game_world_reads_ready():
+            return
         marker = (
             self.report.stages_cleared, len(self.warps_taken), self.report.battles_won,
             len(self.unbeaten_trainers()), len(self.talked), sum(self.choice_showings.values()),
@@ -1149,6 +1182,12 @@ class AutoplayAgent:
 
     def step(self) -> None:
         self.report.steps += 1
+        if not self.game_world_reads_ready():
+            # Let the game finish its CGB palette-buffer work. The outer run
+            # loop still performs crash checks and enforces frame/stall limits.
+            self.cgb_wram_wait_frames += 1
+            self.h.tick(1)
+            return
         self.track_battles()
         current_map = self.h.read8("hCurMap")
         if current_map != self.current_map:
@@ -1861,6 +1900,7 @@ def play(
     vary: bool = False,
     save_checks: bool = False,
     rom: str = DEBUG_ROM,
+    cgb_mode: bool = False,
     player: str = "basic",
     ai_telemetry: bool = False,
 ) -> dict[str, object]:
@@ -1875,10 +1915,11 @@ def play(
     "coverage" lists the labels that ran (coverage_inventory.py, autoplay_coverage.py)."""
     import autoplay_branch  # it imports this module
 
-    global ROM
+    global ROM, CGB_MODE
     if rom != DEBUG_ROM and not new_game:
         raise ValueError(f"{rom} has no Debug 2 menu; play it with new_game")
     ROM = rom
+    CGB_MODE = cgb_mode
     # --vary: this seed's own profile (battle policy, ironman, errands, starter).
     profile = draw_profile(seed) if vary else None
     # HARD, the balance baseline, unless asked; --vary mixes difficulties.
@@ -1902,7 +1943,7 @@ def play(
         coverage_inventory.code_labels(ROM)
     except OSError:
         pass
-    harness = RedRogueHarness(ROOT, ARTIFACTS, ram_path=ram_path, rom=ROM)
+    harness = RedRogueHarness(ROOT, ARTIFACTS, ram_path=ram_path, rom=ROM, cgb_mode=cgb_mode)
     if ram_path is not None:
         ram_path.unlink()
     try:
@@ -1936,16 +1977,22 @@ def play(
         data["anomalies"] = agent.checks.anomalies
         data["menus"] = agent.menu_stats
         data["checks"] = agent.checks.summary()
+        data["screen_checks"] = agent.checks.screen.summary()
         data["player"] = player
+        data["hardware_mode"] = harness.hardware_mode
+        data["cgb_wram_wait_frames"] = agent.cgb_wram_wait_frames
         if telemetry is not None:
             data["ai_battles"] = [{**battle, "seed": seed} for battle in agent.ai_battles]
             data["ai_telemetry_errors"] = telemetry.errors[:20]
         if profile is not None:
             data["profile"] = {**asdict(profile), "errands_run": agent.errand_counts}
-        stored = harness.read8("wOptions2") & parse_rgbds_constants(
-            ROOT / "constants/ram_constants.asm")["DIFFICULTY_MASK"]
-        data["difficulty"] = next((name for name in DIFFICULTIES if parse_rgbds_constants(
-            ROOT / "constants/ram_constants.asm")[f"DIFFICULTY_{name}"] == stored), stored)
+        if agent.game_world_reads_ready():
+            stored = harness.read8("wOptions2") & parse_rgbds_constants(
+                ROOT / "constants/ram_constants.asm")["DIFFICULTY_MASK"]
+            data["difficulty"] = next((name for name in DIFFICULTIES if parse_rgbds_constants(
+                ROOT / "constants/ram_constants.asm")[f"DIFFICULTY_{name}"] == stored), stored)
+        else:
+            data["difficulty"] = None
         if agent.checks.first_anomaly_state is not None:
             path = ARTIFACTS / f"{stem(seed)}_anomaly.state"
             path.write_bytes(agent.checks.first_anomaly_state)
@@ -1963,12 +2010,12 @@ def play(
         if heartbeat is not None:
             heartbeat.write_text(json.dumps({"frame": None, "mode": "save checks", "map": None,
                                              "position": None}) + "\n", encoding="utf-8")
-        data["save_checks"] = save_reload.run_save_checks(seed, lobbies)
+        data["save_checks"] = save_reload.run_save_checks(seed, lobbies, cgb_mode=cgb_mode)
     if reel is not None and branches:
         options = {} if freeze_frames is None else {"freeze_frames": freeze_frames}
         data["branches"] = autoplay_branch.run_snapshots(
             seed, reel.select(snapshots), branches=branches, frames=branch_frames,
-            heartbeat=heartbeat, coverage=coverage, **options)
+            heartbeat=heartbeat, coverage=coverage, cgb_mode=cgb_mode, **options)
         hits |= set(data["branches"].pop("coverage_hits", ()))
     if coverage:
         data["coverage"] = {"hit": sorted(hits), "skipped": skipped}
@@ -1976,7 +2023,7 @@ def play(
     return data
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Play Red Rogue runs with the autoplay agent.")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--runs", type=int, default=1,
@@ -2009,14 +2056,20 @@ def main(argv: list[str] | None = None) -> int:
                         help="LEVELS setting (default HARD, the balance baseline; --vary mixes them)")
     parser.add_argument("--rom", choices=ROMS, default=DEBUG_ROM,
                         help="build to play; the release builds need --new-game")
+    parser.add_argument("--cgb", action="store_true",
+                        help="run the emulator in CGB mode (default: DMG)")
     parser.add_argument("--player", choices=PLAYERS, default="basic",
                         help="strong: rewards and gifts on merit, matchup switches (PLAYERS)")
     parser.add_argument("--ai-telemetry", action="store_true",
                         help="record one AI record per trainer battle (ai_telemetry.py); read-only")
     parser.add_argument("--report", type=Path, default=None,
-                        help="report path (default artifacts/autoplay_seed<N>.json)")
+                        help="report path (default artifacts/autoplay_seed<N>[_cgb].json)")
     parser.add_argument("--quiet", action="store_true", help="do not print events as they happen")
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
 
     data = play(
         args.seed, runs=args.runs, stages=args.stages, max_frames=args.max_frames,
@@ -2025,7 +2078,9 @@ def main(argv: list[str] | None = None) -> int:
         battle_policy=args.battle_policy, door_policy=args.door_policy,
         menu_input=args.menu_input, menu_chaos=args.menu_chaos,
         branches=args.branches, snapshots=args.snapshots, branch_frames=args.branch_frames,
-        coverage=args.coverage, difficulty=args.difficulty, vary=args.vary, save_checks=args.save_checks, rom=args.rom, player=args.player, ai_telemetry=args.ai_telemetry, log=None if args.quiet else print,
+        coverage=args.coverage, difficulty=args.difficulty, vary=args.vary, save_checks=args.save_checks,
+        rom=args.rom, cgb_mode=args.cgb, player=args.player, ai_telemetry=args.ai_telemetry,
+        log=None if args.quiet else print,
     )
     path = args.report or ARTIFACTS / f"{stem(args.seed)}.json"
     path.parent.mkdir(parents=True, exist_ok=True)

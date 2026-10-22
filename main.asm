@@ -53,6 +53,8 @@ INCLUDE "engine/overworld/follower_yellow_test.asm"
 ; bank1 keeps only a farjp stub (DisplayOptionMenu in main_menu.asm).
 INCLUDE "engine/menus/options_menu.asm"
 
+INCLUDE "engine/menus/new_game_consent.asm"
+
 ; Declares its own floating SECTION (see the file header). Reached only by
 ; callfar (from engine/battle/core.asm and engine/battle/experience.asm), so
 ; it doesn't need to live in any particular bank.

@@ -17,6 +17,7 @@ Suites (all by default, in this order):
     audit      make audit (static analyzers, source-only tests)
     lobby      run_autoplay: Debug 2 seeds 1-24, with branching
     newgame    run_autoplay: new-game seeds 1-16, 2 runs, --vary, save checks, coverage map
+    cgb        run_autoplay: CGB seeds 1-4, --vary, save checks, branches, coverage map
     builds     compare_builds: seeds 1-8 on the debug, Blue and Red builds
     sram       sram_fuzz: seeds 1-4
 
@@ -68,15 +69,22 @@ SUITES = {
                  "--new-game", "--runs", "2", "--vary", "--save-checks", "--coverage",
                  "--max-frames", "2500000", "--timeout", "2400"], 7200,
                 ["autoplay_summary.json", "coverage_summary.json"]),
+    "cgb": (["python3", str(SMOKE_DIR / "run_autoplay.py"), "--seeds", "1-4", "--jobs", "2",
+             "--stages", "12", "--vary", "--save-checks", "--coverage", "--cgb",
+             "--branches", "2", "--snapshots", "1", "--branch-frames", "900", "--timeout", "2400"],
+            5400, ["autoplay_summary_cgb.json", "coverage_summary_cgb.json"]),
     "builds": (["python3", str(SMOKE_DIR / "compare_builds.py"), "--seeds", "1-8", "--jobs", "6",
                 "--max-frames", "1000000"], 7200, ["build_compare.json"]),
     "sram": (["python3", str(SMOKE_DIR / "sram_fuzz.py"), "--seeds", "1-4"], 3600, ["sram_fuzz_summary.json"]),
 }
 # --quick: a few seeds per suite, to check the runner itself.
 QUICK = {"lobby": {"--seeds": "1-2"}, "newgame": {"--seeds": "1-2", "--runs": "1"},
+         "cgb": {"--seeds": "1-2", "--stages": "3", "--branches": "1",
+                 "--snapshots": "1", "--branch-frames": "300"},
          "builds": {"--seeds": "1-2"}, "sram": {"--seeds": "1"}}
 # The flags a replay of one autoplay seed needs, per suite.
-REPLAY_FLAGS = {"lobby": "", "newgame": " --new-game --runs 2 --vary --save-checks"}
+REPLAY_FLAGS = {"lobby": "", "newgame": " --new-game --runs 2 --vary --save-checks",
+                "cgb": " --cgb --stages 12 --vary --save-checks --branches 2 --snapshots 1 --branch-frames 900"}
 
 
 def git(*args: str, cwd: Path = ROOT) -> str:
@@ -126,7 +134,8 @@ def run_suite(name: str, worktree: Path, night: Path, quick: bool = False) -> di
 
 
 def autoplay_findings(name: str, worktree: Path, night: Path) -> dict[str, object]:
-    path = night / f"{name}_autoplay_summary.json"
+    summary_name = "autoplay_summary_cgb.json" if name == "cgb" else "autoplay_summary.json"
+    path = night / f"{name}_{summary_name}"
     if not path.exists():
         return {"findings": [{"kind": "no summary", "what": "no summary written", "replay": None}]}
     summary = json.loads(path.read_text(encoding="utf-8"))
