@@ -33,7 +33,7 @@ Pokemon & Items are awarded based on a rarity system
 - And Much, Much More
 
 ## Battle Changes
-- **A new trainer AI.** A ground-up rewrite with four skill tiers that ramp over a run: Must play Hard Mode to experience the highest level AI
+- **Advanced Trainer AI.** A ground-up rewrite with four skill tiers that ramp over a run: Must play Hard Mode to experience the highest level AI.
 - **Tougher teams.** Enemy Pokémon roll real DVs and stat experience that scale with the run. Gym
   leaders use signature moves and Yellow-style special movesets, and many trainers field curated
   competitive sets. AI Trainers no longer miss 25% of status moves.
@@ -89,6 +89,15 @@ Pokemon & Items are awarded based on a rarity system
 - **Redesigned Options** with Enhanced Colors and Enhanced Gamma, 60 FPS, Follower, text speed,
   battle speed (1x, 2x, 4x), battle animations (on, reduced or off), DIFFICULTY, EXP Share, Ironman
   and audio settings.
+
+## Trainer AI Notes
+The is the most advanced RBY Trainer AI that actually plays in the game itself, however there are some caveats and notes:
+- Original RBY "Cheating" Removed
+  - RBY Trainers were "omniscient" . Meaning, they knew every one of your moves before you used them. This was fine when trainers had no tools to act on your moves. In Red Rogue, they do know how to respond to your moves, so trainers now have a system of predicting and learning your moves through a match to make it feel fair.
+  - RBY Trainers made move decisions after you switched or acted, giving them a rather unfair advantage. This was fine when trainers were very simple, but makes them feel cheap with actual coverage options. They now make decisions before your switches and actions for fairness.
+  - RBY Trainers had endless PP, this led to rare soft locks. This was changed to make it feel fair and prevent soft locks.
+- The difficulty ramps as the game goes on, early trainers battle almost identical to basic RBY trainers (picking random moves), the real advanced AI is later and the hardest setting only takes place in Hard Mode.
+- Trainer switch timing was based on their Pokémon's speed stat in RBY. I changed this to match player battles and later games, switches always take priority now.
 
 # Credits
 ## Pokémon Red Rogue Team
