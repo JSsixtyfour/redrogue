@@ -11,7 +11,8 @@ param(
 	[string]$Label = 'Music_TitleScreen',
 	[string]$OutAsm,
 	[switch]$NoBuild,
-	[switch]$NoLaunch
+	[switch]$NoLaunch,
+	[switch]$SelfTest
 )
 
 $ErrorActionPreference = 'Stop'
@@ -142,14 +143,7 @@ function Test-Midi([byte[]]$d) {
 	return ,$problems
 }
 
-# ---------------------------------------------------------------- 1. input
-
-if (-not $Mid) { Fail "No song given. Drag your .mid file onto 'DROP YOUR SONG HERE'." }
-if (-not (Test-Path -LiteralPath $Mid -PathType Leaf)) { Fail "Can't find the file: $Mid" }
-if ([IO.Path]::GetExtension($Mid) -notmatch '^\.midi?$') {
-	Fail "That isn't a MIDI file. Export your song as .mid and drag that onto 'DROP YOUR SONG HERE'."
-}
-if ($Label -notmatch '^Music_[A-Za-z0-9]+$') { Fail "Bad -Label '$Label' (expected Music_SomeName)." }
+# ---------------------------------------------------------------- setup
 
 $kit = $null
 $kitJson = Join-Path $Engine 'kit.json'
@@ -158,145 +152,171 @@ if (Test-Path -LiteralPath $kitJson) { $kit = Get-Content -LiteralPath $kitJson 
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
 if (Test-Path -LiteralPath $ErrLog) { Remove-Item -LiteralPath $ErrLog -Force }
 
-Say "Converting: $([IO.Path]::GetFileName($Mid))" 'Cyan'
+# Steps 1-3: MIDI in, finished song text out. Every failure exits via Fail.
+function ConvertMidi {
+	# ---------------------------------------------------------------- 1. input
 
-$problems = Test-Midi ([IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $Mid).ProviderPath))
-if ($problems.Count) { Fail ($problems -join "`r`n         ") }
+	if (-not $Mid) { Fail "No song given. Drag your .mid file onto 'DROP YOUR SONG HERE'." }
+	if (-not (Test-Path -LiteralPath $Mid -PathType Leaf)) { Fail "Can't find the file: $Mid" }
+	if ([IO.Path]::GetExtension($Mid) -notmatch '^\.midi?$') {
+		Fail "That isn't a MIDI file. Export your song as .mid and drag that onto 'DROP YOUR SONG HERE'."
+	}
+	if ($Label -notmatch '^Music_[A-Za-z0-9]+$') { Fail "Bad -Label '$Label' (expected Music_SomeName)." }
 
-# ---------------------------------------------------------------- 2. pokemid
-# Work on a copy with a plain ASCII path: spaces, apostrophes and accents in
-# the composer's path never reach the tools.
 
-$tmp = Join-Path ([IO.Path]::GetTempPath()) ("rrmusic_" + [Guid]::NewGuid().ToString('N').Substring(0, 8))
-New-Item -ItemType Directory -Force -Path $tmp | Out-Null
-try {
-	Copy-Item -LiteralPath $Mid -Destination (Join-Path $tmp 'in.mid')
-	$r = Invoke-Tool (Join-Path $Engine 'pokemid.exe') @('in.mid', 'out.asm') $tmp
-	$rawAsm = Join-Path $tmp 'out.asm'
-	if ($r.Code -ne 0 -or -not (Test-Path -LiteralPath $rawAsm)) {
-		# pokemid errors look like "pokemid.exe: Measure 3, beat 1: encode: ..."
-		# followed by a Haskell call stack; keep only the first line.
-		$t = $r.Text
-		$first = ($t -split "`r?`n")[0] -replace '^pokemid(\.exe)?:\s*', ''
-		$plain = "The converter couldn't read your MIDI. It said: $first"
-		if ($first -match '(?i)Measure (\d+), beat (\d+).*overlaps') {
-			# Test-Midi already ruled out chords, so this is a marker inside a note.
-			$plain = "At bar $($Matches[1]), beat $($Matches[2]) a note has a begin/end marker or effect inside it. Markers must sit at the start of a note or in a rest."
-		} elseif ($first -match '(?i)no tracks found') {
-			$plain = 'Couldn''t find tracks named Ch1, Ch2, Ch3, Ch4. Rename your tracks (start from Template.mid).'
+	Say "Converting: $([IO.Path]::GetFileName($Mid))" 'Cyan'
+
+	$problems = Test-Midi ([IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $Mid).ProviderPath))
+	if ($problems.Count) { Fail ($problems -join "`r`n         ") }
+
+	# ---------------------------------------------------------------- 2. pokemid
+	# Work on a copy with a plain ASCII path: spaces, apostrophes and accents in
+	# the composer's path never reach the tools.
+
+	$tmp = Join-Path ([IO.Path]::GetTempPath()) ("rrmusic_" + [Guid]::NewGuid().ToString('N').Substring(0, 8))
+	New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+	try {
+		Copy-Item -LiteralPath $Mid -Destination (Join-Path $tmp 'in.mid')
+		$r = Invoke-Tool (Join-Path $Engine 'pokemid.exe') @('in.mid', 'out.asm') $tmp
+		$rawAsm = Join-Path $tmp 'out.asm'
+		if ($r.Code -ne 0 -or -not (Test-Path -LiteralPath $rawAsm)) {
+			# pokemid errors look like "pokemid.exe: Measure 3, beat 1: encode: ..."
+			# followed by a Haskell call stack; keep only the first line.
+			$t = $r.Text
+			$first = ($t -split "`r?`n")[0] -replace '^pokemid(\.exe)?:\s*', ''
+			$plain = "The converter couldn't read your MIDI. It said: $first"
+			if ($first -match '(?i)Measure (\d+), beat (\d+).*overlaps') {
+				# Test-Midi already ruled out chords, so this is a marker inside a note.
+				$plain = "At bar $($Matches[1]), beat $($Matches[2]) a note has a begin/end marker or effect inside it. Markers must sit at the start of a note or in a rest."
+			} elseif ($first -match '(?i)no tracks found') {
+				$plain = 'Couldn''t find tracks named Ch1, Ch2, Ch3, Ch4. Rename your tracks (start from Template.mid).'
+			}
+			Fail $plain $t
 		}
-		Fail $plain $t
+		$lines = Get-Content -LiteralPath $rawAsm
+	} finally {
+		Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
 	}
-	$lines = Get-Content -LiteralPath $rawAsm
-} finally {
-	Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
-}
 
-# ---------------------------------------------------------------- 3. rewrite
-# pokemid emits one global block per channel: "ChN::", then "ChN_loop:",
-# "ChN_loop_sub_K:" etc. Each becomes <Label>_ChN:: with local labels under
-# it. Anything we don't recognise fails loudly: an unrenamed global label
-# collides as soon as two songs are imported.
+	# ---------------------------------------------------------------- 3. rewrite
+	# pokemid emits one global block per channel: "ChN::", then "ChN_loop:",
+	# "ChN_loop_sub_K:" etc. Each becomes <Label>_ChN:: with local labels under
+	# it. Anything we don't recognise fails loudly: an unrenamed global label
+	# collides as soon as two songs are imported.
 
-$blocks = [ordered]@{}
-$cur = $null
-$n = 0
-foreach ($line in $lines) {
-	$n++
-	if ($line -match '^\s*$' -or $line -match '^\s*;') { if ($cur) { $blocks[$cur].Add($line) }; continue }
-	if ($line -match '^(Ch[1-4])::\s*$') {
-		$cur = $Matches[1]
-		if ($blocks.Contains($cur)) { Fail "The MIDI has two tracks named $cur. Each of Ch1-Ch4 can be used once." }
-		$blocks[$cur] = New-Object System.Collections.Generic.List[string]
-		$blocks[$cur].Add("${Label}_${cur}::")
-		continue
-	}
-	if (-not $cur) { Fail "Unexpected converter output before the first channel (line $n)." ($lines -join "`r`n") }
-	if ($line -match '^(Ch[1-4])_(\w+):\s*$') {
-		if ($Matches[1] -ne $cur) { Fail "Converter label $($Matches[1])_$($Matches[2]) appeared inside $cur (line $n)." ($lines -join "`r`n") }
-		$blocks[$cur].Add(".$($Matches[2]):")
-		continue
-	}
-	if ($line -match '^\S') { Fail "Unrecognised converter label '$line' (line $n)." ($lines -join "`r`n") }
-	# operands: ChN_xxx references become .xxx (only within their own channel)
-	$fixed = [regex]::Replace($line, '\b(Ch[1-4])_(\w+)\b', {
-		param($m)
-		if ($m.Groups[1].Value -ne $cur) { Fail "Cross-channel reference '$($m.Value)' in $cur (line $n)." ($lines -join "`r`n") }
-		'.' + $m.Groups[2].Value
-	})
-	if ($fixed -match '\bCh[1-4]\b') { Fail "Unrecognised channel reference '$fixed' (line $n)." ($lines -join "`r`n") }
-	$blocks[$cur].Add($fixed)
-}
-if ($blocks.Count -eq 0) {
-	Fail 'Couldn''t find tracks named Ch1, Ch2, Ch3, Ch4. Rename your tracks (start from Template.mid).' ($lines -join "`r`n")
-}
-
-# Range checks the assembler would NOT catch. "octave 0" assembles to $E8,
-# which is toggle_perfect_pitch, so a too-low note silently becomes garbage.
-foreach ($ch in @($blocks.Keys)) {
-	foreach ($l in $blocks[$ch]) {
-		if ($l -match '^\s*octave\s+(-?\d+)') {
-			$o = [int]$Matches[1]
-			if ($o -lt 1) { Fail "$ch has a note lower than C2 (MIDI note 36). The Game Boy can't play notes that low. Move it up an octave." }
-			if ($o -gt 8) { Fail "$ch has a note higher than the Game Boy can play. Move it down an octave." }
+	$blocks = [ordered]@{}
+	$cur = $null
+	$n = 0
+	foreach ($line in $lines) {
+		$n++
+		if ($line -match '^\s*$' -or $line -match '^\s*;') { if ($cur) { $blocks[$cur].Add($line) }; continue }
+		if ($line -match '^(Ch[1-4])::\s*$') {
+			$cur = $Matches[1]
+			if ($blocks.Contains($cur)) { Fail "The MIDI has two tracks named $cur. Each of Ch1-Ch4 can be used once." }
+			$blocks[$cur] = New-Object System.Collections.Generic.List[string]
+			$blocks[$cur].Add("${Label}_${cur}::")
+			continue
 		}
+		if (-not $cur) { Fail "Unexpected converter output before the first channel (line $n)." ($lines -join "`r`n") }
+		if ($line -match '^(Ch[1-4])_(\w+):\s*$') {
+			if ($Matches[1] -ne $cur) { Fail "Converter label $($Matches[1])_$($Matches[2]) appeared inside $cur (line $n)." ($lines -join "`r`n") }
+			$blocks[$cur].Add(".$($Matches[2]):")
+			continue
+		}
+		if ($line -match '^\S') { Fail "Unrecognised converter label '$line' (line $n)." ($lines -join "`r`n") }
+		# operands: ChN_xxx references become .xxx (only within their own channel)
+		$fixed = [regex]::Replace($line, '\b(Ch[1-4])_(\w+)\b', {
+			param($m)
+			if ($m.Groups[1].Value -ne $cur) { Fail "Cross-channel reference '$($m.Value)' in $cur (line $n)." ($lines -join "`r`n") }
+			'.' + $m.Groups[2].Value
+		})
+		if ($fixed -match '\bCh[1-4]\b') { Fail "Unrecognised channel reference '$fixed' (line $n)." ($lines -join "`r`n") }
+		$blocks[$cur].Add($fixed)
 	}
-}
+	if ($blocks.Count -eq 0) {
+		Fail 'Couldn''t find tracks named Ch1, Ch2, Ch3, Ch4. Rename your tracks (start from Template.mid).' ($lines -join "`r`n")
+	}
 
-# Ch3 (wave) volume: our engine keeps only bits 4-5 of the volume nibble
-# (Audio1_note_type: and $30), so the usable values are 0=mute 1=100% 2=50%
-# 3=25%. pokemid writes velocity-derived 0-15 there, which mutes most notes.
-# Force full volume, and clamp the wave instrument to the real table (0-5;
-# audio/wave_samples.asm has 9 entries and 6-8 repeat 5).
-if ($blocks.Contains('Ch3')) {
-	$b = $blocks['Ch3']
-	for ($i = 0; $i -lt $b.Count; $i++) {
-		if ($b[$i] -match '^(\s*)note_type\s+(\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*$') {
-			$wave = [Math]::Max(0, [Math]::Min(5, [int]$Matches[4]))
-			$b[$i] = "$($Matches[1])note_type $($Matches[2]), 1, $wave"
+	# Range checks the assembler would NOT catch. "octave 0" assembles to $E8,
+	# which is toggle_perfect_pitch, so a too-low note silently becomes garbage.
+	foreach ($ch in @($blocks.Keys)) {
+		foreach ($l in $blocks[$ch]) {
+			if ($l -match '^\s*octave\s+(-?\d+)') {
+				$o = [int]$Matches[1]
+				if ($o -lt 1) { Fail "$ch has a note lower than C2 (MIDI note 36). The Game Boy can't play notes that low. Move it up an octave." }
+				if ($o -gt 8) { Fail "$ch has a note higher than the Game Boy can play. Move it down an octave." }
+			}
 		}
 	}
-	# Velocity changes used to differ only in volume; now they're identical
-	# repeats. Drop a note_type equal to the last one, but only within straight
-	# runs: labels and flow commands reset what "last" means.
-	$last = $null
-	$kept = New-Object System.Collections.Generic.List[string]
-	foreach ($l in $b) {
-		if ($l -match '^\S' -or $l -match '^\s*(sound_call|sound_loop|sound_ret)\b') { $last = $null }
-		elseif ($l -match '^\s*note_type\b') {
-			$norm = ($l -replace '\s+', '')
-			if ($norm -eq $last) { continue }
-			$last = $norm
+
+	# Ch3 (wave) volume: our engine keeps only bits 4-5 of the volume nibble
+	# (Audio1_note_type: and $30), so the usable values are 0=mute 1=100% 2=50%
+	# 3=25%. pokemid writes velocity-derived 0-15 there, which mutes most notes.
+	# Force full volume, and clamp the wave instrument to the real ones (0-4).
+	# audio/wave_samples.asm has 9 pointers: 5-8 all point at .wave5, which has no
+	# data of its own and reads the SFX bytes after it, different in every audio
+	# bank, so it would sound different once the song is imported elsewhere.
+	if ($blocks.Contains('Ch3')) {
+		$b = $blocks['Ch3']
+		for ($i = 0; $i -lt $b.Count; $i++) {
+			if ($b[$i] -match '^(\s*)note_type\s+(\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*$') {
+				$wave = [Math]::Max(0, [Math]::Min(4, [int]$Matches[4]))
+				$b[$i] = "$($Matches[1])note_type $($Matches[2]), 1, $wave"
+			}
 		}
-		$kept.Add($l)
+		# Velocity changes used to differ only in volume; now they're identical
+		# repeats. Drop a note_type equal to the last one, but only within straight
+		# runs: labels and flow commands reset what "last" means.
+		$last = $null
+		$kept = New-Object System.Collections.Generic.List[string]
+		foreach ($l in $b) {
+			if ($l -match '^\S' -or $l -match '^\s*(sound_call|sound_loop|sound_ret)\b') { $last = $null }
+			elseif ($l -match '^\s*note_type\b') {
+				$norm = ($l -replace '\s+', '')
+				if ($norm -eq $last) { continue }
+				$last = $norm
+			}
+			$kept.Add($l)
+		}
+		$blocks['Ch3'] = $kept
 	}
-	$blocks['Ch3'] = $kept
+
+	# Missing channels: the title header plays all four, so each needs a body.
+	$order = @('Ch1', 'Ch2', 'Ch3', 'Ch4')
+	$text = New-Object System.Collections.Generic.List[string]
+	$text.Add("; Converted from $([IO.Path]::GetFileName($Mid)) by the Red Rogue music test kit (pokemid v0.9).")
+	foreach ($ch in $order) {
+		$text.Add('')
+		if ($blocks.Contains($ch)) {
+			$text.AddRange($blocks[$ch])
+		} else {
+			$text.Add("${Label}_${ch}::")
+			$text.Add("`tsound_ret ; not in the MIDI: silent")
+		}
+	}
+	while ($text[$text.Count - 1] -match '^\s*$') { $text.RemoveAt($text.Count - 1) }
+	$songText = ($text -join "`n") + "`n"
+
+	$missing = @($order | Where-Object { -not $blocks.Contains($_) })
+	if ($missing.Count) { Say "  Note: no $($missing -join ', ') track in your MIDI, so that channel stays silent." 'Yellow' }
+	return $songText
 }
 
-# Missing channels: the title header plays all four, so each needs a body.
-$order = @('Ch1', 'Ch2', 'Ch3', 'Ch4')
-$text = New-Object System.Collections.Generic.List[string]
-$text.Add("; Converted from $([IO.Path]::GetFileName($Mid)) by the Red Rogue music test kit (pokemid v0.9).")
-foreach ($ch in $order) {
-	$text.Add('')
-	if ($blocks.Contains($ch)) {
-		$text.AddRange($blocks[$ch])
-	} else {
-		$text.Add("${Label}_${ch}::")
-		$text.Add("`tsound_ret ; not in the MIDI: silent")
+if ($SelfTest) {
+	# Rebuild with the game's own title music: proves the kit's tools, objects
+	# and flags still produce the real ROM. make_music_kit.py byte-compares it.
+	$pristine = Join-Path $Src "$SongFile.orig"
+	if (-not (Test-Path -LiteralPath $pristine)) { $pristine = Join-Path $Src $SongFile }
+	$songText = [IO.File]::ReadAllText($pristine)
+	Say 'Self-test: building the game with its original title music.' 'Cyan'
+} else {
+	$songText = ConvertMidi
+	if ($NoBuild) {
+		if (-not $OutAsm) { Fail '-NoBuild needs -OutAsm.' }
+		[IO.File]::WriteAllText($OutAsm, $songText)
+		Say "Wrote $OutAsm" 'Green'
+		exit 0
 	}
-}
-while ($text[$text.Count - 1] -match '^\s*$') { $text.RemoveAt($text.Count - 1) }
-$songText = ($text -join "`n") + "`n"
-
-$missing = @($order | Where-Object { -not $blocks.Contains($_) })
-if ($missing.Count) { Say "  Note: no $($missing -join ', ') track in your MIDI, so that channel stays silent." 'Yellow' }
-
-if ($NoBuild) {
-	if (-not $OutAsm) { Fail '-NoBuild needs -OutAsm.' }
-	[IO.File]::WriteAllText($OutAsm, $songText)
-	Say "Wrote $OutAsm" 'Green'
-	exit 0
 }
 
 # ---------------------------------------------------------------- 4. build

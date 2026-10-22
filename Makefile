@@ -72,6 +72,7 @@ RGBGFXFLAGS  ?= -Weverything
 	release \
 	save_schema \
 	save_converter \
+	music_kit \
 	tools
 
 all: $(roms)
@@ -118,6 +119,11 @@ tools:
 
 smoke: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_smoke.py $(if $(TEST),--test '$(TEST)')
+
+# The composer's music test kit (tools/music_kit, MUSIC_TEST_KIT_PLAN.md). Needs
+# WSL interop (powershell.exe) and, for the first mGBA download, 7-Zip on Windows.
+music_kit: pokered.gbc
+	python3 tools/music_kit/make_music_kit.py
 
 integration: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_integration.py

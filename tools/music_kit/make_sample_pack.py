@@ -1,0 +1,135 @@
+"""Build the composer's DAW sample pack: WAVs + SFZ instruments that sound like
+the four Game Boy channels as our engine plays them.
+
+    python3 tools/music_kit/make_sample_pack.py <repo_root> <drum_wav_dir> <out_dir>
+
+Ch1/Ch2: the 4 duty cycles as looped square waves (generated: a square is a square).
+Ch3:     our 5 real wave instruments (0-4), read straight from audio/wave_samples.asm.
+Ch4:     the 19 drums, recorded out of the running game by record_title.py drums.
+
+Pitch: squares measured in tune with MIDI note names (+5 cents in PyBoy,
+2026-10-21). Ch3 is placed an octave below written, from the hardware formula
+(wave period is 65536/(2048-x) vs 131072/(2048-x) for the squares). PyBoy's
+wave channel couldn't confirm it; flip CH3_OCTAVE_SHIFT if an ear check in
+BGB/mGBA disagrees.
+"""
+
+import os
+import re
+import shutil
+import struct
+import sys
+import wave
+
+RATE = 48000
+# 11 cycles of A4 (440 Hz) fit exactly in 1200 samples, so the loop is seamless
+# and pitch_keycenter is exact with no tune correction.
+LOOP_LEN = 1200
+LOOP_CYCLES = 11
+KEY_A4 = 69
+CH3_OCTAVE_SHIFT = -1
+LOWEST_KEY = 36   # MIDI below C2 can't be encoded (octave 0 = garbage)
+AMP = 0.45
+
+DUTIES = [("12", 0.125), ("25", 0.25), ("50", 0.5), ("75", 0.75)]  # duty_cycle 0-3
+DRUM_NAMES = [
+    "snare1", "snare2", "snare3", "snare4", "snare5", "triangle1", "triangle2",
+    "snare6", "snare7", "snare8", "snare9", "cymbal1", "cymbal2", "cymbal3",
+    "mutedsnare1", "triangle3", "mutedsnare2", "mutedsnare3", "mutedsnare4",
+]
+NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+
+def note_name(n):
+    return "%s%d" % (NOTE_NAMES[n % 12], n // 12 - 1)
+
+
+def write_wav(path, samples, loop=None):
+    """16-bit mono WAV; with loop=(start, end) also writes a 'smpl' chunk so
+    samplers that ignore SFZ still loop it."""
+    pcm = b"".join(struct.pack("<h", max(-32768, min(32767, int(round(s * 32767))))) for s in samples)
+    with wave.open(path, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(RATE)
+        w.writeframes(pcm)
+    if loop:
+        smpl = struct.pack("<9I", 0, 0, int(1e9 / RATE), KEY_A4, 0, 0, 0, 1, 0)
+        smpl += struct.pack("<6I", 0, 0, loop[0], loop[1], 0, 0)
+        with open(path, "r+b") as f:
+            data = f.read()
+            data += b"smpl" + struct.pack("<I", len(smpl)) + smpl
+            data = data[:4] + struct.pack("<I", len(data) - 8) + data[8:]
+            f.seek(0)
+            f.write(data)
+            f.truncate()
+
+
+def looped(fn):
+    """LOOP_LEN samples of a periodic shape fn(phase 0..1)."""
+    return [fn((i * LOOP_CYCLES / LOOP_LEN) % 1.0) for i in range(LOOP_LEN)]
+
+
+def read_waves(repo):
+    """{index: [32 nibbles]} for .wave0-.wave4 in audio/wave_samples.asm.
+    .wave5 has no data of its own (reads the SFX bytes after it, different per
+    audio bank), so convert.ps1 clamps to 0-4 and there's nothing to sample."""
+    text = open(os.path.join(repo, "audio", "wave_samples.asm")).read()
+    waves = {}
+    for m in re.finditer(r"^\.wave(\d+)\s*\n((?:\s*dn[^\n]*\n)+)", text, re.M):
+        nibs = [int(x) for x in re.findall(r"\d+", "".join(re.findall(r"dn([^\n;]*)", m.group(2))))]
+        if len(nibs) != 32:
+            sys.exit(".wave%s has %d points, expected 32" % (m.group(1), len(nibs)))
+        waves[int(m.group(1))] = nibs
+    if sorted(waves) != list(range(5)):
+        sys.exit("expected .wave0-.wave4 in wave_samples.asm, found %s" % sorted(waves))
+    return waves
+
+
+def sfz_looped(path, sample, keycenter):
+    with open(path, "w", newline="\r\n") as f:
+        f.write("// Red Rogue music kit. Load in any SFZ player (e.g. free sfizz plugin).\n")
+        f.write("<region> sample=%s lokey=%d hikey=127 pitch_keycenter=%d\n" % (sample, LOWEST_KEY, keycenter))
+        f.write("loop_mode=loop_continuous loop_start=0 loop_end=%d amp_veltrack=100 ampeg_release=0.01\n" % (LOOP_LEN - 1))
+
+
+def build(repo, drum_dir, out):
+    if os.path.exists(out):
+        shutil.rmtree(out)
+    for d in ("Ch1 Ch2 - Square", "Ch3 - Wave", "Ch4 - Drums"):
+        os.makedirs(os.path.join(out, d))
+
+    sq = os.path.join(out, "Ch1 Ch2 - Square")
+    for name, duty in DUTIES:
+        base = "square_duty%s" % name
+        write_wav(os.path.join(sq, base + ".wav"), looped(lambda p: AMP if p < duty else -AMP), (0, LOOP_LEN - 1))
+        sfz_looped(os.path.join(sq, base + ".sfz"), base + ".wav", KEY_A4)
+
+    wv = os.path.join(out, "Ch3 - Wave")
+    for idx, nibs in read_waves(repo).items():
+        base = "wave%d" % idx
+        # GB DAC: nibble 0..15 -> +1..-1 (sign doesn't matter for timbre); keep stair steps
+        write_wav(os.path.join(wv, base + ".wav"), looped(lambda p: AMP * (7.5 - nibs[int(p * 32)]) / 7.5), (0, LOOP_LEN - 1))
+        sfz_looped(os.path.join(wv, base + ".sfz"), base + ".wav", KEY_A4 - 12 * CH3_OCTAVE_SHIFT)
+
+    dr = os.path.join(out, "Ch4 - Drums")
+    lines = ["// Red Rogue music kit: the 19 Game Boy drums on MIDI notes 0-18, recorded from the game."]
+    for k, name in enumerate(DRUM_NAMES):
+        src = os.path.join(drum_dir, "drum_%02d.wav" % k)
+        if not os.path.exists(src):
+            sys.exit("missing %s (run record_title.py drums first)" % src)
+        dst = "%02d_%s_%s.wav" % (k, note_name(k).replace("#", "s"), name)
+        shutil.copy(src, os.path.join(dr, dst))
+        lines.append("<region> sample=%s key=%d loop_mode=one_shot amp_veltrack=0" % (dst, k))
+    with open(os.path.join(dr, "GameBoy_Drums.sfz"), "w", newline="\r\n") as f:
+        f.write("\n".join(lines) + "\n")
+
+    print("sample pack: %s" % out)
+
+
+def main():
+    build(*sys.argv[1:4])
+
+
+if __name__ == "__main__":
+    main()

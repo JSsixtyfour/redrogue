@@ -38,8 +38,7 @@
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  HYPER_BEAM,   \
 	     RAGE,         PSYCHIC_M,    MIMIC,        DOUBLE_TEAM,  REFLECT,      \
 	     BIDE,         SWIFT,        SKULL_BASH,   REST,         SUBSTITUTE,   \
-	     FLASH,        PSYWAVE,      DREAM_EATER,  LIGHT_SCREEN, THUNDER_WAVE, \
-	     CUT
+	     FLASH,        PSYWAVE,      DREAM_EATER,  LIGHT_SCREEN, CUT,          \
 	; end
 
 	db BANK(EspeonPicFront) ; pic bank

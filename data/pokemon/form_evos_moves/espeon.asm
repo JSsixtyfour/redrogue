@@ -10,12 +10,11 @@ EspeonFormEvosMoves:
 ; this file is never regenerated.
 ; Learnset
 	db 8, SAND_ATTACK
+	db 16, CONFUSION
 	db 23, QUICK_ATTACK
-	db 26, THUNDERSHOCK
-	db 30, DOUBLE_KICK
-	db 36, THUNDERBOLT
-	db 39, PIN_MISSILE
-	db 41, AGILITY
-	db 47, THUNDER_WAVE
-	db 52, THUNDER
+	db 30, SWIFT
+	db 32, PSYBEAM
+	db 40, LIGHT_SCREEN
+	db 45, PSYCHIC
+	db 50, RECOVER
 	db 0
