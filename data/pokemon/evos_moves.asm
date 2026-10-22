@@ -448,6 +448,15 @@ NidokingEvosMoves:
     db 2, FIRE_PUNCH
     db 2, THUNDERPUNCH
     db 2, ICE_PUNCH
+    db 2, DEFENSE_CURL ; inherited from Nidorino
+    db 2, HEADBUTT ; inherited from Nidorino
+    db 2, AMNESIA ; inherited from Nidorino
+    db 2, CONFUSION ; inherited from Nidorino
+    db 2, COUNTER ; inherited from Nidorino
+    db 2, DISABLE ; inherited from Nidorino
+    db 2, SUPERSONIC ; inherited from Nidorino
+    db 2, LOVELY_KISS ; inherited from Nidorino
+    db 2, STRENGTH ; inherited from Nidorino
     db 0    
 	
 SlowbroEvosMoves:
@@ -616,6 +625,7 @@ GengarEvosMoves:
     db 2, ICE_PUNCH
     db 2, THUNDERPUNCH
     db 2, HEADBUTT
+    db 2, HAZE ; inherited from Haunter
     db 0
 
 NidoranFEvosMoves:
@@ -662,6 +672,7 @@ NidoqueenEvosMoves:
     db 2, FIRE_PUNCH
     db 2, ICE_PUNCH
     db 2, THUNDERPUNCH
+    db 2, STRENGTH ; inherited from Nidorina
     db 0
 
 CuboneEvosMoves:
@@ -786,6 +797,7 @@ GyaradosEvosMoves:
 ; Tutoring Learnset   
     db 2, BUBBLE
     db 2, HEADBUTT
+    db 2, DRAGON_RAGE ; inherited from Magikarp
     db 0
 
 ShellderEvosMoves:
@@ -2696,7 +2708,8 @@ CrobatEvosMoves:
 	db 47, HAZE
 	db 51, AGILITY
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, QUICK_ATTACK ; inherited from Golbat
 	db 0
 
 DodrioEvosMoves:
@@ -3162,7 +3175,9 @@ ElectrodeEvosMoves:
 	db 44, EXPLOSION
 	db 50, THUNDER
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, AGILITY ; inherited from Voltorb
+	db 2, HEADBUTT ; inherited from Voltorb
 	db 0
 
 ClefableEvosMoves:
@@ -3180,6 +3195,15 @@ ClefableEvosMoves:
 ; Tutoring Learnset  
     db 2, HEADBUTT
     db 2, AGILITY
+    db 2, DREAM_EATER ; inherited from Clefairy
+    db 2, FIRE_PUNCH ; inherited from Clefairy
+    db 2, THUNDERPUNCH ; inherited from Clefairy
+    db 2, ICE_PUNCH ; inherited from Clefairy
+    db 2, DIZZY_PUNCH ; inherited from Clefairy
+    db 2, AMNESIA ; inherited from Clefairy
+    db 2, SPLASH ; inherited from Clefairy
+    db 2, PETAL_DANCE ; inherited from Clefairy
+    db 2, SWIFT ; inherited from Clefairy
     db 0 
 WeezingEvosMoves:
 ; Evolutions
@@ -3488,7 +3512,9 @@ BellossomEvosMoves:
     db 40, SLUDGE
     db 50, SOLARBEAM
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, FLASH ; inherited from Gloom
+	db 2, RAZOR_LEAF ; inherited from Gloom
 	db 0
 
 MarillEvosMoves:
@@ -3738,7 +3764,16 @@ PolitoedEvosMoves:
 ; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid.
 ; HYPNOSIS/WATER_GUN/DOUBLESLAP/BODY_SLAM already granted at level 1.
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, DEFENSE_CURL ; inherited from Poliwhirl
+	db 2, WATERFALL ; inherited from Poliwhirl
+	db 2, HEADBUTT ; inherited from Poliwhirl
+	db 2, HAZE ; inherited from Poliwhirl
+	db 2, MIST ; inherited from Poliwhirl
+	db 2, SPLASH ; inherited from Poliwhirl
+	db 2, GROWTH ; inherited from Poliwhirl
+	db 2, ICE_PUNCH ; inherited from Poliwhirl
+	db 2, LOVELY_KISS ; inherited from Poliwhirl
 	db 0
 
 MagnemiteEvosMoves:
@@ -4220,7 +4255,10 @@ SlowkingEvosMoves:
 	db 44, AMNESIA
 	db 55, PSYCHIC_M
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, TACKLE ; inherited from Slowpoke
+	db 2, DREAM_EATER ; inherited from Slowpoke
+	db 2, STOMP ; inherited from Slowpoke
 	db 0
 
 MisdreavusEvosMoves:
@@ -4343,7 +4381,9 @@ SteelixEvosMoves:
 	db 43, EARTHQUAKE
 	db 48, BIND
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, HEADBUTT ; inherited from Onix
+	db 2, SHARPEN ; inherited from Onix
 	db 0
     
 
@@ -4412,7 +4452,12 @@ ScizorEvosMoves:
 	db 48, DOUBLE_TEAM
 	db 54, SWORDS_DANCE
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, HEADBUTT ; inherited from Scyther
+	db 2, COUNTER ; inherited from Scyther
+	db 2, LIGHT_SCREEN ; inherited from Scyther
+	db 2, RAZOR_WIND ; inherited from Scyther
+	db 2, SONICBOOM ; inherited from Scyther
 	db 0
 
 ShuckleEvosMoves:
@@ -4701,7 +4746,14 @@ KingdraEvosMoves:
 	db 41, SLAM
 	db 45, HYDRO_PUMP
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, HEADBUTT ; inherited from Seadra
+	db 2, WATERFALL ; inherited from Seadra
+	db 2, AURORA_BEAM ; inherited from Seadra
+	db 2, DISABLE ; inherited from Seadra
+	db 2, DRAGON_RAGE ; inherited from Seadra
+	db 2, SPLASH ; inherited from Seadra
+	db 2, HAZE ; inherited from Seadra
 	db 0
 
 PhanpyEvosMoves:
@@ -4755,7 +4807,9 @@ Porygon2EvosMoves:
 	db 42, TRI_ATTACK
 	db 45, DEFENSE_CURL
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, DREAM_EATER ; inherited from Porygon
+	db 2, BARRIER ; inherited from Porygon
 	db 0
 
 StantlerEvosMoves:
@@ -4819,7 +4873,9 @@ BlisseyEvosMoves:
 	db 50, MEGA_PUNCH
 	db 54, DOUBLE_EDGE
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, DREAM_EATER ; inherited from Chansey
+	db 2, HEADBUTT ; inherited from Chansey
 	db 0
 
 RaikouEvosMoves:
@@ -4997,7 +5053,13 @@ AnnihilapeEvosMoves:
 	db 37, SEISMIC_TOSS
 	db 45, SCREECH
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, HEADBUTT ; inherited from Primeape
+	db 2, DEFENSE_CURL ; inherited from Primeape
+	db 2, FIRE_PUNCH ; inherited from Primeape
+	db 2, ICE_PUNCH ; inherited from Primeape
+	db 2, THUNDERPUNCH ; inherited from Primeape
+	db 2, MEDITATE ; inherited from Primeape
 	db 0
 
 LickilickyEvosMoves:
@@ -5011,7 +5073,14 @@ LickilickyEvosMoves:
 	db 31, SLAM
 	db 39, SCREECH
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, LICK ; inherited from Lickitung
+	db 2, DREAM_EATER ; inherited from Lickitung
+	db 2, FIRE_PUNCH ; inherited from Lickitung
+	db 2, ICE_PUNCH ; inherited from Lickitung
+	db 2, THUNDERPUNCH ; inherited from Lickitung
+	db 2, HEADBUTT ; inherited from Lickitung
+	db 2, DOUBLESLAP ; inherited from Lickitung
 	db 0
 
 SirfetchdEvosMoves:
@@ -5050,7 +5119,9 @@ MagnezoneEvosMoves:
 	db 50, THUNDER
     db 52, HEADBUTT ; was IRON_HEAD
 	db 0
-; tutoring 
+; Tutoring Learnset
+	db 2, AGILITY ; inherited from Magneton
+	db 2, TRI_ATTACK ; inherited from Magneton
 	db 0
 
 TangrowthEvosMoves:
@@ -5068,7 +5139,12 @@ TangrowthEvosMoves:
 	db 45, GROWTH
 	db 48, BIND
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, HEADBUTT ; inherited from Tangela
+	db 2, FLASH ; inherited from Tangela
+	db 2, AMNESIA ; inherited from Tangela
+	db 2, CONFUSION ; inherited from Tangela
+	db 2, REFLECT ; inherited from Tangela
 	db 0
     
     	
@@ -5097,7 +5173,14 @@ RhyperiorEvosMoves:
 	db 49, TAKE_DOWN
 	db 55, HORN_DRILL
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, FIRE_PUNCH ; inherited from Rhydon
+	db 2, THUNDERPUNCH ; inherited from Rhydon
+	db 2, BLIZZARD ; inherited from Rhydon
+	db 2, COUNTER ; inherited from Rhydon
+	db 2, HEADBUTT ; inherited from Rhydon
+	db 2, ICE_BEAM ; inherited from Rhydon
+	db 2, THRASH ; inherited from Rhydon
 	db 0
 
 KleavorEvosMoves:
@@ -5113,7 +5196,12 @@ KleavorEvosMoves:
 	db 42, AGILITY
 	db 50, ROCK_SLIDE
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, HEADBUTT ; inherited from Scyther
+	db 2, COUNTER ; inherited from Scyther
+	db 2, LIGHT_SCREEN ; inherited from Scyther
+	db 2, RAZOR_WIND ; inherited from Scyther
+	db 2, SONICBOOM ; inherited from Scyther
 	db 0
 
 MrRimeEvosMoves:
@@ -5147,7 +5235,15 @@ ElectivireEvosMoves:
 	db 43, THUNDERBOLT
 	db 54, THUNDER
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, FIRE_PUNCH ; inherited from Electabuzz
+	db 2, HEADBUTT ; inherited from Electabuzz
+	db 2, ICE_PUNCH ; inherited from Electabuzz
+	db 2, BARRIER ; inherited from Electabuzz
+	db 2, DIZZY_PUNCH ; inherited from Electabuzz
+	db 2, KARATE_CHOP ; inherited from Electabuzz
+	db 2, MEDITATE ; inherited from Electabuzz
+	db 2, ROLLING_KICK ; inherited from Electabuzz
 	db 0
 
 MagmortarEvosMoves:
@@ -5163,7 +5259,12 @@ MagmortarEvosMoves:
 	db 43, FLAMETHROWER
 	db 54, FIRE_BLAST
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, HEADBUTT ; inherited from Magmar
+	db 2, THUNDERPUNCH ; inherited from Magmar
+	db 2, DIZZY_PUNCH ; inherited from Magmar
+	db 2, KARATE_CHOP ; inherited from Magmar
+	db 2, SCREECH ; inherited from Magmar
 	db 0
 
 PorygonZEvosMoves:
@@ -5183,5 +5284,7 @@ PorygonZEvosMoves:
 	db 47, HYPER_BEAM
 	db 50, THUNDER ; was NASTY_PLOT (Zap Cannon stand-in)
 	db 0
-; Tutoring Learnset - none
+; Tutoring Learnset
+	db 2, DREAM_EATER ; inherited from Porygon
+	db 2, BARRIER ; inherited from Porygon
 	db 0

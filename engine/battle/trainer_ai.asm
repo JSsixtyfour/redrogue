@@ -246,13 +246,36 @@ AIIsThemedGambler:
 ; bit, so AIReliableKOWins cannot raise every other move above it. T0 keeps
 ; vanilla behaviour. Clobbers af, bc, de, hl.
 AIExplosionTradeVeto:
+	call AIExplosionVetoMask ; a = the vetoed slots
+	ld hl, wBuffer
+	ld b, NUM_MOVES
+.nextSlot
+	rra ; carry = this slot is vetoed
+	jr nc, .keep
+	ld [hl], AI_SCORE_MAX
+.keep
+	inc hl
+	dec b
+	jr nz, .nextSlot
+	ret
+
+; The Explosion / Self-Destruct slots the trade policy forbids this decision.
+; OUTPUT a = their mask (bit 0 = slot 1); their wAIReliableKOFound bits are
+; cleared. Runs twice: from AI_DAMAGE's .applyBest, so the scarce-PP rule and
+; AI_PLAN (which withholds its push while a reliable KO stands) see only KOs
+; the policy allows (2026-10-21 review: a vetoed Explosion's bit cancelled a
+; SleepLead Hypnosis), and from AIExplosionTradeVeto for the scores. The second
+; run gives the same answer: a vetoed slot's bit is already clear, and a cleared
+; bit only ever makes AIExplosionWorthIt say no. Touches no wBuffer scratch.
+; Clobbers af, bc, de, hl.
+AIExplosionVetoMask:
+	ld d, 0 ; d = the vetoed slots
 	ld a, [wAITier] ; tier + 1, 0 = unresolved
 	cp AI_TIER_COMPETENT + 1
-	ret c ; unresolved or T0
-	call AIIsThemedGambler
-	ret z
+	jr c, .done ; unresolved or T0
+	call AIIsThemedGambler ; clobbers only a
+	jr z, .done
 	ld hl, wEnemyMonMoves
-	ld de, wBuffer
 	lb bc, 1, 1 ; b = slot 1-4, c = its bit in wAIReliableKOFound
 .nextSlot
 	ld a, [hl]
@@ -271,24 +294,26 @@ AIExplosionTradeVeto:
 	pop de
 	pop hl
 	jr c, .next
-	ld a, AI_SCORE_MAX
-	ld [de], a
+	ld a, d
+	or c
+	ld d, a
 	ld a, [wAIReliableKOFound]
 	or c
 	xor c ; clear this slot's bit
 	ld [wAIReliableKOFound], a
 .next
 	inc hl
-	inc de
 	sla c
 	inc b
 	ld a, b
 	cp NUM_MOVES + 1
 	jr nz, .nextSlot
+.done
+	ld a, d
 	ret
 
 ; Carry set if exploding from the slot whose wAIReliableKOFound bit is c is worth
-; the trade. T1 (the cheap guard): below half HP. T2/T3: below a quarter, or the
+; the trade. T1 (the cheap guard): at or below half HP. T2/T3: below a quarter, or the
 ; player can KO us this turn, or this slot reliably KOs the player's LAST live
 ; mon. That last one wins the battle outright: HandlePlayerMonFainted
 ; (core.asm) blacks the player out before it ever looks at our HP. Never into a
@@ -300,7 +325,7 @@ AIExplosionWorthIt:
 	jr nz, .no
 	ld a, [wAITier]
 	cp AI_TIER_SKILLED + 1
-	jp c, AIEnemyHPBelowHalf ; T1
+	jp c, AIEnemyHPAtMostHalf ; T1
 	push bc
 	call AIEnemyHPBelowQuarter ; clobbers bc
 	pop bc

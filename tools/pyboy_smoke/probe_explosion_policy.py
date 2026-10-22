@@ -56,11 +56,13 @@ class Probe:
         self.h._register_at((bank, address + 3), self._after_would_ko)
         self.h.register_hook("AIEnemyTrainerChooseMoves.loopFindMinimumEntries", self._pre_ko_pass)
         self.h.register_hook("AIEnemyTrainerChooseMoves.findMinimum", self._post_ko_pass)
-        if not veto:  # A/B on one ROM: make AIExplosionTradeVeto return at once
-            self.h.register_hook("AIExplosionTradeVeto", self._skip_veto)
+        if not veto:  # A/B on one ROM: the policy mask returns "nothing vetoed" at once,
+            # both from AI_DAMAGE's .applyBest and from AIExplosionTradeVeto
+            self.h.register_hook("AIExplosionVetoMask", self._skip_veto)
 
     def _skip_veto(self, _ctx) -> None:
         rf, mem = self.h.pyboy.register_file, self.h.pyboy.memory
+        rf.A = 0
         rf.PC = mem[rf.SP] | mem[(rf.SP + 1) & 0xFFFF] << 8
         rf.SP = (rf.SP + 2) & 0xFFFF
 

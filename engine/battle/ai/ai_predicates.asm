@@ -73,6 +73,21 @@ AIEnemyHPBelowHalf::
 	ld b, 1
 	jp AIHPShiftCompare
 
+; Carry set if the enemy is at or below half HP (2 * HP <= max HP). The
+; Explosion policy's T1 guard (AIExplosionWorthIt); the spec's rule is inclusive.
+AIEnemyHPAtMostHalf:
+	ld hl, wEnemyMonHP
+	ld a, [hli]
+	ld l, [hl]
+	ld h, a
+	add hl, hl ; HP is at most 999: no overflow
+	ld a, [wEnemyMonMaxHP + 1]
+	sub l
+	ld a, [wEnemyMonMaxHP]
+	sbc h ; carry iff max HP < 2 * HP
+	ccf
+	ret
+
 ; Carry set if the enemy is strictly below a quarter HP.
 AIEnemyHPBelowQuarter::
 	ld hl, wEnemyMonHP

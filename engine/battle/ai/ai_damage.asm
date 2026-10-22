@@ -79,10 +79,24 @@ AILayerDamage:
 	ld b, a ; slot 1-4
 	call AIEnemySlotIsLive ; trainer_ai.asm, same bank
 	jp z, .noChange
+; Dream Eater misses an awake target and a Substitute (MoveHitTest, core.asm), so
+; then it is no kill and no best move (2026-10-21 review: a Gengar whose only
+; "reliable KO" was Dream Eater into an awake Snorlax picked it every time, as
+; AIReliableKOWins outranks AIRedundant_DreamEater's penalty).
+	ld a, [wEnemyMoveEffect]
+	cp DREAM_EATER_EFFECT
+	jr nz, .canLand
+	ld a, [wBattleMonStatus]
+	and SLP_MASK
+	jp z, .noChange
+	ld a, [wPlayerBattleStatus2]
+	bit HAS_SUBSTITUTE_UP, a
+	jp nz, .noChange
+	ld a, DREAM_EATER_EFFECT
+.canLand
 ; Fixed-damage moves carry base power 1, or 0 for Night Shade, so a plain power
 ; test would skip Night Shade as a status move and wave the rest through as
 ; trivial. The simulator knows their real values, so let them past the guard.
-	ld a, [wEnemyMoveEffect]
 	cp SPECIAL_DAMAGE_EFFECT
 	jr z, .estimate
 	cp SUPER_FANG_EFFECT
@@ -306,6 +320,10 @@ AILayerDamage:
 ; in the same tier score identically no matter how far apart their expected
 ; damage is - which is exactly the Thunderbolt-vs-Thunder case.
 .applyBest
+; Drop the KO bits of Explosion slots the trade policy forbids before anything
+; reads the mask: the scarce-PP rule below and AI_PLAN after this layer. The
+; scores are still set after the last layer (AIExplosionTradeVeto).
+	call AIExplosionVetoMask
 	ld a, [wBuffer + AI_BUF_BESTSLOT]
 	cp NUM_MOVES
 	ret nc ; still $ff: no damaging move in this set

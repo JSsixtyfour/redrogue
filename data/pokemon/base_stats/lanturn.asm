@@ -14,11 +14,11 @@
 	db GROWTH_SLOW ; growth rate
 
 	; tm/hm learnset
-	tmhm HYPER_BEAM,   TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   \
-	     WATER_GUN,    ICE_BEAM,     RAGE,         THUNDERBOLT,  THUNDER,      \
-	     MIMIC,        DOUBLE_TEAM,  LIGHT_SCREEN, REFLECT,      BIDE,         \
-	     REST,         THUNDER_WAVE, SUBSTITUTE,   SURF,         FLASH,		   \
-		 PSYWAVE
+	tmhm BODY_SLAM,    HYPER_BEAM,   TOXIC,        TAKE_DOWN,    DOUBLE_EDGE,  \
+	     BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     RAGE,         THUNDERBOLT,  \
+	     THUNDER,      MIMIC,        DOUBLE_TEAM,  LIGHT_SCREEN, REFLECT,      \
+	     BIDE,         REST,         THUNDER_WAVE, SUBSTITUTE,   SURF,         \
+	     FLASH,        PSYWAVE
 	; end
 
 	db BANK(LanturnPicFront) ; pic bank
