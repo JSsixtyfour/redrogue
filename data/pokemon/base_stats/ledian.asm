@@ -18,7 +18,7 @@
 	     DOUBLE_EDGE,  HYPER_BEAM,   RAGE,         MEGA_DRAIN,   SOLARBEAM,    \
 	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        \
 	     REST,         COUNTER,      DIG,          SUBMISSION,   LIGHT_SCREEN, \
-	     FLASH,        SWORDS_DANCE
+	     FLASH,        SWORDS_DANCE, PSYWAVE
 	; end
 
 	db BANK(LedianPicFront) ; pic bank

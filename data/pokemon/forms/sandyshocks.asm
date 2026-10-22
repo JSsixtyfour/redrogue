@@ -26,7 +26,7 @@
 	     THUNDERBOLT,  THUNDER,      LIGHT_SCREEN, MIMIC,        DOUBLE_TEAM,  \
 	     REFLECT,      BIDE,         SWIFT,        REST,         THUNDER_WAVE, \
 	     SUBSTITUTE,   FLASH,        BODY_SLAM,    EARTHQUAKE,   DIG,		   \
-		 FISSURE
+		 FISSURE,      TRI_ATTACK
 	; end
 
 	db BANK(SandyShocksPicFront) ; pic bank

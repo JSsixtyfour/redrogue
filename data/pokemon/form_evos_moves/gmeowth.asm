@@ -15,7 +15,7 @@ GmeowthFormEvosMoves:
 	db 15, BITE
 	db 18, PAY_DAY
 	db 22, SCREECH
-	db 29, THRASH
+	db 27, THRASH
 	db 34, SLASH
 	db 44, ROCK_SLIDE
 	db 0

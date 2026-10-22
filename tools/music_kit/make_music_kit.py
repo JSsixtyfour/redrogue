@@ -30,6 +30,7 @@ import zipfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
+import audio_banks  # noqa: E402
 import make_sample_pack  # noqa: E402
 import record_title  # noqa: E402
 import test_midis  # noqa: E402
@@ -137,31 +138,6 @@ def make_flags():
     return {"asm": asm, "link": link_flags, "fix": fix}, prebuilt
 
 
-# ------------------------------------------------------------------ budget
-
-def audio_bank_free(mapfile):
-    """{bank: free bytes} for each bank holding a 'Music Headers N' section."""
-    free, bank, is_audio = {}, None, False
-    with open(mapfile) as f:
-        for line in f:
-            m = re.match(r"^ROMX bank #(\d+):", line)
-            if m:
-                bank, is_audio = int(m.group(1)), False
-                continue
-            if bank is None:
-                continue
-            if re.search(r'SECTION: .*\["Music Headers \d+"\]', line):
-                is_audio = True
-            m = re.match(r"^\s+TOTAL EMPTY: \$([0-9a-f]+) bytes", line)
-            if m:
-                if is_audio:
-                    free[bank] = int(m.group(1), 16)
-                bank = None
-    if len(free) < 4:
-        sys.exit("expected 4 audio banks in %s, found %s" % (mapfile, free))
-    return free
-
-
 # ------------------------------------------------------------------ staging
 
 def stage(flags, prebuilt):
@@ -233,14 +209,19 @@ def main():
 
     flags, prebuilt = make_flags()
     log("flags from make: asm=%s" % " ".join(flags["asm"]))
-    free = audio_bank_free(os.path.join(REPO, "pokered.map"))
-    budget = max(free.values())
-    log("audio bank free space: %s -> IMPORT_BUDGET %d" % (", ".join("$%02X=%d" % kv for kv in sorted(free.items())), budget))
+    banks = audio_banks.merged([os.path.join(REPO, m) for m in ("pokered.map", "pokeblue.map", "pokeblue_debug.map")
+                                if os.path.exists(os.path.join(REPO, m))])
+    budget = audio_banks.song_budget(banks)
+    log("audio banks: %s -> IMPORT_BUDGET %d" % (", ".join("$%02X free=%d id_room=%d" % (k, v["free"], v["id_room"])
+                                                          for k, v in sorted(banks.items())), budget))
+    if budget <= 0:
+        sys.exit("no audio bank can take a new song (free bytes or song ids exhausted); see audio_banks.py")
 
     stage(flags, prebuilt)
     kit = {
         "kitDate": date, "buildHash": git, "rgbds": RGBDS_VERSION, "pokemid": "0.9", "mgba": MGBA_VERSION,
-        "importBudget": budget, "audioBankFree": {"$%02X" % b: n for b, n in sorted(free.items())},
+        "importBudget": budget,
+        "audioBanks": {"$%02X" % k: v for k, v in sorted(banks.items())},
         "flags": flags,
     }
     with open(os.path.join(ENGINE, "kit.json"), "w") as f:

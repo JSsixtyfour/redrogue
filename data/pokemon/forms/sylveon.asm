@@ -27,12 +27,11 @@
 
 	; tm/hm learnset
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   \
-	     MEGA_KICK,    ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         \
+	     MEGA_KICK,    ICE_BEAM,     CUT,          HYPER_BEAM,   RAGE,         \
 	     MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         SWIFT,        \
-	     SKULL_BASH,   REST,         SUBSTITUTE,   SURF,         WATER_GUN,    \
-         SOLARBEAM,    THUNDERBOLT,  THUNDER,      PSYCHIC_M,    LIGHT_SCREEN, \
-         METRONOME,    FIRE_BLAST,   THUNDER_WAVE, PSYWAVE,      TRI_ATTACK,   \
-         FLASH,        FLAMETHROWER
+	     SKULL_BASH,   REST,         SUBSTITUTE,   FLAMETHROWER, WATER_GUN,    \
+         DIG,          THUNDERBOLT,  FLASH,        PSYCHIC_M,    LIGHT_SCREEN, \
+         METRONOME,    MEGA_DRAIN,   PSYWAVE,      TRI_ATTACK,   FLASH         \      
 	; end
 
 	db BANK(SylveonPicFront) ; pic bank

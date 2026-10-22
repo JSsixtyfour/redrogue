@@ -13,7 +13,7 @@ WugtrioFormEvosMoves:
 	db 14, WATER_GUN
 	db 20, SLAM
 	db 22, BUBBLEBEAM
-	db 24, SAND_ATTACK
+	db 27, DIG
 	db 30, WRAP
 	db 35, HEADBUTT
 	db 45, HYDRO_PUMP

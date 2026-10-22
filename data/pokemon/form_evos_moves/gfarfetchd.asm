@@ -11,11 +11,13 @@ GfarfetchdFormEvosMoves:
 ; this file is never regenerated.
 ; Learnset
 	db 7, LEER
-	db 9, SHARPEN
-	db 13, FURY_ATTACK
-	db 18, WING_ATTACK
-	db 23, SLASH
+    db 9, SHARPEN
+    db 13, FURY_ATTACK
+	db 17, DOUBLE_KICK
+    db 18, WING_ATTACK
+	db 23, SLASH ; was BRUTAL_SWING
+    db 25, QUICK_ATTACK
 	db 28, SWORDS_DANCE
-	db 31, DRILL_PECK
-	db 39, AGILITY
+    db 31, DRILL_PECK
+    db 39, AGILITY
 	db 0

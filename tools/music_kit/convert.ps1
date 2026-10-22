@@ -12,7 +12,8 @@ param(
 	[string]$OutAsm,
 	[switch]$NoBuild,
 	[switch]$NoLaunch,
-	[switch]$SelfTest
+	[switch]$SelfTest,
+	[string]$Pokemid
 )
 
 $ErrorActionPreference = 'Stop'
@@ -129,9 +130,18 @@ function Test-Midi([byte[]]$d) {
 				$problems.Add("Ch4 has a note at $(& $where $tk) that isn't one of the 19 Game Boy drums. Ch4 only uses MIDI notes 0-18 (lowest notes on the keyboard); see the drum list in READ ME FIRST.")
 				$reported['drum'] = 1
 			}
-			if ($ch -ne 'Ch4' -and $pitch -lt 36 -and -not $reported['low']) {
-				$problems.Add("$ch has a note at $(& $where $tk) lower than C2 (MIDI note 36). The Game Boy can't play notes that low. Move it up an octave.")
+			# pokemid writes Ch3 an octave up (the wave channel's period is twice
+			# the squares'), so Ch3 sounds as written but its range sits an
+			# octave lower: Ch1/Ch2 MIDI 36-127, Ch3 MIDI 24-119.
+			$lo = if ($ch -eq 'Ch3') { 24 } else { 36 }
+			$hi = if ($ch -eq 'Ch3') { 119 } else { 127 }
+			if ($ch -ne 'Ch4' -and $pitch -lt $lo -and -not $reported['low']) {
+				$problems.Add("$ch has a note at $(& $where $tk) lower than the Game Boy can play on that track (lowest is MIDI note $lo, $(if ($lo -eq 24) { 'C1' } else { 'C2' })). Move it up an octave.")
 				$reported['low'] = 1
+			}
+			if ($ch -ne 'Ch4' -and $pitch -gt $hi -and -not $reported['high']) {
+				$problems.Add("$ch has a note at $(& $where $tk) higher than the Game Boy can play on that track (highest is MIDI note $hi). Move it down an octave.")
+				$reported['high'] = 1
 			}
 			if ($active.Count -gt 0 -and -not $reported['chord']) {
 				$problems.Add("$ch has two notes playing at once at $(& $where $tk). Each track can only play one note at a time. Spread chords across Ch1, Ch2 and Ch3, or shorten the earlier note.")
@@ -177,7 +187,8 @@ function ConvertMidi {
 	New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 	try {
 		Copy-Item -LiteralPath $Mid -Destination (Join-Path $tmp 'in.mid')
-		$r = Invoke-Tool (Join-Path $Engine 'pokemid.exe') @('in.mid', 'out.asm') $tmp
+		$exe = if ($Pokemid) { $Pokemid } else { Join-Path $Engine 'pokemid.exe' }
+		$r = Invoke-Tool $exe @('in.mid', 'out.asm') $tmp
 		$rawAsm = Join-Path $tmp 'out.asm'
 		if ($r.Code -ne 0 -or -not (Test-Path -LiteralPath $rawAsm)) {
 			# pokemid errors look like "pokemid.exe: Measure 3, beat 1: encode: ..."
@@ -243,7 +254,7 @@ function ConvertMidi {
 		foreach ($l in $blocks[$ch]) {
 			if ($l -match '^\s*octave\s+(-?\d+)') {
 				$o = [int]$Matches[1]
-				if ($o -lt 1) { Fail "$ch has a note lower than C2 (MIDI note 36). The Game Boy can't play notes that low. Move it up an octave." }
+				if ($o -lt 1) { Fail "$ch has a note lower than the Game Boy can play on that track. Move it up an octave." }
 				if ($o -gt 8) { Fail "$ch has a note higher than the Game Boy can play. Move it down an octave." }
 			}
 		}

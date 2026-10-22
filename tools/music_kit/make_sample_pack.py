@@ -7,11 +7,11 @@ Ch1/Ch2: the 4 duty cycles as looped square waves (generated: a square is a squa
 Ch3:     our 5 real wave instruments (0-4), read straight from audio/wave_samples.asm.
 Ch4:     the 19 drums, recorded out of the running game by record_title.py drums.
 
-Pitch: squares measured in tune with MIDI note names (+5 cents in PyBoy,
-2026-10-21). Ch3 is placed an octave below written, from the hardware formula
-(wave period is 65536/(2048-x) vs 131072/(2048-x) for the squares). PyBoy's
-wave channel couldn't confirm it; flip CH3_OCTAVE_SHIFT if an ear check in
-BGB/mGBA disagrees.
+Pitch: every channel sounds at the written MIDI pitch. Squares measured +5
+cents in PyBoy (2026-10-21). Ch3: the wave channel's period is twice the
+squares' for the same register value, and pokemid compensates by writing Ch3
+an octave up (measured: MIDI 69 -> x=1899 on Ch3 vs 1750 on Ch1, both 439.8
+Hz). So Ch3 is in tune, but its range is an octave lower (MIDI 24-119).
 """
 
 import os
@@ -27,8 +27,9 @@ RATE = 48000
 LOOP_LEN = 1200
 LOOP_CYCLES = 11
 KEY_A4 = 69
-CH3_OCTAVE_SHIFT = -1
-LOWEST_KEY = 36   # MIDI below C2 can't be encoded (octave 0 = garbage)
+# playable MIDI range per channel (pokemid octave 1-8; outside it is garbage)
+SQUARE_KEYS = (36, 127)
+WAVE_KEYS = (24, 119)
 AMP = 0.45
 
 DUTIES = [("12", 0.125), ("25", 0.25), ("50", 0.5), ("75", 0.75)]  # duty_cycle 0-3
@@ -86,10 +87,10 @@ def read_waves(repo):
     return waves
 
 
-def sfz_looped(path, sample, keycenter):
+def sfz_looped(path, sample, keys):
     with open(path, "w", newline="\r\n") as f:
         f.write("// Red Rogue music kit. Load in any SFZ player (e.g. free sfizz plugin).\n")
-        f.write("<region> sample=%s lokey=%d hikey=127 pitch_keycenter=%d\n" % (sample, LOWEST_KEY, keycenter))
+        f.write("<region> sample=%s lokey=%d hikey=%d pitch_keycenter=%d\n" % (sample, keys[0], keys[1], KEY_A4))
         f.write("loop_mode=loop_continuous loop_start=0 loop_end=%d amp_veltrack=100 ampeg_release=0.01\n" % (LOOP_LEN - 1))
 
 
@@ -103,14 +104,14 @@ def build(repo, drum_dir, out):
     for name, duty in DUTIES:
         base = "square_duty%s" % name
         write_wav(os.path.join(sq, base + ".wav"), looped(lambda p: AMP if p < duty else -AMP), (0, LOOP_LEN - 1))
-        sfz_looped(os.path.join(sq, base + ".sfz"), base + ".wav", KEY_A4)
+        sfz_looped(os.path.join(sq, base + ".sfz"), base + ".wav", SQUARE_KEYS)
 
     wv = os.path.join(out, "Ch3 - Wave")
     for idx, nibs in read_waves(repo).items():
         base = "wave%d" % idx
         # GB DAC: nibble 0..15 -> +1..-1 (sign doesn't matter for timbre); keep stair steps
         write_wav(os.path.join(wv, base + ".wav"), looped(lambda p: AMP * (7.5 - nibs[int(p * 32)]) / 7.5), (0, LOOP_LEN - 1))
-        sfz_looped(os.path.join(wv, base + ".sfz"), base + ".wav", KEY_A4 - 12 * CH3_OCTAVE_SHIFT)
+        sfz_looped(os.path.join(wv, base + ".sfz"), base + ".wav", WAVE_KEYS)
 
     dr = os.path.join(out, "Ch4 - Drums")
     lines = ["// Red Rogue music kit: the 19 Game Boy drums on MIDI notes 0-18, recorded from the game."]

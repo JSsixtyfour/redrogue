@@ -18,7 +18,7 @@
 	     HYPER_BEAM,   RAGE,         THUNDERBOLT,  THUNDER,      PSYCHIC_M,    \
 	     METRONOME,    SUBSTITUTE,   MIMIC,        DOUBLE_TEAM,  REFLECT,      \
 	     BIDE,         SWIFT,        SKULL_BASH,   REST,         THUNDER_WAVE, \
-	     PSYWAVE,      TRI_ATTACK,   FLASH
+	     PSYWAVE,      TRI_ATTACK,   FLASH,        DREAM_EATER
 	; end
 
 	db BANK(PorygonZPicFront) ; pic bank

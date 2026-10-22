@@ -15,6 +15,6 @@ EspeonFormEvosMoves:
 	db 30, SWIFT
 	db 32, PSYBEAM
 	db 40, LIGHT_SCREEN
-	db 45, PSYCHIC
+	db 45, PSYCHIC_M
 	db 50, RECOVER
 	db 0

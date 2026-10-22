@@ -14,6 +14,7 @@ PerrserkerFormEvosMoves:
 	db 15, BITE
 	db 18, PAY_DAY
 	db 22, SCREECH
+	db 27, THRASH
 	db 29, TAKE_DOWN
 	db 34, SLASH
 	db 47, ROCK_SLIDE

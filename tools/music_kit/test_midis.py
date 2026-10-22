@@ -47,10 +47,8 @@ def pitchtest(path):
 def template(path):
     """Template.mid: the composer's starting point. 4 looping bars at 120 BPM
     (19200/120 = 160, exact), all four tracks named and playing, with one
-    effect marker per square track so he can see how markers look.
-
-    Ch3 sounds an octave below written (see make_sample_pack.py), so the bass
-    is written an octave up from where it should sound."""
+    effect marker per square track so he can see how markers look. Every
+    track sounds at written pitch (see make_sample_pack.py)."""
     C, D, E, F, G, A, B = 0, 2, 4, 5, 7, 9, 11
 
     def n(name, octave):  # MIDI note, C4 = 60
@@ -75,8 +73,8 @@ def template(path):
     # Ch2 harmony: one held chord tone per bar, quieter
     for bar, note in enumerate([n(C, 5), n(E, 5), n(F, 5), n(D, 5)]):
         ch2.note(bar * BAR, BAR - Q // 4, note, 80)
-    # Ch3 bass: roots on eighth notes (written an octave up)
-    for bar, root in enumerate([n(C, 4), n(E, 4), n(F, 4), n(G, 4)]):
+    # Ch3 bass: octave-jumping roots on eighth notes
+    for bar, root in enumerate([n(C, 3), n(E, 3), n(F, 3), n(G, 3)]):
         for k in range(8):
             ch3.note(bar * BAR + k * Q // 2, Q // 2 - Q // 16, root if k % 2 == 0 else root + 12, 100)
     # Ch4 drums: mutedsnare1 (14) on 1 and 3, snare1 (0) on 2 and 4, triangle1 (5) on off-beats

@@ -10,14 +10,12 @@ SylveonFormEvosMoves:
 ; this file is never regenerated.
 ; Learnset
 	db 8, SAND_ATTACK
-	db 16, WATER_GUN
+	db 11, GROWL
 	db 23, QUICK_ATTACK
-	db 26, BUBBLEBEAM
+	db 26, SWIFT
 	db 30, BITE
-	db 36, AURORA_BEAM
-	db 39, MIST
-	db 39, HAZE
-	db 41, ACID_ARMOR
-	db 47, REST
-	db 52, HYDRO_PUMP
+	db 35, SING
+	db 40, LIGHT_SCREEN
+	db 44, BODY_SLAM
+	db 50, HYPER_BEAM
 	db 0

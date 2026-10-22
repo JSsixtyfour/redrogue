@@ -16,5 +16,4 @@ AmeowthFormEvosMoves:
 	db 22, SCREECH
 	db 29, TAKE_DOWN
 	db 34, SLASH
-	db 45, HYPER_BEAM
 	db 0

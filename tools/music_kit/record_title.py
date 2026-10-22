@@ -31,13 +31,15 @@ TAIL_SILENCE_S = 0.06
 
 
 def map_symbols(path):
-    """Return {name: (bank, addr)} from an rgblink map."""
+    """Return {name: (bank, addr)} from an rgblink map. WRAM symbols get
+    bank "wram" (WRAM0) or "wram<N>" (WRAMX)."""
     syms, bank = {}, None
     with open(path) as f:
         for line in f:
-            m = re.match(r"^(ROM0|ROMX) bank #(\d+):", line)
+            m = re.match(r"^(ROM0|ROMX|WRAM0|WRAMX) bank #(\d+):", line)
             if m:
-                bank = 0 if m.group(1) == "ROM0" else int(m.group(2))
+                kind = m.group(1)
+                bank = {"ROM0": 0, "WRAM0": "wram"}.get(kind, int(m.group(2)) if kind == "ROMX" else "wram" + m.group(2))
                 continue
             if re.match(r"^\S", line):
                 bank = None
@@ -48,18 +50,22 @@ def map_symbols(path):
     return syms
 
 
-def record(rom, mapfile, seconds):
-    """Return mono int16 samples (L+R) starting at the title song's PlaySound."""
+def record(rom, mapfile, seconds, label="Music_TitleScreen"):
+    """Return mono int16 samples (L+R) starting at the PlaySound for `label`."""
     syms = map_symbols(mapfile)
-    music_id = (syms["Music_TitleScreen"][1] - syms["SFX_Headers_1"][1]) // 3
+    music_bank, header = syms[label]
+    music_id = (header - syms["SFX_Headers_1"][1]) // 3
     ps_bank, ps_addr = syms["PlaySound"]
+    audio_bank = syms["wAudioROMBank"][1]
 
     pyboy = PyBoy(rom, window="null", sound_emulated=True, sound_sample_rate=RATE, sound_volume=100)
     pyboy.set_emulation_speed(0)
     started = []
 
+    # Song/SFX ids are only unique within one audio bank (id 187 is an intro
+    # SFX in AUDIO_3 and a song in AUDIO_4), so match the bank too.
     def on_playsound(_):
-        if not started and pyboy.register_file.A == music_id:
+        if not started and pyboy.register_file.A == music_id and pyboy.memory[audio_bank] == music_bank:
             started.append(True)
 
     pyboy.hook_register(ps_bank, ps_addr, on_playsound, None)
@@ -68,7 +74,7 @@ def record(rom, mapfile, seconds):
         pyboy.tick(1, False, True)
         frames += 1
         if frames > 60 * 120:
-            sys.exit("title music never started (no PlaySound with id %#x in 120 s)" % music_id)
+            sys.exit("%s never started (no PlaySound with id %#x in bank $%02X within 120 s)" % (label, music_id, music_bank))
 
     # The hook fired during the last tick; the song's first engine update is
     # in the next VBlank, so recording from the next buffer loses nothing.

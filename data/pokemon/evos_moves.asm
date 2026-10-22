@@ -299,7 +299,7 @@ RhydonEvosMoves:
 	db 39, ROCK_SLIDE
 	db 44, EARTHQUAKE
 	db 49, TAKE_DOWN
-	db 55, HORN_DRILL
+	db 52, HORN_DRILL
 	db 0
     
 ; Tutor Learnset
@@ -613,11 +613,11 @@ GengarEvosMoves:
 	db 0
 ; Learnset
 	db 10, SMOG
-	db 15, PSYWAVE
-    db 55, HYPNOSIS
-	db 36, NIGHT_SHADE
-	db 55, HYPNOSIS
-	db 55, DREAM_EATER
+	db 16, PSYWAVE
+    db 20, NIGHT_SHADE
+	db 23, POISON_GAS
+    db 29, HYPNOSIS
+	db 38, DREAM_EATER
 	db 0
     
 ; Tutoring Learnset   
@@ -712,7 +712,7 @@ RhyhornEvosMoves:
 	db 39, ROCK_SLIDE
 	db 44, EARTHQUAKE
 	db 49, TAKE_DOWN
-	db 55, HORN_DRILL
+	db 51, HORN_DRILL
 	db 0
 
 ; Tutoring Learnset   
@@ -735,7 +735,7 @@ LaprasEvosMoves:
 	db 38, ICE_BEAM
 	db 46, SING
 	db 51, HYDRO_PUMP
-	db 55, BLIZZARD
+	db 53, BLIZZARD
 	db 0
 ; Tutoring Learnset   
     db 2, DREAM_EATER
@@ -813,7 +813,7 @@ ShellderEvosMoves:
 	db 35, ICE_BEAM
 	db 43, CLAMP
 	db 50, BLIZZARD
-	db 55, EXPLOSION
+	db 52, EXPLOSION
 	db 0
 ; Tutoring Learnset   
     db 2, BARRIER
@@ -850,11 +850,11 @@ GastlyEvosMoves:
 	db 0
 ; Learnset
 	db 10, SMOG
-	db 15, PSYWAVE
+	db 16, PSYWAVE
+    db 20, NIGHT_SHADE
 	db 23, POISON_GAS
-	db 36, NIGHT_SHADE
-	db 55, HYPNOSIS
-	db 55, DREAM_EATER
+    db 29, HYPNOSIS
+	db 38, DREAM_EATER
 	db 0
 
 ; Tutoring Learnset   
@@ -1587,7 +1587,7 @@ DiglettEvosMoves:
 	db 31, SLASH
 	db 35, SCREECH
 	db 40, EARTHQUAKE
-	db 55, FISSURE
+	db 50, FISSURE
 	db 0
 ; Tutoring Learnset   
     db 2, SCREECH
@@ -1638,7 +1638,7 @@ TyphlosionEvosMoves:
 	db 35, SWIFT
 	db 42, FLAMETHROWER
     db 50, FIRE_SPIN
-    db 55, DOUBLE_EDGE
+    db 52, DOUBLE_EDGE
 	db 0
 ; Tutoring Learnset - none
 	db 0
@@ -1716,7 +1716,7 @@ DragoniteEvosMoves:
     db 25, DRAGON_RAGE
 	db 30, SLAM
 	db 55, WING_ATTACK
-	db 57, HYPER_BEAM
+	db 56, HYPER_BEAM
 	db 0
 ; Tutoring Learnset  
     db 2, FIRE_PUNCH
@@ -1756,7 +1756,7 @@ FeraligatrEvosMoves:
 	db 28, BUBBLEBEAM
 	db 38, SLASH
 	db 47, SCREECH
-	db 55, HYDRO_PUMP
+	db 50, HYDRO_PUMP
 	db 0
 ; Tutoring Learnset - none
 	db 0
@@ -2144,7 +2144,6 @@ DragonairEvosMoves:
 	db 20, AGILITY
     db 25, DRAGON_RAGE
 	db 30, SLAM
-	db 45, DRAGON_RAGE
 	db 56, HYPER_BEAM
 	db 0
 ; Tutoring Learnset  
@@ -2769,7 +2768,7 @@ DugtrioEvosMoves:
 	db 31, SLASH
 	db 35, SCREECH
 	db 40, EARTHQUAKE
-	db 55, FISSURE
+	db 50, FISSURE
 	db 0
 ; Tutoring Learnset   
     db 2, SCREECH
@@ -3283,10 +3282,11 @@ HaunterEvosMoves:
 	db 0
 ; Learnset
 	db 10, SMOG
-	db 15, PSYWAVE
-	db 36, NIGHT_SHADE
-	db 55, HYPNOSIS
-	db 55, DREAM_EATER
+	db 16, PSYWAVE
+    db 20, NIGHT_SHADE
+	db 23, POISON_GAS
+    db 29, HYPNOSIS
+	db 38, DREAM_EATER
 	db 0
 ; Tutoring Learnset   
     db 2, HAZE
@@ -4253,7 +4253,7 @@ SlowkingEvosMoves:
     db 25, PSYBEAM
 	db 33, WATER_GUN
 	db 44, AMNESIA
-	db 55, PSYCHIC_M
+	db 50, PSYCHIC_M
 	db 0
 ; Tutoring Learnset
 	db 2, TACKLE ; inherited from Slowpoke
@@ -4651,8 +4651,8 @@ OctilleryEvosMoves:
 	db 11, CONSTRICT
 	db 22, BUBBLEBEAM
 	db 24, AURORA_BEAM
+    db 25, SMOKESCREEN ; was OCTAZOOKA
     db 26, PSYBEAM
-	db 25, SMOKESCREEN ; was OCTAZOOKA
 	db 32, FOCUS_ENERGY
 	db 44, ICE_BEAM
     db 47, HYDRO_PUMP
@@ -5046,11 +5046,12 @@ AnnihilapeEvosMoves:
 ; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
 ; SCRATCH/LEER/KARATE_CHOP already granted at level 1.
 	db 9, LOW_KICK
-	db 15, KARATE_CHOP
-	db 21, FURY_SWIPES
+	db 15, FURY_SWIPES
+	db 21, KARATE_CHOP
 	db 27, FOCUS_ENERGY
-	db 28, RAGE
-	db 37, SEISMIC_TOSS
+	db 33, SEISMIC_TOSS
+    db 35, NIGHT_SHADE
+	db 39, THRASH
 	db 45, SCREECH
 	db 0
 ; Tutoring Learnset
@@ -5171,7 +5172,7 @@ RhyperiorEvosMoves:
 	db 39, ROCK_SLIDE
 	db 44, EARTHQUAKE
 	db 49, TAKE_DOWN
-	db 55, HORN_DRILL
+	db 52, HORN_DRILL
 	db 0
 ; Tutoring Learnset
 	db 2, FIRE_PUNCH ; inherited from Rhydon
