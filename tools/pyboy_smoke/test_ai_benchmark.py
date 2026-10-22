@@ -20,10 +20,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 class BenchmarkMetricTest(unittest.TestCase):
     def test_whole_trainer_ai_timing_splits_paths_and_outcomes(self) -> None:
         records = [
-            {"caller_path": "enemy_first", "outcome": "move", "cycles": 100},
-            {"caller_path": "player_first", "outcome": "move", "cycles": 200},
+            {"caller_path": "planned", "outcome": "move", "cycles": 100},
+            {"caller_path": "unplanned", "outcome": "move", "cycles": 200},
             {
-                "caller_path": "enemy_first",
+                "caller_path": "planned",
                 "outcome": "item_or_switch",
                 "cycles": 80000,
             },
@@ -32,8 +32,8 @@ class BenchmarkMetricTest(unittest.TestCase):
         self.assertEqual(metrics["trainer_ai_calls"], 3)
         self.assertEqual(metrics["trainer_ai_p95_cycles"], 80000)
         self.assertEqual(metrics["trainer_ai_over_frame_calls"], 1)
-        self.assertEqual(metrics["trainer_ai_enemy_first_move_calls"], 1)
-        self.assertEqual(metrics["trainer_ai_player_first_move_calls"], 1)
+        self.assertEqual(metrics["trainer_ai_planned_move_calls"], 1)
+        self.assertEqual(metrics["trainer_ai_unplanned_move_calls"], 1)
         self.assertEqual(metrics["trainer_ai_item_or_switch_calls"], 1)
 
 

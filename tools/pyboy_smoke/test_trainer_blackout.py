@@ -8,11 +8,30 @@ from test_smoke import HarnessTestCase, REPO_ROOT
 from source_constants import parse_map_constants, parse_rgbds_constants, parse_trainer_constants
 
 class BlackoutFixture:
-    def run_loss(self, *, leader=False, unvisited_hub=False):
+    def check_checkpoint_cold_continue(self, *, cgb=False):
+        from test_save_header import ColdBoot, dump_sram
+        from test_loss_recovery import CgbColdBoot
+        boot = (CgbColdBoot if cgb else ColdBoot)(dump_sram(self.harness))
+        try:
+            self.assertEqual(boot.to_menu(), 2)
+            boot.continue_game()
+            maps = parse_map_constants(REPO_ROOT / 'constants/map_constants.asm')
+            self.assertEqual(boot.h.read8('hCurMap'), maps['SILPH_CO_DORM'])
+            self.assertEqual(boot.h.read8('wPartyCount'), 0)
+            self.assertEqual(boot.h.read_bytes('wPlayerCoins', 2), [0x12, 0x34])
+            self.assertEqual((boot.h.read8('wXCoord'), boot.h.read8('wYCoord')), (1, 7))
+        finally:
+            boot.close()
+
+    def run_loss(self, *, leader=False, unvisited_hub=False, normal_save=False):
         h = self.harness
         maps = parse_map_constants(REPO_ROOT / 'constants/map_constants.asm')
         stride = h.address('wPartyMon2HP') - h.address('wPartyMon1HP')
         h.boot_to_lobby()
+        if normal_save:
+            h.write8('wStatusFlags6', h.read8('wStatusFlags6') & ~0x82)
+        saves = h.hook_flag('SaveGameData')
+        committed = h.hook_flag('LossRecoveryFinish.retire')
         h.enter_stage_door1(maps['PEWTER_GYM'], description='Brock gym')
         if unvisited_hub:
             # New games have not necessarily entered the Lobby, which used to
@@ -94,8 +113,14 @@ class BlackoutFixture:
         for _ in range(250):
             h.tap('a', 2)
             h.tick(8)
-            if h.read8('hCurMap') == maps['SILPH_CO_DORM'] and h.read8('hJoyIgnore') == 0:
+            if (h.read8('hCurMap') == maps['SILPH_CO_DORM']
+                    and h.read8('hJoyIgnore') == 0
+                    and (not normal_save or committed['count'])):
                 break
+        if normal_save:
+            self.assertEqual(committed['count'], 1)
+            h.tick(120)  # finish the noninteractive completion notice
+            self.assertEqual(saves['count'], 1)
         labels = [row[0] for row in trace]
         self.assertNotIn('CrashScreen', labels, trace)
         self.assertNotIn('HealParty', labels, trace)
@@ -136,6 +161,18 @@ class BlackoutFixture:
 
 
 class TrainerBlackoutTest(BlackoutFixture, HarnessTestCase):
+    def test_normal_trainer_loss_checkpoint_cold_continues(self):
+        self.run_loss(normal_save=True)
+        self.check_checkpoint_cold_continue()
+
+    def test_normal_brock_loss_checkpoint_cold_continues(self):
+        self.run_loss(leader=True, normal_save=True)
+        self.check_checkpoint_cold_continue()
+
+    def test_normal_loss_repairs_uninitialized_destination_and_saves(self):
+        self.run_loss(unvisited_hub=True, normal_save=True)
+        self.check_checkpoint_cold_continue()
+
     def test_blackout_before_first_hub_visit(self):
         self.run_loss(unvisited_hub=True)
 

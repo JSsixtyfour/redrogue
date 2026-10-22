@@ -26,6 +26,32 @@ class CgbColdBoot(ColdBoot):
 def record(image):
     return image[8192+0x1e00:16384] + image[3*8192+0x1a53:3*8192+0x1c44] + image[3*8192+0x1e00:32768]
 
+def blackout_after_battle_palette(h):
+    """Reproduce battle-black selection and EndOfBattle's white-out before loss."""
+    armed=[True];notes=[]
+    def note(_):notes.append({'holds':0})
+    def hold(_):
+        row=notes[-1];row['holds']+=1
+        if row['holds']==15:
+            row['bgp']=h.pyboy.memory[0xff47]
+            row['colors']=len(h.pyboy.screen.image.getcolors(24000) or [])
+    def enter(_):
+        if not armed[0]:return
+        armed[0]=False;h.write8('hIsInBattle',255)
+        registers=h.pyboy.register_file
+        # Chain HOME routines on the real stack; interrupts remain enabled.
+        for label in ('HandleBlackOut','GBPalWhiteOut'):
+            address=h.address(label);sp=registers.SP-2
+            h.pyboy.memory[sp]=address&255;h.pyboy.memory[sp+1]=address>>8
+            registers.SP=sp
+        registers.B=0 # SET_PAL_BATTLE_BLACK
+        registers.PC=h.address('RunPaletteCommand')
+    h.register_hook('LossRecoveryNotice',note)
+    h.register_hook('LossRecoveryNotice.hold',hold)
+    h.register_hook('OverworldLoop',enter)
+    h.tick(450,render=True)
+    return notes
+
 class LossRecoveryTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -104,6 +130,15 @@ class LossRecoveryTest(unittest.TestCase):
                 self.assertEqual(h.read8('wLossRecoveryPending'),0)
                 self.assertEqual(dump_sram(h)[MARKER],0)
                 self.assertFalse(h.hook_errors,h.hook_errors)
+
+    def test_saving_notice_is_visible_after_battle_whiteout(self):
+        h=self.fixture()
+        notes=blackout_after_battle_palette(h)
+        self.assertEqual([row['holds'] for row in notes],[30,30])
+        for row in notes:
+            self.assertNotEqual(row['bgp'],0)
+            self.assertGreater(row['colors'],1)
+        self.assertFalse(h.hook_errors,h.hook_errors)
 
     def test_record_crc_and_cold_recovery_without_main_header(self):
         h=self.fixture();image=bytearray(self.prepared(h))

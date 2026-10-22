@@ -474,9 +474,13 @@ class AICheckpointBTest(unittest.TestCase):
         h.call_routine("AIEnemyTrainerChooseMoves", limit=600)
         self.assertEqual(h.read8("wAIPlayerKOCache"), self.ai["AI_KO_CACHE_EMPTY"])
 
-    def test_ko_cache_is_cleared_when_trainer_ai_starts(self):
+    def test_ko_cache_at_trainer_ai_entry_follows_the_item_build(self):
         # T1 TrainerAI never asks AIPlayerWouldKO (AIIncreaseStat's check is
-        # T2+), so the entry clear is all that can change the byte.
+        # T2+), so the entry revalidation is all that can change the byte. It
+        # runs only with trainer items on (Codex review 2026-10-22): with them
+        # off nothing in TrainerAI reads the caches, and every decision clears
+        # them itself (the test above; the turn plan's no-choice clear is
+        # test_ai_turn_plan.LockedPlanRescansTheThreatTest).
         h = self.h
         h.park_before_hijack()
         h.write8("wAITier", 2)
@@ -485,7 +489,8 @@ class AICheckpointBTest(unittest.TestCase):
         # X Attack path cannot render text and wait for an unavailable frame.
         h.write8("wAICount", 0)
         h.call_routine("TrainerAI", limit=600)
-        self.assertEqual(h.read8("wAIPlayerKOCache"), self.ai["AI_KO_CACHE_EMPTY"])
+        expected = "AI_KO_CACHE_EMPTY" if self.ai["AI_TRAINER_ITEMS"] else "AI_KO_CACHE_YES"
+        self.assertEqual(h.read8("wAIPlayerKOCache"), self.ai[expected])
 
     def test_damage_layer_caps_high_crit_ranking_at_remaining_owner_hp(self):
         h = self.h

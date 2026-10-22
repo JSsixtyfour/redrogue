@@ -1455,13 +1455,18 @@ INCLUDE "engine/battle/misc.asm"
 ; classes - a row in each of five NUM_TRAINERS-keyed tables, two of which
 ; (TrainerPicAndMoneyPointers, TrainerNames) stay in this bank.
 TrainerAI:
-; Runs at commit (ai_switching.asm AICommitEnemyTurn), before either side's move:
+; Runs at commit (ai_turn_plan.asm AICommitEnemyTurn), before either side's move:
 ; a trainer's switch or item goes first, Gen 2 style. The switch decision, the
 ; item veto and the replacement come from wAITurnPlan, decided before the
 ; player's menu. The one-decision caches from move selection are kept only if
 ; nothing they were computed from has changed since, which the player's menu
-; action can do (AIRevalidateDecisionCaches, FOLLOWUPS #48).
+; action can do (AIRevalidateDecisionCaches, FOLLOWUPS #48). Only the item path
+; reads them here: with items off nothing past this point does (the switch is
+; played back from the plan), and the next decision clears them. ~20k cycles
+; saved per commit (Codex review 2026-10-22).
+IF AI_TRAINER_ITEMS
 	call AIRevalidateDecisionCaches
+ENDC
 	and a
 	ldh a, [hIsInBattle]
 	dec a

@@ -681,7 +681,7 @@
    }
   },
   "AIRevalidateDecisionCaches": {
-   "summary": "Cache reuse by state keys across the player's menu action, at TrainerAI commit (FOLLOWUPS #48; re-pointed 2026-10-22, ai_turn_plan.asm: TrainerAI now always revalidates, since the player's own move no longer lands between move selection and commit - only a switch, an item, or TURN REWIND can).",
+   "summary": "Cache reuse by state keys across the player's menu action, at TrainerAI commit (FOLLOWUPS #48; re-pointed 2026-10-22, ai_turn_plan.asm: TrainerAI revalidates only with AI_TRAINER_ITEMS on (Codex review 2026-10-22: the item path is its only reader there); the player's own move no longer lands between move selection and commit - only a switch, an item, or TURN REWIND can).",
    "positive": {
     "requirement": "unchanged inputs: reused and equal to a rescan",
     "tests": [

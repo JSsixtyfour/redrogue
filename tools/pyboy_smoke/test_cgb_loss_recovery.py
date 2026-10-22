@@ -3,6 +3,23 @@ import unittest
 import test_loss_recovery as loss
 
 class CgbLossRecoveryTest(unittest.TestCase):
+    def test_notices_are_visible_after_battle_whiteout(self):
+        for enhanced in (False,True):
+            with self.subTest(enhanced=enhanced):
+                h=loss.RedRogueHarness(loss.REPO_ROOT,loss.ARTIFACTS,cgb_mode=True)
+                self.addCleanup(h.close)
+                h.boot_to_lobby()
+                h.write8('wStatusFlags6',h.read8('wStatusFlags6') & ~0x82)
+                h.write8('wRentalState',0);h.write8('wCreditsEarnedThisRun',0)
+                h.write8('wOptions2',(h.read8('wOptions2') & ~0x40) | (0x40 if enhanced else 0))
+                h.call_routine('LossRecoveryDiscard')
+                notes=loss.blackout_after_battle_palette(h)
+                self.assertEqual([row['holds'] for row in notes],[30,30])
+                for row in notes:
+                    self.assertNotEqual(row['bgp'],0)
+                    self.assertGreater(row['colors'],1)
+                self.assertFalse(h.hook_errors,h.hook_errors)
+
     def test_cgb_recovery_keeps_actual_hardware_and_permanent_progress(self):
         h=loss.RedRogueHarness(loss.REPO_ROOT,loss.ARTIFACTS,cgb_mode=True)
         self.addCleanup(h.close)

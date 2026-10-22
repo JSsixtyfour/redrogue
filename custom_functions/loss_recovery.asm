@@ -280,7 +280,7 @@ LossRecoveryFinish::
 	jp LossRecoveryNotice
 
 ; Noninteractive overlay, using the same saved bank/text lifecycle as credits.
-; One served frame, no mandatory confirmation hold or button press.
+; Half a second of served frames, independent of the battle-speed option.
 LossRecoveryNotice:
 	push de
 	hlcoord 1, 1
@@ -301,7 +301,18 @@ LossRecoveryNotice:
 	rfarcall DisplayTextIDInit
 	pop af
 	ld [wAutoTextBoxDrawingControl], a
+	; EndOfBattle leaves the palettes white. Reveal only AFTER the notice's
+	; tiles/font/window are ready, including the CGB overworld palette set.
+	ld b, SET_PAL_OVERWORLD
+	call RunPaletteCommand
+	xor a
+	ld [wMapPalOffset], a
+	call LoadGBPal
+	ld c, 30
+.hold
 	call DelayFrame
+	dec c
+	jr nz, .hold
 	hlcoord 1, 1
 	lb bc, 18, 3
 	predef LoadScreenTileAreaFromBuffer3

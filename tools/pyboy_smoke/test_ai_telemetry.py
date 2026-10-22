@@ -138,8 +138,8 @@ class BattleRecordTest(unittest.TestCase):
         self.assertNotIn("redundant_pick", result["flags"])
 
     def test_over_frame_trainer_ai_uses_the_move_path_only(self) -> None:
-        animation = {"caller_path": "enemy_first", "outcome": "item_or_switch", "cycles": 11_000_000}
-        quick = {"caller_path": "enemy_first", "outcome": "move", "cycles": 30_000}
+        animation = {"caller_path": "planned", "outcome": "item_or_switch", "cycles": 11_000_000}
+        quick = {"caller_path": "planned", "outcome": "move", "cycles": 30_000}
         self.assertEqual(record([selection(TACKLE)], trainer_ai_calls=[animation, quick])["flags"], [])
         slow = dict(quick, cycles=FRAME_CYCLES + 1)
         result = record([selection(TACKLE)], trainer_ai_calls=[animation, slow])

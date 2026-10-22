@@ -196,8 +196,9 @@ DEF AI_ESTIMATE_VALID_BIT EQU 7
 ; wAITurnPlan (ai_turn_plan.asm AIPlanEnemyTurn): the enemy's turn, decided
 ; before the player's battle menu so the player's switch or item cannot inform
 ; it. Psychic classes and forced turns decide at commit instead.
-DEF AI_TURN_MOVE_CHOSEN_BIT EQU 7 ; the move is chosen; commit skips SelectEnemyMove
+DEF AI_TURN_MOVE_CHOSEN_BIT EQU 7 ; a move was chosen (not locked); commit skips SelectEnemyMove
 DEF AI_TURN_SWITCH_BIT      EQU 6 ; T2+: switch out (goes before every move)
+DEF AI_TURN_PLANNED_BIT     EQU 5 ; planned before the menu (commit: no new decision)
 DEF AI_TURN_ARMED_BIT       EQU 4 ; SwitchEnemyMon: AISelectSendOut takes the planned slot
 DEF AI_TURN_SLOT_MASK       EQU %111 ; the ranked replacement's party slot + 1, 0 = none
 
@@ -273,6 +274,14 @@ DEF AI_BUF_PLANCLASS  EQU 20 ; 8 bytes: slot N's class mask at +20 + N*2
 ; expected damage at +20 + N*2, big-endian, 0 for a two-turn move); AI_PLAN
 ; rebuilds them with AIClassifyMoveset before anything reads them.
 DEF AI_BUF_SLOTDMG    EQU AI_BUF_PLANCLASS
+; B5's "the reserve keeps more than half its HP" answer, written by the B4
+; survival scan (_AIBestReserveThreatScan) and read by AISacrificeBeatsSwitch
+; right after, in the same switch decision. Switch decisions never run inside
+; move selection, where AI_PLAN and AI_DAMAGE own +20.
+DEF AI_BUF_RESERVEHALF EQU AI_BUF_PLANCLASS
+DEF AI_RESERVE_HALF_NO      EQU 0 ; takes half or more (or was KO'd)
+DEF AI_RESERVE_HALF_KEEPS   EQU 1
+DEF AI_RESERVE_HALF_UNKNOWN EQU $ff ; a Super Fang was scanned: rescan at half HP
 ; AI_SETUP's usefulness gate (2026-09-01). Set once per AI_SETUP pass, BEFORE
 ; its move loop starts, to 1 if this mon owns a physical damaging move and 0 if
 ; it does not. It has to live here rather than in a register because the loop

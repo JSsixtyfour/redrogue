@@ -93,7 +93,7 @@ def trainer_ai_timing_metrics(records: list[dict[str, object]]) -> dict[str, obj
 
     metrics = group_metrics("trainer_ai", records)
     metrics["trainer_ai_frame_budget_cycles"] = FRAME_CYCLES
-    for caller in ("enemy_first", "player_first"):
+    for caller in ("planned", "unplanned"):  # harness.hook_trainer_ai_calls
         metrics[f"trainer_ai_{caller}_calls"] = sum(
             record["caller_path"] == caller for record in records
         )

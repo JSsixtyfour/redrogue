@@ -13,13 +13,9 @@ execution too (measured: 10.4M-plus cycles, a whole turn). The span that
 matters now is AIPlanEnemyTurn's own entry-to-DisplayBattleMenu: that is the
 delay the player actually sits through before the next menu appears.
 
-hook_trainer_ai_calls() (harness.py) is NOT reused here for the same reason:
-its "caller_path" hooks (MainInBattleLoop.enemyMovesFirst /
-.playerFirstPoisonPlayerAlive) fire AFTER TrainerAI now, not before, so the
-path label it would attach is one turn stale. It is unchanged for now since
-nothing in `make smoke` depends on its "caller_path" field; ai_telemetry.py
-and run_ai_benchmark.py (make ai_benchmark, not make smoke) use it only for
-its "cycles"/"outcome" fields on the "move" path, unaffected by this probe.
+hook_trainer_ai_calls() (harness.py) measures the other half: the commit-time
+span, AICommitEnemyTurn to its .done seam, after the menu. This file measures
+the pre-menu plan.
 
 All hooks (the per-routine timers, and the fixture's own reveal) are
 registered BEFORE boot_fight2: turn 1's plan is made INSIDE it (the pre-menu
@@ -51,6 +47,7 @@ DMG_FRAME = 70224
 # underlying routines change.
 QUIET_BUDGET = round(94_308 * 1.2)  # 113,170 (1.61 frames)
 WORST_BUDGET = round(155_904 * 1.2)  # 187,085 (2.66 frames)
+SWITCH_BUDGET = round(143_272 * 1.2)  # 171,926 (2.45 frames), turn 1 (cold)
 
 
 def time_plan_to_menu(h):
@@ -137,6 +134,53 @@ class SwitchLatencyProbe(unittest.TestCase):
             self.assertGreaterEqual(ranked["count"], 3, "the ranking path must actually run")
             print(f"  turn 1 (cold) {spans[0]}; steady state max {max(spans[1:])}")
             self.assertLess(max(spans[1:]), WORST_BUDGET)
+        finally:
+            h.close()
+
+    def test_plan_to_menu_fits_budget_successful_switch(self):
+        """Codex review 2026-10-22: the worst board stays in, so it never runs
+        the switch-only work (the survival scan, B5's sacrifice scan, the
+        planned replacement). A T2 Slowpoke at a quarter HP + 1 facing a
+        revealed Thunderbolt, two Geodude in reserve: the plan switches on
+        turn 1, so turn 1 (cold) is the span measured here."""
+        h = RedRogueHarness(ROOT, ROOT / "tools/pyboy_smoke/artifacts")
+        try:
+            species = parse_rgbds_constants(ROOT / "constants/pokemon_constants.asm")
+            moves = parse_rgbds_constants(ROOT / "constants/move_constants.asm")
+            trainers = parse_trainer_constants(ROOT / "constants/trainer_constants.asm")
+
+            def mon(name, move_names, level=50):
+                return {"species": species[name], "level": level,
+                        "moves": [moves[m] for m in move_names]}
+
+            h.inject_fight2_spec(
+                [mon("ELECTRODE", ["SPLASH", "THUNDERBOLT"])],
+                [mon("SLOWPOKE", ["TACKLE"]), mon("GEODUDE", ["TACKLE"]), mon("GEODUDE", ["TACKLE"])],
+                trainer_class=trainers["JUGGLER"], ai_tier=2)
+            once = {"done": False}
+
+            def prepare():
+                if once["done"]:
+                    return
+                once["done"] = True
+                h.write8("wAICount", 0)
+                h.reveal_player_moves(0, [1])
+                hp = int.from_bytes(bytes(h.read_bytes("wEnemyMonMaxHP", 2)), "big") // 4 + 1
+                h.write8("wEnemyMonHP", hp >> 8)
+                h.write8("wEnemyMonHP", hp & 255, 1)
+
+            h.hook_flag("AIPlanEnemyTurn", action=prepare)
+            plan = {}
+            h.hook_flag("DisplayBattleMenu", action=lambda: plan.setdefault("first", h.read8("wAITurnPlan")))
+            spans, routine_spans, run = time_plan_to_menu(h)
+            h.boot_fight2(seed=1)
+            run(1)
+            print(f"\nswitch plan-to-menu turn 1 (cold) {spans[0]} "
+                  f"({spans[0] / DMG_FRAME:.2f} DMG frames) plan={plan['first']:#04x}")
+            for label, values in routine_spans.items():
+                print(f"  {label}: {values}")
+            self.assertTrue(plan["first"] & 0x40, "the fixture must actually switch")
+            self.assertLess(spans[0], SWITCH_BUDGET)
         finally:
             h.close()
 

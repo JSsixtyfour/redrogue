@@ -701,74 +701,52 @@ class RedRogueHarness:
         return records
 
     def hook_trainer_ai_calls(self) -> list[dict[str, object]]:
-        """Measure TrainerAI entry through its caller's returned-action seam.
+        """Measure the enemy's commit-time AI: AICommitEnemyTurn entry to its
+        .done seam, just after TrainerAI returns (ai_turn_plan.asm).
 
-        Caller-path hooks distinguish the two MainInBattleLoop call sites. A
-        normal move ends at ExecuteEnemyMove entry; an AI item or switch ends
-        at the carry-set AIActionUsed branch. Enemy move execution is excluded.
+        Since the 2026-10-22 turn plan, TrainerAI runs at commit, before the
+        turn-order comparison, so the old enemy-first/player-first caller split
+        no longer exists. caller_path is "planned" when the turn was decided
+        before the battle menu (the span is then only TrainerAI playing the plan
+        back, plus a move choice if the menu freed a locked mon), "unplanned"
+        when the whole decision runs here (forced turns, AIPsychicClasses).
+        outcome is "item_or_switch" when TrainerAI spent the turn (carry at
+        .done), else "move". The plan's own cost, before the menu, is
+        probe_ai_switch_latency.py's span, not this one.
         """
         records: list[dict[str, object]] = []
-        pending: dict[str, object] = {
-            "active": False,
-            "caller_path": None,
-            "next_caller_path": None,
-            "start_cycle": 0,
-            "start_frame": 0,
-        }
-
-        def set_caller_path(caller_path: str):
-            def callback(_context) -> None:
-                pending["next_caller_path"] = caller_path
-
-            return callback
+        pending: dict[str, object] = {"active": False}
+        planned_bit = 1 << 5  # AI_TURN_PLANNED_BIT (constants/ai_constants.asm)
 
         def begin(_context) -> None:
             pending["active"] = True
-            pending["caller_path"] = pending["next_caller_path"] or "unknown"
+            pending["caller_path"] = (
+                "planned" if self.read8("wAITurnPlan") & planned_bit else "unplanned"
+            )
             pending["start_cycle"] = self.cycle_count()
             pending["start_frame"] = self.pyboy.frame_count
 
-        def finish(outcome: str):
-            def callback(_context) -> None:
-                if not pending["active"]:
-                    return
-                end_cycle = self.cycle_count()
-                start_cycle = int(pending["start_cycle"])
-                records.append(
-                    {
-                        "caller_path": pending["caller_path"],
-                        "outcome": outcome,
-                        "start_cycle": start_cycle,
-                        "end_cycle": end_cycle,
-                        "cycles": end_cycle - start_cycle,
-                        "start_frame": int(pending["start_frame"]),
-                        "end_frame": self.pyboy.frame_count,
-                    }
-                )
-                pending["active"] = False
-                pending["caller_path"] = None
-                pending["next_caller_path"] = None
+        def finish(_context) -> None:
+            if not pending["active"]:
+                return
+            end_cycle = self.cycle_count()
+            start_cycle = int(pending["start_cycle"])
+            carry = bool(self.pyboy.register_file.F & 0x10)
+            records.append(
+                {
+                    "caller_path": pending["caller_path"],
+                    "outcome": "item_or_switch" if carry else "move",
+                    "start_cycle": start_cycle,
+                    "end_cycle": end_cycle,
+                    "cycles": end_cycle - start_cycle,
+                    "start_frame": int(pending["start_frame"]),
+                    "end_frame": self.pyboy.frame_count,
+                }
+            )
+            pending["active"] = False
 
-            return callback
-
-        for label, callback in (
-            ("MainInBattleLoop.enemyMovesFirst", set_caller_path("enemy_first")),
-            (
-                "MainInBattleLoop.playerFirstPoisonPlayerAlive",
-                set_caller_path("player_first"),
-            ),
-            ("TrainerAI", begin),
-            ("ExecuteEnemyMove", finish("move")),
-            (
-                "MainInBattleLoop.AIActionUsedEnemyFirst",
-                finish("item_or_switch"),
-            ),
-            (
-                "MainInBattleLoop.AIActionUsedPlayerFirst",
-                finish("item_or_switch"),
-            ),
-        ):
-            self.register_hook(label, callback)
+        self.register_hook("AICommitEnemyTurn", begin)
+        self.register_hook("AICommitEnemyTurn.done", finish)
         return records
 
     def hook_enemy_send_out(self) -> list[dict[str, object]]:

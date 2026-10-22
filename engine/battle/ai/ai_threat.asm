@@ -173,12 +173,13 @@ AILayerThreat:
 ; sides' HP, stats, stages, Substitute, and the believed player moveset - is
 ; fixed for the length of one decision, yet a T3 move selection asked this up to
 ; three times (THREAT, RISKY, plan checks) at ~20-30k cycles each (measured).
-; wAIPlayerKOCache is cleared at the start of AIEnemyTrainerChooseMoves, and the
-; turn plan (ai_switching.asm) reads it right after. At TrainerAI, after the
-; player's menu, it is kept if nothing it was computed from has changed, or
-; re-derived from wAIPlayerKOMaxDamage when only our HP has
-; (AIRevalidateDecisionCaches), else cleared. A caller outside those decisions
-; must clear it first (AIClearDecisionCaches).
+; wAIPlayerKOCache is cleared at the start of AIEnemyTrainerChooseMoves (or by
+; the turn plan when no move choice ran), and the turn plan (ai_turn_plan.asm)
+; reads it right after. With trainer items on, TrainerAI, after the player's
+; menu, keeps it if nothing it was computed from has changed, or re-derives it
+; from wAIPlayerKOMaxDamage when only our HP has (AIRevalidateDecisionCaches),
+; else clears it. A caller outside those decisions must clear it first
+; (AIClearDecisionCaches).
 AIPlayerWouldKO::
 	ld a, [wAIPlayerKOCache]
 	and a
@@ -403,6 +404,34 @@ _AIBestReserveThreatScan:
 .fullHP
 
 	call _AIScanPlayerMovesForKO ; carry = some believed move KOs the reserve
+; B5's half question from the same scan (Codex review 2026-10-22: it used to
+; rescan, ~43k cycles): a full scan that found no KO leaves de = the largest
+; delivery, so the reserve keeps more than half iff de < HP / 2, the comparison
+; the half scan makes per move. Super Fang is left out of de, so a scan that
+; met one leaves the answer to that rescan. (In that rescan's own mode HP is
+; already halved and what is stored here is not read.)
+	ld a, AI_RESERVE_HALF_NO
+	jr c, .storeHalf ; KO'd, and the scan stopped early: never asked
+	ld a, AI_RESERVE_HALF_UNKNOWN
+	inc b
+	dec b
+	jr nz, .storeHalf
+	ld hl, wBuffer + AI_BUF_EFFHP
+	ld a, [hli]
+	ld b, a
+	ld c, [hl]
+	srl b
+	rr c ; bc = HP / 2, as the half scan rounds it
+	ld a, e
+	sub c
+	ld a, d
+	sbc b ; carry iff de < HP / 2
+	ld a, AI_RESERVE_HALF_NO
+	adc 0 ; AI_RESERVE_HALF_KEEPS on carry
+	ASSERT AI_RESERVE_HALF_KEEPS == AI_RESERVE_HALF_NO + 1
+	and a ; carry clear: it survives
+.storeHalf
+	ld [wBuffer + AI_BUF_RESERVEHALF], a
 	ld e, 1
 	jr nc, .restore
 	dec e
@@ -470,7 +499,11 @@ AISacrificeBeatsSwitch::
 	ld a, d
 	sbc [hl] ; carry iff HP * 4 < MaxHP
 	ret c ; below a quarter: sacrifice
-	call AIBestReserveKeepsHalf
+	ld a, [wBuffer + AI_BUF_RESERVEHALF] ; from the B4 scan just before
+	ld e, a
+	inc a ; AI_RESERVE_HALF_UNKNOWN -> 0
+	ASSERT AI_RESERVE_HALF_UNKNOWN == $ff
+	call z, AIBestReserveKeepsHalf ; e = 1 keeps half, 0 = takes half or more
 	ld a, e
 	cp 1 ; carry iff e = 0: the hit would take half or more
 	ret
@@ -480,8 +513,10 @@ AISacrificeBeatsSwitch::
 ; healed" question reuse this wholesale instead of needing a max-damage value.
 ; Also returns de = the largest delivered damage it saw, Super Fang excluded
 ; (half of OUR current HP, so not HP-independent); with carry set that is only a
-; lower bound, since the scan stops at the first KO. Only AIPlayerWouldKO keeps
-; it. The running maximum lives on the stack across the loop.
+; lower bound, since the scan stops at the first KO. Only AIPlayerWouldKO and
+; the reserve scan read it. b = nonzero if a Super Fang was scanned (so de does
+; not cover every move). The running maximum and that flag live on the stack
+; across the loop.
 _AIScanPlayerMovesForKO:
 	ld hl, wPlayerMoveNum
 	ld de, wBuffer + AI_BUF_MOVESAVE
@@ -491,6 +526,7 @@ _AIScanPlayerMovesForKO:
 	ld [wBuffer + AI_BUF_SCANSLOT], a
 	ld h, a
 	ld l, a
+	push hl ; h: a Super Fang was scanned (returned in b)
 	push hl ; running maximum
 .nextSlot
 	ld a, [wBuffer + AI_BUF_SCANSLOT]
@@ -511,7 +547,7 @@ _AIScanPlayerMovesForKO:
 	call AIAdjustPlayerDamageForPossibleDelivery
 	ld a, [wPlayerMoveEffect]
 	cp SUPER_FANG_EFFECT
-	jr z, .maxDone
+	jr z, .superFang
 	pop hl
 	ld a, [wAIDamageEstimate + 1]
 	sub l
@@ -524,6 +560,13 @@ _AIScanPlayerMovesForKO:
 	ld l, a
 .keepMax
 	push hl
+	jr .maxDone
+.superFang
+	pop hl
+	pop de
+	ld d, 1
+	push de
+	push hl
 .maxDone
 	call AIDamageWouldKOEnemy
 	jr c, .yesKO
@@ -534,11 +577,13 @@ _AIScanPlayerMovesForKO:
 .yesKO
 	call .restorePlayerMove
 	pop de
+	pop bc
 	scf
 	ret
 .noKO
 	call .restorePlayerMove
 	pop de
+	pop bc
 	and a ; clear carry
 	ret
 .restorePlayerMove
