@@ -173,11 +173,12 @@ AILayerThreat:
 ; sides' HP, stats, stages, Substitute, and the believed player moveset - is
 ; fixed for the length of one decision, yet a T3 move selection asked this up to
 ; three times (THREAT, RISKY, plan checks) at ~20-30k cycles each (measured).
-; wAIPlayerKOCache is cleared at the start of AIEnemyTrainerChooseMoves. At
-; TrainerAI it is kept on an enemy-first turn, and on a player-first turn
-; re-derived from wAIPlayerKOMaxDamage when nothing but our HP has changed
-; (AIRevalidateDecisionCaches), else cleared. A caller outside those two
-; decisions must clear it first (AIClearDecisionCaches).
+; wAIPlayerKOCache is cleared at the start of AIEnemyTrainerChooseMoves, and the
+; turn plan (ai_switching.asm) reads it right after. At TrainerAI, after the
+; player's menu, it is kept if nothing it was computed from has changed, or
+; re-derived from wAIPlayerKOMaxDamage when only our HP has
+; (AIRevalidateDecisionCaches), else cleared. A caller outside those decisions
+; must clear it first (AIClearDecisionCaches).
 AIPlayerWouldKO::
 	ld a, [wAIPlayerKOCache]
 	and a

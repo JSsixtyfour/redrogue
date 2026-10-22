@@ -109,7 +109,7 @@ AISelectSendOut::
 ; needed is already below: .scoredLead is the full scored path, unchanged.
 	ld a, [wEnemyMonPartyPos]
 	inc a ; $ff -> 0, and no real slot index can wrap to 0
-	jr nz, .scoredLead
+	jr nz, .notLead
 
 	ld hl, wEnemyMon1
 	ld c, 0
@@ -137,12 +137,25 @@ AISelectSendOut::
 	ldh [hWhichPokemon], a
 	ret
 
+.notLead
+; A voluntary switch (SwitchEnemyMon arms the plan) sends in the replacement
+; ranked when the turn was planned, before the player's menu, so a player
+; switch-in this turn cannot choose it. A faint replacement ranks live.
+	ld a, [wAITurnPlan]
+	bit AI_TURN_ARMED_BIT, a
+	jr z, .scoredLead
+	and AI_TURN_SLOT_MASK
+	jr z, .scoredLead ; nothing was ranked
+	dec a
+	jr .commit
 .scoredLead
 	call AIRankSendOutCandidates
 
 	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
 	cp $ff
 	jp z, .noCandidate
+
+.commit
 
 ; Anti-ping-pong: mark the slot we are about to send in so AIShouldSwitch can
 ; give it one full decision cycle before considering switching it away again -

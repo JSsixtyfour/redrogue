@@ -1,4 +1,13 @@
-"""Checkpoint A: switch eligibility must survive TrainerAI's item gates."""
+"""Checkpoint A: switch eligibility must survive TrainerAI's item gates.
+
+2026-10-22: the switch decision moved out of TrainerAI into the planner
+(AIDecideEnemyTurn, ai_turn_plan.asm), which runs before the player's battle
+menu. TrainerAI now just reads wAITurnPlan's AI_TURN_SWITCH_BIT (T2+) or the
+original class rolls (T0/T1); it never calls AIShouldSwitch itself any more.
+So every probe that drives a decision directly now runs AIDecideEnemyTurn
+first (to populate wAITurnPlan against the current board), re-parks, then
+probes/calls TrainerAI to observe what it does with that plan.
+"""
 from pathlib import Path
 import unittest
 
@@ -28,6 +37,14 @@ class AISwitchDispatchTest(unittest.TestCase):
     def tearDown(self):
         self.h.close()
 
+    def plan_then_probe_trainer_ai(self, predicate, limit=120):
+        """Run AIDecideEnemyTurn against the current board (writing
+        wAITurnPlan), re-park, then probe TrainerAI's dispatch of that plan."""
+        h = self.h
+        h.call_routine("AIDecideEnemyTurn", limit=6000)
+        h.park_before_hijack()
+        h.probe_routine_until("TrainerAI", predicate, limit=limit)
+
     def test_smart_switch_classes_bypass_item_count_and_ace_gate(self):
         h = self.h
         switched = h.hook_flag("SwitchEnemyMon")
@@ -42,8 +59,8 @@ class AISwitchDispatchTest(unittest.TestCase):
                         h.write8("wEnemyMonStatus", status)
                         h.write8("wAICount", 0)
                         before = switched["count"], no_item["count"]
-                        h.probe_routine_until("TrainerAI", lambda:
-                            (switched["count"], no_item["count"]) != before, limit=120)
+                        self.plan_then_probe_trainer_ai(
+                            lambda: (switched["count"], no_item["count"]) != before)
                         self.assertEqual(switched["count"], before[0] + 1)
                         self.assertEqual(no_item["count"], before[1])
                         self.assertEqual(h.read8("wAICount"), 0)
@@ -58,22 +75,32 @@ class AISwitchDispatchTest(unittest.TestCase):
         h.write8("wAICount", 3)
         switched = h.hook_flag("SwitchEnemyMon")
         no_item = h.hook_flag("TrainerAI.noItem")
-        h.probe_routine_until("TrainerAI", lambda: switched["count"] > 0, limit=120)
+        self.plan_then_probe_trainer_ai(lambda: switched["count"] > 0)
         self.assertEqual((switched["count"], no_item["count"]), (1, 0))
         self.assertEqual(h.read8("wAICount"), 3)
 
     def test_lone_ace_does_not_try_to_switch(self):
+        # AIDecideEnemyTurn checks AIActiveMonIsAce and returns before ever
+        # calling AIShouldSwitchAtSelectedSpeed/AIShouldSwitch, so the
+        # predicate hook now lives on the PLANNER's call, not on a direct
+        # TrainerAI call (TrainerAI itself never reaches AIShouldSwitch any
+        # more - measured: a direct call_routine("TrainerAI") here reports
+        # predicate count 0 regardless of ace status, so that hook point no
+        # longer tests anything).
         h = self.h
         h.write8("wEnemyMon2HP", 0)
         h.write8("wEnemyMon2HP", 0, offset=1)
         h.write8("wEnemyMonStatus", 1 << 5)
         h.write8("wAICount", 0)
         predicate = h.hook_flag("AIShouldSwitch")
-        switched = h.hook_flag("SwitchEnemyMon")
-        h.call_routine("TrainerAI", limit=120)
-        self.assertEqual((predicate["count"], switched["count"]), (0, 0))
+        h.call_routine("AIDecideEnemyTurn", limit=6000)
+        self.assertEqual(predicate["count"], 0)
+        self.assertEqual(h.read8("wAITurnPlan"), 0, "no switch bit, no replacement")
 
     def test_low_tiers_keep_original_item_count_gate(self):
+        # Same relocation as above: AIDecideEnemyTurn skips the farcall to
+        # AIShouldSwitchAtSelectedSpeed entirely for T0/T1 (wAITier <=
+        # AI_TIER_SKILLED), going straight to ranking a replacement instead.
         h = self.h
         predicate = h.hook_flag("AIShouldSwitch")
         for tier in (0, 1):
@@ -81,10 +108,22 @@ class AISwitchDispatchTest(unittest.TestCase):
             h.write8("wAITier", tier + 1)
             h.write8("wEnemyMonStatus", 1 << 5)
             h.write8("wAICount", 0)
-            h.call_routine("TrainerAI", limit=120)
+            h.call_routine("AIDecideEnemyTurn", limit=6000)
         self.assertEqual(predicate["count"], 0)
 
     def test_real_turn_switches_then_replacement_acts(self):
+        # 2026-10-22: the switch is now decided by the PLANNER, before the
+        # menu that precedes the commit it executes in. Priming the board at
+        # the first TrainerAI (commit) call is one commit too late for that
+        # commit's own plan (already baked in before this turn's menu); it
+        # takes effect in the NEXT planning pass (before the following menu),
+        # and the switch then executes within THAT commit. Measured sequence
+        # (tools/pyboy_smoke/_probe_realturn.py, not committed):
+        #   decisions = [0, 0, 1]   (wEnemyMonPartyPos read at each TrainerAI
+        #                            entry, BEFORE that commit's own switch,
+        #                            if any, executes)
+        #   attacks   = [0, 1]      (ExecuteEnemyMove runs turns 1 and 3; turn
+        #                            2's commit spends the turn switching)
         h = self.h
         decisions = []
         replacements = h.hook_enemy_send_out()
@@ -109,7 +148,8 @@ class AISwitchDispatchTest(unittest.TestCase):
             self.fail(f"replacement did not act: decisions={decisions}, attacks={attacks}")
         self.assertEqual(switched["count"], 1)
         self.assertTrue(any(r["selected_slot"] == 1 for r in replacements))
-        self.assertEqual(decisions[:2], [0, 1])
+        self.assertEqual(decisions[:3], [0, 0, 1])
+        self.assertEqual(attacks[:2], [0, 1])
 
 
 if __name__ == "__main__":

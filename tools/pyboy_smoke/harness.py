@@ -979,6 +979,7 @@ class RedRogueHarness:
         debug_menu = self.hook_flag("DebugMenu")
         quantity_menu = self.hook_flag("DisplayChooseQuantityMenu")
         battle_ready = self.hook_flag("MainInBattleLoop")
+        menu_up = self.hook_flag("DisplayBattleMenu")
 
         self.tick(240)
         self.pyboy.button_press("select")
@@ -1016,6 +1017,21 @@ class RedRogueHarness:
                 "FIGHT 2 did not reach the live battle loop: "
                 f"{json.dumps(self.diagnostic_state(), sort_keys=True)}"
             )
+        # The enemy plans its turn between the loop top and the battle menu
+        # (ai_turn_plan.asm, 2026-10-22), for a frame or more. Parking inside
+        # that pass hijacked it mid-ranking, with wEnemyMonType/wPlayerMoveType
+        # still forged: measured, ReadTrainer then fielded a non-gambler set and
+        # OptCycleCheat lost hCurrentMenuItem, while one frame later both
+        # passed. Booted means the menu is up and the turn-1 plan is done, so a
+        # board set up after boot reaches the AI from turn 2 (or through a hook
+        # on AIPlanEnemyTurn). No input is sent: the menu waits on its own.
+        if "AIPlanEnemyTurn" in self.symbols._symbols:
+            for _ in range(240):
+                if menu_up["count"]:
+                    break
+                self.tick(1)
+            else:
+                raise AssertionError("FIGHT 2 never reached the battle menu")
         # Leave the CPU somewhere safe to interrupt. The loop above stops on a
         # hook firing, so without this the resume point is whatever instruction
         # the frame boundary happened to land on - see park_before_hijack for the

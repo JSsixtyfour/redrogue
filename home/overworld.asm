@@ -889,6 +889,7 @@ MapEntryAfterBattle::
 	jp EnableLCD
 
 HandleBlackOut::
+	rfarcall LossRecoveryCapture
 ; For when all the player's pokemon faint.
 ; Does not print the "blacked out" message.
 ;pre-emptively reset to the overworld palette to prefent jank with enhanced GBC colors

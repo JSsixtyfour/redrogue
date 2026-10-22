@@ -79,6 +79,9 @@ INCLUDE "engine/battle/ai/ai_core.asm"
 ; into bank $0E by the scoring-loop dispatch.
 INCLUDE "engine/battle/ai/ai_switching.asm"
 
+; Pinned to bank $3C: the enemy plans its turn before the battle menu.
+INCLUDE "engine/battle/ai/ai_turn_plan.asm"
+
 ; Also pinned to bank $2C, and a separate section from the switching engine so
 ; either can be relocated without dragging the other. The plan system's bank
 ; $0E half is INCLUDEd into trainer_ai.asm as engine/battle/ai/ai_plan.asm.
@@ -900,3 +903,6 @@ INCLUDE "custom_functions/reward_offer_info.asm"
 ; sections; keep the core out of the nearly full rogue and lobby banks.
 SECTION "Rental Core", ROMX, BANK[$31]
 INCLUDE "custom_functions/rental_core.asm"
+
+SECTION "Loss Recovery", ROMX, BANK[$2A]
+INCLUDE "custom_functions/loss_recovery.asm"

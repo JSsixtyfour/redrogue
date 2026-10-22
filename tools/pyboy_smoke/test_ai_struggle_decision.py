@@ -49,15 +49,23 @@ class StruggleDecisionTest(gaps._AIGapsBase):
         self.struggle_turn()
         self.assertEqual(self.h.read8("wAIPlayerKOCache"), self.ai["AI_KO_CACHE_EMPTY"])
 
-    def test_enemy_first_trainer_ai_rescans_the_ko_threat(self) -> None:
+    def test_struggle_emptied_cache_rescans_correct_on_the_first_read(self) -> None:
+        # 2026-10-22: AI_KO_CACHE_KEEP_BIT and the enemy-first "nothing changed,
+        # trust the cache" skip it replaced are both gone - TrainerAI now always
+        # calls AIRevalidateDecisionCaches unconditionally (ai_turn_plan.asm).
+        # What this test actually needs is unchanged: the Struggle exit leaves
+        # wAIPlayerKOCache EMPTY (confirmed by
+        # test_struggle_empties_the_last_decisions_ko_answer, just above), so
+        # the only question is whether the next real reader computes the TRUE
+        # answer - YES, since the enemy is at 1 HP - rather than some stale
+        # leftover from the earlier 150-HP decision.
         h = self.h
         self.struggle_turn()
-        h.park_before_hijack()
-        cache = h.read8("wAIPlayerKOCache")
-        h.write8("wAIPlayerKOCache", cache | (1 << self.ai["AI_KO_CACHE_KEEP_BIT"]))  # .enemyMovesFirst
+        self.assertEqual(h.read8("wAIPlayerKOCache"), self.ai["AI_KO_CACHE_EMPTY"])  # premise
         self.seen.clear()
-        h.call_routine("TrainerAI", limit=6000)
-        self.assertEqual(self.seen[:1], [self.ai["AI_KO_CACHE_EMPTY"]])  # was NO, a stale answer
+        h.park_before_hijack()
+        h.call_routine("AIPlayerWouldKO", limit=3000)
+        self.assertEqual(self.seen[:1], [self.ai["AI_KO_CACHE_EMPTY"]])  # entered empty, not stale
         self.assertEqual(h.read8("wAIPlayerKOCache"), self.ai["AI_KO_CACHE_YES"])
 
     def test_struggle_opens_the_move_history(self) -> None:

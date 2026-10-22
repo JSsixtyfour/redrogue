@@ -1,4 +1,8 @@
 MainMenu:
+	; A complete loss record is authoritative even when main data is torn.
+	rfarcall LossRecoveryBoot
+	jp c, SpecialEnterMap
+	jp nz, .mainMenuLoop ; damaged active recovery: fail closed, offer New Game
 	farcall RandomSeedStir
 ; Check save file
 	call InitOptions

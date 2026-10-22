@@ -111,6 +111,15 @@ class StruggleSwitchTest(_PPEconomyBase):
     def should_switch(self, selected: str = "STRUGGLE") -> bool:
         h = self.harness
         h.write8("wEnemySelectedMove", self.moves[selected])
+        # A fresh decision against the board as this test left it: boot_fight2
+        # now makes turn 1's whole decision silently before its own first menu
+        # (ai_turn_plan.asm, 2026-10-22), so wAIPlayerKOCache/wAIReliableKOFound
+        # may still hold that decision's answer rather than one that reflects
+        # `selected`. call_routine's own "fresh decision" precondition only
+        # resets the damage-estimate span, not these two (test_ai_switching.py
+        # AIShouldSwitchTest.call_ai_should_switch has the same note).
+        h.write8("wAIPlayerKOCache", 0)
+        h.write8("wAIReliableKOFound", 0)
         switch = h.hook_flag("AIShouldSwitch.switch")
         stay = h.hook_flag("AIShouldSwitch.stay")
         h.call_routine("AIShouldSwitch")

@@ -395,6 +395,18 @@
     // Schema 10 -> 11 (2026-10-13): wroguenpctradeform, the form of the random trade's offered
     // mon, took the first byte of the saved pad after wOptions3. Nothing moved. Zeroed: form 0,
     // the plain species, which is what an offer rolled before this change delivered anyway.
+    // Schema 11 -> 12: immutable loss record uses only previously free bytes.
+    // Converting a main save never imports an active source transaction.
+    lossRecoveryAdded: function (bytes, from, to) {
+      var names = ["sLossRecovery1", "sLossRecovery2", "sLossRecovery3", "sLossRecoveryCRC", "sLossRecoveryValid"];
+      for (var i = 0; i < names.length; i++) {
+        var f = sramField(to, names[i]);
+        if (!f) return "missing loss recovery field " + names[i];
+        bytes.fill(0, offsetOf(f.bank, f.address), offsetOf(f.bank, f.address) + f.size);
+      }
+      return null;
+    },
+
     tradeFormAdded: function (bytes, from, to) {
       for (var i = 0; i < from.sram.length; i++) {
         var f = from.sram[i], t = sramField(to, f.label);

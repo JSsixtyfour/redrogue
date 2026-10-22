@@ -1839,8 +1839,11 @@ wSpriteCurPosX:: db
 wSpriteCurPosY:: db
 wSpriteWidth:: db
 wSpriteHeight:: db
-; current input byte
-wSpriteInputCurByte:: db
+; Was wSpriteInputCurByte, dead since the LZ pic switch (2026-10-07); reused in
+; place so no address moves. The enemy's turn plan (AI_TURN_* bits): written by
+; AIPlanEnemyTurn before every battle menu, read at commit and by TrainerAI.
+; Zeroed by InitBattleVariables. Unsaved (below wMainDataStart).
+wAITurnPlan:: db
 ; Was wSpriteInputBitCounter, dead since the LZ pic switch (2026-10-07); reused
 ; in place so no address moves. Sleep Clause (custom_functions/sleep_clause.asm):
 ; low nibble = the player's mon the ENEMY put to sleep, high nibble = the
@@ -3489,6 +3492,12 @@ SECTION "Battle Item List", WRAM0
 wBattleItemList:: ds 1 + (KEY_ITEM_MAX_ACTIVE + 1) * 2 + 1
 wBattleItemListEnd::
 
+
+SECTION "Loss Recovery State", WRAM0
+; Outside saved Name/Main/Sprite/Party/Box spans. Init clears all of these.
+wLossRecoveryPending:: db
+wLossRecoveryHeader:: ds 16
+wLossRecoveryCRC:: ds 4
 
 SECTION "Stack", WRAM0
 

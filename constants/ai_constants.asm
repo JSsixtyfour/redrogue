@@ -193,10 +193,18 @@ DEF AI_MOVE_EXECUTED_BIT EQU 7
 ; Estimates never exceed 999 ($03E7), so the bit is free.
 DEF AI_ESTIMATE_VALID_BIT EQU 7
 
-; wAIPlayerKOCache flag bit, set by core.asm .enemyMovesFirst right before
-; TrainerAI: nothing has changed since move selection, so keep its caches.
-; Consumed (reset) at TrainerAI entry, so AI_KO_CACHE_* comparisons never see it.
-DEF AI_KO_CACHE_KEEP_BIT EQU 7
+; wAITurnPlan (ai_turn_plan.asm AIPlanEnemyTurn): the enemy's turn, decided
+; before the player's battle menu so the player's switch or item cannot inform
+; it. Psychic classes and forced turns decide at commit instead.
+DEF AI_TURN_MOVE_CHOSEN_BIT EQU 7 ; the move is chosen; commit skips SelectEnemyMove
+DEF AI_TURN_SWITCH_BIT      EQU 6 ; T2+: switch out (goes before every move)
+DEF AI_TURN_ARMED_BIT       EQU 4 ; SwitchEnemyMon: AISelectSendOut takes the planned slot
+DEF AI_TURN_SLOT_MASK       EQU %111 ; the ranked replacement's party slot + 1, 0 = none
+
+; A mon locked into a multi-turn action cannot give its turn up for an item or
+; a switch (TrainerAI, and the plan that mirrors it).
+DEF AI_LOCKED_STATUS1 EQU (1 << STORING_ENERGY) | (1 << THRASHING_ABOUT) | (1 << CHARGING_UP) | (1 << USING_TRAPPING_MOVE) | (1 << INVULNERABLE)
+DEF AI_LOCKED_STATUS2 EQU (1 << NEEDS_TO_RECHARGE) | (1 << USING_RAGE)
 
 ; wAIPlayerKOMaxDamage flag bits (high byte). Possible delivery never exceeds
 ; 5 x 999 = $1383, so bits 5-7 are free.

@@ -1,3 +1,14 @@
+; Immutable direct-loss recovery record. Three free-only spans, never X7 pages.
+SECTION "Loss Recovery 1", SRAM[$be00], BANK[1]
+sLossRecovery1:: ds 512
+SECTION "Loss Recovery 2", SRAM[$ba53], BANK[3]
+sLossRecovery2:: ds 497
+SECTION "Loss Recovery 3", SRAM[$be00], BANK[3]
+sLossRecovery3:: ds 507
+sLossRecoveryCRC:: ds 4
+sLossRecoveryValid:: db
+ASSERT sLossRecoveryValid == $bfff
+
 SECTION "Sprite Buffers", SRAM
 
 sSpriteBuffer0:: ds SPRITEBUFFERSIZE

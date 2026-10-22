@@ -19,6 +19,7 @@ ConfirmNewGameOverwrite::
 	dec b
 	jr nz, .checkHeader
 	call .close
+	rfarcall LossRecoveryDiscard
 	xor a
 	ret
 .headerPresent
@@ -38,6 +39,7 @@ ConfirmNewGameOverwrite::
 	ret nz
 	; YES deliberately discards the old profile now. A reset during initialization
 	; must not Continue old main data paired with freshly initialized companions.
+	rfarcall LossRecoveryDiscard
 	call .open
 	ld hl, sSaveHeader
 	ld b, SAVE_HEADER_SIZE

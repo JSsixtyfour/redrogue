@@ -1455,19 +1455,13 @@ INCLUDE "engine/battle/misc.asm"
 ; classes - a row in each of five NUM_TRAINERS-keyed tables, two of which
 ; (TrainerPicAndMoneyPointers, TrainerNames) stay in this bank.
 TrainerAI:
-; The one-decision caches from move selection (KO answer, move estimates) are
-; stale on a PLAYER-first turn: the player has just moved, changing HP, stats
-; or the revealed moveset, and residual damage has run. On an ENEMY-first turn
-; nothing has happened since SelectEnemyMove - core.asm's .enemyMovesFirst
-; marks that with AI_KO_CACHE_KEEP_BIT just before calling here - so they are
-; still exact and are kept (FOLLOWUPS #48, 2026-09-30). On a player-first turn
-; they are kept only if nothing but our HP changed, with the KO answer
-; re-derived for the new HP (AIRevalidateDecisionCaches). The bit is consumed
-; here, before any reader, whichever way this goes.
-	ld hl, wAIPlayerKOCache
-	bit AI_KO_CACHE_KEEP_BIT, [hl]
-	res AI_KO_CACHE_KEEP_BIT, [hl] ; res keeps the flags
-	call z, AIRevalidateDecisionCaches
+; Runs at commit (ai_switching.asm AICommitEnemyTurn), before either side's move:
+; a trainer's switch or item goes first, Gen 2 style. The switch decision, the
+; item veto and the replacement come from wAITurnPlan, decided before the
+; player's menu. The one-decision caches from move selection are kept only if
+; nothing they were computed from has changed since, which the player's menu
+; action can do (AIRevalidateDecisionCaches, FOLLOWUPS #48).
+	call AIRevalidateDecisionCaches
 	and a
 	ldh a, [hIsInBattle]
 	dec a
@@ -1481,10 +1475,10 @@ TrainerAI:
 ; underground turn kept the mon CHARGING_UP + INVULNERABLE for an extra turn,
 ; and an item during Wrap left the player trapped with CANNOT_MOVE.
 	ld a, [wEnemyBattleStatus1]
-	and (1 << STORING_ENERGY) | (1 << THRASHING_ABOUT) | (1 << CHARGING_UP) | (1 << USING_TRAPPING_MOVE) | (1 << INVULNERABLE)
+	and AI_LOCKED_STATUS1
 	jr nz, .noItem
 	ld a, [wEnemyBattleStatus2]
-	and (1 << NEEDS_TO_RECHARGE) | (1 << USING_RAGE)
+	and AI_LOCKED_STATUS2
 	jr nz, .noItem
 ; AI Overhaul Phase 6: T2+ trainers only consider items when their active
 ; mon is the ace (Gen 2's rule - no other living party member). T0/T1 fall
@@ -1515,7 +1509,8 @@ ELSE
 ; a mon that can act, Guard Spec - trades a won exchange for a free player turn.
 ; Asked only when an item use is left ($ff = not loaded yet, also "left"), and
 ; only here, on ace turns, where the switch ranking never runs - so it does not
-; add to the measured worst case (FOLLOWUPS #48).
+; add to the measured worst case (FOLLOWUPS #48). Not part of the turn plan
+; (ai_turn_plan.asm): trainers use no items while AI_TRAINER_ITEMS is 0.
 	ld a, [wAICount]
 	and a
 	jr z, .noItem
@@ -1923,10 +1918,17 @@ AISwitchIfEnoughMons:
 	cp 2    ; don't bother if only 1
 	jr c, .noSwitch
 ; AI Overhaul Phase 4: having a spare mon is now only the PRECONDITION, not the
-; decision. T2+ reaches here through AITrySmartSwitch before item gates.
-; T0/T1 retain the JugglerAI / CooltrainerFAI / AgathaAI class rolls, with
-; AIShouldSwitch deliberately returning carry SET for those low tiers.
-	farcall AIShouldSwitchAtSelectedSpeed
+; decision. T2+ reaches here through AITrySmartSwitch before item gates, and
+; takes AIShouldSwitch's answer from the plan made before the player's menu.
+; T0/T1 (and an unresolved tier) keep the JugglerAI / CooltrainerFAI / AgathaAI
+; class rolls: the roll already asked for this switch.
+	ld a, [wAITier]
+	cp AI_TIER_SKILLED + 1 ; wAITier holds tier + 1; carry = T0/T1/unresolved
+	jr c, .switchDecisionReady
+	ld a, [wAITurnPlan]
+	add a, a ; carry = AI_TURN_SWITCH_BIT
+	ASSERT AI_TURN_SWITCH_BIT == 6
+	add a, a
 .switchDecisionReady
 	jp c, SwitchEnemyMon
 .noSwitch
@@ -1970,7 +1972,11 @@ SwitchEnemyMon:
 	; switching in a new mon in response to this switch.
 	ld a, 1
 	ld [wFirstMonsNotOutYet], a
+	ld hl, wAITurnPlan
+	set AI_TURN_ARMED_BIT, [hl] ; AISelectSendOut: send in the planned replacement
 	callfar EnemySendOut
+	ld hl, wAITurnPlan
+	res AI_TURN_ARMED_BIT, [hl]
 	xor a
 	ld [wFirstMonsNotOutYet], a
 

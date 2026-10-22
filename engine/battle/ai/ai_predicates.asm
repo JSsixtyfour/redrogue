@@ -287,16 +287,14 @@ AIMoveIsReliableKO::
 ; voluntary switching: do not give up a high-confidence finish merely because
 ; the player could also KO us.
 ;
-; NO TURN-ORDER TEST, deliberately (2026-09-29 review F1). The callers are
-; AIShouldSwitch and TrainerAI's item gate (B6), both reached only from
-; TrainerAI, which the battle loop calls at
-; the ENEMY'S ACTION POINT (core.asm .enemyMovesFirst / after ExecutePlayerMove
-; on .playerMovesFirst). If the player moved first they have already acted this
-; turn; if we move first we are about to. Either way the selected move lands
-; before the player's next action, whatever the speeds. The old
-; AIEnemyActsFirstWith requirement made a slower mon that had survived the hit
-; switch out of a won exchange (measured: probe_ai_review_phase0 F1). Do not
-; call this from move selection, where turn order has NOT been decided yet.
+; TURN ORDER (2026-10-22). AIShouldSwitch asks this when the turn is planned
+; (ai_turn_plan.asm AIDecideEnemyTurn), and the switch it decides goes before
+; every move, Gen 2 style (as would TrainerAI's item, compiled out). So staying
+; in wins only if the finisher lands before the player can stop it: we act
+; first (AIEnemyActsFirstWith), or the player's believed moveset cannot KO us.
+; A slower mon that survives the hit still finishes, which is what the 2026-09-29
+; review's F1 asked for (they used to be asked at the enemy's action point,
+; after a faster player had already moved, so there was no turn-order test).
 ;
 ; "Reliable" is AIMoveIsReliableKO's meaning, after Substitute delivery. Forced-
 ; action states cannot use a newly selected finisher, and paralysis (25% full
@@ -364,8 +362,15 @@ AIEnemyHasReliableFirstKO::
 	call AIAdjustEnemyDamageForReliableDelivery
 	call AIMoveIsReliableKO
 	jr nc, .restoreNoKO
+	call AIEnemyActsFirstWith ; reads the selected move, still loaded
+	jr nc, .slower
 	call .restoreMove
 	scf
+	ret
+.slower
+	call .restoreMove ; before the scan: it reuses AI_BUF_MOVESAVE's bytes
+	call AIPlayerWouldKO ; carry = the player KOs us before our move lands
+	ccf
 	ret
 .restoreNoKO
 	call .restoreMove

@@ -234,6 +234,26 @@ class AIShouldSwitchTest(unittest.TestCase):
         if self.harness is not None:
             self.harness.close()
 
+    def call_ai_should_switch(self) -> None:
+        """call_routine("AIShouldSwitch") for a decision computed fresh
+        against the board as THIS test left it. boot_fight2 now makes turn
+        1's whole decision silently before its own first menu appears
+        (ai_turn_plan.asm, 2026-10-22), so wAIPlayerKOCache/wAIReliableKOFound
+        may still hold that decision's answer for the board as it was before
+        this test primed it; AIShouldSwitch's trigger 2 (AIPlayerWouldKO)
+        would otherwise reuse that stale answer instead of recomputing one
+        for the board this test actually set up. call_routine's own "fresh
+        decision" precondition only resets the damage-estimate span
+        (wAIEnemyEstimateCache/wAIPlayerKOMaxDamage, FOLLOWUPS #48) - it is
+        deliberately NOT a global reset of these two, since other tests
+        (test_ai_checkpoint_b, test_ai_reliable_ko_wins) prime a specific
+        wAIPlayerKOCache/wAIReliableKOFound value and need call_routine to
+        leave it alone."""
+        assert self.harness is not None
+        for label in ("wAIPlayerKOCache", "wAIReliableKOFound"):
+            self.harness.write8(label, 0)
+        self.harness.call_routine("AIShouldSwitch")
+
     def mon(self, species: str, moves: list[str] | None = None) -> dict[str, object]:
         return {
             "species": self.species[species],
@@ -271,7 +291,7 @@ class AIShouldSwitchTest(unittest.TestCase):
             post_boot(self.harness)
         switch = self.harness.hook_flag("AIShouldSwitch.switch")
         stay = self.harness.hook_flag("AIShouldSwitch.stay")
-        self.harness.call_routine("AIShouldSwitch")
+        self.call_ai_should_switch()
         self.assertEqual(switch["count"] + stay["count"], 1, "exactly one exit must fire")
         return bool(switch["count"])
 
@@ -317,7 +337,7 @@ class AIShouldSwitchTest(unittest.TestCase):
             self.harness.write8("wEnemyDisabledMove", 0x11)
         switch = self.harness.hook_flag("AIShouldSwitch.switch")
         stay = self.harness.hook_flag("AIShouldSwitch.stay")
-        self.harness.call_routine("AIShouldSwitch")
+        self.call_ai_should_switch()
         self.assertEqual(switch["count"] + stay["count"], 1)
         return bool(switch["count"])
 
@@ -350,16 +370,26 @@ class AIShouldSwitchTest(unittest.TestCase):
         self.prime_both_sides_lethal()
         switch = self.harness.hook_flag("AIShouldSwitch.switch")
         stay = self.harness.hook_flag("AIShouldSwitch.stay")
-        self.harness.call_routine("AIShouldSwitch")
+        self.call_ai_should_switch()
         self.assertEqual((switch["count"], stay["count"]), (1, 0))
 
     def slower_selected_finisher(self, enemy_status: int = 0, *, move: str = "TACKLE",
-                                 player_status1: int = 0) -> tuple[int, int]:
-        """Slower Slowpoke with `move` selected; both sides in finishing range.
+                                 player_status1: int = 0,
+                                 safe_from_player: bool = False) -> tuple[int, int]:
+        """Slower Slowpoke with `move` selected; the reserve is Geodude (immune
+        to Thunderbolt), so B4's survival gate and B5's sacrifice rule never
+        mask the vetoes under test.
 
-        The known threat is Thunderbolt (super effective, so it still KOs a
-        Slowpoke kept above a quarter HP) and the reserve is Geodude (immune),
-        so neither B4's survival gate nor B5's sacrifice rule masks the vetoes.
+        safe_from_player=False (default): both sides in ordinary-hit finishing
+        range (prime_both_sides_lethal). The known threat is Thunderbolt, super
+        effective, so the player's believed moveset also reliably KOs us.
+        safe_from_player=True: only OUR finisher is lethal. The enemy mon
+        (Slowpoke)'s HP is set to a synthetic 999 - the documented ceiling a
+        believed delivery never exceeds (ai_constants.asm's AIPlayerKOMaxDamage
+        comment) - rather than its real max HP: a full-HP Slowpoke is still
+        within a critical, max-roll Thunderbolt's reach (measured: the KO scan
+        reported "yes" at 160/160), since this emergency check is a POSSIBLE
+        delivery, not AIMoveIsReliableKO's 90%-confidence bar.
         """
         assert self.harness is not None
         self.harness.inject_fight2_spec(
@@ -374,18 +404,40 @@ class AIShouldSwitchTest(unittest.TestCase):
         self.harness.write8("wEnemyMonStatus", enemy_status)
         self.harness.write8("wPlayerBattleStatus1", player_status1)
         self.harness.reveal_player_moves(0, [0], clear=True)
-        self.prime_both_sides_lethal()
+        if safe_from_player:
+            self.harness.write8("wEnemyMonHP", 999 >> 8, offset=0)
+            self.harness.write8("wEnemyMonHP", 999 & 0xFF, offset=1)
+            max_hi, max_lo = self.harness.read_bytes("wBattleMonMaxHP", 2)
+            max_hp = (max_hi << 8) | max_lo
+            value = max(1, max_hp * 1 // 20)
+            self.harness.write8("wBattleMonHP", value >> 8, offset=0)
+            self.harness.write8("wBattleMonHP", value & 0xFF, offset=1)
+        else:
+            self.prime_both_sides_lethal()
         switch = self.harness.hook_flag("AIShouldSwitch.switch")
         stay = self.harness.hook_flag("AIShouldSwitch.stay")
-        self.harness.call_routine("AIShouldSwitch")
+        self.call_ai_should_switch()
         return switch["count"], stay["count"]
 
-    def test_slower_selected_ko_still_vetoes_emergency_switch(self) -> None:
-        # Review F1 (2026-09-29): TrainerAI runs at the enemy's action point,
-        # so a slower mon's selected finisher lands before the player's next
-        # action. It used to switch out here (the old "second action" test
-        # asserted that); the real-turn version is probe_ai_review_phase0 F1.
-        self.assertEqual(self.slower_selected_finisher(), (0, 1))
+    def test_slower_selected_ko_now_switches_when_the_player_also_kos(self) -> None:
+        # 2026-10-22: the enemy's switch is now decided and executed BEFORE
+        # either side's move (Gen 2 timing, ai_turn_plan.asm), so a slower
+        # mon's own finisher no longer "lands first" - the switch pre-empts it
+        # entirely. AIEnemyHasReliableFirstKO's veto now requires acting first
+        # OR the player's believed moveset being unable to KO us; here Slowpoke
+        # is slower AND Thunderbolt (believed) can finish it, so the veto does
+        # not hold and the emergency trigger switches. This inverts the
+        # pre-2026-10-22 rule (TrainerAI used to run at the enemy's action
+        # point, after the player had already acted, so staying to land a
+        # survived hit was always correct - probe_ai_review_phase0 F1).
+        self.assertEqual(self.slower_selected_finisher(), (1, 0))
+
+    def test_slower_selected_ko_still_vetoes_when_the_player_cannot_ko_back(self) -> None:
+        # Companion case for the inverted rule above: slower, but the player's
+        # believed moveset cannot reach us this turn, so there is no race to
+        # lose by staying - the veto holds exactly as it always did.
+        self.assertEqual(
+            self.slower_selected_finisher(safe_from_player=True), (0, 1))
 
     # Codex follow-up R1: the player's state at the enemy's action point.
     # wPlayerBattleStatus1 bit 5 = USING_TRAPPING_MOVE, bit 6 = INVULNERABLE.
@@ -397,9 +449,24 @@ class AIShouldSwitchTest(unittest.TestCase):
     def test_invulnerable_target_voids_the_veto_except_for_swift(self) -> None:
         self.assertEqual(self.slower_selected_finisher(player_status1=1 << 6), (1, 0))
 
-    def test_swift_still_vetoes_against_an_invulnerable_target(self) -> None:
+    def test_swift_now_switches_against_an_invulnerable_target(self) -> None:
+        # 2026-10-22: Swift still reaches an invulnerable (Fly/Dig) target, so
+        # the reliable-KO check passes as before, but Slowpoke is slower and
+        # the player's believed Thunderbolt can also KO us (prime_both_sides_
+        # lethal, the fixture's default) - same inversion as the plain-Tackle
+        # case above: the switch pre-empts our finisher, so it fires instead
+        # of staying.
         self.assertEqual(
-            self.slower_selected_finisher(move="SWIFT", player_status1=1 << 6), (0, 1))
+            self.slower_selected_finisher(move="SWIFT", player_status1=1 << 6), (1, 0))
+
+    def test_swift_still_vetoes_when_the_player_cannot_ko_back(self) -> None:
+        # Companion case, mirroring test_slower_selected_ko_still_vetoes_
+        # when_the_player_cannot_ko_back: Swift still reaches the invulnerable
+        # target, and with no race to lose (the player can't KO us this
+        # turn), the veto holds exactly as it always did.
+        self.assertEqual(
+            self.slower_selected_finisher(move="SWIFT", player_status1=1 << 6,
+                                          safe_from_player=True), (0, 1))
 
     def test_paralyzed_finisher_does_not_veto_emergency_switch(self) -> None:
         # 25% full paralysis puts the KO below the 90% reliability bar.
@@ -423,7 +490,7 @@ class AIShouldSwitchTest(unittest.TestCase):
         self.prime_lethal_hp()
         switch = self.harness.hook_flag("AIShouldSwitch.switch")
         stay = self.harness.hook_flag("AIShouldSwitch.stay")
-        self.harness.call_routine("AIShouldSwitch")
+        self.call_ai_should_switch()
         self.assertEqual((switch["count"], stay["count"]), (1, 0))
 
     # --- AI_BACKLOG B5: sacrifice instead of an expensive emergency switch ------

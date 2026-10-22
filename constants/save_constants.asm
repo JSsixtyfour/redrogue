@@ -56,7 +56,9 @@
 ; byte of the saved pad after wOptions3. Nothing moved; old saves get it zeroed
 ; (form 0, the plain species, as an offer rolled before this change would have
 ; delivered), migration tradeFormAdded.
-DEF SAVE_SCHEMA_ID EQU 11
+; Schema 12: free-only direct-loss recovery record, initialized invalid by
+; lossRecoveryAdded. Existing payload and companion addresses do not move.
+DEF SAVE_SCHEMA_ID EQU 12
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; "RRSG" as raw ASCII, not through the game's text charmap.

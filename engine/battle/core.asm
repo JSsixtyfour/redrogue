@@ -318,6 +318,10 @@ MainInBattleLoop:
 	and (1 << THRASHING_ABOUT) | (1 << CHARGING_UP) ; check if the player is thrashing about or charging for an attack
 	jr nz, .selectEnemyMove ; if so, jump
 ; the player is neither thrashing about nor charging for an attack
+; The enemy decides its turn now, from what the player can also see: a switch
+; or item picked in the menu below cannot inform it (ai_turn_plan.asm).
+	farcall AIPlanEnemyTurn
+.battleMenu ; a cancelled move menu comes back here: the plan stands
 	call DisplayBattleMenu ; show battle menu
 	ret c ; return if player ran from battle
 	ld a, [wEscapedFromBattle]
@@ -350,7 +354,7 @@ MainInBattleLoop:
 	call LoadScreenTilesFromBuffer1
 	call DrawHUDsAndHPBars
 	pop af
-	jr nz, MainInBattleLoop ; if the player didn't select a move, jump
+	jr nz, .battleMenu ; if the player didn't select a move, jump
 .selectEnemyMove
 	farcall BattleTurnCommitted ; Money Match turn count, then BridgeBeginRepeatAction
 ; TURN REWIND: snapshot at move-commit time, before this turn's outcome is
@@ -363,7 +367,10 @@ MainInBattleLoop:
 ; No-ops internally if the item isn't active. See
 ; KEY_ITEM_EFFECTS_PLAN_PC.md §5 and custom_functions/turn_rewind.asm.
 	farcall TurnRewindSnapshot
-	call SelectEnemyMove
+; The enemy's move (unless planned before the menu), then its trainer switch or
+; item, which goes before every move, as in Gen 2.
+	farcall AICommitEnemyTurn ; carry = the enemy spent its turn on it
+	jp c, .AIActionUsedEnemyFirst
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	jr nz, .noLinkBattle
@@ -443,10 +450,6 @@ MainInBattleLoop:
 .enemyMovesFirst
 	ld a, $1
 	ldh [hWhoseTurn], a
-	ld hl, wAIPlayerKOCache ; nothing has happened since SelectEnemyMove, so
-	set AI_KO_CACHE_KEEP_BIT, [hl] ; TrainerAI may keep its caches (#48)
-	callfar TrainerAI
-	jr c, .AIActionUsedEnemyFirst
 	call ExecuteEnemyMove
 	ld a, [wEscapedFromBattle]
 	and a ; was Teleport, Roar, or Whirlwind used to escape from battle?
@@ -529,8 +532,6 @@ MainInBattleLoop:
 	call DrawHUDsAndHPBars
 	ld a, $1
 	ldh [hWhoseTurn], a
-	callfar TrainerAI
-	jr c, .AIActionUsedPlayerFirst
 	ld hl, wEnemyBattleStatus2 ; the player has acted, so the enemy moves second
 	set MOVING_SECOND, [hl]    ; (cleared each round by BattleRoundStartFixups)
 	call ExecuteEnemyMove

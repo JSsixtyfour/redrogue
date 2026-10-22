@@ -23,11 +23,14 @@ SilphCoDorm_Script:
 	jr nz, .hideLance
 	ld a, TOGGLE_SILPH_CO_B1F_LANCE
 	ld [wToggleableObjectIndex], a
-	predef_jump ShowObject
+	predef ShowObject
+	jr .settled
 .hideLance
 	ld a, TOGGLE_SILPH_CO_B1F_LANCE
 	ld [wToggleableObjectIndex], a
-	predef_jump HideObject
+	predef HideObject
+.settled
+	rfarjp LossRecoveryFinish
 
 SilphCoDorm_TextPointers:
 	def_text_pointers

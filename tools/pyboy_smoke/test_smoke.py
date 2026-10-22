@@ -179,6 +179,9 @@ class BootSmokeTest(HarnessTestCase):
             ai_tier=3,
         )
         scores = self.harness.hook_ai_scores()
+        # The AI scores before the battle menu (ai_turn_plan.asm), so the
+        # player's move is only known once the turn commits.
+        committed = self.harness.hook_flag("AICommitEnemyTurn")
         self.harness.boot_fight2(seed=1)
         self.assertEqual(self.harness.read_bytes("wPartySpecies", 2), [species["SNORLAX"], 0xFF])
         self.assertEqual(self.harness.read_bytes("wEnemyPartySpecies", 2), [species["GENGAR"], 0xFF])
@@ -186,7 +189,7 @@ class BootSmokeTest(HarnessTestCase):
         for _ in range(300):
             self.harness.tap("a", 1)
             self.harness.tick(8)
-            if scores:
+            if scores and committed["count"]:
                 break
         self.assertTrue(scores)
         self.assertEqual(self.harness.read8("wTestBattlePlayerSelectedMove"), moves["BODY_SLAM"])

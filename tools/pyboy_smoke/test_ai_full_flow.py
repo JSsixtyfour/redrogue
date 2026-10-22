@@ -38,9 +38,18 @@ class AIFullFlowTest(unittest.TestCase):
         self.h.write8(label, value >> 8, offset=offset)
         self.h.write8(label, value & 255, offset=offset + 1)
 
-    def boot(self, player, enemy, trainer="JUGGLER", tier=2):
+    def boot(self, player, enemy, trainer="JUGGLER", tier=2, before_boot=None):
+        """before_boot, if given, runs after the fixture is injected but
+        before boot_fight2 - the only place to register a hook (hook_flag,
+        hook_ai_scores, ...) that must see turn 1's decision: that decision
+        is made (and, since 2026-10-22, a T2+ voluntary switch is executed)
+        INSIDE boot_fight2 itself (ai_turn_plan.asm AIPlanEnemyTurn runs before
+        boot_fight2's own first battle menu), before any hook registered
+        after boot_fight2 returns can ever see it."""
         self.h.inject_fight2_spec(player, enemy,
                                   trainer_class=self.trainers[trainer], ai_tier=tier)
+        if before_boot is not None:
+            before_boot()
         self.h.boot_fight2(seed=1)
 
     def drive_turns(self, stop, limit=2400):
@@ -114,10 +123,14 @@ class AIFullFlowTest(unittest.TestCase):
         # Real turns. Tauros (faster) Tackles every turn except the second,
         # where it flinches. Before L1 part 2 the decision-time tracker counted
         # the flinched SELECTION, reading a streak of 2 at the fourth decision.
+        #
+        # Both hooks registered in before_boot: decision 1's fresh-mon sentinel
+        # (AI_LAST_MOVE_FRESH_MON) is only ever visible at the VERY FIRST
+        # AIEnemyTrainerChooseMoves call, which now happens silently inside
+        # boot_fight2 (ai_turn_plan.asm's pre-menu plan); a hook registered
+        # after boot never sees it; decisions[0] would read the SECOND
+        # decision's already-Tackle value instead (measured: nums=[33,33,33,33]).
         h = self.h
-        self.boot([self.mon("SNORLAX", ["SPLASH"])], [self.mon("TAUROS", ["TACKLE"])],
-                  trainer="COOLTRAINER_M")
-        self.no_items()
         tackle = self.moves["TACKLE"]
         decisions, executions = [], []
 
@@ -130,8 +143,13 @@ class AIFullFlowTest(unittest.TestCase):
                 h.write8("wEnemyBattleStatus1",
                          h.read8("wEnemyBattleStatus1") | (1 << self.battle["FLINCHED"]))
 
-        h.hook_flag("AIEnemyTrainerChooseMoves", action=at_decision)
-        h.hook_flag("ExecuteEnemyMove", action=at_execute)
+        def before_boot():
+            h.hook_flag("AIEnemyTrainerChooseMoves", action=at_decision)
+            h.hook_flag("ExecuteEnemyMove", action=at_execute)
+
+        self.boot([self.mon("SNORLAX", ["SPLASH"])], [self.mon("TAUROS", ["TACKLE"])],
+                  trainer="COOLTRAINER_M", before_boot=before_boot)
+        self.no_items()
         self.assertTrue(self.drive_turns(lambda: len(decisions) >= 4),
                         f"decisions={decisions}")
         print(f"\nL1 flinch decisions={decisions} executions={executions}")
@@ -147,9 +165,18 @@ class AIFullFlowTest(unittest.TestCase):
         # Slowpoke is kept in Thunderbolt's KO range and Thunderbolt is known,
         # so the AI switches to Geodude (immune: B4 says it survives). Geodude
         # must then stay, and start with a fresh move history.
+        #
+        # Priming hooked on AIPlanEnemyTurn, in before_boot, not on TrainerAI:
+        # the switch (and the move, and the replacement) is decided THERE, once
+        # per turn, before that turn's menu - including turn 1's, made silently
+        # inside boot_fight2 itself. A TrainerAI-hooked prime (as this used to
+        # read) arrives one commit too late for the decision it is meant to
+        # steer; this fixture happened to still pass before, because a level 50
+        # Slowpoke's full (unprimed) HP is ALSO already within a critical
+        # Thunderbolt's reach (the same latent trap the CGB switch-speed
+        # fixture hit - measured there, not re-measured here), so the switch
+        # still landed on commit 1 regardless, for the wrong reason.
         h = self.h
-        self.boot([self.mon("ELECTRODE", ["SPLASH", "THUNDERBOLT"])],
-                  [self.mon("SLOWPOKE", ["TACKLE"]), self.mon("GEODUDE", ["TACKLE"])])
         active, switches, first_geodude = [], [], []
 
         def at_trainer_ai():
@@ -166,8 +193,13 @@ class AIFullFlowTest(unittest.TestCase):
             if h.read8("wEnemyMonPartyPos") == 1 and not first_geodude:
                 first_geodude.append(h.read8("wAILastMoveNum"))
 
-        h.hook_flag("TrainerAI", action=at_trainer_ai)
-        h.hook_flag("AIEnemyTrainerChooseMoves", action=at_decision)
+        def before_boot():
+            h.hook_flag("AIPlanEnemyTurn", action=at_trainer_ai)
+            h.hook_flag("AIEnemyTrainerChooseMoves", action=at_decision)
+
+        self.boot([self.mon("ELECTRODE", ["SPLASH", "THUNDERBOLT"])],
+                  [self.mon("SLOWPOKE", ["TACKLE"]), self.mon("GEODUDE", ["TACKLE"])],
+                  before_boot=before_boot)
         h.hook_flag("SwitchEnemyMon", action=lambda:
                     switches.append(h.read8("wEnemyMonPartyPos")))
         self.assertTrue(self.drive_turns(lambda: len(active) >= 5), f"active={active}")
@@ -181,9 +213,17 @@ class AIFullFlowTest(unittest.TestCase):
         # Same threat, but Geodude sits at 1 HP and the player's Tackle is known
         # too. The ranking still prefers Geodude (Thunderbolt immunity), so the
         # B4 survival gate is what keeps Slowpoke in - on every turn, not once.
+        #
+        # Priming hooked on AIPlanEnemyTurn (see test_surviving_switch_in_
+        # happens_once_and_holds's note just above): a TrainerAI-hooked prime
+        # (as this used to read) arrives after the switch for that turn is
+        # already decided, so the decision never saw Geodude's simulated 1 HP
+        # at all - measured: a level 50 Slowpoke's full HP is ALSO already
+        # within Thunderbolt's reach, so with the OLD hook point the switch
+        # fired on commit 1 regardless of this fixture's own "Geodude would
+        # also die" setup, a real (fixture-timing) regression this rewrite
+        # fixes rather than merely re-baselines.
         h = self.h
-        self.boot([self.mon("ELECTRODE", ["SPLASH", "THUNDERBOLT", "TACKLE"])],
-                  [self.mon("SLOWPOKE", ["TACKLE"]), self.mon("GEODUDE", ["TACKLE"])])
         active, switches = [], []
 
         def at_trainer_ai():
@@ -193,7 +233,12 @@ class AIFullFlowTest(unittest.TestCase):
             active.append(h.read8("wEnemyMonPartyPos"))
             self.word("wEnemyMonHP", 2)
 
-        h.hook_flag("TrainerAI", action=at_trainer_ai)
+        def before_boot():
+            h.hook_flag("AIPlanEnemyTurn", action=at_trainer_ai)
+
+        self.boot([self.mon("ELECTRODE", ["SPLASH", "THUNDERBOLT", "TACKLE"])],
+                  [self.mon("SLOWPOKE", ["TACKLE"]), self.mon("GEODUDE", ["TACKLE"])],
+                  before_boot=before_boot)
         gate = h.hook_flag("AIBestReserveSurvivesThreat")
         h.hook_flag("SwitchEnemyMon", action=lambda:
                     switches.append(h.read8("wEnemyMonPartyPos")))
@@ -207,9 +252,17 @@ class AIFullFlowTest(unittest.TestCase):
         # Body Slam; Geodude would survive a switch-in. Before B5 the AI switched
         # and Geodude ate the Body Slam. Now Pikachu stays and attacks, faints,
         # and Geodude comes in after the faint untouched.
+        #
+        # Priming hooked on AIPlanEnemyTurn (see test_surviving_switch_in_
+        # happens_once_and_holds's note above): a TrainerAI-hooked prime (as
+        # this used to read) arrives after the switch-vs-sacrifice decision is
+        # already made. Measured: Body Slam is Normal-type and Snorlax's own
+        # type-guess STAB, believed even unrevealed, so a FULL-HP Pikachu is
+        # already within its reach too (the same latent trap as the other two
+        # tests touched by this note) - with the OLD hook point the AI
+        # switched into Geodude regardless of this fixture's simulated 2 HP, a
+        # real (fixture-timing) regression this rewrite fixes.
         h = self.h
-        self.boot([self.mon("SNORLAX", ["BODY_SLAM"])],
-                  [self.mon("PIKACHU", ["THUNDERSHOCK"]), self.mon("GEODUDE", ["TACKLE"])])
         switches, geodude_first = [], []
 
         def at_trainer_ai():
@@ -222,8 +275,13 @@ class AIFullFlowTest(unittest.TestCase):
             if h.read8("wEnemyMonPartyPos") == 1 and not geodude_first:
                 geodude_first.append((self.read_hp("wEnemyMonHP"), self.read_hp("wEnemyMonMaxHP")))
 
-        h.hook_flag("TrainerAI", action=at_trainer_ai)
-        h.hook_flag("AIEnemyTrainerChooseMoves", action=at_decision)
+        def before_boot():
+            h.hook_flag("AIPlanEnemyTurn", action=at_trainer_ai)
+            h.hook_flag("AIEnemyTrainerChooseMoves", action=at_decision)
+
+        self.boot([self.mon("SNORLAX", ["BODY_SLAM"])],
+                  [self.mon("PIKACHU", ["THUNDERSHOCK"]), self.mon("GEODUDE", ["TACKLE"])],
+                  before_boot=before_boot)
         h.hook_flag("SwitchEnemyMon", action=lambda:
                     switches.append(h.read8("wEnemyMonPartyPos")))
         self.assertTrue(self.drive_turns(lambda: bool(geodude_first)),
@@ -277,146 +335,140 @@ class AIFullFlowTest(unittest.TestCase):
         # is the case most sure to use an item if any path still could.
         self.assertEqual(self.brock_first_decision(None), (0, 1))
 
-    # --- FOLLOWUPS #48: TrainerAI reuses move selection's caches when exact ----
-    def ko_cache_at_trainer_ai(self, player, enemy, reveal=(1,), prime_hp=True,
-                               force_stale=False):
-        """(entry, final, cycles) for the first TrainerAI: wAIPlayerKOCache as
-        AIPlayerWouldKO is entered inside it (0 = empty, so it scans), the
-        answer it holds when TrainerAI hands over, and TrainerAI's cycles.
-        The player always uses slot 0. force_stale corrupts the state key at
-        TrainerAI entry, so the same turn is re-decided with nothing reused."""
+    # --- FOLLOWUPS #48, direct (2026-10-22 rewrite) ----------------------------
+    # The real-battle framing above no longer applies: TrainerAI runs at commit
+    # (ai_turn_plan.asm AICommitEnemyTurn), BEFORE either side's move executes,
+    # for both turn orders - there is no more "enemy-first" (nothing changed)
+    # vs "player-first" (the player's hit landed first) distinction, since
+    # neither side's move ever lands before TrainerAI any more. The only thing
+    # that CAN change between move selection (the planner, before the menu) and
+    # TrainerAI's revalidation (at commit, after the menu) is the player's menu
+    # ACTION itself - a switch, an item, or TURN REWIND - never a landed attack.
+    # These test AIRevalidateDecisionCaches directly against that board.
+    #
+    # call_routine cannot be used for AIRevalidateDecisionCaches itself: its own
+    # "fresh decision" precondition (every real decision clears the one-hit
+    # estimate cache, FOLLOWUPS #48) zeroes wAIPlayerKOMaxDamage before the
+    # routine's first instruction runs, destroying the exact value it is
+    # supposed to read back (measured: a direct call_routine always observed
+    # wAIPlayerKOCache as EMPTY, regardless of what move selection had computed
+    # moments before). probe_routine_until does not touch WRAM, only the
+    # hijacked registers/stack, so it is used instead; wAIPlayerKOCache is read
+    # from the HOOKED register snapshot (A, the value about to be stored), not
+    # from WRAM - a hook fires BEFORE the label's own instruction runs, so
+    # reading WRAM at .store would still see the entry-time EMPTY the routine
+    # itself writes before deciding anything.
+    def revalidate(self, change=None):
+        """Runs one real decision (AIEnemyTrainerChooseMoves), optionally
+        applies `change` to simulate the player's menu action, then probes
+        AIRevalidateDecisionCaches. Returns (path, cache): path is "store" (a
+        fast re-derive or reuse - cache is the resulting AI_KO_CACHE_* answer)
+        or "threatStale" (rescan deferred to the next reader; cache is None)."""
         h = self.h
-        self.boot([player], enemy, tier=3)
-        self.no_items()
-        state = {"in": False, "entry": None, "final": None, "start": 0, "cycles": None,
-                 "selected": None, "max": None}
-        self.last_state = state
+        h.call_routine("AIEnemyTrainerChooseMoves", limit=6000)
+        if change is not None:
+            change()
+        h.park_before_hijack()
+        result = {}
+        h.register_hook("AIRevalidateDecisionCaches.store", lambda _ctx:
+                        result.update(path="store", cache=h.pyboy.register_file.A))
+        h.register_hook("AIRevalidateDecisionCaches.threatStale", lambda _ctx:
+                        result.setdefault("path", "threatStale"))
+        h.probe_routine_until("AIRevalidateDecisionCaches",
+                              lambda: "path" in result, limit=2000)
+        return result.get("path"), result.get("cache")
 
-        def at_decision():
-            h.reveal_player_moves(0, list(reveal))
-            # Primed BEFORE move selection, so both decisions see one board.
-            if prime_hp is True:
-                self.word("wEnemyMonHP", self.read_hp("wEnemyMonMaxHP") // 4 + 1)
-            elif prime_hp:
-                self.word("wEnemyMonHP", prime_hp)
+    def test_unchanged_board_reuses_the_ko_answer(self):
+        # Nothing simulates a menu action: the keys still match, M is still
+        # valid, so the answer comes back through the fast path unchanged.
+        self.boot([self.mon("SNORLAX", ["SPLASH", "BODY_SLAM"])],
+                  [self.mon("ELECTRODE", ["TACKLE", "THUNDERBOLT"]), self.mon("GEODUDE", ["TACKLE"])],
+                  tier=3)
+        self.h.reveal_player_moves(0, [0, 1], clear=True)
+        before = self.h.read8("wAIPlayerKOCache")
+        path, cache = self.revalidate()
+        print(f"\n#48 unchanged: before={before} path={path} cache={cache}")
+        self.assertEqual(path, "store")
+        self.assertEqual(cache, before)
 
-        def enter():
-            if state["cycles"] is None:
-                state["in"], state["start"] = True, h.cycle_count()
-                # Move selection's answer and scan maximum, before TrainerAI
-                # revalidates or clears them.
-                state["selected"] = h.read8("wAIPlayerKOCache")
-                state["max"] = self.read_hp("wAIPlayerKOMaxDamage")
-                if force_stale:
-                    for key in ("wAIThreatStateKey", "wAIEstimateStateKey"):
-                        h.write8(key, h.read8(key) ^ 1)
+    def test_hp_only_change_rederives_without_a_rescan(self):
+        # Our own HP is deliberately left OUT of both state keys (TURN REWIND
+        # and a heal both change only it), so a drop re-derives fast against
+        # wAIPlayerKOMaxDamage rather than forcing a full rescan. Level 70
+        # Slowpoke's full HP is safely out of a critical Thunderbolt's reach
+        # (measured: a level 50 Slowpoke's full HP was already within it,
+        # mirroring the CGB switch-speed fixture's same trap), so the baseline
+        # answer is NO and the drop is a genuine NO -> YES flip, not a
+        # coincidental match.
+        self.boot([self.mon("ELECTRODE", ["SPLASH", "THUNDERBOLT"])],
+                  [self.mon("SLOWPOKE", ["TACKLE", "WATER_GUN"], level=70),
+                   self.mon("GEODUDE", ["TACKLE"])],
+                  tier=3)
+        self.h.reveal_player_moves(0, [0, 1], clear=True)
+        before = self.h.read8("wAIPlayerKOCache")
 
-        def leave():
-            if state["in"]:
-                state["in"], state["cycles"] = False, h.cycle_count() - state["start"]
-                state["final"] = h.read8("wAIPlayerKOCache")
+        def drop_into_ko_range():
+            self.word("wEnemyMonHP", self.read_hp("wEnemyMonMaxHP") // 4 + 1)
 
-        def would_ko():
-            if state["in"] and state["entry"] is None:
-                state["entry"] = h.read8("wAIPlayerKOCache")
+        path, cache = self.revalidate(drop_into_ko_range)
+        print(f"\n#48 HP-only drop: before={before} path={path} cache={cache}")
+        self.assertEqual(before, self.ai["AI_KO_CACHE_NO"])  # premise: safe at full HP
+        self.assertEqual(path, "store")
+        self.assertEqual(cache, self.ai["AI_KO_CACHE_YES"])
 
-        h.hook_flag("AIEnemyTrainerChooseMoves", action=at_decision)
-        h.hook_flag("TrainerAI", action=enter)
-        h.hook_flag("ExecuteEnemyMove", action=leave)
-        h.hook_flag("SwitchEnemyMon", action=leave)
-        h.hook_flag("AIPlayerWouldKO", action=would_ko)
-        self.assertTrue(self.drive_turns(lambda: state["cycles"] is not None))
-        return state["entry"], state["final"], state["cycles"]
+    def test_defense_drop_forces_a_rescan(self):
+        # Our Defense is an input to the player's damage on us (the threat
+        # key), so a drop (Screech, Tail Whip) invalidates the cached answer.
+        self.boot([self.mon("ELECTRODE", ["SPLASH", "THUNDERBOLT"])],
+                  [self.mon("SLOWPOKE", ["TACKLE", "WATER_GUN"]), self.mon("GEODUDE", ["TACKLE"])],
+                  tier=3)
+        self.h.reveal_player_moves(0, [0, 1], clear=True)
+        path, cache = self.revalidate(
+            lambda: self.h.write8("wEnemyMonDefense", self.h.read8("wEnemyMonDefense") ^ 1))
+        print(f"\n#48 Defense drop: path={path} cache={cache}")
+        self.assertEqual(path, "threatStale")
+        self.assertIsNone(cache)
 
-    def test_enemy_first_trainer_ai_reuses_the_ko_answer(self):
-        # Electrode outspeeds Snorlax: nothing happens between move selection and
-        # TrainerAI, so move selection's KO answer (YES here) is still exact.
-        entry, _, cycles = self.ko_cache_at_trainer_ai(
-            self.mon("SNORLAX", ["SPLASH", "BODY_SLAM"]),
-            [self.mon("ELECTRODE", ["TACKLE", "THUNDERBOLT"]), self.mon("GEODUDE", ["TACKLE"])])
-        print(f"\n#48 enemy-first TrainerAI KO cache={entry} cycles={cycles}")
-        self.assertEqual(entry, self.ai["AI_KO_CACHE_YES"])
+    def test_attack_drop_keeps_the_ko_answer(self):
+        # Growl lowers only OUR Attack, which the player's damage on us does
+        # not read (our own damage OUTPUT estimates do, a separate key): the
+        # KO answer is still reused.
+        self.boot([self.mon("ELECTRODE", ["SPLASH", "THUNDERBOLT"])],
+                  [self.mon("SLOWPOKE", ["TACKLE", "WATER_GUN"]), self.mon("GEODUDE", ["TACKLE"])],
+                  tier=3)
+        self.h.reveal_player_moves(0, [0, 1], clear=True)
+        before = self.h.read8("wAIPlayerKOCache")
+        path, cache = self.revalidate(
+            lambda: self.h.write8("wEnemyMonAttack", self.h.read8("wEnemyMonAttack") ^ 1))
+        print(f"\n#48 Attack drop: before={before} path={path} cache={cache}")
+        self.assertEqual(path, "store")
+        self.assertEqual(cache, before)
 
-    def test_player_first_new_reveal_forces_a_rescan(self):
-        # Electrode (player) moves first and its Splash is revealed by being
-        # used: the believed moveset changed, so the answer must be rescanned.
-        entry, _, cycles = self.ko_cache_at_trainer_ai(
-            self.mon("ELECTRODE", ["SPLASH", "THUNDERBOLT"]),
-            [self.mon("SLOWPOKE", ["TACKLE", "WATER_GUN"]), self.mon("GEODUDE", ["TACKLE"])])
-        print(f"\n#48 player-first new reveal: KO cache={entry} cycles={cycles}")
-        self.assertEqual(entry, self.ai["AI_KO_CACHE_EMPTY"])
+    def test_new_reveal_forces_a_rescan(self):
+        # A newly revealed player move slot changes the believed moveset
+        # (wAISeenPlayerMoveMask, part of the threat key): the cache cannot
+        # be trusted and is cleared for the next reader to rescan.
+        self.boot([self.mon("ELECTRODE", ["SPLASH", "THUNDERBOLT", "TACKLE"])],
+                  [self.mon("SLOWPOKE", ["TACKLE", "WATER_GUN"]), self.mon("GEODUDE", ["TACKLE"])],
+                  tier=3)
+        self.h.reveal_player_moves(0, [0, 1], clear=True)
+        path, cache = self.revalidate(lambda: self.h.reveal_player_moves(0, [2]))
+        print(f"\n#48 new reveal: path={path} cache={cache}")
+        self.assertEqual(path, "threatStale")
+        self.assertIsNone(cache)
 
-    def assert_reused_and_exact(self, tag, player, enemy, **kw):
-        reused = self.ko_cache_at_trainer_ai(player, enemy, **kw)
-        selected = self.last_state["selected"]
-        self.h.close()
-        self.h = RedRogueHarness(ROOT, ROOT / "tools/pyboy_smoke/artifacts")
-        fresh = self.ko_cache_at_trainer_ai(player, enemy, force_stale=True, **kw)
-        print(f"\n#48 {tag}: reused entry={reused[0]} final={reused[1]} "
-              f"cycles={reused[2]}; fresh final={fresh[1]} cycles={fresh[2]}")
-        self.assertNotEqual(reused[0], self.ai["AI_KO_CACHE_EMPTY"])
-        self.assertEqual(fresh[0], self.ai["AI_KO_CACHE_EMPTY"])
-        self.assertEqual(reused[1], fresh[1])
-        self.assertLess(reused[2], fresh[2])
-        self.last_state["selected"] = selected
-        return reused[1]
-
-    def test_player_first_unchanged_board_reuses_the_ko_answer(self):
-        # Splash already revealed: the player's move changes nothing the
-        # estimates read, so the answer is re-derived, not rescanned, and
-        # matches a full rescan of the same turn.
-        final = self.assert_reused_and_exact(
-            "player-first Splash, KO range",
-            self.mon("ELECTRODE", ["SPLASH", "THUNDERBOLT"]),
-            [self.mon("SLOWPOKE", ["TACKLE", "WATER_GUN"]), self.mon("GEODUDE", ["TACKLE"])],
-            reveal=(0, 1))
-        self.assertEqual(final, self.ai["AI_KO_CACHE_YES"])
-
-    def test_player_first_hit_rederives_against_the_lower_hp(self):
-        # The player's revealed attack lands first: only our HP changed, which
-        # the key leaves out, so the answer is re-derived for the new HP.
-        self.assert_reused_and_exact(
-            "player-first hit",
-            self.mon("ELECTRODE", ["THUNDERBOLT", "TACKLE"]),
-            [self.mon("SNORLAX", ["TACKLE", "BODY_SLAM"]), self.mon("GEODUDE", ["TACKLE"])],
-            reveal=(0, 1), prime_hp=False)
-
-    def test_player_first_hit_into_ko_range_flips_the_answer(self):
-        # SonicBoom deals exactly 20. Our HP is primed 10 above the scan's
-        # maximum M, so move selection says NO; after the hit HP = M - 10 and the
-        # re-derived answer must be YES without a rescan.
-        player = self.mon("ELECTRODE", ["SONICBOOM", "THUNDERBOLT"])
-        enemy = [self.mon("SNORLAX", ["TACKLE", "BODY_SLAM"]), self.mon("GEODUDE", ["TACKLE"])]
-        self.ko_cache_at_trainer_ai(player, enemy, reveal=(0, 1), prime_hp=False)
-        flags = self.last_state["max"]
-        valid = 1 << (8 + self.ai["AI_KO_MAX_VALID_BIT"])
-        self.assertTrue(flags & valid)
-        m = flags & 0x1FFF
-        self.h.close()
-        self.h = RedRogueHarness(ROOT, ROOT / "tools/pyboy_smoke/artifacts")
-        final = self.assert_reused_and_exact("player-first hit into KO range", player, enemy,
-                                             reveal=(0, 1), prime_hp=m + 10)
-        print(f"  M={m} selected={self.last_state['selected']}")
-        self.assertEqual(self.last_state["selected"], self.ai["AI_KO_CACHE_NO"])
-        self.assertEqual(final, self.ai["AI_KO_CACHE_YES"])
-
-    def test_player_first_defense_drop_forces_a_rescan(self):
-        # Tail Whip lowers our Defense, an input to the player's damage on us:
-        # the KO answer may not be reused.
-        entry, _, _ = self.ko_cache_at_trainer_ai(
-            self.mon("ELECTRODE", ["TAIL_WHIP", "TACKLE"]),
-            [self.mon("SLOWPOKE", ["TACKLE", "WATER_GUN"]), self.mon("GEODUDE", ["TACKLE"])],
-            reveal=(0, 1))
-        self.assertEqual(entry, self.ai["AI_KO_CACHE_EMPTY"])
-
-    def test_player_first_attack_drop_keeps_the_ko_answer(self):
-        # Growl lowers only OUR Attack, which the player's damage on us does not
-        # read: the KO answer is still reused (our estimates are not).
-        self.assert_reused_and_exact(
-            "player-first Growl",
-            self.mon("ELECTRODE", ["GROWL", "THUNDERBOLT"]),
-            [self.mon("SLOWPOKE", ["TACKLE", "WATER_GUN"]), self.mon("GEODUDE", ["TACKLE"])],
-            reveal=(0, 1))
+    def test_player_switch_forces_a_rescan(self):
+        # wPlayerMonNumber is itself part of both state keys: a party switch
+        # (via the battle menu) is always a cache miss, whatever the new mon's
+        # stats turn out to be.
+        self.boot([self.mon("ELECTRODE", ["SPLASH", "THUNDERBOLT"])],
+                  [self.mon("SLOWPOKE", ["TACKLE", "WATER_GUN"]), self.mon("GEODUDE", ["TACKLE"])],
+                  tier=3)
+        self.h.reveal_player_moves(0, [0, 1], clear=True)
+        path, cache = self.revalidate(lambda: self.h.write8("wPlayerMonNumber", 1))
+        print(f"\n#48 player switch: path={path} cache={cache}")
+        self.assertEqual(path, "threatStale")
+        self.assertIsNone(cache)
 
     def read_hp(self, label):
         return int.from_bytes(bytes(self.h.read_bytes(label, 2)), "big")
@@ -450,12 +502,21 @@ class AIFullFlowTest(unittest.TestCase):
         # (measured 147 -> 0), and Thunder Wave's SMART 3 + PLAN 3 used to tie
         # that kill at 13, leaving it to the RNG. A plan must never steer past a
         # reliable kill: PLAN issues nothing, and Thunderbolt wins on score.
+        #
+        # hook_ai_scores() is registered in before_boot: turn 1's decision is
+        # made INSIDE boot_fight2 (ai_turn_plan.asm's pre-menu plan), so a hook
+        # registered after boot never sees it, and decisions[0] below would be
+        # an IndexError (drive_turns's own stop condition - one execution - is
+        # satisfied by turn 1 before a second decision ever runs).
         h = self.h
+        container = {}
+        def before_boot():
+            container["decisions"] = h.hook_ai_scores()
         self.boot([self.mon("AERODACTYL", ["SPLASH"])],
                   [self.mon("RAICHU", ["THUNDER_WAVE", "THUNDERBOLT"])],
-                  trainer="COOLTRAINER_M", tier=3)
+                  trainer="COOLTRAINER_M", tier=3, before_boot=before_boot)
         self.no_items()
-        decisions = h.hook_ai_scores()
+        decisions = container["decisions"]
         executed = []
         h.hook_flag("ExecuteEnemyMove", action=lambda: executed.append(
             h.read8("wEnemySelectedMove")))
@@ -474,15 +535,21 @@ class AIFullFlowTest(unittest.TestCase):
         # reaches the kill branch, is capped at AI_STRONG, sets no
         # wAIReliableKOFound, and the half-HP Vine Whip wins. Since Solar Beam
         # also ranks at half (#61), the best-damage nudge is Vine Whip's: 19 vs 16.
+        # All three hooks below are registered in before_boot: turn 1's
+        # decision happens INSIDE boot_fight2 (see the previous test's note),
+        # before a hook registered after boot could ever see it.
         h = self.h
+        kill_branch, flag = [], []
+        container = {}
+        def before_boot():
+            h.hook_flag("AILayerDamage.kill", action=lambda: kill_branch.append(1))
+            h.hook_flag("AILayerPlan", action=lambda: flag.append(h.read8("wAIReliableKOFound")))
+            container["decisions"] = h.hook_ai_scores()
         self.boot([self.mon("GOLEM", ["SPLASH"])],
                   [self.mon("VENUSAUR", ["SOLARBEAM", "VINE_WHIP"])],
-                  trainer="COOLTRAINER_M", tier=3)
+                  trainer="COOLTRAINER_M", tier=3, before_boot=before_boot)
         self.no_items()
-        kill_branch, flag = [], []
-        h.hook_flag("AILayerDamage.kill", action=lambda: kill_branch.append(1))
-        h.hook_flag("AILayerPlan", action=lambda: flag.append(h.read8("wAIReliableKOFound")))
-        decisions = h.hook_ai_scores()
+        decisions = container["decisions"]
         executed = []
         h.hook_flag("ExecuteEnemyMove", action=lambda: executed.append(
             h.read8("wEnemySelectedMove")))
@@ -502,20 +569,28 @@ class AIFullFlowTest(unittest.TestCase):
         # best-damage nudge went to Sky Attack (two turns ranked as one). Now
         # AI_SETUP skips speed boosts when already faster, Sky Attack ranks at
         # half, and Take Down takes the nudge and wins outright.
+        # prime and hook_ai_scores() both registered in before_boot: turn 1's
+        # decision - the one `prime` needs to catch - happens INSIDE
+        # boot_fight2 (see test_reliable_kill_outranks_the_para_sweep_plan's
+        # note), before a hook registered after boot could ever see it.
         h = self.h
-        self.boot([self.mon("GOLBAT", ["SPLASH"], level=45)],
-                  [self.mon("PIDGEOT", ["TAKE_DOWN", "AGILITY", "SKY_ATTACK", "MIRROR_MOVE"])],
-                  trainer="COOLTRAINER_M", tier=3)
-        self.no_items()
         primed = []
+        container = {}
 
         def prime():
             if not primed:
                 primed.append(1)
                 self.word("wBattleMonHP", 47)
 
-        h.hook_flag("AIEnemyTrainerChooseMoves", action=prime)
-        decisions = h.hook_ai_scores()
+        def before_boot():
+            h.hook_flag("AIEnemyTrainerChooseMoves", action=prime)
+            container["decisions"] = h.hook_ai_scores()
+
+        self.boot([self.mon("GOLBAT", ["SPLASH"], level=45)],
+                  [self.mon("PIDGEOT", ["TAKE_DOWN", "AGILITY", "SKY_ATTACK", "MIRROR_MOVE"])],
+                  trainer="COOLTRAINER_M", tier=3, before_boot=before_boot)
+        self.no_items()
+        decisions = container["decisions"]
         executed = []
         h.hook_flag("ExecuteEnemyMove", action=lambda: executed.append(
             h.read8("wEnemySelectedMove")))

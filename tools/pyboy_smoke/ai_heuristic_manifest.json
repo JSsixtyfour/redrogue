@@ -25,7 +25,7 @@
     "requirement": "a reliable selected KO vetoes the switch and the item",
     "tests": [
      "test_ai_switching.AIShouldSwitchTest.test_reliable_first_ko_vetoes_emergency_switch",
-     "test_ai_switching.AIShouldSwitchTest.test_slower_selected_ko_still_vetoes_emergency_switch",
+     "test_ai_switching.AIShouldSwitchTest.test_slower_selected_ko_still_vetoes_when_the_player_cannot_ko_back",
      "test_ai_full_flow.AIFullFlowTest.test_item_is_vetoed_when_the_selected_move_wins"
     ]
    },
@@ -41,7 +41,7 @@
     "requirement": "fixed damage and Swift into invulnerability",
     "tests": [
      "test_ai_switching.AIShouldSwitchTest.test_zero_power_fixed_damage_can_veto_emergency_switch",
-     "test_ai_switching.AIShouldSwitchTest.test_swift_still_vetoes_against_an_invulnerable_target"
+     "test_ai_switching.AIShouldSwitchTest.test_swift_still_vetoes_when_the_player_cannot_ko_back"
     ]
    }
   },
@@ -56,9 +56,9 @@
     ]
    },
    "negative": {
-    "requirement": "kept only when exact: enemy-first keep",
+    "requirement": "kept only when exact: an unchanged board at commit",
     "tests": [
-     "test_ai_full_flow.AIFullFlowTest.test_enemy_first_trainer_ai_reuses_the_ko_answer"
+     "test_ai_full_flow.AIFullFlowTest.test_unchanged_board_reuses_the_ko_answer"
     ]
    }
   },
@@ -681,26 +681,27 @@
    }
   },
   "AIRevalidateDecisionCaches": {
-   "summary": "Player-first cache reuse by state keys (FOLLOWUPS #48).",
+   "summary": "Cache reuse by state keys across the player's menu action, at TrainerAI commit (FOLLOWUPS #48; re-pointed 2026-10-22, ai_turn_plan.asm: TrainerAI now always revalidates, since the player's own move no longer lands between move selection and commit - only a switch, an item, or TURN REWIND can).",
    "positive": {
     "requirement": "unchanged inputs: reused and equal to a rescan",
     "tests": [
-     "test_ai_full_flow.AIFullFlowTest.test_player_first_unchanged_board_reuses_the_ko_answer",
-     "test_ai_full_flow.AIFullFlowTest.test_player_first_hit_rederives_against_the_lower_hp",
-     "test_ai_full_flow.AIFullFlowTest.test_player_first_attack_drop_keeps_the_ko_answer"
+     "test_ai_full_flow.AIFullFlowTest.test_unchanged_board_reuses_the_ko_answer",
+     "test_ai_full_flow.AIFullFlowTest.test_hp_only_change_rederives_without_a_rescan",
+     "test_ai_full_flow.AIFullFlowTest.test_attack_drop_keeps_the_ko_answer"
     ]
    },
    "negative": {
     "requirement": "changed inputs: rescanned",
     "tests": [
-     "test_ai_full_flow.AIFullFlowTest.test_player_first_new_reveal_forces_a_rescan",
-     "test_ai_full_flow.AIFullFlowTest.test_player_first_defense_drop_forces_a_rescan"
+     "test_ai_full_flow.AIFullFlowTest.test_new_reveal_forces_a_rescan",
+     "test_ai_full_flow.AIFullFlowTest.test_defense_drop_forces_a_rescan",
+     "test_ai_full_flow.AIFullFlowTest.test_player_switch_forces_a_rescan"
     ]
    },
    "boundary": {
     "requirement": "HP drop flips NO to YES without a rescan",
     "tests": [
-     "test_ai_full_flow.AIFullFlowTest.test_player_first_hit_into_ko_range_flips_the_answer"
+     "test_ai_full_flow.AIFullFlowTest.test_hp_only_change_rederives_without_a_rescan"
     ]
    }
   },

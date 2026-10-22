@@ -158,6 +158,15 @@ function checkMigration(fromId, toId, allowDiffer) {
   return { save, b, from, to, field };
 }
 
+test("schema 11 to 12: direct-loss record initializes invalid, existing profile stays intact", () => {
+  const { b, to } = checkMigration(11, 12, []);
+  for (const label of ["sLossRecovery1", "sLossRecovery2", "sLossRecovery3", "sLossRecoveryCRC", "sLossRecoveryValid"]) {
+    const f = to.sram.find((s) => s.label === label);
+    const at = offsetOf(f.bank, f.address);
+    for (let i = 0; i < f.size; i++) assert.equal(b[at + i], 0, `${label}+${i}`);
+  }
+});
+
 test("schema 1 to 2: item counts keep their indices, spare slots are 0, the rest moves unchanged", () => {
   // The only fields allowed to differ are the arrays (checked below) and two labels in the
   // bag-display union member: it grew (wStatPocketBuf 32 -> 38), so they moved further than

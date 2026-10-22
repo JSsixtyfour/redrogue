@@ -1,4 +1,23 @@
-"""Real battle coverage for the computation-only AI switch speed wrapper."""
+"""Real battle coverage for the computation-only AI switch speed wrapper.
+
+2026-10-22: the switch decision moved out of TrainerAI into the planner
+(AIDecideEnemyTurn, ai_turn_plan.asm), which runs - and runs the CPU-speed
+wrapper around AIShouldSwitch - before the player's battle menu, not at
+TrainerAI's old commit-time call. The seam this test hooks moved with it:
+AIDecideEnemyTurn.switchDecisionReady (ai_turn_plan.asm) replaces the old
+AISwitchIfEnoughMons.switchDecisionReady, which today just plays back the
+plan's bit at commit and no longer coincides with the live predicate call.
+
+The fixture's Slowpoke is now level 60, not 50. At level 50 its FULL HP
+(160) was already within a critical, max-roll Thunderbolt's reach (measured),
+so turn 1's plan - computed inside boot_fight2, before this test can hook or
+prime anything - decided the switch itself, leaving nothing for `prepare`'s
+post-boot HP drop (and the speed option, set after boot - see below) to
+influence. Level 60 (191 HP) is safely out of reach at boot, so the fixture's
+intended sequence - stay (turn 1, SPLASH), prime drops Slowpoke into range,
+switch (turn 2), stay (turn 3, Geodude's immune) - again lands on turns this
+test can observe.
+"""
 from pathlib import Path
 import unittest
 
@@ -14,8 +33,8 @@ class CGBSwitchSpeedTest(unittest.TestCase):
         species = parse_rgbds_constants(ROOT / 'constants/pokemon_constants.asm')
         moves = parse_rgbds_constants(ROOT / 'constants/move_constants.asm')
         trainers = parse_trainer_constants(ROOT / 'constants/trainer_constants.asm')
-        def mon(name, names):
-            return dict(species=species[name], level=50, moves=[moves[n] for n in names])
+        def mon(name, names, level=50):
+            return dict(species=species[name], level=level, moves=[moves[n] for n in names])
         observations, presentation, switches = [], [], []
         pending = {}
         def state():
@@ -24,7 +43,7 @@ class CGBSwitchSpeedTest(unittest.TestCase):
         try:
             h.inject_fight2_spec(
                 [mon('ELECTRODE', ['SPLASH', 'THUNDERBOLT'])],
-                [mon('SLOWPOKE', ['TACKLE']), mon('GEODUDE', ['TACKLE'])],
+                [mon('SLOWPOKE', ['TACKLE'], level=60), mon('GEODUDE', ['TACKLE'])],
                 trainer_class=trainers['JUGGLER'], ai_tier=2)
             h.boot_fight2(seed=1)
             h.write8('wOptions2', (h.read8('wOptions2') & 0x7F) | (0x80 if enabled else 0))
@@ -56,7 +75,7 @@ class CGBSwitchSpeedTest(unittest.TestCase):
             def returned():
                 observations.append(dict(pending, returned=state(), carry=bool(h.pyboy.register_file.F & 0x10)))
                 pending.clear()
-            h.hook_flag('AISwitchIfEnoughMons.switchDecisionReady', action=returned)
+            h.hook_flag('AIDecideEnemyTurn.switchDecisionReady', action=returned)
             h.hook_flag('SwitchEnemyMon', action=lambda: (switches.append(h.read8('wEnemyMonPartyPos')), presentation.append(state())))
             h.hook_flag('ExecuteEnemyMove', action=lambda: presentation.append(state()))
             h.hook_flag('DisplayBattleMenu', action=lambda: h.write8('wBattleAndStartSavedMenuItem', 0))

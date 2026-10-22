@@ -1,6 +1,7 @@
 {
  "about": "How each persisted SRAM label is treated when a save is converted (SAVE_COMPATIBILITY_RUNBOOK.md). Keys are full-match regexes over SRAM labels; tools/save_schema.py check fails on any label none of them covers. continue: preserve (copy; translate if the layout changed), header (written by the converter), scratch (contents never read across a load; copied as-is). recovery: keep (permanent progress, carried into the recovery save), template (taken from the target build's post-reset Dorm save, i.e. what a run reset leaves), field (inside the main save block: decided per saved-WRAM field, see recovery_keep_wram).",
  "sram": {
+  "sLossRecovery.*": {"continue": "preserve", "recovery": "template", "why": "versioned direct-loss transaction; converter initializes it invalid"},
   "sSaveHeader.*": {"continue": "header", "recovery": "template", "why": "identifies the layout; the converter writes the target's"},
   "sSpriteBuffer[012]": {"continue": "scratch", "recovery": "template", "why": "picture decompression buffers, rewritten before every use"},
   "sFusionDiagBuf": {"continue": "scratch", "recovery": "template", "why": "fusion sprite diagonal-tile buffer, rewritten per draw"},

@@ -285,12 +285,25 @@ class SleepClauseAIFullFlowTest(unittest.TestCase):
                   "moves": [moves["SPORE"], moves["TACKLE"]]}],
                 trainer_class=trainers["COOLTRAINER_M"], ai_tier=tier)
             scores = h.hook_ai_scores()
+
+            def apply_clause() -> None:
+                if clause:
+                    bench = h.address("wPartyMon1HP") + PARTYMON_STRUCT_LENGTH
+                    h.pyboy.memory[bench + STATUS_OFFSET] = 3  # asleep, HP untouched
+                    h.write8("wSleepClauseState", 2)           # slot 1 + 1
+
+            # Hooked on AIPlanEnemyTurn, not applied after boot_fight2 returns:
+            # turn 1's whole decision - the move scores this test reads via
+            # scores[0] - is made INSIDE boot_fight2 (ai_turn_plan.asm's
+            # pre-menu plan runs before boot_fight2's own first battle menu),
+            # so a write made after boot would be one decision too late (the
+            # move it should have blocked is already scored). Writing the
+            # clause state BEFORE boot_fight2 instead does not work either:
+            # boot_fight2's own party setup overwrites it (measured). The
+            # hook runs after that setup and before the decision that reads it.
+            h.hook_flag("AIPlanEnemyTurn", action=apply_clause)
             h.boot_fight2(seed=1)
             self.assertEqual(h.read8("wPlayerMonNumber"), 0)
-            if clause:
-                bench = h.address("wPartyMon1HP") + PARTYMON_STRUCT_LENGTH
-                h.pyboy.memory[bench + STATUS_OFFSET] = 3  # asleep, HP untouched
-                h.write8("wSleepClauseState", 2)           # slot 1 + 1
             for _ in range(300):
                 h.tap("a", 1)
                 h.tick(8)

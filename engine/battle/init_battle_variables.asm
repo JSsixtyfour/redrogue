@@ -14,6 +14,7 @@ InitBattleVariables:
 	ld [wSavedTileAnimations], a
 	xor a
 	ld [wSleepClauseState], a ; Sleep Clause: only this battle's sleeps count
+	ld [wAITurnPlan], a ; a battle that ended mid-menu leaves no plan behind
     ld [wWasTrainerBattle], a
 	ld [wActionResultOrTookBattleTurn], a
 	ld [wBattleResult], a
