@@ -112,11 +112,16 @@ PCWitchSetup::
     CheckEvent EVENT_VICTORY_ROAD_CLEARED
     jp nz, .hideWitch         ; jp, not jr: .hideWitch is at the far end of the routine
 .showWitch
-    ; Present on LOBBY_WITCH_CHANCE of visits; always in the debug modes.
+    ; Present on LOBBY_WITCH_CHANCE of visits, or LOBBY_WITCH_LEGENDARY_CHANCE
+    ; when Challenge 11 is offerable; always in the debug modes.
     ; Absent -> .hideWitch, which also zeroes the challenge and prize so
     ; nothing downstream sees an offer from a witch who is not there.
-    ld a, TOGGLE_PC_WITCH
+    call IsLegendaryBossOfferable ; clobbers b; `ld` below keeps its carry
     ld b, LOBBY_WITCH_CHANCE
+    jr nc, .rollWitchAppearance
+    ld b, LOBBY_WITCH_LEGENDARY_CHANCE
+.rollWitchAppearance
+    ld a, TOGGLE_PC_WITCH
     call RollLobbyNPCAppearance
     jp nz, .hideWitch         ; jp: .hideWitch is out of jr range, as above
     ; Challenge 11 priority (user decision 2026-10-13): when it is offerable,
