@@ -52,7 +52,7 @@ PlayerAppearanceTable::
 	player_appearance SuperNerdSprite,    PokemaniacPic,   RedPicBack,    .pokemaniac
 	player_appearance YoungsterSprite,    PsychicPic,      RedPicBack,    .psychic
 	player_appearance RockerSprite,       RockerPic,       RedPicBack,    .rocker
-	player_appearance RocketSprite,       RocketPic,       RedPicBack,    .rocket
+	player_appearance RocketSprite,       RocketPic,       RocketPicBack, .rocket
 	player_appearance SailorSprite,       SailorPic,       RedPicBack,    .sailor
 	player_appearance ScientistSprite,    ScientistPic,    RedPicBack,    .scientist
 	player_appearance SuperNerdSprite,    SuperNerdPic,    RedPicBack,    .superNerd

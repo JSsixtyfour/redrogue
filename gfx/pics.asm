@@ -256,6 +256,7 @@ OldManPicBack::        INCBIN "gfx/battle/oldmanb.lz"
 GentlemanPicBack::     INCBIN "gfx/player/gentlemanb.lz"
 BugCatcherPicBack::    INCBIN "gfx/player/bugcatcherb.lz"
 BikerPicBack::         INCBIN "gfx/player/bikerb.lz"
+RocketPicBack::        INCBIN "gfx/player/rocketb.lz"
 
 
 SECTION "Pics 5", ROMX
