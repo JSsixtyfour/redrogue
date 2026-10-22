@@ -5,9 +5,10 @@ One-shot, by hand, output committed - the tools/gen_event_constants.py /
 tools/reorder_move_ranks.py arrangement. `make` never invokes Python and the
 K: drive is never a build dependency.
 
-Source: K:\\Other computers\\My Laptop\\Red Rogue Files\\
-  red_rogue_comprehensive_package_v3_1_2026-09-08_FIXED\\00_CURRENT\\
-  red_rogue_gen1_moveset_reference_v76_low_level_layer_complete.txt
+Source: tools/corpus/red_rogue_gen1_moveset_reference_v76_low_level_layer_complete.txt
+  (copied byte-identical on 2026-10-22 from Red Rogue Files\\
+  red_rogue_comprehensive_package_v3_1_2026-09-08_FIXED\\00_CURRENT\\; the repo
+  copy is now canonical, so it also runs from WSL).
 
 Every `db SPECIES, MOVE1, MOVE2, MOVE3, MOVE4` line in the whole file is one
 record; there are exactly 1,953 of them, measured. The 307-record CUT SETS
@@ -114,11 +115,8 @@ POKEMON_CONSTANTS = os.path.join(ROOT, "constants", "pokemon_constants.asm")
 MOVE_CONSTANTS = os.path.join(ROOT, "constants", "move_constants.asm")
 FORMS_DIR = os.path.join(ROOT, "data", "pokemon", "forms")
 
-DEFAULT_SOURCE = (
-    r"K:\Other computers\My Laptop\Red Rogue Files"
-    r"\red_rogue_comprehensive_package_v3_1_2026-09-08_FIXED"
-    r"\00_CURRENT\red_rogue_gen1_moveset_reference_v76_low_level_layer_complete.txt"
-)
+DEFAULT_SOURCE = os.path.join(
+    ROOT, "tools", "corpus", "red_rogue_gen1_moveset_reference_v76_low_level_layer_complete.txt")
 
 # NIGHTSHADE: the 2026-10-17 Umbreon additions spell it without the underscore.
 NAME_FIXES = {"PSYCHIC": "PSYCHIC_M", "NIGHTSHADE": "NIGHT_SHADE"}

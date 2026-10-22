@@ -11,7 +11,8 @@ from pathlib import Path
 from model_save_metadata import SLOT, DONE, FORWARD, ROLLBACK, encode, publication, select
 from model_save_lifecycle import sealed, unseal, record_writes
 from model_save_handoff import (Layout, initial, chosen, gather, physical, outcome,
-                               mapped_writes, publish, checksum_writes)
+                               mapped_writes, publish, checksum_writes, handoff,
+                               intent as pc_intent, recovery_writes as pc_recovery)
 from model_rental_rollback import Phase, phases, reference
 from model_rental_transaction import (HEADER, DESCRIPTOR, JSIZE, BOX as VIRTUAL_BOX,
                                      serialize, forward_chunks, inverse_chunks)
@@ -86,21 +87,22 @@ def expand(memory, layout, chunk):
             for dst, src, literal in chunk]
 
 
-def transaction(memory, layout, same_box):
+def transaction(memory, layout, same_box, has_rental=True):
     generation, slot, active, image = chosen(memory, layout)
     child = generation + 1
     ids = [(active + 1) % 12, (active + (1 if same_box else 7)) % 12]
     boxes = {box: bytearray(gather(memory, layout.boxes[box])) for box in ids}
     groups = []
-    for box, index in zip(ids, (0, 4)):
+    for box, index in (zip(ids, (0, 4)) if has_rental else []):
         groups.extend((box, phase) for phase in phases(boxes[box], index))
         boxes[box] = reference(boxes[box], index)
-    record = serialize(generation, child, 1, groups)
-    for write in mapped_writes(layout.rental_map(active), record):
-        yield write
+    record = serialize(generation, child, 1, groups) if has_rental else None
+    if record:
+        for write in mapped_writes(layout.rental_map(active), record):
+            yield write
     for write in cursor(memory, layout, DONE, child, 0, 0):
         yield write
-    chunks = fplan(record)
+    chunks = fplan(record) if record else []
     for count, chunk in enumerate(chunks):
         for write in cursor(memory, layout, FORWARD, child, count, 0):
             yield write
@@ -159,13 +161,18 @@ def recovery_step(memory, layout):
     generation, _, active, _ = chosen(memory, layout)
     rmap = layout.rental_map(active)
     rental = gather(memory, rmap)
-    info = rental_decode(rental)
     try:
         _, (_, mode, txn, count, undo) = select(gather(memory, layout.rental_cursor))
     except ValueError:
         mode, txn, count, undo = DONE, 0, 0, 0
+    owns_rental = txn in (generation, generation + 1) and (mode != DONE or count != 0)
+    info = rental_decode(rental) if owns_rental else None
     ready = mode == DONE and bool(count & RESET_READY)
     if memory[layout.scratch[-1]] == 0xA5:
+        # Dispatch the shared buffer by type. An old committed PC journal may
+        # reappear at a torn invalidation before preparing the reset record.
+        if memory[layout.scratch[0]] == 1 and pc_intent(memory, layout) is not None:
+            return pc_recovery(memory, layout)
         if not ready:
             # No destructive reset could have started without the READY publish.
             # Also handles completed undo after READY was durably cleared.
@@ -176,8 +183,10 @@ def recovery_step(memory, layout):
         kind, parent, child, old, new, size = RESET.unpack_from(raw)
         if kind != 2 or old != active or new != active or size != 691:
             raise ValueError('bad reset journal')
+        if txn != child:
+            raise ValueError('reset authorization belongs to another transaction')
         if generation == child:
-            return [(layout.scratch[-1], 0)]
+            return cursor(memory, layout, DONE, child, 0, 0) + [(layout.scratch[-1], 0)]
         if generation != parent:
             raise ValueError('stale reset')
         # IMPORTANT: retire reset before starting rental undo. Otherwise another
@@ -205,6 +214,10 @@ def recovery_step(memory, layout):
             return cursor(memory, layout, DONE, child, 0, 0)
         return expand(memory, layout, inverse[undo]) + cursor(
             memory, layout, ROLLBACK, child, count, undo + 1)
+    if memory[rmap[-1]] != 0:
+        # The new active archive after PC commit can contain arbitrary former
+        # box bytes. Without an owning cursor they are NOT a rental journal.
+        return [(rmap[-1], 0)]
     return [(a, v) for a, v in checksum_writes(memory, layout) if memory[a] != v]
 
 
@@ -230,7 +243,8 @@ def recover(memory, layout, rng):
 def run():
     layout = ResetLayout()
     cases = resets = 0
-    for seed in (0, 5):
+    cross_cases = cross_resets = 0
+    for seed, has_rental in ((0, True), (5, True), (8, False)):
         memory = initial(layout, seed)
         active = chosen(memory, layout)[2]
         memory[layout.rental_map(active)[-1]] = 0
@@ -239,10 +253,17 @@ def run():
             memory[address] = (i * 7 + seed + 1) & 255
         for a, v in checksum_writes(memory, layout):
             memory[a] = v
+        # Exercise PC -> rental/reset with a retired old PC body still present.
+        image = chosen(memory, layout)[3]
+        live = layout.unseal_main(image)[4 + layout.box_offset:4 + layout.box_offset + 1122]
+        target = (active + 2) % 12
+        for a, v in handoff(memory, layout, target, live):
+            memory[a] = v
+        recover(memory, layout, random.Random(seed))
         old = view(memory, layout)
         final = memory.copy()
         trace = []
-        for a, v in transaction(final, layout, bool(seed)):
+        for a, v in transaction(final, layout, bool(seed), has_rental):
             trace.append((a, v))
             final[a] = v
         new = view(final, layout)
@@ -262,8 +283,34 @@ def run():
                     cases += 1
                     resets += nresets
             prefix[a] = v
+        # Exercise reset -> PC, including stale RESET bytes and the shared tag.
+        memory = final
+        active = chosen(memory, layout)[2]
+        old = view(memory, layout)
+        image = chosen(memory, layout)[3]
+        live = layout.unseal_main(image)[4 + layout.box_offset:4 + layout.box_offset + 1122]
+        pc_final = memory.copy()
+        pc_trace = []
+        for a, v in handoff(pc_final, layout, (active + 3) % 12, live):
+            pc_trace.append((a, v))
+            pc_final[a] = v
+        new = view(pc_final, layout)
+        positions = {0, len(pc_trace) - 1, *[rng.randrange(len(pc_trace)) for _ in range(80)]}
+        for i, (a, v) in enumerate(pc_trace):
+            important = a in (layout.scratch[-1], layout.selector[SLOT - 1], layout.selector[-1])
+            if important or i in positions:
+                for torn in (range(256) if important else {0, 255, v, memory[a], rng.randrange(256)}):
+                    cut = memory.copy()
+                    cut[a] = torn
+                    result, nresets = recover(cut, layout, rng)
+                    assert result in (old, new), ('reset->PC', seed, i, a, torn)
+                    cross_cases += 1
+                    cross_resets += nresets
+            memory[a] = v
     return {'status': 'MODEL ONLY; composed inactive rental removals and physical run reset',
-            'fixtures': 2, 'fault_cases': cases, 'recovery_resets': resets,
+            'fixtures': 3, 'includes_reset_without_rental': True,
+            'fault_cases': cases, 'recovery_resets': resets,
+            'reset_to_pc_fault_cases': cross_cases, 'reset_to_pc_recovery_resets': cross_resets,
             'rental_journal_bytes': JSIZE, 'fallen_backup_bytes': 660,
             'archive_tail_bytes': 1122 - layout.spill,
             'archive_tail_used': JSIZE + 660,
