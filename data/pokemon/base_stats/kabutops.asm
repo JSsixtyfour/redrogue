@@ -14,11 +14,12 @@
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset
-	tmhm RAZOR_WIND,   SWORDS_DANCE, MEGA_KICK,    TOXIC,        BODY_SLAM,    \
-	     TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    ICE_BEAM,     \
-	     BLIZZARD,     HYPER_BEAM,   SUBMISSION,   SEISMIC_TOSS, RAGE,         \
-	     MEGA_DRAIN,   MIMIC,        DOUBLE_TEAM,  REFLECT,      BIDE,         \
-	     SKULL_BASH,   REST,         ROCK_SLIDE,   SUBSTITUTE,   SURF
+	tmhm CUT,          RAZOR_WIND,   SWORDS_DANCE, MEGA_KICK,    TOXIC,        \
+	     BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  BUBBLEBEAM,   WATER_GUN,    \
+	     ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   SUBMISSION,   SEISMIC_TOSS, \
+	     RAGE,         MEGA_DRAIN,   MIMIC,        DOUBLE_TEAM,  REFLECT,      \
+	     BIDE,         SKULL_BASH,   REST,         ROCK_SLIDE,   SUBSTITUTE,   \
+	     SURF
 	; end
 
 	db BANK(KabutopsPicFront) ; pic bank

@@ -10,7 +10,7 @@
 	INCBIN "gfx/pokemon/front/kadabra.dim" ; sprite dimensions
 	dw KadabraPicFront, KadabraPicBack
 
-	db PSYWAVE, CONFUSION, DISABLE, NO_MOVE ; level 1 learnset
+	db PSYWAVE, CONFUSION, DISABLE, KINESIS ; level 1 learnset - KINESIS restored (Yellow)
 	db GROWTH_MEDIUM_SLOW ; growth rate
 
 	; tm/hm learnset

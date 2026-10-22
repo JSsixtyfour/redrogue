@@ -10,7 +10,7 @@
 	INCBIN "gfx/pokemon/front/chansey.dim" ; sprite dimensions
 	dw ChanseyPicFront, ChanseyPicBack
 
-	db POUND, DOUBLESLAP, NO_MOVE, NO_MOVE ; level 1 learnset
+	db POUND, DOUBLESLAP, TAIL_WHIP, NO_MOVE ; level 1 learnset - TAIL_WHIP restored (Yellow)
 	db GROWTH_FAST ; growth rate
 
 	; tm/hm learnset

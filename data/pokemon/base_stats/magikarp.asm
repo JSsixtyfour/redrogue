@@ -10,7 +10,7 @@
 	INCBIN "gfx/pokemon/front/magikarp.dim" ; sprite dimensions
 	dw MagikarpPicFront, MagikarpPicBack
 
-	db TACKLE, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset
+	db TACKLE, SPLASH, NO_MOVE, NO_MOVE ; level 1 learnset - SPLASH restored (Red/Blue)
 	db GROWTH_SLOW ; growth rate
 
 	; tm/hm learnset

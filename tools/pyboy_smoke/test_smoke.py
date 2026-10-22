@@ -672,8 +672,11 @@ class AIPhaseZeroSmokeTest(HarnessTestCase):
                 self.assertEqual(observed["stack_before"], observed["stack_after"])
                 self.assertEqual(tuple(observed.get("learn_levels", ())), learn_levels)
                 if learns_move:
+                    # Lv 20 teaches THUNDERPUNCH then SLAM (Yellow), so the name
+                    # left in wStringBuffer is the second, later-listed move.
                     self.assertIn(0x09, observed["moves"])  # THUNDERPUNCH
-                    self.assertEqual(observed["string_prefix"], [0x93, 0x87])  # TH
+                    self.assertIn(0x15, observed["moves"])  # SLAM
+                    self.assertEqual(observed["string_prefix"], [0x92, 0x8B])  # SL
 
     def test_badge_reboost_only_changes_the_recalculated_stat(self) -> None:
         assert self.harness is not None

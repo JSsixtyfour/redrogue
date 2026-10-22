@@ -1,0 +1,104 @@
+RED ROGUE MUSIC TESTER
+======================
+
+Make a MIDI in your DAW, drag it onto "DROP YOUR SONG HERE", and the game
+opens playing your song on the title screen. No install needed.
+
+
+QUICK START
+-----------
+1. Before extracting the zip: right-click it, Properties, tick "Unblock", OK.
+   If Windows says it protected your PC, click "More info", then "Run anyway".
+2. Open Template.mid in your DAW. It is a small working song. Keep the four
+   tracks and their names (Ch1, Ch2, Ch3, Ch4) and write your song in them.
+3. Export as a MIDI file (Type 1 / multi-track, not Type 0).
+4. Drag the .mid onto "DROP YOUR SONG HERE.bat". A black window shows what
+   happens, then the game opens. The song starts after the intro. Press Start
+   to skip the intro.
+5. When a song is finished, send us the .mid file. Nothing from _engine.
+   We convert it with the same tool you used, so it sounds the same in the game.
+
+
+THE FOUR TRACKS (it is a Game Boy, so there are only four voices)
+-----------------------------------------------------------------
+Ch1  Square wave. Melody or lead.
+Ch2  Square wave. Harmony or second lead.
+Ch3  Soft wave. Usually bass.
+Ch4  Noise. Drums only.
+
+Every channel sounds at the pitch written in your DAW.
+
+
+THE LIMITS
+----------
+1. ONE NOTE AT A TIME PER TRACK. No chords on a single track. Spread chord
+   notes over Ch1, Ch2 and Ch3 instead. The tester tells you the track, bar
+   and beat of any chord it finds.
+
+2. NOTE RANGE
+     Ch1 and Ch2:  MIDI 36 to 127  (C2 and up)
+     Ch3:          MIDI 24 to 119  (C1 to B8)
+   Anything lower or higher is rejected with a message, because the converter
+   would otherwise turn it into broken noise.
+
+3. VOLUME
+     Ch1 and Ch2: velocity sets the volume (it has 8 steps, not 127).
+     Ch3: no volume control. It is always full volume, so velocity does
+          nothing there. Put quiet parts on Ch1 or Ch2 instead.
+
+4. CH3 SOUND: there are 5 wave shapes (numbered 0 to 4). The template's bass
+   uses the default. If you want a different shape, tell us and we will set it.
+
+5. DRUMS (Ch4) ONLY USE MIDI NOTES 0 TO 18. This is NOT the General MIDI drum
+   map. Kick on 36 and snare on 38 do not work: every note above 18 is
+   rejected. Use this table:
+
+     MIDI  Sound          MIDI  Sound
+      0    snare 1         10   snare 9
+      1    snare 2         11   cymbal 1
+      2    snare 3         12   cymbal 2
+      3    snare 4         13   cymbal 3
+      4    snare 5         14   muted snare 1
+      5    triangle 1      15   triangle 3
+      6    triangle 2      16   muted snare 2
+      7    snare 6         17   muted snare 3
+      8    snare 7         18   muted snare 4
+      9    snare 8
+
+   These are very low notes. Some DAWs call MIDI 0 "C-1" and others "C-2",
+   so count up from the bottom of the keyboard rather than trusting the name.
+   You may have to scroll your piano roll all the way down. The DAW Samples
+   folder has all 19 drums mapped to exactly these keys, so you can hear them
+   while you write.
+
+6. LOOPING. The template has text markers named "begin" and "end" on every
+   track. Move them to your loop points. Never put one in the middle of a
+   note. If you do, you get an error mentioning notes that "overlap other
+   events".
+
+7. SIZE. After each run, the window prints "Song size: X of Y bytes". Stay
+   under Y. A song over the limit may still play in the tester, but it cannot
+   go into the real game. Repeated phrases are stored once, so reusing
+   identical sections saves space. Very long songs fail with "too long".
+
+8. YOU HAVE ONE SONG SLOT. The tester replaces the title-screen music each
+   run. It does not keep or mix songs.
+
+
+HEARING IT WHILE YOU WRITE (optional)
+-------------------------------------
+DAW Samples folder:
+  Ch1 Ch2 - Square   4 square waves (12.5%, 25%, 50%, 75% pulse)
+  Ch3 - Wave         the 5 wave shapes
+  Ch4 - Drums        the 19 drums, on keys 0 to 18
+Each folder has .sfz files (load them in the free sfizz plugin, or any
+SFZ-compatible sampler) and the .wav files themselves, which loop, so any
+sampler can use them. These are a rough preview. The tester is the real test.
+
+
+IF SOMETHING GOES WRONG
+-----------------------
+Read the black window first; it says what to fix in plain words. If it does
+not make sense, send us:
+  - your .mid
+  - _engine\output\last-error.txt

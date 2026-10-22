@@ -300,6 +300,7 @@ RhydonEvosMoves:
 	db 44, EARTHQUAKE
 	db 49, TAKE_DOWN
 	db 52, HORN_DRILL
+	db 55, LEER ; Red/Blue level-up move restored
 	db 0
     
 ; Tutor Learnset
@@ -545,6 +546,7 @@ LickitungEvosMoves:
 	db 15, DISABLE
 	db 19, HEADBUTT
 	db 23, DEFENSE_CURL
+	db 31, SLAM ; Red/Blue level-up move restored
 	db 32, BODY_SLAM
 	db 39, SCREECH
 	db 44, WRAP
@@ -574,6 +576,7 @@ ExeggcuteEvosMoves:
 	db 25, REFLECT
 	db 32, STUN_SPORE
 	db 40, EGG_BOMB
+	db 42, SOLARBEAM ; Red/Blue level-up move restored
 	db 45, PSYCHIC_M
 	db 48, SLEEP_POWDER
 	db 0
@@ -635,6 +638,7 @@ NidoranFEvosMoves:
 ; Learnset
  	db 6, POISON_STING
 	db 8, BITE
+	db 8, SCRATCH ; Red/Blue level-up move restored
 	db 12, DOUBLE_KICK
 	db 23, TAIL_WHIP
 	db 30, HEADBUTT
@@ -712,6 +716,7 @@ RhyhornEvosMoves:
 	db 39, ROCK_SLIDE
 	db 44, EARTHQUAKE
 	db 49, TAKE_DOWN
+	db 50, LEER ; Red/Blue level-up move restored
 	db 51, HORN_DRILL
 	db 0
 
@@ -783,6 +788,7 @@ GyaradosEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
+	db 1, TACKLE ; Yellow level-up move restored
 	db 20, BITE
 	db 22, GUST
 	db 25, WATERFALL
@@ -829,6 +835,7 @@ TentacoolEvosMoves:
     db 10, BUBBLE
 	db 13, WATER_GUN
 	db 18, ACID
+	db 18, POISON_STING ; Red/Blue level-up move restored
 	db 23, BUBBLEBEAM
 	db 27, CONSTRICT
 	db 35, BARRIER
@@ -879,6 +886,7 @@ ScytherEvosMoves:
 	db 6, FOCUS_ENERGY
     db 11, WING_ATTACK
 	db 16, CUT
+	db 17, LEER ; Red/Blue level-up move restored
 	db 24, AGILITY
 	db 36, SLASH
 	db 42, TWINEEDLE
@@ -977,6 +985,7 @@ TangelaEvosMoves:
 	db 32, MEGA_DRAIN
 	db 42, BODY_SLAM
 	db 45, GROWTH
+	db 45, SLAM ; Red/Blue level-up move restored
 	db 48, BIND
 	db 0
     
@@ -1318,6 +1327,7 @@ PsyduckEvosMoves:
 	db 15, CONFUSION
 	db 17, BUBBLEBEAM
 	db 23, SCREECH
+	db 28, TAIL_WHIP ; Red/Blue level-up move restored
 	db 40, FURY_SWIPES
 	db 42, PSYCHIC_M
 	db 45, AMNESIA
@@ -1807,6 +1817,7 @@ PoliwagEvosMoves:
 	db 9, BUBBLE
 	db 13, WATER_GUN
 	db 22, BUBBLEBEAM
+	db 25, DOUBLESLAP ; Red/Blue level-up move restored
 	db 35, BODY_SLAM
 	db 43, HYPNOSIS
 	db 48, AMNESIA
@@ -1827,12 +1838,14 @@ JynxEvosMoves:
 	db 0
 ; Learnset
 	db 18, CONFUSION
+	db 18, LICK ; Red/Blue level-up move restored
 	db 23, DOUBLESLAP
 	db 31, ICE_PUNCH
 	db 35, LOVELY_KISS
 	db 39, PSYCHIC_M
 	db 43, ICE_BEAM
 	db 47, BODY_SLAM
+	db 47, THRASH ; Red/Blue level-up move restored
 	db 54, BLIZZARD
 	db 0
 ; Tutoring Learnset  
@@ -1851,6 +1864,7 @@ MoltresEvosMoves:
 	db 35, AGILITY
 	db 45, FLAMETHROWER
 	db 51, FIRE_BLAST
+	db 51, LEER ; Red/Blue level-up move restored
 	db 53, SKY_ATTACK
 	db 55, FIRE_SPIN
 	db 0
@@ -2025,6 +2039,7 @@ PikachuEvosMoves:
 	db 11, TAIL_WHIP
 	db 15, DOUBLE_TEAM
 	db 20, THUNDERPUNCH
+	db 20, SLAM ; Yellow level-up move restored
 	db 24, HEADBUTT
 	db 30, THUNDERBOLT
 	db 36, AGILITY
@@ -2468,9 +2483,12 @@ FlareonEvosMoves:
 	db 23, QUICK_ATTACK
 	db 26, EMBER
 	db 30, DOUBLE_KICK
+	db 30, BITE ; Red/Blue level-up move restored
 	db 36, FLAMETHROWER
+	db 37, TAIL_WHIP ; Red/Blue level-up move restored
 	db 39, DOUBLE_EDGE
 	db 41, GROWTH
+	db 42, SMOG ; Yellow level-up move restored
 	db 47, FIRE_SPIN
 	db 52, FIRE_BLAST
 	db 0
@@ -2487,6 +2505,7 @@ JolteonEvosMoves:
 	db 26, THUNDERSHOCK
 	db 30, DOUBLE_KICK
 	db 36, THUNDERBOLT
+	db 37, TAIL_WHIP ; Red/Blue level-up move restored
 	db 39, PIN_MISSILE
 	db 41, AGILITY
 	db 47, THUNDER_WAVE
@@ -2506,6 +2525,7 @@ VaporeonEvosMoves:
 	db 26, BUBBLEBEAM
 	db 30, BITE
 	db 36, AURORA_BEAM
+	db 37, TAIL_WHIP ; Red/Blue level-up move restored
 	db 39, MIST
 	db 39, HAZE
 	db 41, ACID_ARMOR
@@ -3428,6 +3448,7 @@ TentacruelEvosMoves:
     db 10, BUBBLE
 	db 13, WATER_GUN
 	db 18, ACID
+	db 18, POISON_STING ; Red/Blue level-up move restored
 	db 23, BUBBLEBEAM
 	db 27, CONSTRICT
 	db 35, BARRIER
@@ -3574,6 +3595,7 @@ PonytaEvosMoves:
 	db 25, DOUBLE_KICK
 	db 33, FLAMETHROWER
 	db 35, AGILITY
+	db 35, GROWL ; Red/Blue level-up move restored
 	db 36, FIRE_SPIN
 	db 40, TAKE_DOWN
 	db 45, FIRE_BLAST
@@ -4079,6 +4101,7 @@ BellsproutEvosMoves:
 	db 27, HEADBUTT
 	db 29, RAZOR_LEAF
 	db 36, SLUDGE
+	db 42, SLAM ; Red/Blue level-up move restored
 	db 43, WRAP
 	db 48, SLEEP_POWDER
 	db 0
@@ -4092,6 +4115,7 @@ WeepinbellEvosMoves:
 	db EVOLVE_ITEM, LEAF_STONE, 1, VICTREEBEL
 	db 0
 ; Learnset
+	db 15, POISONPOWDER ; Red/Blue level-up move restored
 	db 21, STUN_SPORE
 	db 25, ACID
 	db 27, HEADBUTT
@@ -4099,6 +4123,7 @@ WeepinbellEvosMoves:
 	db 36, SLUDGE
 	db 43, WRAP
 	db 48, SLEEP_POWDER
+	db 49, SLAM ; Red/Blue level-up move restored
 	db 0
 ; Tutoring Learnset   
     db 2, FLASH

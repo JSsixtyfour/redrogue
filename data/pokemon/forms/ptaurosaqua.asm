@@ -5,7 +5,8 @@
 ; Stats are 75/110/105/100/60, shared by all three breeds (the modern breeds
 ; share one spread too). Speed 100 and spc 60 are set so the total matches
 ; vanilla Tauros's 450. Only the secondary type differs from Blaze Breed.
-; Moves/growth/catch rate/base exp/tmhm copied verbatim from Tauros.
+; Moves/growth/catch rate/base exp copied verbatim from Tauros. The tmhm list is
+; Tauros's minus Ice Beam, Blizzard, Thunder and Thunderbolt (canon SV losses, 2026-10-21)
 	form_record TAUROS, 3
 
 	db DEX_TAUROS ; pokedex id (documentation only - GetMonHeader overwrites
@@ -26,10 +27,9 @@
 
 	; tm/hm learnset
 	tmhm TOXIC,        HORN_DRILL,   BODY_SLAM,    TAKE_DOWN,    DOUBLE_EDGE,  \
-	     ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         THUNDERBOLT,  \
-	     THUNDER,      EARTHQUAKE,   FISSURE,      MIMIC,        DOUBLE_TEAM,  \
-	     BIDE,         SURF,   SKULL_BASH,   REST,         SUBSTITUTE,   \
-	     STRENGTH,     BUBBLEBEAM, MEGA_KICK,    WATER_GUN
+	     HYPER_BEAM,   RAGE,         EARTHQUAKE,   FISSURE,      MIMIC,        \
+	     DOUBLE_TEAM,  BIDE,         SURF,         SKULL_BASH,   REST,         \
+	     SUBSTITUTE,   STRENGTH,     BUBBLEBEAM,   MEGA_KICK,    WATER_GUN
 	; end
 
 	db BANK(PTaurosAquaPicFront) ; pic bank
