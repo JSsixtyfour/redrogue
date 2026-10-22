@@ -18,7 +18,7 @@
 	     WATER_GUN,    ICE_BEAM,     BLIZZARD,     HYPER_BEAM,   RAGE,         \
 	     THUNDER_WAVE,   MIMIC,      DOUBLE_TEAM,  REFLECT,      BIDE,         \
 	     SWIFT,        REST,         SUBSTITUTE,   SURF,         SELFDESTRUCT, \
-         EXPLOSION
+         EXPLOSION,    BODY_SLAM
 	; end
 
 	db BANK(QwilfishPicFront) ; pic bank

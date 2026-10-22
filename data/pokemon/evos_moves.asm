@@ -3017,11 +3017,11 @@ MewtwoEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
-	db 63, BARRIER
-	db 66, PSYCHIC_M
-	db 70, RECOVER
-	db 75, MIST
-	db 81, AMNESIA
+	db 30, BARRIER
+	db 38, PSYCHIC_M
+	db 40, RECOVER
+	db 45, MIST
+	db 50, AMNESIA
 	db 0
 ; Tutoring Learnset   
     db 2, DREAM_EATER
@@ -4381,6 +4381,7 @@ GligarEvosMoves:
 ; Learnset - POISON_STING already granted at level 1; FAINT_ATTACK does not
 ; exist in Gen 1, replaced with SWIFT.
 	db 6, SAND_ATTACK
+    db 12, WING_ATTACK
 	db 13, HARDEN
 	db 20, QUICK_ATTACK
 	db 28, SWIFT ; was FAINT_ATTACK

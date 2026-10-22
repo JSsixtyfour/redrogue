@@ -25,6 +25,8 @@ $SongFile = 'audio\music\titlescreen.asm'
 
 function Say([string]$msg, [string]$color = 'Gray') { Write-Host $msg -ForegroundColor $color }
 
+. (Join-Path $Engine 'midi_normalize.ps1')
+
 # Print a plain-English failure, log the raw tool output, and stop.
 function Fail([string]$plain, [string]$raw = '') {
 	Say ''
@@ -176,7 +178,17 @@ function ConvertMidi {
 
 	Say "Converting: $([IO.Path]::GetFileName($Mid))" 'Cyan'
 
-	$problems = Test-Midi ([IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $Mid).ProviderPath))
+	# Fit whatever the music program wrote to what pokemid needs (track names,
+	# loop markers, General MIDI drums), then check the Game Boy's limits.
+	$gm = @{}
+	$gmFile = Join-Path $Engine 'gm_drums.json'
+	if (Test-Path -LiteralPath $gmFile) {
+		foreach ($e in (Get-Content -LiteralPath $gmFile -Raw | ConvertFrom-Json).PSObject.Properties) { $gm[[int]$e.Name] = [int]$e.Value }
+	}
+	$clean = ConvertTo-CleanMidi ([IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $Mid).ProviderPath)) $gm
+	if ($clean.Problems.Count) { Fail ($clean.Problems -join "`r`n         ") }
+	foreach ($n in $clean.Notes) { Say "  Note: $n" 'Yellow' }
+	$problems = Test-Midi $clean.Bytes
 	if ($problems.Count) { Fail ($problems -join "`r`n         ") }
 
 	# ---------------------------------------------------------------- 2. pokemid
@@ -186,7 +198,7 @@ function ConvertMidi {
 	$tmp = Join-Path ([IO.Path]::GetTempPath()) ("rrmusic_" + [Guid]::NewGuid().ToString('N').Substring(0, 8))
 	New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 	try {
-		Copy-Item -LiteralPath $Mid -Destination (Join-Path $tmp 'in.mid')
+		[IO.File]::WriteAllBytes((Join-Path $tmp 'in.mid'), $clean.Bytes)
 		$exe = if ($Pokemid) { $Pokemid } else { Join-Path $Engine 'pokemid.exe' }
 		$r = Invoke-Tool $exe @('in.mid', 'out.asm') $tmp
 		$rawAsm = Join-Path $tmp 'out.asm'

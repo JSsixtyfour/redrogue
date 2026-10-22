@@ -49,7 +49,7 @@ class AddressMap(list):
 
 
 class Layout:
-    def __init__(self, integrity='crc32', descriptor=False):
+    def __init__(self, integrity='crc32', descriptor=False, shared_marker=False):
         assert integrity in ('crc32', 'sum8')
         self.integrity = integrity
         self.main_length = PAYLOAD + (9 if integrity == 'crc32' else 6)
@@ -95,6 +95,9 @@ class Layout:
                                   physical(*self.sym['sSpriteBuffer1'])))
         self.jsize = HEAD.size + self.spill + 5
         self.journal = self.scratch[:self.jsize]
+        self.shared_marker = shared_marker
+        if shared_marker:
+            self.journal = self.scratch[:self.jsize - 1] + self.scratch[-1:]
         assert self.jsize <= len(self.scratch) == 392
         self.box_offset = self.sym['sCurBoxData'][1] - self.sym['sGameData'][1]
         self.current_offset = 11 + self.sym['wCurrentBoxNum'][1] - self.sym['wMainDataStart'][1]
@@ -308,8 +311,8 @@ def initial(layout, seed):
     return memory
 
 
-def run(trials, integrity='crc32', descriptor=False):
-    layout = Layout(integrity, descriptor)
+def run(trials, integrity='crc32', descriptor=False, shared_marker=False):
+    layout = Layout(integrity, descriptor, shared_marker)
     cases = resets = writes = max_trace = 0
     for trial in range(trials):
         seed = trial * 5  # second fixture crosses the SRAM box-bank boundary
@@ -371,6 +374,7 @@ def run(trials, integrity='crc32', descriptor=False):
     return {'status': 'MODEL ONLY: physical overlap handoff with sprite scratch',
             'main_integrity': integrity, 'main_record_bytes': layout.main_length,
             'format_descriptor_bytes': len(layout.descriptor),
+            'shared_sprite_journal_marker': shared_marker,
             'trials': trials, 'box_changes': trials * 2, 'fault_cases': cases,
             'recovery_resets': resets, 'recovery_byte_writes': writes,
             'shadow_spill_bytes': layout.spill, 'sprite_journal_bytes': layout.jsize,
@@ -394,10 +398,11 @@ if __name__ == '__main__':
     parser.add_argument('--trials', type=int, default=2)
     parser.add_argument('--integrity', choices=('crc32', 'sum8'), default='crc32')
     parser.add_argument('--descriptor', action='store_true')
+    parser.add_argument('--shared-marker', action='store_true')
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
     assert args.trials >= 1
-    report = run(args.trials, args.integrity, args.descriptor)
+    report = run(args.trials, args.integrity, args.descriptor, args.shared_marker)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(report, indent=2) + '\n', encoding='utf8')

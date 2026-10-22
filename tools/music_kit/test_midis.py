@@ -85,11 +85,50 @@ def template(path):
     smf.write(path, [t0, ch1, ch2, ch3, ch4])
 
 
+def daw_like(out):
+    """musescore_like.mid / fl_like.mid: what MuseScore and FL Studio write by
+    default, to prove the converter copes. MuseScore: a conductor track, tracks
+    named after instruments, program changes and controllers, drums on MIDI
+    channel 10 using General MIDI notes (a kick and a hat on the same beat),
+    no loop markers. FL: tracks named with their sound, begin/end as MARKER
+    events, tempo in the first track."""
+    def raw(t, tick, data):
+        t._add(tick, bytes(data), 1)
+
+    t0 = smf.Track()
+    t0.tempo(0, 120)
+    raw(t0, 0, [0xFF, 0x58, 4, 4, 2, 24, 8])
+    lead, bass, drums = smf.Track("Square Lead"), smf.Track("Bass"), smf.Track("Drumset")
+    raw(lead, 0, [0xC0, 80]); raw(lead, 0, [0xB0, 7, 100])
+    raw(bass, 0, [0xC1, 38])
+    for i, n in enumerate([72, 74, 76, 77]):
+        lead.note(i * Q, Q, n, 90, 0)
+    for i, n in enumerate([48, 50, 52, 53]):
+        bass.note(i * Q, Q - 10, n, 80, 1)
+    for i in range(4):
+        drums.note(i * Q, Q // 2, 36 if i % 2 == 0 else 38, 100, 9)
+        drums.note(i * Q, Q // 4, 42, 70, 9)
+        drums.note(i * Q + Q // 2, Q // 2, 42, 70, 9)
+    smf.write(os.path.join(out, "musescore_like.mid"), [t0, lead, bass, drums])
+
+    f1, f2, f3, f4 = (smf.Track(n) for n in ("Ch1 Square 50", "Ch2 Square 25", "Ch3 Wave 2", "Ch4 Drums"))
+    f1.tempo(0, 120)
+    for t in (f1, f2, f3, f4):
+        t.meta(0, 0x06, b"begin")
+        t.meta(4 * Q, 0x06, b"end")
+    f1.note(0, Q, 72, 100); f1.note(Q, Q, 74, 100)
+    f2.note(0, 2 * Q, 64, 100)
+    f3.note(0, 2 * Q, 48, 100)
+    f4.note(0, Q // 4, 36, 100, 9); f4.note(Q, Q // 4, 38, 100, 9)
+    smf.write(os.path.join(out, "fl_like.mid"), [f1, f2, f3, f4])
+
+
 def write_all(out):
     os.makedirs(out, exist_ok=True)
     drumtest(os.path.join(out, "drumtest.mid"))
     pitchtest(os.path.join(out, "pitchtest.mid"))
     template(os.path.join(out, "Template.mid"))
+    daw_like(out)
 
 
 def main():

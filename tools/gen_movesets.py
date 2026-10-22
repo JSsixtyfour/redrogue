@@ -123,6 +123,63 @@ DEFAULT_SOURCE = (
 # NIGHTSHADE: the 2026-10-17 Umbreon additions spell it without the underscore.
 NAME_FIXES = {"PSYCHIC": "PSYCHIC_M", "NIGHTSHADE": "NIGHT_SHADE"}
 
+# Hand corrections to corpus records, applied before the legality check
+# (2026-10-21, the user's edits to movesets.asm, moved here so a regenerate
+# keeps them). Keyed on (corpus species name, the four corpus moves after
+# NAME_FIXES); the value replaces all four moves.
+CORPUS_FIXES = {
+    # Poke Cup rental Seaking: the corpus had SURF/TOXIC/SMOKESCREEN/SWIFT.
+    ("SEAKING", ("SURF", "TOXIC", "SMOKESCREEN", "SWIFT")):
+        ("WATERFALL", "SUPERSONIC", "HORN_ATTACK", "ICE_BEAM"),
+    # Poke Cup rental Charmeleon: Stun Spore was a corpus error.
+    ("CHARMELEON", ("FLAMETHROWER", "COUNTER", "SEISMIC_TOSS", "STUN_SPORE")):
+        ("FLAMETHROWER", "COUNTER", "SEISMIC_TOSS", "STRENGTH"),
+}
+
+# Salvage (2026-10-22): before a set is dropped as illegal, each move the mon
+# cannot learn is swapped for the first legal, not-already-present move in its
+# list - same type and role where Gen 1 has one (Slowbro's Waterfall -> Surf).
+# A set with an illegal move that has no legal stand-in is still dropped.
+SUBSTITUTES = {
+    "BODY_SLAM": ["DOUBLE_EDGE", "TAKE_DOWN", "HEADBUTT", "STRENGTH", "SKULL_BASH"],
+    "HEADBUTT": ["BODY_SLAM", "TAKE_DOWN", "DOUBLE_EDGE", "STOMP"],
+    "STOMP": ["HEADBUTT", "BODY_SLAM", "TAKE_DOWN"],
+    "TACKLE": ["POUND", "HEADBUTT", "BODY_SLAM"],
+    "HYPER_BEAM": ["DOUBLE_EDGE", "BODY_SLAM", "TAKE_DOWN", "SKULL_BASH"],
+    "REFLECT": ["LIGHT_SCREEN", "BARRIER", "ACID_ARMOR", "HARDEN", "DEFENSE_CURL", "WITHDRAW"],
+    "AMNESIA": ["GROWTH"],  # Gen 1 Growth raises Special
+    "AGILITY": ["DOUBLE_TEAM"],
+    "THUNDER_WAVE": ["GLARE", "STUN_SPORE", "CONFUSE_RAY", "HYPNOSIS", "SUPERSONIC"],
+    "SLEEP_POWDER": ["SPORE", "HYPNOSIS", "SING", "LOVELY_KISS"],
+    "SMOKESCREEN": ["SAND_ATTACK", "FLASH", "KINESIS"],
+    "EARTHQUAKE": ["DIG", "BONEMERANG", "BONE_CLUB"],
+    "DIG": ["EARTHQUAKE", "BONEMERANG", "BONE_CLUB"],
+    "PSYCHIC_M": ["PSYBEAM", "CONFUSION", "PSYWAVE"],
+    "DRILL_PECK": ["FLY", "SKY_ATTACK", "WING_ATTACK", "PECK"],
+    "WING_ATTACK": ["FLY", "GUST", "PECK"],
+    "ICE_BEAM": ["BLIZZARD", "AURORA_BEAM", "ICE_PUNCH"],
+    "THUNDERBOLT": ["THUNDER", "THUNDERPUNCH", "THUNDERSHOCK"],
+    "THUNDERPUNCH": ["THUNDERBOLT", "THUNDER", "THUNDERSHOCK"],
+    "FIRE_BLAST": ["FLAMETHROWER", "FIRE_PUNCH", "EMBER"],
+    "FIRE_PUNCH": ["FLAMETHROWER", "FIRE_BLAST", "EMBER"],
+    "WATERFALL": ["SURF", "HYDRO_PUMP", "BUBBLEBEAM", "CRABHAMMER", "WATER_GUN"],
+    "SUBMISSION": ["DOUBLE_KICK", "JUMP_KICK", "HI_JUMP_KICK", "LOW_KICK", "ROLLING_KICK",
+                   "SEISMIC_TOSS", "COUNTER"],
+    "SMOG": ["SLUDGE", "ACID", "POISON_GAS"],
+    "EXPLOSION": ["SELFDESTRUCT"],
+    "NIGHT_SHADE": ["SEISMIC_TOSS", "PSYWAVE"],
+}
+
+# These legendaries keep the corpus level window (no level bump): a boss or
+# event legendary is fielded below the level its line learns its signature
+# moves (Mewtwo's Amnesia/Recover). Legality is still enforced for them.
+LEVEL_BUMP_EXEMPT = {"MEW", "MEWTWO", "CELEBI", "LUGIA", "HO_OH"}
+
+# Moves Red Rogue removed from every learnset (2026-04-05). A set naming one
+# keeps its other moves and leaves that slot empty (NO_MOVE, moved last)
+# instead of being dropped, so a Stadium rental such as Pidgey's survives.
+REMOVED_MOVES = {"WHIRLWIND", "TELEPORT"}
+
 # Corpus name -> the (base species, form index) it names, per data/pokemon/
 # forms/*.asm's form_record lines. Built by hand 2026-09-10 against every
 # form_record in that directory and every unknown-species name the corpus
@@ -373,7 +430,7 @@ def resolve_species(name, species_ids, stats):
     return None
 
 
-def resolve_moves(moves, move_names, stats):
+def resolve_moves(moves, move_names, stats, species=None):
     out = []
     for mv in moves:
         fixed = NAME_FIXES.get(mv, mv)
@@ -382,7 +439,54 @@ def resolve_moves(moves, move_names, stats):
             stats["dropped_unknown_move_names"].add(mv)
             return None
         out.append(fixed)
+    fix = CORPUS_FIXES.get((species, tuple(out)))
+    if fix is not None:
+        stats["corpus_fixes"] += 1
+        out = list(fix)
+    if any(mv in REMOVED_MOVES for mv in out):
+        stats["removed_move_slots"] += sum(mv in REMOVED_MOVES for mv in out)
+        kept = [mv for mv in out if mv not in REMOVED_MOVES]
+        out = kept + ["NO_MOVE"] * (4 - len(kept))
     return out
+
+
+def bump_level(moves, learnable, lvl_min, lvl_max, stats):
+    """Raise lvl_min to the level the line first learns every move, so a set
+    never hands a mon a move early (2026-10-22). lvl_max follows if passed."""
+    need = max((learnable[mv] for mv in moves if mv != "NO_MOVE"), default=0)
+    if need > lvl_min:
+        stats["level_bumped"] += 1
+        lvl_min = min(need, 100)
+        lvl_max = max(lvl_max, lvl_min)
+    return lvl_min, lvl_max
+
+
+def salvage(moves, learnable, stats):
+    """Swap each illegal move for its first legal SUBSTITUTES entry not already
+    in the set. Returns (moves, note); note is "" if nothing changed. Moves with
+    no legal stand-in are left as they are, for is_illegal to reject."""
+    out, swaps = list(moves), []
+    for i, mv in enumerate(out):
+        if mv == "NO_MOVE" or mv in learnable:
+            continue
+        sub = next((c for c in SUBSTITUTES.get(mv, ()) if c in learnable and c not in out), None)
+        if sub:
+            out[i] = sub
+            swaps.append(f"{mv}->{sub}")
+    bad = [mv for mv in out if mv != "NO_MOVE" and mv not in learnable]
+    if swaps and not bad:
+        stats["salvaged"] += 1
+        return out, "salvaged " + ", ".join(swaps)
+    return moves, ""
+
+
+def is_illegal(moves, learnable, label, stats):
+    """True (and counted) if any move is one this mon can never learn."""
+    bad = [mv for mv in moves if mv != "NO_MOVE" and mv not in learnable]
+    if bad:
+        stats["dropped_illegal"] += 1
+        stats["dropped_illegal_detail"].append(f"{label}: {', '.join(bad)}")
+    return bool(bad)
 
 
 def build(source_path):
@@ -398,6 +502,11 @@ def build(source_path):
     stats["dropped_unknown_species_names"] = set()
     stats["dropped_form_names"] = set()
     stats["dropped_unknown_move_names"] = set()
+    stats["dropped_illegal_detail"] = []
+    stats["roster_illegal_detail"] = []
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import learnset_legality
+    learnable = learnset_legality.load()
 
     origin_order = []
     origin_index = {}
@@ -422,13 +531,21 @@ def build(source_path):
             if form_key(rec["species"]) is not None:
                 form_recs.append(rec)    # after the roster sets: see below
             continue
-        moves = resolve_moves(rec["moves"], move_names, stats)
+        moves = resolve_moves(rec["moves"], move_names, stats, rec["species"])
         if moves is None:
             continue
         tier = resolve_tier(rec, stats)
         lvl_min, lvl_max = resolve_level_range(rec, stats)
+        # Assigned BEFORE the legality drop: rental_origins.asm's bitmap is
+        # keyed by origin_id, so a label must keep its index even when every
+        # set carrying it is dropped.
         origin_id = origin_id_for(display_text(loss_label(rec)))
-        by_species[species].append((moves, tier, origin_id, lvl_min, lvl_max))
+        moves, note = salvage(moves, learnable[species], stats)
+        if is_illegal(moves, learnable[species], species, stats):
+            continue
+        if species not in LEVEL_BUMP_EXEMPT:
+            lvl_min, lvl_max = bump_level(moves, learnable[species], lvl_min, lvl_max, stats)
+        by_species[species].append((moves, tier, origin_id, lvl_min, lvl_max) + ((note,) if note else ()))
         kept += 1
 
     # Character sets (party roster Phases 6-7): every "#### Sets: <tiers>" table in
@@ -436,26 +553,39 @@ def build(source_path):
     # origin_id keeps its index. The heading's tiers are written as-is; levels are
     # 1-100, so the level window always passes. Each record is tagged
     # `; roster <Prefix>` so gen_party_roster.py --check can compare it to the doc.
-    sys.path.insert(0, os.path.join(ROOT, "tools"))
     import gen_party_roster
     for table in gen_party_roster.load_signature_sets():
         origin = origin_id_for(display_text("a {} set".format(table["label"])))
         tiers = gen_party_roster.tier_expr(table["tiers"])
         for species, moves in table["sets"]:
-            by_species[species].append((list(moves), tiers, origin, 1, 100, table["prefix"]))
+            # Authored sets are never dropped, only reported: the doc is the
+            # source of truth and gen_party_roster.py --check compares to it.
+            bad = [mv for mv in moves if mv != "NO_MOVE" and mv not in learnable[species]]
+            need = max((learnable[species].get(mv, 0) for mv in moves if mv != "NO_MOVE"), default=0)
+            if need > 1:
+                stats["roster_level_gated"] += 1
+            if bad:
+                stats["roster_illegal_detail"].append(f"{table['prefix']} {species}: {', '.join(bad)}")
+            by_species[species].append((list(moves), tiers, origin, 1, 100, "roster " + table["prefix"]))
             stats["roster_sets"] += 1
 
     # Form records go LAST so every origin_id assigned above keeps its index
     # (rental_origins.asm's bitmap is keyed by them). Keyed by corpus name;
     # render() emits them in their own section with MovesetFormIndex.
     for rec in form_recs:
-        moves = resolve_moves(rec["moves"], move_names, stats)
+        moves = resolve_moves(rec["moves"], move_names, stats, rec["species"])
         if moves is None:
             continue
         tier = resolve_tier(rec, stats)
         lvl_min, lvl_max = resolve_level_range(rec, stats)
         origin_id = origin_id_for(display_text(loss_label(rec)))
-        by_form[rec["species"]].append((moves, tier, origin_id, lvl_min, lvl_max))
+        fl = learnable[form_key(rec["species"])]
+        moves, note = salvage(moves, fl, stats)
+        if is_illegal(moves, fl, rec["species"], stats):
+            continue
+        if rec["species"] not in LEVEL_BUMP_EXEMPT:
+            lvl_min, lvl_max = bump_level(moves, fl, lvl_min, lvl_max, stats)
+        by_form[rec["species"]].append((moves, tier, origin_id, lvl_min, lvl_max) + ((note,) if note else ()))
         stats["form_kept"] += 1
         kept += 1
 
@@ -478,6 +608,16 @@ def render(species_ids, by_species, origin_order, stats, kept, total, by_form):
                  f"({', '.join(sorted(stats['dropped_form_names'])) or 'none'})")
     lines.append(f";   {stats['dropped_unknown_move']} named a move absent from this tree "
                  f"(after PSYCHIC->PSYCHIC_M: {sorted(stats['dropped_unknown_move_names'])})")
+    lines.append(f";   {stats['dropped_illegal']} carried a move the mon cannot learn in this tree")
+    lines.append(";     (tools/learnset_legality.py: own or pre-evolution level-1, level-up,")
+    lines.append(";     TM/HM or tutor list). `gen_movesets.py --list-dropped` lists them.")
+    lines.append(f"; Salvaged: {stats['salvaged']} records had each unlearnable move swapped for a legal")
+    lines.append(";   stand-in (SUBSTITUTES), tagged `; salvaged OLD->NEW`.")
+    lines.append(f"; Level-bumped: {stats['level_bumped']} kept records had lvl_min raised to the level")
+    lines.append(";   the mon's line first learns all four moves (lvl_max raised to match if passed).")
+    lines.append(";   Mew, Mewtwo, Celebi, Lugia and Ho-Oh are exempt (LEVEL_BUMP_EXEMPT).")
+    lines.append(f"; Hand-corrected: {stats['corpus_fixes']} records (CORPUS_FIXES); "
+                 f"{stats['removed_move_slots']} Whirlwind/Teleport slots left empty.")
     lines.append(f"; Defaulted rather than dropped: {stats['no_tier']} records had no tier rating "
                  "(-> TIER_NORMAL),")
     lines.append(f";   {stats['no_level']} had no level range (-> 1-100), "
@@ -520,22 +660,22 @@ def render(species_ids, by_species, origin_order, stats, kept, total, by_form):
     lines.append("")
     for name in part1:
         lines.append(f"Moveset_{name}::")
-        for moves, tier, origin_id, lvl_min, lvl_max, *roster in by_species[name]:
+        for moves, tier, origin_id, lvl_min, lvl_max, *note in by_species[name]:
             lines.append(
                 f"\tdb {moves[0]}, {moves[1]}, {moves[2]}, {moves[3]}, "
                 f"{tier}, {origin_id}, {lvl_min}, {lvl_max}"
-                + (f" ; roster {roster[0]}" if roster else "")
+                + (f" ; {note[0]}" if note else "")
             )
     lines.append("")
     lines.append('SECTION "Movesets 2", ROMX, BANK[$3B]')
     lines.append("")
     for name in part2:
         lines.append(f"Moveset_{name}::")
-        for moves, tier, origin_id, lvl_min, lvl_max, *roster in by_species[name]:
+        for moves, tier, origin_id, lvl_min, lvl_max, *note in by_species[name]:
             lines.append(
                 f"\tdb {moves[0]}, {moves[1]}, {moves[2]}, {moves[3]}, "
                 f"{tier}, {origin_id}, {lvl_min}, {lvl_max}"
-                + (f" ; roster {roster[0]}" if roster else "")
+                + (f" ; {note[0]}" if note else "")
             )
     lines.append("")
     lines.append('SECTION "Movesets Index Tail", ROMX, BANK[$3D]')
@@ -576,10 +716,11 @@ def render(species_ids, by_species, origin_order, stats, kept, total, by_form):
     lines.append("")
     for name in forms:
         lines.append(f"MovesetForm_{name}::")
-        for moves, tier, origin_id, lvl_min, lvl_max in by_form[name]:
+        for moves, tier, origin_id, lvl_min, lvl_max, *note in by_form[name]:
             lines.append(
                 f"\tdb {moves[0]}, {moves[1]}, {moves[2]}, {moves[3]}, "
-                f"{tier}, {origin_id}, {lvl_min}, {lvl_max}")
+                f"{tier}, {origin_id}, {lvl_min}, {lvl_max}"
+                + (f" ; {note[0]}" if note else ""))
     lines.append("")
     lines.append("; Scanned linearly by PartyGenApplySetMovesetMask for a mon whose form index")
     lines.append("; is nonzero: db base species, form index; dw records; db count, bank. The")
@@ -616,6 +757,8 @@ def render(species_ids, by_species, origin_order, stats, kept, total, by_form):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--list-dropped", action="store_true",
+                    help="print every corpus set dropped as illegal, then exit")
     ap.add_argument("--source", default=DEFAULT_SOURCE)
     args = ap.parse_args()
 
@@ -624,6 +767,11 @@ def main():
 
     built = build(args.source)
     species_ids, by_species, origin_order, stats, kept, total, by_form = built
+    if args.list_dropped:
+        for line in stats["dropped_illegal_detail"]:
+            print(line)
+        print(f"{stats['dropped_illegal']} illegal sets dropped")
+        return
     full = render(*built)
 
     if args.check:

@@ -1,17 +1,18 @@
 RED ROGUE MUSIC TESTER
 ======================
 
-Make a MIDI in your DAW, drag it onto "DROP YOUR SONG HERE", and the game
-opens playing your song on the title screen. No install needed.
+Make a MIDI in your music program (MuseScore, FL Studio, anything that exports
+.mid), drag it onto "DROP YOUR SONG HERE", and the game opens playing your song
+on the title screen. No install needed.
 
 
 QUICK START
 -----------
 1. Before extracting the zip: right-click it, Properties, tick "Unblock", OK.
    If Windows says it protected your PC, click "More info", then "Run anyway".
-2. Open Template.mid in your DAW. It is a small working song. Keep the four
-   tracks and their names (Ch1, Ch2, Ch3, Ch4) and write your song in them.
-3. Export as a MIDI file (Type 1 / multi-track, not Type 0).
+2. Open Template.mid in your program. It is a small working song with the four
+   tracks already named. Write your song in them.
+3. Export as a MIDI file (Type 1 / multi-track, not Type 0, if it asks).
 4. Drag the .mid onto "DROP YOUR SONG HERE.bat". A black window shows what
    happens, then the game opens. The song starts after the intro. Press Start
    to skip the intro.
@@ -26,14 +27,36 @@ Ch2  Square wave. Harmony or second lead.
 Ch3  Soft wave. Usually bass.
 Ch4  Noise. Drums only.
 
-Every channel sounds at the pitch written in your DAW.
+Every channel sounds at the pitch written in your program.
+
+HOW THE TESTER FINDS YOUR TRACKS
+  - Any track with Ch1, Ch2, Ch3 or Ch4 in its name is used for that voice.
+    "Ch1 Square 50" and "Ch3 Wave 2 bass" both work. Other tracks are ignored
+    (the window tells you which).
+  - If no track is named like that, it uses your tracks in order: the first
+    three instruments are Ch1, Ch2, Ch3, and the drums (the track on MIDI
+    channel 10, where MuseScore puts its drumset) are Ch4. If your drums are
+    on another channel, name the track Ch4.
+  - More than three non-drum tracks and no names: it stops and asks you to
+    merge some or name the ones you want.
+
+PICKING THE SOUND: put it in the track name
+  Ch1 / Ch2:  "Square 12.5", "Square 25", "Square 50" or "Square 75"
+              (how thin the pulse is). Or "Duty 0" to "Duty 3" (same four,
+              in that order). With neither, you get 12.5%.
+  Ch3:        "Wave 0" to "Wave 4" (5 different shapes). With none, Wave 0.
+  Example track names: "Ch1 Square 50", "Ch2 Square 25", "Ch3 Wave 2".
+  Programs that let you put text events in the MIDI can also use the effect
+  markers in Template.mid, for example "duty_cycle 2". A marker in the MIDI
+  wins over the name.
 
 
 THE LIMITS
 ----------
 1. ONE NOTE AT A TIME PER TRACK. No chords on a single track. Spread chord
    notes over Ch1, Ch2 and Ch3 instead. The tester tells you the track, bar
-   and beat of any chord it finds.
+   and beat of any chord it finds. In MuseScore, a staff with two voices
+   playing together counts as a chord.
 
 2. NOTE RANGE
      Ch1 and Ch2:  MIDI 36 to 127  (C2 and up)
@@ -42,63 +65,92 @@ THE LIMITS
    would otherwise turn it into broken noise.
 
 3. VOLUME
-     Ch1 and Ch2: velocity sets the volume (it has 8 steps, not 127).
+     Ch1 and Ch2: velocity sets the volume (it has 8 steps, not 127). In
+          MuseScore, dynamics (p, mf, f) change the velocity.
      Ch3: no volume control. It is always full volume, so velocity does
           nothing there. Put quiet parts on Ch1 or Ch2 instead.
 
-4. CH3 SOUND: there are 5 wave shapes (numbered 0 to 4). The template's bass
-   uses the default. If you want a different shape, tell us and we will set it.
+4. DRUMS (Ch4): ONE HIT AT A TIME, 19 SOUNDS.
+   The Game Boy has 19 noise sounds and no real kick drum. You can write
+   drums two ways:
+     a) Normal drums (General MIDI). Use MuseScore's drumset, or any drum
+        kit in your program: kick, snare, hats, toms and cymbals are changed
+        into the closest Game Boy sound. This is a first-guess mapping, so
+        listen to the result and tell us what sounds wrong. If two drums land
+        on the same beat, the louder one stays (the window says how many were
+        dropped).
+     b) The Game Boy's own drums, MIDI notes 0 to 18 (very low notes; some
+        programs call note 0 "C-1", others "C-2"). Kick on 36 and snare on 38
+        are General MIDI, so they are changed as in (a); notes 19 to 34, and
+        above 81, are rejected.
 
-5. DRUMS (Ch4) ONLY USE MIDI NOTES 0 TO 18. This is NOT the General MIDI drum
-   map. Kick on 36 and snare on 38 do not work: every note above 18 is
-   rejected. Use this table:
+        MIDI  Sound          MIDI  Sound
+         0    snare 1         10   snare 9
+         1    snare 2         11   cymbal 1
+         2    snare 3         12   cymbal 2
+         3    snare 4         13   cymbal 3
+         4    snare 5         14   muted snare 1
+         5    triangle 1      15   triangle 3
+         6    triangle 2      16   muted snare 2
+         7    snare 6         17   muted snare 3
+         8    snare 7         18   muted snare 4
+         9    snare 8
 
-     MIDI  Sound          MIDI  Sound
-      0    snare 1         10   snare 9
-      1    snare 2         11   cymbal 1
-      2    snare 3         12   cymbal 2
-      3    snare 4         13   cymbal 3
-      4    snare 5         14   muted snare 1
-      5    triangle 1      15   triangle 3
-      6    triangle 2      16   muted snare 2
-      7    snare 6         17   muted snare 3
-      8    snare 7         18   muted snare 4
-      9    snare 8
-
-   These are very low notes. Some DAWs call MIDI 0 "C-1" and others "C-2",
-   so count up from the bottom of the keyboard rather than trusting the name.
-   You may have to scroll your piano roll all the way down. The DAW Samples
-   folder has all 19 drums mapped to exactly these keys, so you can hear them
-   while you write.
-
-6. LOOPING. The template has text markers named "begin" and "end" on every
-   track. Move them to your loop points. Never put one in the middle of a
+5. LOOPING. If your MIDI has no loop markers, the whole song repeats from the
+   start (the window says so). To loop only part of it, put text markers named
+   "begin" and "end" on every track; Template.mid shows how. Markers written
+   as MIDI "marker" events (some programs call them time markers) work too.
+   If your program cannot write text or marker events, the song just repeats
+   whole, which is fine for testing.
+   Never put a marker in the middle of a
    note. If you do, you get an error mentioning notes that "overlap other
    events".
 
-7. SIZE. After each run, the window prints "Song size: X of Y bytes". Stay
+6. SIZE. After each run, the window prints "Song size: X of Y bytes". Stay
    under Y. A song over the limit may still play in the tester, but it cannot
    go into the real game. Repeated phrases are stored once, so reusing
    identical sections saves space. Very long songs fail with "too long".
 
-8. YOU HAVE ONE SONG SLOT. The tester replaces the title-screen music each
+7. YOU HAVE ONE SONG SLOT. The tester replaces the title-screen music each
    run. It does not keep or mix songs.
 
 
 HEARING IT WHILE YOU WRITE (optional)
 -------------------------------------
-DAW Samples folder:
-  Ch1 Ch2 - Square   4 square waves (12.5%, 25%, 50%, 75% pulse)
-  Ch3 - Wave         the 5 wave shapes
-  Ch4 - Drums        the 19 drums, on keys 0 to 18
-Each folder has .sfz files (load them in the free sfizz plugin, or any
-SFZ-compatible sampler) and the .wav files themselves, which loop, so any
-sampler can use them. These are a rough preview. The tester is the real test.
+Your program's piano will not sound like the Game Boy. The DAW Samples folder
+fixes that. The tester is still the real test; these are a close preview.
+
+  "Red Rogue Game Boy.sf2"   one SoundFont with everything. Presets:
+        Square 12.5, Square 25, Square 50, Square 75   (for Ch1 and Ch2)
+        Wave 0 ... Wave 4                              (for Ch3)
+        Drums            the 19 Game Boy drums on notes 0-18, and on the
+                         General MIDI drum notes, using the same mapping the
+                         tester uses
+        Game Boy Drums   the same drum kit as a General MIDI percussion kit
+                         (bank 128), for drumset staves and drum channels.
+     Notes outside the range a voice can play are silent on purpose.
+
+  MuseScore:   copy the .sf2 into Documents\MuseScore4\SoundFonts (MuseScore 3:
+               View > Synthesizer > Fluid > Add). Then open the Mixer and, for
+               each instrument, choose the Red Rogue Game Boy sound.
+               Export: File > Export > MIDI.
+  FL Studio:   on a channel, load the Fruity SoundFont Player (or DirectWave)
+               and open the .sf2; pick a preset per channel. Name the channels
+               Ch1, Ch2, Ch3, Ch4 (add the sound, like "Ch1 Square 50", if you
+               like), then File > Export > MIDI file.
+  Other:       any program that can load a .sf2 SoundFont works the same way.
+               Without SoundFont support, the .sfz files (free sfizz plugin)
+               and looping .wav files in the three folders do the same job.
+
+Steps differ a little between versions; the only thing that matters is getting
+the SoundFont into the instrument.
 
 
 IF SOMETHING GOES WRONG
 -----------------------
-Read the black window first; it says what to fix in plain words. If it does
-not make sense, send us:
+Read the black window first; it says what to fix in plain words. Yellow lines
+are notes about what the tester decided for you (which track became which
+voice, how drums were changed), not errors. If a message does not make sense,
+send us:
   - your .mid
   - _engine\output\last-error.txt

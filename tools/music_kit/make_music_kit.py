@@ -173,7 +173,8 @@ def stage(flags, prebuilt):
         if os.path.exists(p):
             shutil.copy2(p, ENGINE)
     shutil.copy2(find_file(unpack("pokemid"), "pokemid.exe"), ENGINE)
-    shutil.copy2(os.path.join(HERE, "convert.ps1"), ENGINE)
+    for script in ("convert.ps1", "midi_normalize.ps1", "gm_drums.json"):
+        shutil.copy2(os.path.join(HERE, script), ENGINE)
 
     mgba = os.path.dirname(find_file(unpack("mgba"), "mGBA.exe"))
     for entry in os.listdir(mgba):
@@ -252,6 +253,18 @@ def main():
     log("check: Template.mid builds")
     shutil.copy2(os.path.join(WORK, "Template.mid"), KIT)
     print(convert(os.path.join(KIT, "Template.mid")), end="")
+
+    # 3b. What MuseScore and FL Studio write must convert too: tracks found by
+    #     order or by name, whole-song loop, timbre from the name, GM drums.
+    for mid, wants in (("musescore_like.mid", ["Ch1::", "Ch2::", "Ch4::", "sound_loop 0, .loop"]),
+                       ("fl_like.mid", ["duty_cycle 2", "duty_cycle 1", "note_type 12, 1, 2", "sound_loop 0, .loop"])):
+        log("check: %s converts" % mid)
+        asm = os.path.join(out, mid + ".asm")
+        convert(os.path.join(WORK, mid), "-NoBuild", "-OutAsm", winpath(asm))
+        text = open(asm).read()
+        for want in wants:
+            if want not in text.replace("Music_TitleScreen_", ""):
+                sys.exit("%s: expected %r in the converted song, got:\n%s" % (mid, want, text))
 
     # Leave the kit clean: pristine song, empty output.
     shutil.copy2(song + ".orig", song)
