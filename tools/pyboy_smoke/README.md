@@ -228,9 +228,11 @@ failures (the exit code is unchanged):
 | `missed_ko` | a DAMAGE-layer reliable KO existed and another slot was selected |
 | `status_spam` | the same power-0 move by the same enemy mon 4+ times in a row (a forced pick breaks the run) |
 | `struggle_with_reserve` | Struggle selected while a reserve was alive |
-| `over_frame_trainer_ai` | a TrainerAI move-path call over 70,224 cycles (turn 1 with new reveals routinely is) |
+| `over_frame_trainer_ai` | a planned commit (`AICommitEnemyTurn`, move path) over 70,224 cycles; unplanned commits (forced turns, FINAL_AI) run the whole decision and are timed by the decision cycles instead |
 | `redundant_pick` | the selected slot carried a Redundant-layer penalty (forced picks are not counted) |
 | `telemetry_error` | a telemetry hook raised during the battle |
+
+Explosion/Self-Destruct KOs that `AIExplosionTradeVeto` forbade are policy, not misses: they are left out of `missed_ko` and counted as `explosion_vetoes` (the veto runs after the scores are captured; its mask is read at `AIExplosionTradeVeto.masked`). Switch prediction (2026-10-22): `planned_turns`, `player_switches`, `predictions`, `hedges` and `hedge_hits` (the player did switch on a hedged turn); groups add `player_switch_rate`, `hedges` and `hedge_hit_rate`.
 
 A selection is `forced` when only one slot has a move, PP left and is not disabled (2026-10-21).
 A forced pick breaks a `status_spam` run and is not counted in `redundant_pick`; records carry

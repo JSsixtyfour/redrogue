@@ -200,6 +200,11 @@ DEF AI_TURN_MOVE_CHOSEN_BIT EQU 7 ; a move was chosen (not locked); commit skips
 DEF AI_TURN_SWITCH_BIT      EQU 6 ; T2+: switch out (goes before every move)
 DEF AI_TURN_PLANNED_BIT     EQU 5 ; planned before the menu (commit: no new decision)
 DEF AI_TURN_ARMED_BIT       EQU 4 ; SwitchEnemyMon: AISelectSendOut takes the planned slot
+DEF AI_TURN_PREDICT_BIT     EQU 3 ; the plan predicted a player switch and hedged its move
+
+; Switch prediction (ai_turn_plan.asm AIPredictPlayerSwitch): a hedge move may
+; score up to this much worse than the best one and still be taken.
+DEF AI_PREDICT_MARGIN EQU 4
 DEF AI_TURN_SLOT_MASK       EQU %111 ; the ranked replacement's party slot + 1, 0 = none
 
 ; A mon locked into a multi-turn action cannot give its turn up for an item or
@@ -242,6 +247,12 @@ DEF AI_BUF_BESTSLOT   EQU 16 ; 1 byte: which move slot that was ($ff = none yet)
 DEF AI_BUF_CURSLOT    EQU 17 ; 1 byte: the slot being scored right now, stashed
                              ; because the AIEstimateDamage farcall destroys
                              ; every register that could otherwise carry it
+; Switch prediction (AIPredictPlayerSwitch) reuses +14..17 after every layer has
+; scored: AI_DAMAGE, their owner, is done with them by then.
+DEF AI_BUF_HEDGE_BEST    EQU 14 ; the best live score
+DEF AI_BUF_HEDGE_COUNTER EQU 15 ; a seen counter's player party slot ($ff = none)
+DEF AI_BUF_HEDGE_SLOT    EQU 16 ; the slot being tried
+DEF AI_BUF_HEDGE_PICK    EQU 17 ; the best live slot
 ; Phase 4: AISelectSendOut's running best-candidate record. Lives in the +14..19
 ; span rather than the +20..25 party-score array, because the two are used at
 ; DIFFERENT moments - the array is AIScoreParty's output during a switch

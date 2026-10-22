@@ -233,45 +233,45 @@ fodder.
 - Fodder: Nidoran M, Nidoran F, Rhyhorn, Onix, Diglett, Sandshrew, Geodude, Cubone, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Gligar (johto), Toedscool (warp), Sandy Shocks (warp)
 - Off-type: Meowth, Kangaskhan, Magikarp, Pinsir, Exeggcute, Hitmonchan, Hitmonlee, Koffing, Machop, Electabuzz, Tauros, Charmander, Growlithe, Moltres, Snubbull (johto), Murkrow (johto), Houndour (johto)
 
-### Falkner (FLYING)  (Draft)
+### Falkner (FLYING) 
 
 **Band 1: rounds 1-2**
-- Aces: Pidgeotto, Fearow, Noctowl (johto)
-- Fodder: Pidgey, Spearow, Doduo, Farfetchd, Zubat, Hoothoot (johto), Natu (johto), Hoppip (johto), Ledyba (johto)
+- Aces: Pidgeotto, Fearow, Noctowl (johto), Togetic
+- Fodder: Pidgey, Spearow, Doduo, Farfetchd, Zubat, Hoothoot (johto), Natu (johto), Hoppip (johto), Ledyba (johto), Butterfree, Murkrow (johto)
 
 **Band 2: rounds 3-4**
-- Aces: Pidgeot, Dodrio, Fearow, Noctowl (johto), Xatu (johto), Skarmory (johto)
-- Fodder: Pidgey, Spearow, Doduo, Farfetchd, Zubat, Hoothoot (johto), Natu (johto), Hoppip (johto), Ledyba (johto)
+- Aces: Pidgeot, Dodrio, Fearow, Noctowl (johto), Xatu (johto), Skarmory (johto), Gyarados, Mantine (johto), Scyther
+- Fodder: Pidgey, Spearow, Doduo, Farfetchd, Zubat, Hoothoot (johto), Natu (johto), Hoppip (johto), Ledyba (johto), Gligar (johto), Mantine (johto), Scyther, Murkrow (johto), Yanma (johto)
 - Off-type: Diglett, Growlithe, Poliwag, Sentret (johto)
 
 **Band 3: rounds 5-6**
-- Aces: Pidgeot, Dodrio, Aerodactyl, Skarmory (johto), Xatu (johto)
-- Fodder: Pidgey, Spearow, Doduo, Farfetchd, Zubat, Aerodactyl, Hoothoot (johto), Natu (johto), Hoppip (johto), Ledyba (johto), Murkrow (johto), Yanma (johto), Gligar (johto), Skarmory (johto)
+- Aces: Dodrio, Aerodactyl, Skarmory (johto), Xatu (johto), Gyarados, Mantine (johto), Charizard
+- Fodder: Pidgey, Spearow, Doduo, Farfetchd, Zubat, Aerodactyl, Hoothoot (johto), Natu (johto), Hoppip (johto), Ledyba (johto), Murkrow (johto), Yanma (johto), Gligar (johto), Skarmory (johto), Gyarados, Mantine (johto), Scyther, Murkrow (johto)
 - Off-type: Diglett, Growlithe, Poliwag, Sandshrew, Magnemite, Machop, Sentret (johto)
 
 **Band 4: rounds 7-8**
-- Aces: Pidgeot, Dodrio, Aerodactyl, Crobat (johto), Skarmory (johto), Galarian Moltres (warp)
-- Fodder: Pidgey, Spearow, Doduo, Farfetchd, Zubat, Aerodactyl, Hoothoot (johto), Natu (johto), Hoppip (johto), Ledyba (johto), Murkrow (johto), Yanma (johto), Gligar (johto), Skarmory (johto)
+- Aces: Galarian Moltres (warp), Articuno, Moltres, Zapdos, Galarian Articuno (warp), Galarian Zapdos (warp), Dragonite
+- Fodder: Pidgey, Spearow, Doduo, Farfetchd, Zubat, Aerodactyl, Hoothoot (johto), Natu (johto), Hoppip (johto), Ledyba (johto), Murkrow (johto), Yanma (johto), Gligar (johto), Skarmory (johto), Gyarados, Mantine (johto), Scyther, Murkrow (johto), Charizard
 - Off-type: Diglett, Growlithe, Poliwag, Sandshrew, Magnemite, Machop, Snorlax, Lapras, Sentret (johto)
 
-### Bugsy (BUG)  (Draft)
+### Bugsy (BUG) 
 
 **Band 1: rounds 1-2**
-- Aces: Butterfree, Beedrill, Scyther, Venomoth
+- Aces: Butterfree, Beedrill, Scyther, Venomoth, Parasect, Ariados (johto)
 - Fodder: Caterpie, Weedle, Paras, Venonat, Ledyba (johto), Spinarak (johto), Pineco (johto)
 
 **Band 2: rounds 3-4**
-- Aces: Scyther, Pinsir, Venomoth, Parasect, Heracross (johto), Ariados (johto)
-- Fodder: Caterpie, Weedle, Paras, Venonat, Ledyba (johto), Spinarak (johto), Pineco (johto)
+- Aces: Scyther, Pinsir, Venomoth, Heracross (johto)
+- Fodder: Caterpie, Weedle, Paras, Venonat, Ledyba (johto), Spinarak (johto), Pineco (johto), Shuckle (johto)
 - Off-type: Oddish, Poliwag, Geodude, Sentret (johto)
 
 **Band 3: rounds 5-6**
-- Aces: Pinsir, Scyther, Venomoth, Scizor (johto), Heracross (johto), Forretress (johto)
+- Aces: Pinsir, Scyther, Venomoth, Scizor (johto), Heracross (johto), Kleavor (johto)
 - Fodder: Caterpie, Weedle, Paras, Venonat, Scyther, Pinsir, Ledyba (johto), Spinarak (johto), Yanma (johto), Pineco (johto), Heracross (johto), Shuckle (johto)
 - Off-type: Oddish, Poliwag, Geodude, Onix, Sandshrew, Tangela, Sentret (johto)
 
 **Band 4: rounds 7-8**
-- Aces: Pinsir, Scizor (johto), Heracross (johto), Forretress (johto), Kleavor (warp)
+- Aces: Pinsir, Scizor (johto), Heracross (johto), Kleavor (warp)
 - Fodder: Caterpie, Weedle, Paras, Venonat, Scyther, Pinsir, Ledyba (johto), Spinarak (johto), Yanma (johto), Pineco (johto), Heracross (johto), Shuckle (johto)
 - Off-type: Oddish, Poliwag, Geodude, Onix, Sandshrew, Tangela, Chansey, Snorlax, Sentret (johto)
 

@@ -146,6 +146,24 @@ class BattleRecordTest(unittest.TestCase):
         self.assertIn("over_frame_trainer_ai", result["flags"])
         self.assertEqual(result["trainer_ai"]["item_or_switch_calls"], 1)
 
+    def test_over_frame_trainer_ai_ignores_unplanned_decisions(self) -> None:
+        # a forced turn or FINAL_AI decides at commit: decision_cycles times that
+        decided = {"caller_path": "unplanned", "outcome": "move", "cycles": 300_000}
+        result = record([selection(TACKLE)], trainer_ai_calls=[decided])
+        self.assertNotIn("over_frame_trainer_ai", result["flags"])
+        self.assertEqual(result["move_path_cycles"], [])
+
+    def test_prediction_counts_only_planned_committed_turns(self) -> None:
+        turns = [
+            {"mon": 0, "planned": True, "switched": True, "predicted": True, "hedged": True},
+            {"mon": 1, "planned": True, "switched": False, "predicted": True},
+            {"mon": 1, "planned": False, "switched": True},  # a forced turn: no menu
+            {"mon": 1},  # the battle ended before the commit
+        ]
+        result = record([selection(TACKLE)], plan_turns=turns)
+        self.assertEqual((result["planned_turns"], result["player_switches"], result["predictions"],
+                          result["hedges"], result["hedge_hits"]), (2, 1, 2, 1, 1))
+
     def test_pressure_is_the_share_of_party_hp_lost(self) -> None:
         result = record([selection(TACKLE)], player_hp=(300, 150, 400), player_fainted=1)
         self.assertEqual(result["player_hp_lost"], 0.375)

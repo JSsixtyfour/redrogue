@@ -625,6 +625,11 @@ class RedRogueHarness:
             pending["record"] = len(records) - 1
             pending["records"].append(len(records) - 1)
 
+        def explosion_veto(_context) -> None:
+            # AIExplosionTradeVeto.masked: a = the slots the trade policy forbids
+            if pending["record"] is not None:
+                records[int(pending["record"])]["explosion_vetoed"] = self.pyboy.register_file.A
+
         def selected(_context) -> None:
             record_index = pending["record"]
             if record_index is None:
@@ -643,6 +648,7 @@ class RedRogueHarness:
             ("AIEnemyTrainerChooseMoves.nextLayer", layer_start),
             ("AIEnemyTrainerChooseMoves.layerReturn", layer_return),
             ("AIEnemyTrainerChooseMoves.loopFindMinimumEntries", capture),
+            ("AIExplosionTradeVeto.masked", explosion_veto),
             ("SelectEnemyMove.done", selected),
             ("MainInBattleLoop.noLinkBattle", selected),
         ):

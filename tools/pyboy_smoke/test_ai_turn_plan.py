@@ -37,7 +37,7 @@ class TurnPlanBattle:
 
     def __init__(self, player, enemy, trainer, tier, switch_on_turn=None,
                  player_slot=0, prepare=None, cancel_first_move_menu=False,
-                 extra_labels=()):
+                 extra_labels=(), hooks=()):
         self.h = h = RedRogueHarness(ROOT, ARTIFACTS)
         self.events = []
         self.menus = []
@@ -71,6 +71,8 @@ class TurnPlanBattle:
         h.hook_flag('ExecuteEnemyMove', action=lambda: self.events.append(
             (self.turn, 'ExecuteEnemyMove', h.read8('wEnemySelectedMove'),
              h.read8('wPlayerMonNumber'))))
+        for label, callback in hooks:  # (label, f(h)), live for turn 1's plan too
+            h.register_hook(label, lambda _c, callback=callback: callback(h))
         h.boot_fight2(seed=1)
 
     def run_until(self, done, steps=3000):
@@ -305,6 +307,90 @@ class LowTierRankingTest(unittest.TestCase):
         block = plan_src.split('AILowTierSwitchClasses:', 1)[1].split('db $ff', 1)[0]
         listed = set(re.findall(r'^\s*db (\w+)', block, re.M))
         self.assertEqual(listed, expected)
+
+
+PREDICT = 1 << AI['AI_TURN_PREDICT_BIT']
+
+
+class SwitchPredictionTest(unittest.TestCase):
+    """AIPredictPlayerSwitch: the player's mon is outclassed (a super effective
+    ThunderShock (too weak to KO), nothing believed to KO the Electrode) and has a mon behind it,
+    so a T3 trainer whose roll comes up hedges with a close-scoring move. The
+    roll is forced at the .rolled seam (0 = always, $ff = never)."""
+
+    def first_turn(self, player, enemy, roll=0, seen=0, prepare=None, tier=3):
+        def prime(h):
+            h.write8('wAICount', 0)
+            if seen:
+                h.write8('wAISeenPlayerMons', h.read8('wAISeenPlayerMons') | seen)
+            if prepare:
+                prepare(h)
+
+        b = TurnPlanBattle(player, enemy, 'JUGGLER', tier=tier, prepare=prime,
+                           extra_labels=('AIPredictPlayerSwitch.predicts',
+                                         'AIPredictPlayerSwitch.hedged'),
+                           hooks=[('AIPredictPlayerSwitch.rolled',
+                                   lambda h: setattr(h.pyboy.register_file, 'A', roll))])
+        try:
+            b.run_until(lambda: any(e[1] == 'ExecuteEnemyMove' for e in b.events))
+            move = next(e for e in b.events if e[1] == 'ExecuteEnemyMove')[2]
+            labels = [e[1] for e in b.events if e[0] <= 1]
+            return b.menus[0]['plan'], move, labels
+        finally:
+            b.close()
+
+    STARYU = [mon('STARYU', ['TACKLE'], level=60), mon('RATTATA', ['TACKLE'])]
+
+    def test_status_when_the_player_should_switch(self):
+        plan, move, labels = self.first_turn(
+            self.STARYU, [mon('ELECTRODE', ['THUNDERSHOCK', 'TOXIC'])])
+        self.assertIn('AIPredictPlayerSwitch.hedged', labels)
+        self.assertTrue(plan & PREDICT, f'plan {plan:#04x}')
+        self.assertEqual(move, MOVES['TOXIC'])
+
+    def test_a_failed_roll_attacks(self):
+        plan, move, labels = self.first_turn(
+            self.STARYU, [mon('ELECTRODE', ['THUNDERSHOCK', 'TOXIC'])], roll=0xff)
+        self.assertNotIn('AIPredictPlayerSwitch.predicts', labels)
+        self.assertFalse(plan & PREDICT)
+        self.assertEqual(move, MOVES['THUNDERSHOCK'])
+
+    def test_no_reserve_means_no_prediction(self):
+        plan, move, _ = self.first_turn(
+            self.STARYU[:1], [mon('ELECTRODE', ['THUNDERSHOCK', 'TOXIC'])])
+        self.assertFalse(plan & PREDICT)
+        self.assertEqual(move, MOVES['THUNDERSHOCK'])
+
+    def test_a_ko_on_the_board_is_taken(self):
+        def low(h):
+            h.write8('wBattleMonHP', 0)
+            h.write8('wBattleMonHP', 5, 1)
+        plan, move, _ = self.first_turn(
+            self.STARYU, [mon('ELECTRODE', ['THUNDERSHOCK', 'TOXIC'])], prepare=low)
+        self.assertFalse(plan & PREDICT)
+        self.assertEqual(move, MOVES['THUNDERSHOCK'])
+
+    def test_t1_never_predicts(self):
+        plan, _, labels = self.first_turn(
+            self.STARYU, [mon('ELECTRODE', ['THUNDERSHOCK', 'TOXIC'])], tier=1)
+        self.assertNotIn('AIPredictPlayerSwitch.predicts', labels)
+        self.assertFalse(plan & PREDICT)
+
+    def test_coverage_for_a_seen_counter(self):
+        # Dugtrio (seen) is immune to ThunderShock; Body Slam hits both neutrally
+        party = [mon('STARYU', ['TACKLE'], level=60), mon('DUGTRIO', ['TACKLE'])]
+        plan, move, _ = self.first_turn(
+            party, [mon('ELECTRODE', ['THUNDERSHOCK', 'BODY_SLAM'])], seen=0b10)
+        self.assertTrue(plan & PREDICT, f'plan {plan:#04x}')
+        self.assertEqual(move, MOVES['BODY_SLAM'])
+
+    def test_an_unseen_counter_is_not_known(self):
+        party = [mon('STARYU', ['TACKLE'], level=60), mon('DUGTRIO', ['TACKLE'])]
+        plan, move, labels = self.first_turn(
+            party, [mon('ELECTRODE', ['THUNDERSHOCK', 'BODY_SLAM'])])
+        self.assertIn('AIPredictPlayerSwitch.predicts', labels)
+        self.assertFalse(plan & PREDICT, 'no seen counter, no setup or status: no hedge')
+        self.assertEqual(move, MOVES['THUNDERSHOCK'])
 
 
 class MenuFreesALockedEnemyTest(unittest.TestCase):

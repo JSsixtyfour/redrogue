@@ -44,7 +44,7 @@ FLAG_RULES = {
     "status_spam": f"the same power-0 move by the same enemy mon {STATUS_SPAM_STREAK}+ times in a row"
                    " (forced picks, the only usable move, break the run)",
     "struggle_with_reserve": "Struggle selected while a reserve was alive",
-    "over_frame_trainer_ai": f"a TrainerAI move-path call over {FRAME_CYCLES} cycles",
+    "over_frame_trainer_ai": f"a planned commit (AICommitEnemyTurn, move path) over {FRAME_CYCLES} cycles",
     "redundant_pick": "the selected slot carried a positive Redundant-layer penalty (not when forced)",
     "telemetry_error": "a telemetry hook raised during the battle",
 }
@@ -120,6 +120,7 @@ def battle_record(
     struggle: int,
     player_hp: tuple[int, int, int] | None = None,
     player_fainted: int | None = None,
+    plan_turns: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
     """One battle's AI record from that battle's slices of the harness lists."""
     first = first_decision_records(decisions)
@@ -175,6 +176,10 @@ def battle_record(
         "enemy_switches": enemy_switches,
         "ko_candidates": classified["damage_layer_ko_candidates"],
         "missed_ko": classified["damage_layer_missed_ko_candidates"],
+        "explosion_vetoes": classified["explosion_vetoed_ko_candidates"],
+        # Switch prediction (2026-10-22): per planned turn, whether the plan rolled
+        # a prediction, hedged its move, and whether the player then switched.
+        **prediction_counts(plan_turns or []),
         "redundant_picks": chosen_freely["selected_redundant_penalty_decisions"],
         "forced_picks": sum(bool(s.get("forced")) for s in chosen),
         "personality_flips": flips,
@@ -188,10 +193,24 @@ def battle_record(
             "all": cycles,
         },
         "trainer_ai": trainer_ai,
-        "move_path_cycles": [int(call["cycles"]) for call in move_calls],
+        # Planned commits only: an unplanned one (a forced turn, FINAL_AI) runs the whole
+        # decision there, which decision_cycles already times (2026-10-22).
+        "move_path_cycles": [int(call["cycles"]) for call in move_calls
+                             if call.get("caller_path") == "planned"],
     }
     record["flags"] = flag_battle(record)
     return record
+
+
+def prediction_counts(plan_turns: list[dict[str, object]]) -> dict[str, int]:
+    planned = [t for t in plan_turns if t.get("planned") and "switched" in t]
+    return {
+        "planned_turns": len(planned),
+        "player_switches": sum(bool(t["switched"]) for t in planned),
+        "predictions": sum(bool(t.get("predicted")) for t in planned),
+        "hedges": sum(bool(t.get("hedged")) for t in planned),
+        "hedge_hits": sum(bool(t.get("hedged")) and bool(t["switched"]) for t in planned),
+    }
 
 
 def flag_battle(record: dict[str, object]) -> list[str]:
@@ -202,7 +221,7 @@ def flag_battle(record: dict[str, object]) -> list[str]:
         flags.append("status_spam")
     if record["struggle_with_reserve"] > 0:
         flags.append("struggle_with_reserve")
-    if record["trainer_ai"].get("trainer_ai_over_frame_calls", 0) > 0:
+    if record["trainer_ai"].get("trainer_ai_planned_move_over_frame_calls", 0) > 0:
         flags.append("over_frame_trainer_ai")
     if record["redundant_picks"] > 0:
         flags.append("redundant_pick")
@@ -225,6 +244,11 @@ def _group(records: list[dict[str, object]]) -> dict[str, object]:
         "personality_flip_rate": _rate(sum(r["personality_flips"] for r in records), decisions),
         "mean_player_hp_lost": _mean([r.get("player_hp_lost") for r in records]),
         "mean_player_fainted": _mean([r.get("player_fainted") for r in records]),
+        "player_switch_rate": _rate(sum(r.get("player_switches", 0) for r in records),
+                                    sum(r.get("planned_turns", 0) for r in records)),
+        "hedges": sum(r.get("hedges", 0) for r in records),
+        "hedge_hit_rate": _rate(sum(r.get("hedge_hits", 0) for r in records),
+                                sum(r.get("hedges", 0) for r in records)),
     }
 
 
@@ -307,6 +331,14 @@ class BattleAITelemetry:
         self.turn_count = {"value": 0}
         harness.register_hook("SelectEnemyMove.done", self._guarded(self._selected))
         harness.register_hook("MainInBattleLoop", self._guarded(self._turn))
+        self.plan_turns: list[dict[str, object]] = []
+        try:  # a ROM from before the turn plan / switch prediction has no such labels
+            harness.register_hook("AIPlanEnemyTurn", self._guarded(self._plan))
+            harness.register_hook("AICommitEnemyTurn", self._guarded(self._commit))
+            harness.register_hook("AIPredictPlayerSwitch.predicts", self._guarded(self._predicted))
+            harness.register_hook("AIPredictPlayerSwitch.hedged", self._guarded(self._hedged))
+        except KeyError:
+            pass
         self._start: dict[str, int] | None = None
         self._opponent = ""
         self._identity: tuple[int, int] = (0, 0)
@@ -323,6 +355,24 @@ class BattleAITelemetry:
 
     def _turn(self, _context) -> None:
         self.turn_count["value"] += 1
+
+    def _plan(self, _context) -> None:
+        self.plan_turns.append({"mon": self.h.read8("wPlayerMonNumber")})
+
+    def _predicted(self, _context) -> None:
+        if self.plan_turns:
+            self.plan_turns[-1]["predicted"] = True
+
+    def _hedged(self, _context) -> None:
+        if self.plan_turns:
+            self.plan_turns[-1]["hedged"] = True
+
+    def _commit(self, _context) -> None:
+        turn = self.plan_turns[-1] if self.plan_turns else None
+        if turn is None or "switched" in turn:
+            return
+        turn["planned"] = bool(self.h.read8("wAITurnPlan") & 1 << 5)  # AI_TURN_PLANNED_BIT
+        turn["switched"] = self.h.read8("wPlayerMonNumber") != turn["mon"]
 
     def _selected(self, _context) -> None:
         h = self.h
@@ -383,6 +433,7 @@ class BattleAITelemetry:
                 "personality": len(self.personality),
                 "trainer_ai": len(self.trainer_ai),
                 "selections": len(self.selections),
+                "plan_turns": len(self.plan_turns),
                 "switches": self.switches["count"],
                 "turns": self.turn_count["value"],
                 "party": self._party_hp(),
@@ -417,6 +468,7 @@ class BattleAITelemetry:
                 turns=self.turn_count["value"] - start["turns"],
                 move_powers=self.move_powers,
                 struggle=self.struggle,
+                plan_turns=self.plan_turns[start["plan_turns"]:],
                 **self._pressure(start["party"], result),
             )
         except Exception as error:

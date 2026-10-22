@@ -93,9 +93,10 @@ class AISwitchDispatchTest(unittest.TestCase):
         h.write8("wEnemyMonStatus", 1 << 5)
         h.write8("wAICount", 0)
         predicate = h.hook_flag("AIShouldSwitch")
+        h.write8("wAITurnPlan", 0)  # its callers zero the plan (2026-10-22)
         h.call_routine("AIDecideEnemyTurn", limit=6000)
         self.assertEqual(predicate["count"], 0)
-        self.assertEqual(h.read8("wAITurnPlan"), 0, "no switch bit, no replacement")
+        self.assertEqual(h.read8("wAITurnPlan") & 0x47, 0, "no switch bit, no replacement")
 
     def test_low_tiers_keep_original_item_count_gate(self):
         # Same relocation as above: AIDecideEnemyTurn skips the farcall to

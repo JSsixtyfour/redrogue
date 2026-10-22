@@ -23,9 +23,21 @@ each snaps to the nearest grey level, and two colours landing on the same level
 is an error rather than a silent merge. The mapping is always printed: rgbgfx
 builds a shade-swapped pic without complaint, so check it.
 
-Usage (repo root, Windows Python):
-    python tools/import_pic.py octillery --front "K:/.../front.png" --back "K:/.../back.png"
-    python tools/import_pic.py octillery --back back.png --check   # validate only
+Full workflow:
+  1. Import (repo root, Windows Python, which can read K:):
+       python tools/import_pic.py octillery --front "K:/.../front.png" --back "K:/.../back.png"
+       python tools/import_pic.py octillery --back back.png --check   # validate only
+  2. Build (WSL, repo root). The next step reads the ROM, so build first:
+       make
+  3. Refresh the sprite test's saved hashes (WSL):
+       python3 tools/pyboy_smoke/sprite_decompression.py --write-golden
+  4. Check that only this species' pics changed:
+       git diff tools/pyboy_smoke/sprite_decompression_golden.json
+     Expect <Name>PicFront/0, /1 and <Name>PicBack/0, /1 for each pic replaced.
+     Any other label changing means something else moved: don't keep it.
+  5. Run the sprite tests (WSL). The quotes and .* matter, it takes a glob:
+       make smoke TEST='test_sprite_decompression.*'
+  6. Look at it in BGB: the Pokedex entry, and a battle for the back.
 """
 from __future__ import annotations
 
@@ -229,7 +241,8 @@ def validate(kind: str, src: Path, dest: Path) -> bool:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("name", help="tree file stem, e.g. octillery")
     parser.add_argument("--front", type=Path, help="new front PNG")
     parser.add_argument("--back", type=Path, help="new back PNG")
@@ -264,7 +277,7 @@ def main() -> int:
           "  wsl: python3 tools/pyboy_smoke/sprite_decompression.py --write-golden\n"
           "  git diff tools/pyboy_smoke/sprite_decompression_golden.json\n"
           f"      -> only {args.name} pic lines should change\n"
-          "  make smoke TEST=sprite_decompression")
+          "  make smoke TEST='test_sprite_decompression.*'")
     return 0
 
 

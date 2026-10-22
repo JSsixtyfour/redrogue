@@ -569,7 +569,10 @@ wTotalPayDayMoney:: ds 3
 wSafariEscapeFactor:: db
 wSafariBaitFactor:: db
 
-	ds 1
+; Was vanilla's unused pad. Bit per PLAYER party slot: the AI has seen that mon
+; at a battle menu this battle (AIPlanEnemyTurn marks the active one). Switch
+; prediction looks for a seen counter here. Zeroed at battle start.
+wAISeenPlayerMons:: db
 
 wTransformedEnemyMonOriginalDVs:: dw
 

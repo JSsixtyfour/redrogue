@@ -34,7 +34,7 @@ def first_decision_records(records: list[dict[str, object]]) -> list[dict[str, o
 
 def classify_decisions(records: list[dict[str, object]]) -> dict[str, int]:
     decisions = first_decision_records(records)
-    opportunities = missed = wasted = 0
+    opportunities = missed = wasted = vetoed = 0
     for record in decisions:
         selected = record.get("selected_slot")
         if not isinstance(selected, int):
@@ -46,6 +46,14 @@ def classify_decisions(records: list[dict[str, object]]) -> dict[str, int]:
                 for slot, delta in enumerate(damage["delta"])
                 if delta <= -AI_KILL
             }
+            # A KO the Explosion trade veto forbade is policy, not a miss: the
+            # veto runs after the scores are captured (hook_ai_scores records
+            # its mask; 2026-10-22, every swarm "missed KO" was one of these).
+            veto = int(record.get("explosion_vetoed", 0))
+            vetoed_here = {slot for slot in lethal if veto >> slot & 1}
+            if vetoed_here and selected not in lethal:
+                vetoed += 1
+            lethal -= vetoed_here
             if lethal:
                 opportunities += 1
                 missed += selected not in lethal
@@ -61,6 +69,7 @@ def classify_decisions(records: list[dict[str, object]]) -> dict[str, int]:
         "damage_layer_ko_candidates": opportunities,
         "damage_layer_missed_ko_candidates": missed,
         "selected_redundant_penalty_decisions": wasted,
+        "explosion_vetoed_ko_candidates": vetoed,
     }
     # Compatibility aliases. These are scoring diagnostics, not an
     # independent damage oracle or proof that an observed turn was wasted.

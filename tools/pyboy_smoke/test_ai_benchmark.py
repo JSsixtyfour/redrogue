@@ -66,11 +66,27 @@ class BenchmarkMetricTest(unittest.TestCase):
                 "damage_layer_ko_candidates": 1,
                 "damage_layer_missed_ko_candidates": 0,
                 "selected_redundant_penalty_decisions": 0,
+                "explosion_vetoed_ko_candidates": 0,
                 "ko_opportunities": 1,
                 "missed_kos": 0,
                 "wasted_turns": 0,
             },
         )
+
+    def test_an_explosion_veto_is_not_a_missed_ko(self) -> None:
+        record = {
+            "decision": 1,
+            "selected_slot": 1,
+            "explosion_vetoed": 0b1000,
+            "layer_trace": [{"layer": "DAMAGE", "enabled": True, "delta": [0, 0, 0, -6]}],
+        }
+        result = classify_decisions([record])
+        self.assertEqual(result["damage_layer_missed_ko_candidates"], 0)
+        self.assertEqual(result["damage_layer_ko_candidates"], 0)
+        self.assertEqual(result["explosion_vetoed_ko_candidates"], 1)
+        # another KO slot the veto did not touch still counts
+        record["layer_trace"][0]["delta"] = [-6, 0, 0, -6]
+        self.assertEqual(classify_decisions([record])["damage_layer_missed_ko_candidates"], 1)
 
     def test_classification_labels_score_diagnostics_and_keeps_aliases(self) -> None:
         record = {
