@@ -1121,6 +1121,7 @@
 	band_ace FEAROW
 	band_johto
 	band_ace NOCTOWL
+	band_ace TOGETIC
 	band_warp
 	band_end
 	band_pool Falkner_Fod1
@@ -1129,24 +1130,46 @@
 	band_mon DODUO
 	band_mon FARFETCHD
 	band_mon ZUBAT
+	band_mon BUTTERFREE
 	band_johto
 	band_mon HOOTHOOT
 	band_mon NATU
 	band_mon HOPPIP
 	band_mon LEDYBA
+	band_mon MURKROW
 	band_warp
 	band_end
 	band_pool Falkner_Ace2
 	band_ace PIDGEOT
 	band_ace DODRIO
 	band_ace FEAROW
+	band_ace GYARADOS
+	band_ace SCYTHER
 	band_johto
 	band_ace NOCTOWL
 	band_ace XATU
 	band_ace SKARMORY
+	band_ace MANTINE
 	band_warp
 	band_end
-	band_same Falkner_Fod2, Falkner_Fod1
+	band_pool Falkner_Fod2
+	band_mon PIDGEY
+	band_mon SPEAROW
+	band_mon DODUO
+	band_mon FARFETCHD
+	band_mon ZUBAT
+	band_mon SCYTHER
+	band_johto
+	band_mon HOOTHOOT
+	band_mon NATU
+	band_mon HOPPIP
+	band_mon LEDYBA
+	band_mon GLIGAR
+	band_mon MANTINE
+	band_mon MURKROW
+	band_mon YANMA
+	band_warp
+	band_end
 	band_pool Falkner_Off2
 	band_mon DIGLETT
 	band_mon GROWLITHE
@@ -1156,12 +1179,14 @@
 	band_warp
 	band_end
 	band_pool Falkner_Ace3
-	band_ace PIDGEOT
 	band_ace DODRIO
 	band_ace AERODACTYL
+	band_ace GYARADOS
+	band_ace CHARIZARD
 	band_johto
 	band_ace SKARMORY
 	band_ace XATU
+	band_ace MANTINE
 	band_warp
 	band_end
 	band_pool Falkner_Fod3
@@ -1171,6 +1196,8 @@
 	band_mon FARFETCHD
 	band_mon ZUBAT
 	band_mon AERODACTYL
+	band_mon GYARADOS
+	band_mon SCYTHER
 	band_johto
 	band_mon HOOTHOOT
 	band_mon NATU
@@ -1180,6 +1207,8 @@
 	band_mon YANMA
 	band_mon GLIGAR
 	band_mon SKARMORY
+	band_mon MANTINE
+	band_mon MURKROW
 	band_warp
 	band_end
 	band_pool Falkner_Off3
@@ -1194,16 +1223,39 @@
 	band_warp
 	band_end
 	band_pool Falkner_Ace4
-	band_ace PIDGEOT
-	band_ace DODRIO
-	band_ace AERODACTYL
+	band_ace ARTICUNO
+	band_ace MOLTRES
+	band_ace ZAPDOS
+	band_ace DRAGONITE
 	band_johto
-	band_ace CROBAT
-	band_ace SKARMORY
 	band_warp
 	band_ace MOLTRES, 1
+	band_ace ARTICUNO, 1
+	band_ace ZAPDOS, 1
 	band_end
-	band_same Falkner_Fod4, Falkner_Fod3
+	band_pool Falkner_Fod4
+	band_mon PIDGEY
+	band_mon SPEAROW
+	band_mon DODUO
+	band_mon FARFETCHD
+	band_mon ZUBAT
+	band_mon AERODACTYL
+	band_mon GYARADOS
+	band_mon SCYTHER
+	band_mon CHARIZARD
+	band_johto
+	band_mon HOOTHOOT
+	band_mon NATU
+	band_mon HOPPIP
+	band_mon LEDYBA
+	band_mon MURKROW
+	band_mon YANMA
+	band_mon GLIGAR
+	band_mon SKARMORY
+	band_mon MANTINE
+	band_mon MURKROW
+	band_warp
+	band_end
 	band_pool Falkner_Off4
 	band_mon DIGLETT
 	band_mon GROWLITHE
@@ -1224,7 +1276,9 @@
 	band_ace BEEDRILL
 	band_ace SCYTHER
 	band_ace VENOMOTH
+	band_ace PARASECT
 	band_johto
+	band_ace ARIADOS
 	band_warp
 	band_end
 	band_pool Bugsy_Fod1
@@ -1242,13 +1296,22 @@
 	band_ace SCYTHER
 	band_ace PINSIR
 	band_ace VENOMOTH
-	band_ace PARASECT
 	band_johto
 	band_ace HERACROSS
-	band_ace ARIADOS
 	band_warp
 	band_end
-	band_same Bugsy_Fod2, Bugsy_Fod1
+	band_pool Bugsy_Fod2
+	band_mon CATERPIE
+	band_mon WEEDLE
+	band_mon PARAS
+	band_mon VENONAT
+	band_johto
+	band_mon LEDYBA
+	band_mon SPINARAK
+	band_mon PINECO
+	band_mon SHUCKLE
+	band_warp
+	band_end
 	band_pool Bugsy_Off2
 	band_mon ODDISH
 	band_mon POLIWAG
@@ -1264,8 +1327,8 @@
 	band_johto
 	band_ace SCIZOR
 	band_ace HERACROSS
-	band_ace FORRETRESS
 	band_warp
+	band_ace KLEAVOR
 	band_end
 	band_pool Bugsy_Fod3
 	band_mon CATERPIE
@@ -1299,7 +1362,6 @@
 	band_johto
 	band_ace SCIZOR
 	band_ace HERACROSS
-	band_ace FORRETRESS
 	band_warp
 	band_ace KLEAVOR
 	band_end

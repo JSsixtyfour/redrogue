@@ -16,14 +16,14 @@ REPO = Path("/mnt/c/Users/justi/redrogue")
 sys.path.insert(0, str(REPO / "tools" / "pyboy_smoke"))
 
 from harness import RedRogueHarness  # noqa: E402
-from source_constants import parse_rgbds_constants, parse_map_constants  # noqa: E402
+from source_constants import names_by_value, parse_rgbds_constants, parse_map_constants  # noqa: E402
 
 ARTIFACTS = REPO / "tools" / "pyboy_smoke" / "artifacts"
 SPRITES = parse_rgbds_constants(REPO / "constants" / "sprite_constants.asm")
 STD = 7  # untiered balls are the red OBJ palette 7
 MAPS = parse_map_constants(REPO / "constants" / "map_constants.asm")
 ITEMS = parse_rgbds_constants(REPO / "constants" / "item_constants.asm")
-ID_TO_NAME = {v: k for k, v in ITEMS.items() if v < 0xC4}
+ID_TO_NAME = {v: k for v, k in names_by_value(ITEMS).items() if v < 0xC4}
 _const = (REPO / "constants" / "item_constants.asm").read_text()
 for _i, _n in enumerate(re.findall(r"^	add_hm (\w+)", _const, re.M)):
     ID_TO_NAME[0xC4 + _i] = "HM_" + _n

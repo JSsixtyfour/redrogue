@@ -229,6 +229,7 @@ class AIShouldSwitchTest(unittest.TestCase):
         self.trainers = parse_trainer_constants(
             REPO_ROOT / "constants" / "trainer_constants.asm"
         )
+        self.ai = parse_rgbds_constants(REPO_ROOT / "constants" / "ai_constants.asm")
 
     def tearDown(self) -> None:
         if self.harness is not None:
@@ -559,6 +560,105 @@ class AIShouldSwitchTest(unittest.TestCase):
         # Control for the case above: at 2 x hit + 2 HP it keeps more than half.
         switched, gate, *_ = self.sacrifice_case("WIGGLYTUFF", lambda hit: 2 * hit + 2)
         self.assertEqual((switched, gate), (True, 1))
+
+    # --- B4/B5 combined scan (Codex review 2026-10-22) -------------------------
+    # B4's reserve scan derives B5's half-HP answer (wBuffer + AI_BUF_RESERVEHALF)
+    # from its largest delivery instead of B5 rescanning at half HP. These pin
+    # the derived answer to the rescan (AIBestReserveKeepsHalf, the reference)
+    # at the rounding boundaries, and Super Fang, which the delivery leaves out,
+    # to the rescan fallback.
+    RESERVE_HALF = {"NO": 0, "KEEPS": 1, "UNKNOWN": 0xFF}
+
+    def half_answers(self, player_moves: list[str], reserve_hps) -> list[dict[str, int]]:
+        """Per reserve HP: the derived answer, B4's largest delivery, the
+        rescan's answer (1 keeps half, 0 not), and how often B5's gate itself
+        fell back to the rescan. reserve_hps(hit) maps the measured full-HP
+        delivery to the HPs to test."""
+        h = self.harness
+        assert h is not None
+        h.inject_fight2_spec(
+            [self.mon("RATICATE", player_moves)],
+            [self.mon("PIKACHU"), self.mon("WIGGLYTUFF")],
+            trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=2,
+        )
+        h.boot_fight2(seed=1)
+        h.write8("wEnemyMonPartyPos", 0)
+        h.reveal_player_moves(0, list(range(len(player_moves))), clear=True)
+        scans: list[tuple[int, int]] = []
+        exits: list[int] = []
+        rf = h.pyboy.register_file
+        h.register_hook("_AIBestReserveThreatScan.storeHalf",
+                        lambda _ctx: scans.append((rf.A, (rf.D << 8) | rf.E)))
+        h.register_hook("_AIBestReserveThreatScan.restore", lambda _ctx: exits.append(rf.E))
+        rescans = h.hook_flag("AIBestReserveKeepsHalf")
+
+        def run(label: str) -> None:
+            h.write8("wBuffer", 1, offset=self.ai["AI_BUF_BESTPARTYSLOT"])
+            h.call_routine(label)
+
+        run("AIBestReserveSurvivesThreat")
+        hit = scans[-1][1]
+        results = []
+        for hp in reserve_hps(hit):
+            h.write8("wEnemyMon2HP", hp >> 8)
+            h.write8("wEnemyMon2HP", hp & 0xFF, offset=1)
+            run("AIBestReserveSurvivesThreat")
+            derived, delivery = scans[-1]
+            self.assertEqual(h.read8("wBuffer", self.ai["AI_BUF_RESERVEHALF"]), derived)
+            # The gate first: the reference rescan below writes the byte too.
+            before = rescans["count"]
+            run("AISacrificeBeatsSwitch")  # the active mon is at full HP
+            gate_rescans = rescans["count"] - before
+            run("AIBestReserveKeepsHalf")
+            rescan = exits[-1]
+            results.append({"hp": hp, "hit": hit, "derived": derived, "delivery": delivery,
+                            "rescan": rescan, "gate_rescans": gate_rescans})
+        return results
+
+    def assert_derived_matches_rescan(self, results) -> None:
+        for r in results:
+            with self.subTest(hp=r["hp"]):
+                self.assertNotEqual(r["derived"], self.RESERVE_HALF["UNKNOWN"], r)
+                self.assertEqual(r["derived"], r["rescan"], r)
+                self.assertEqual(r["gate_rescans"], 0, r)
+
+    def test_derived_half_answer_matches_the_rescan_at_even_hp(self) -> None:
+        # HP 2 x hit: the hit takes exactly half (NO); 2 x hit + 2 keeps more.
+        results = self.half_answers(["BODY_SLAM"], lambda hit: (2 * hit, 2 * hit + 2))
+        self.assert_derived_matches_rescan(results)
+        self.assertEqual([r["derived"] for r in results],
+                         [self.RESERVE_HALF["NO"], self.RESERVE_HALF["KEEPS"]], results)
+
+    def test_derived_half_answer_matches_the_rescan_at_odd_hp(self) -> None:
+        # Both scans round HP / 2 down: at 2 x hit + 1 the half is the hit
+        # itself (NO), at 2 x hit - 1 it is below it (NO), and 2 x hit + 3 keeps.
+        results = self.half_answers(
+            ["BODY_SLAM"], lambda hit: (2 * hit - 1, 2 * hit + 1, 2 * hit + 3))
+        self.assert_derived_matches_rescan(results)
+        self.assertEqual([r["derived"] for r in results],
+                         [self.RESERVE_HALF["NO"], self.RESERVE_HALF["NO"],
+                          self.RESERVE_HALF["KEEPS"]], results)
+
+    def test_reserve_ko_is_a_no_without_a_rescan(self) -> None:
+        # HP = hit: B4 stops at the KO and never measures the rest; NO, as the
+        # rescan says.
+        results = self.half_answers(["BODY_SLAM"], lambda hit: (hit,))
+        self.assert_derived_matches_rescan(results)
+        self.assertEqual(results[0]["derived"], self.RESERVE_HALF["NO"], results)
+
+    def test_super_fang_leaves_the_half_answer_to_the_rescan(self) -> None:
+        # Super Fang takes half the reserve's own HP, so the delivery (which
+        # leaves it out) cannot answer: UNKNOWN, and B5's gate rescans once and
+        # finds it takes half, odd HP or even. Body Slam alone would keep half
+        # here, which is what makes the fallback matter.
+        results = self.half_answers(
+            ["SUPER_FANG", "BODY_SLAM"], lambda hit: (4 * hit, 4 * hit + 1))
+        for r in results:
+            with self.subTest(hp=r["hp"]):
+                self.assertLess(2 * r["delivery"], r["hp"], r)  # Body Slam keeps half
+                self.assertEqual(r["derived"], self.RESERVE_HALF["UNKNOWN"], r)
+                self.assertEqual(r["rescan"], 0, r)
+                self.assertEqual(r["gate_rescans"], 1, r)
 
     def test_baseline_healthy_no_threat_stays(self) -> None:
         # Splash is revealed: with no type guess left, there is no threat.

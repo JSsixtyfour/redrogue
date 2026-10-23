@@ -2,6 +2,7 @@
 """make release: build, check, archive, and hand the debug ROM to the playtest bot.
 
     make release                      asks for the notes
+    make release-skip                 uses blank/default answers without asking
     make release RELEASE_ARGS='--notes "New gym" --testing "Gym 3"'
     make release RELEASE_ARGS='--save-compat supported --save-compat-from 74f82c1b'
     make release RELEASE_ARGS=--dry-run   everything except sending
@@ -10,13 +11,13 @@ In order, stopping at the first failure (nothing is sent after a failure):
 1. Refuses uncommitted changes to tracked files (a -dirty build can't be rebuilt
    from git) and a commit that isn't on GitHub yet (the bot reads the commits
    since the last release from there, to link "Fixes RR-0012" and draft notes).
-2. Relinks all three ROMs (so every archive is stamped with this commit), then
+2. Relinks Red and Debug (so every archive is stamped with this commit), then
    runs make save_schema, make save_converter, a space report, make audit and
-   make smoke. Each one's output is logged.
+   make smoke. Space and static ROM checks cover Red and Debug. Each check's output is logged.
 3. Finds this run's archived ROMs by content, not by "newest name": each
    builds/<rom>_<stamp>_<hash>.gbc must match the ROM the build just wrote,
    with its .sym and .map.
-4. Keeps a release package in builds/releases/<debug ROM name>/: the three
+4. Keeps a release package in builds/releases/<debug ROM name>/: both
    ROMs with .sym and .map, the check logs, and manifest.json (commit, hashes,
    tool versions, check results, save compatibility, manual acceptance:
    pending), and the patch page's save converter for this build's save
@@ -54,7 +55,7 @@ REPO = Path(__file__).resolve().parents[1]
 BUILDS = REPO / "builds"
 RELEASES = BUILDS / "releases"
 ROM = "pokeblue_debug"                       # what testers get
-ROMS = ("pokered", "pokeblue", "pokeblue_debug")  # what gets archived
+ROMS = ("pokered", "pokeblue_debug")          # what gets built, checked and archived
 MANIFEST_VERSION = 2  # 2: "save" (the save converter package and the save schema)
 SAVE_COMPAT = ("supported", "new_save_required", "unverified")
 
@@ -130,18 +131,18 @@ def run_check(name: str, command: list[str], log_dir: Path) -> dict:
 
 def checks(log_dir: Path, space_json: Path) -> list[dict]:
     # Touching buildid.asm (mtime only; git sees no change) makes make relink all
-    # three ROMs, so their archives carry this commit's hash and one shared stamp.
+    # release ROMs, so their archives carry this commit's hash and one shared stamp.
     (REPO / "buildid.asm").touch()
     # Fastest checks first, so a quick failure doesn't wait out smoke and audit.
     return [
-        run_check("build", ["make", "-j8"], log_dir),
+        run_check("build", ["make", "-j8", *(f"{rom}.gbc" for rom in ROMS)], log_dir),
         # Also keeps this build's constants in the package, so the next check protects what testers' saves hold.
         run_check("save_schema", ["python3", "tools/save_schema.py", "check",
                                   "--save-values", str(log_dir.parent / "save_values.json")], log_dir),
         run_check("save_converter", ["make", "save_converter"], log_dir),
-        run_check("space", ["python3", "tools/space_report.py", "pokered.map", "pokeblue.map", "pokeblue_debug.map",
+        run_check("space", ["python3", "tools/space_report.py", *(f"{rom}.map" for rom in ROMS),
                             "--save", str(space_json)], log_dir),
-        run_check("audit", ["make", "audit"], log_dir),
+        run_check("audit", ["make", "audit", f"AUDIT_ROMS={' '.join(ROMS)}"], log_dir),
         run_check("smoke", ["make", "smoke"], log_dir),
     ]
 
@@ -167,7 +168,7 @@ def find_artifacts(short_hash: str, since: float) -> tuple[str, dict[str, dict[s
     """(build stamp, rom -> {"gbc", "sym", "map"}) for the ROMs this run linked.
 
     The debug archive is found by content: it must equal the pokeblue_debug.gbc
-    the build just wrote and carry this commit's hash. The other two must share
+    the build just wrote and carry this commit's hash. Red must share
     its stamp and also equal their freshly built files."""
     built = REPO / f"{ROM}.gbc"
     if not built.is_file():
@@ -275,13 +276,13 @@ def build_manifest(full_hash: str, short_hash: str, stamp: str, artifacts: dict,
 def save_compat(args) -> dict:
     status = args.save_compat
     if status is None:
-        answer = ask("Save compatibility: supported / new_save_required / unverified (Enter: unverified): ")
+        answer = "" if args.skip_prompts else ask("Save compatibility: supported / new_save_required / unverified (Enter: unverified): ")
         status = answer or "unverified"
     if status not in SAVE_COMPAT:
         fail(f"save compatibility must be one of {', '.join(SAVE_COMPAT)}, not {status!r}.")
     tested_from = args.save_compat_from
     if status == "supported" and not tested_from:
-        tested_from = ask("Which earlier build's save did you load in this one (e.g. 74f82c1b)? ")
+        tested_from = "" if args.skip_prompts else ask("Which earlier build's save did you load in this one (e.g. 74f82c1b)? ")
         if not tested_from:
             fail("'supported' needs the earlier build you tested a save from (--save-compat-from).")
     return {"status": status, "tested_from": tested_from or None, "notes": args.save_compat_notes or None}
@@ -350,8 +351,8 @@ def release(args) -> int:
     url = None if args.dry_run else webhook_url()  # fail before the long build, not after
     full_hash, short_hash = check_git()
     print(f"Releasing commit {short_hash}: {git('log', '-1', '--format=%s')}")
-    notes = args.notes if args.notes is not None else ask("What's new (Enter: drafted from the commits): ")
-    testing = args.testing if args.testing is not None else ask("What to test (Enter: nothing): ")
+    notes = args.notes if args.notes is not None else ("" if args.skip_prompts else ask("What's new (Enter: drafted from the commits): "))
+    testing = args.testing if args.testing is not None else ("" if args.skip_prompts else ask("What to test (Enter: nothing): "))
 
     RELEASES.mkdir(parents=True, exist_ok=True)
     staging = RELEASES / f".staging-{uuid.uuid4().hex[:8]}"
@@ -393,6 +394,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--save-compat-notes", help="anything testers should know about their saves")
     parser.add_argument("--no-announce", action="store_true", help="set the build without announcing it")
     parser.add_argument("--dry-run", action="store_true", help="do everything except sending to Discord")
+    parser.add_argument("--skip-prompts", action="store_true",
+                        help="use blank/default answers for omitted fields without asking")
     args = parser.parse_args(argv)
     try:
         return release(args)

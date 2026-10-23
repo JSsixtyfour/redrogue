@@ -118,9 +118,9 @@ class BranchDriver:
         self.h = harness
         self.freeze_frames = freeze_frames
         maps = autoplay.parse_map_constants(autoplay.ROOT / "constants/map_constants.asm")
-        self.map_names = {value: name for name, value in maps.items()}
-        self.species_names = {value: name for name, value in autoplay.parse_rgbds_constants(
-            autoplay.ROOT / "constants/pokemon_constants.asm").items()}
+        self.map_names = autoplay.names_by_value(maps)
+        self.species_names = autoplay.names_by_value(autoplay.parse_rgbds_constants(
+            autoplay.ROOT / "constants/pokemon_constants.asm"))
         self.events: list[dict[str, object]] = []
         self.joypad_frame = 0
         self.interrupted = (0, 0, 0)  # (bank, PC, SP) the last VBlank cut into: the main code

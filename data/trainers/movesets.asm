@@ -2386,8 +2386,8 @@ MovesetSpeciesIndex::
 	db 6, BANK(Moveset_WEEZING)
 	dw Moveset_PERSIAN
 	db 16, BANK(Moveset_PERSIAN)
-	dw 0
-	db 0, 0
+	dw Moveset_MAROWAK
+	db 9, BANK(Moveset_MAROWAK)
 	dw Moveset_FLAAFFY
 	db 3, BANK(Moveset_FLAAFFY)
 	dw Moveset_HAUNTER
@@ -2402,8 +2402,8 @@ MovesetSpeciesIndex::
 	db 6, BANK(Moveset_PIDGEOT)
 	dw Moveset_STARMIE
 	db 20, BANK(Moveset_STARMIE)
-	dw 0
-	db 0, 0
+	dw Moveset_BULBASAUR
+	db 13, BANK(Moveset_BULBASAUR)
 	dw Moveset_VENUSAUR
 	db 9, BANK(Moveset_VENUSAUR)
 	dw Moveset_TENTACRUEL
@@ -2448,10 +2448,10 @@ MovesetSpeciesIndex::
 	db 3, BANK(Moveset_HOPPIP)
 	dw Moveset_SKIPLOOM
 	db 2, BANK(Moveset_SKIPLOOM)
-	dw 0
-	db 0, 0
-	dw 0
-	db 0, 0
+	dw Moveset_CHARMANDER
+	db 16, BANK(Moveset_CHARMANDER)
+	dw Moveset_SQUIRTLE
+	db 13, BANK(Moveset_SQUIRTLE)
 	dw Moveset_CHARMELEON
 	db 8, BANK(Moveset_CHARMELEON)
 	dw Moveset_WARTORTLE

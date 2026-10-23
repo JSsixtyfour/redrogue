@@ -2,6 +2,9 @@ roms := \
 	pokered.gbc \
 	pokeblue.gbc \
 	pokeblue_debug.gbc
+# Everyday builds need only the release Red ROM and the Debug ROM.
+# Keep roms complete for cleanup, comparisons, and full-variant verification.
+default_roms := pokered.gbc pokeblue_debug.gbc
 patches := \
 	pokered.patch \
 	pokeblue.patch
@@ -52,8 +55,10 @@ RGBGFXFLAGS  ?= -Weverything
 .SECONDARY:
 .PHONY: \
 	all \
+	all_roms \
 	red \
 	blue \
+	debug \
 	blue_debug \
 	red_vc \
 	blue_vc \
@@ -61,24 +66,29 @@ RGBGFXFLAGS  ?= -Weverything
 	tidy \
 	compare \
 	smoke \
+	integration \
 	audit \
 	audits_long \
 	space \
 	ai_scenarios \
+	ai_benchmark \
 	autoplay \
 	compare_builds 	nightly \
 	sram_fuzz \
 	balance_report \
 	release \
+	release-skip \
 	save_schema \
 	save_converter \
 	music_kit \
 	import_music \
 	tools
 
-all: $(roms)
+all: $(default_roms)
+all_roms: $(roms)
 red:        pokered.gbc
 blue:       pokeblue.gbc
+debug:      pokeblue_debug.gbc
 blue_debug: pokeblue_debug.gbc
 red_vc:     pokered.patch
 blue_vc:    pokeblue.patch
@@ -109,6 +119,7 @@ tidy:
 	      $(pokeblue_debug_obj) \
 	      $(roms:.gbc=_buildid.o) \
 	      $(patches:.patch=_vc_buildid.o) \
+	      $(depfiles) \
 	      rgbdscheck.o
 	$(MAKE) clean -C tools/
 
@@ -134,10 +145,13 @@ integration: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_integration.py
 
 # Build, smoke-test and send the debug ROM to the playtest bot (tools/release.py).
-# Refuses uncommitted or unpushed work. RELEASE_ARGS='--notes "..." --testing "..."'
-# skips the questions; RELEASE_ARGS=--dry-run does everything but send.
+# Refuses uncommitted or unpushed work. make release-skip accepts the blank/default
+# answers; RELEASE_ARGS=--dry-run does everything but send.
 release:
 	python3 tools/release.py $(RELEASE_ARGS)
+
+release-skip: override RELEASE_ARGS += --skip-prompts
+release-skip: release
 
 # The save layout against tools/save_schemas/schema_<SAVE_SCHEMA_ID>.json: fails if a saved
 # field moved without a schema bump, or a persisted SRAM label has no policy
@@ -158,10 +172,12 @@ save_converter:
 # Also fails when data/trainers/band_pools.asm is not what PARTY_ROSTER.md generates,
 # and runs the slow source-only test modules that `make smoke` skips
 # (SOURCE_ONLY_MODULES in tools/pyboy_smoke/run_smoke.py).
-audit: pokered.gbc pokeblue.gbc pokeblue_debug.gbc
+# Releases select Red + Debug; plain make audit retains full three-ROM coverage.
+AUDIT_ROMS ?= $(roms:.gbc=)
+audit: $(addsuffix .gbc,$(AUDIT_ROMS))
 	python3 tools/gen_party_roster.py --check
 	python3 tools/static_audit/test_rules.py
-	python3 tools/static_audit/run_all.py $(if $(INFO),--info)
+	python3 tools/static_audit/run_all.py $(foreach rom,$(AUDIT_ROMS),--rom $(rom)) $(if $(INFO),--info)
 	python3 tools/pyboy_smoke/run_smoke.py --source-only
 
 # Per-bank free space (total and largest gap, min across all three ROMs) and what moved,
@@ -231,20 +247,24 @@ $(pokeblue_vc_obj):    RGBASMFLAGS += -D _BLUE -D _BLUE_VC
 rgbdscheck.o: rgbdscheck.asm
 	$(RGBASM) -o $@ $<
 
-# Build tools when building the rom.
-# This has to happen before the rules are processed, since that's when scan_includes is run.
+# Cached dependency files are shared by all ROM variants.
+depfiles := $(addprefix .deps/,$(rom_obj:.o=.d) includes.d)
+
+# Build tools before dependency files are generated or checked.
 ifeq (,$(filter clean tidy tools,$(MAKECMDGOALS)))
 
 $(info $(shell $(MAKE) -C tools))
 
-# The dep rules have to be explicit or else missing files won't be reported.
-# As a side effect, they're evaluated immediately instead of when the rule is invoked.
-# It doesn't look like $(shell) can be deferred so there might not be a better way.
-preinclude_deps := includes.asm $(shell tools/scan_includes includes.asm)
-# Scan each source once, not once per ROM variant: all five variants assemble the same
-# .asm files and scan_includes ignores -D flags. Scanning per variant made EVERY make
-# invocation spend ~31s parsing on WSL's /mnt/c before doing anything (2026-10-14).
-$(foreach src,$(rom_obj:.o=.asm),$(eval $(src)_deps := $(shell tools/scan_includes $(src))))
+# GNU make regenerates these includes and restarts before considering objects.
+# Each cache tracks the root source and every nested INCLUDE, including removed
+# includes. INCBIN assets are object dependencies, without forcing another scan.
+.deps/%.d: %.asm tools/scan_includes Makefile
+	@mkdir -p $(@D)
+	@tools/scan_includes -M $@ $< > $@.tmp && mv $@.tmp $@
+
+include $(depfiles)
+
+preinclude_deps := includes.asm $(includes.asm_deps)
 define DEP
 $1: $2 $$($2_deps) $(preinclude_deps) | rgbdscheck.o
 	$$(RGBASM) $$(RGBASMFLAGS) -o $$@ $$<
@@ -284,10 +304,11 @@ BUILD_KEEP  ?= 20
 # In the debug ROM only, the same date and ID are assembled in (buildid.asm) and shown on the
 # debug menu, the options screens and Debug 2. That object is assembled here rather than by a
 # normal rule so it only changes when a link actually happens.
-BUILD_TIME  := $(shell date '+%Y-%m-%d %H %M %S')
-BUILD_STAMP := $(word 1,$(BUILD_TIME))_$(word 2,$(BUILD_TIME))$(word 3,$(BUILD_TIME))$(word 4,$(BUILD_TIME))
-BUILD_TEXT  := $(word 1,$(BUILD_TIME)) $(word 2,$(BUILD_TIME)):$(word 3,$(BUILD_TIME))
-BUILD_ID    := $(shell git rev-parse --short HEAD 2>/dev/null || echo nogit)$(shell git diff --quiet HEAD -- 2>/dev/null || echo -dirty)
+# Evaluate once, on the first link, and share the result across parallel jobs.
+BUILD_TIME  = $(eval BUILD_TIME := $(shell date '+%Y-%m-%d %H %M %S'))$(BUILD_TIME)
+BUILD_STAMP = $(word 1,$(BUILD_TIME))_$(word 2,$(BUILD_TIME))$(word 3,$(BUILD_TIME))$(word 4,$(BUILD_TIME))
+BUILD_TEXT  = $(word 1,$(BUILD_TIME)) $(word 2,$(BUILD_TIME)):$(word 3,$(BUILD_TIME))
+BUILD_ID    = $(eval BUILD_ID := $(shell git rev-parse --short HEAD 2>/dev/null || echo nogit)$(shell git diff --quiet HEAD -- 2>/dev/null || echo -dirty))$(BUILD_ID)
 
 %.gbc: $$(%_obj) layout.link buildid.asm
 	$(RGBASM) $(RGBASMFLAGS) $(if $(findstring _debug,$*),-D _DEBUG) -D 'BUILD_DATE_TEXT=$(BUILD_TEXT)' -D 'BUILD_ID_TEXT=$(BUILD_ID)' -o $*_buildid.o buildid.asm

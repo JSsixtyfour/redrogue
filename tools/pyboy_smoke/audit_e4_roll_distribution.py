@@ -29,6 +29,7 @@ sys.path.insert(0, str(REPO_ROOT / "tools" / "pyboy_smoke"))
 
 from harness import RedRogueHarness  # noqa: E402
 from source_constants import (  # noqa: E402
+    names_by_value,
     parse_rgbds_constants,
     parse_trainer_class_indexes,
 )
@@ -44,7 +45,7 @@ def main() -> int:
     args = parser.parse_args()
 
     classes = parse_trainer_class_indexes(REPO_ROOT / "constants" / "trainer_constants.asm")
-    by_id = {v: k for k, v in classes.items()}
+    by_id = names_by_value(classes)
     ram = parse_rgbds_constants(REPO_ROOT / "constants" / "ram_constants.asm")
     events = parse_rgbds_constants(REPO_ROOT / "constants" / "event_constants.asm")
     groups = parse_rgbds_constants(REPO_ROOT / "constants" / "rogue_species_groups.asm")

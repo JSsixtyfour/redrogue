@@ -99,7 +99,6 @@ AIEnemyTrainerChooseMoves:
 ; run just past it. The veto goes first: it clears a vetoed slot's KO bit.
 	call AIExplosionTradeVeto
 	call AIReliableKOWins
-	farcall AIPredictPlayerSwitch ; ai_turn_plan.asm: may hedge a predicted switch
 ; Find the minimum among legal, existing slots. Legality is checked here even
 ; if a personality layer wrote scores directly, bypassing the score helpers.
 	ld hl, wBuffer

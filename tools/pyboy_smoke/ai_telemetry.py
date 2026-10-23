@@ -177,9 +177,8 @@ def battle_record(
         "ko_candidates": classified["damage_layer_ko_candidates"],
         "missed_ko": classified["damage_layer_missed_ko_candidates"],
         "explosion_vetoes": classified["explosion_vetoed_ko_candidates"],
-        # Switch prediction (2026-10-22): per planned turn, whether the plan rolled
-        # a prediction, hedged its move, and whether the player then switched.
-        **prediction_counts(plan_turns or []),
+        # Per planned turn (a real battle menu), whether the player then switched.
+        **player_switch_counts(plan_turns or []),
         "redundant_picks": chosen_freely["selected_redundant_penalty_decisions"],
         "forced_picks": sum(bool(s.get("forced")) for s in chosen),
         "personality_flips": flips,
@@ -202,14 +201,11 @@ def battle_record(
     return record
 
 
-def prediction_counts(plan_turns: list[dict[str, object]]) -> dict[str, int]:
+def player_switch_counts(plan_turns: list[dict[str, object]]) -> dict[str, int]:
     planned = [t for t in plan_turns if t.get("planned") and "switched" in t]
     return {
         "planned_turns": len(planned),
         "player_switches": sum(bool(t["switched"]) for t in planned),
-        "predictions": sum(bool(t.get("predicted")) for t in planned),
-        "hedges": sum(bool(t.get("hedged")) for t in planned),
-        "hedge_hits": sum(bool(t.get("hedged")) and bool(t["switched"]) for t in planned),
     }
 
 
@@ -246,9 +242,6 @@ def _group(records: list[dict[str, object]]) -> dict[str, object]:
         "mean_player_fainted": _mean([r.get("player_fainted") for r in records]),
         "player_switch_rate": _rate(sum(r.get("player_switches", 0) for r in records),
                                     sum(r.get("planned_turns", 0) for r in records)),
-        "hedges": sum(r.get("hedges", 0) for r in records),
-        "hedge_hit_rate": _rate(sum(r.get("hedge_hits", 0) for r in records),
-                                sum(r.get("hedges", 0) for r in records)),
     }
 
 
@@ -332,11 +325,9 @@ class BattleAITelemetry:
         harness.register_hook("SelectEnemyMove.done", self._guarded(self._selected))
         harness.register_hook("MainInBattleLoop", self._guarded(self._turn))
         self.plan_turns: list[dict[str, object]] = []
-        try:  # a ROM from before the turn plan / switch prediction has no such labels
+        try:  # a ROM from before the turn plan has no such labels
             harness.register_hook("AIPlanEnemyTurn", self._guarded(self._plan))
             harness.register_hook("AICommitEnemyTurn", self._guarded(self._commit))
-            harness.register_hook("AIPredictPlayerSwitch.predicts", self._guarded(self._predicted))
-            harness.register_hook("AIPredictPlayerSwitch.hedged", self._guarded(self._hedged))
         except KeyError:
             pass
         self._start: dict[str, int] | None = None
@@ -358,14 +349,6 @@ class BattleAITelemetry:
 
     def _plan(self, _context) -> None:
         self.plan_turns.append({"mon": self.h.read8("wPlayerMonNumber")})
-
-    def _predicted(self, _context) -> None:
-        if self.plan_turns:
-            self.plan_turns[-1]["predicted"] = True
-
-    def _hedged(self, _context) -> None:
-        if self.plan_turns:
-            self.plan_turns[-1]["hedged"] = True
 
     def _commit(self, _context) -> None:
         turn = self.plan_turns[-1] if self.plan_turns else None

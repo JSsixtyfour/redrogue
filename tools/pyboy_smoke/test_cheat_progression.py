@@ -16,6 +16,12 @@ class CheatProgressionTest(HarnessTestCase):
         event_offset = events["EVENT_RIVAL_CHAMPION_DEFEATED"] // 8
         # Before Johto, after Johto, after Warp, and after the final boss.
         # Keep lower story bits distinct to catch whole-byte overwrites too.
+        # The cursor is read as OptCycleCheat leaves it, at its own ret: the
+        # parked battle menu owns hCurrentMenuItem, and call_routine lets it
+        # run to the end of the frame, which zeroed it on some cycles.
+        cursor = {}
+        h.register_hook("OptCycleCheat.done", lambda _ctx:
+                        cursor.update(value=h.read8("hCurrentMenuItem")))
         for story in (0x01, 0x21, 0x63, 0xFF):
             for right in (True, False):
                 with self.subTest(story=story, right=right):
@@ -27,13 +33,14 @@ class CheatProgressionTest(HarnessTestCase):
                     for _ in range(4):
                         h.write8("hJoy5", 0x10 if right else 0x20)
                         h.write8("hCurrentMenuItem", 7)
+                        cursor.clear()
                         h.call_routine("OptCycleCheat")
                         index = (index + (1 if right else -1)) % 4
                         self.assertEqual(h.read_sram_bytes(
                             "sRogueSpeciesGroupsEnabled", 1), [0x81 | (index << 1)])
                         self.assertEqual(h.read8("wEventFlags", offset=event_offset),
                                          story)
-                        self.assertEqual(h.read8("hCurrentMenuItem"), 7)
+                        self.assertEqual(cursor.get("value"), 7)
                         h.call_routine("RogueGetActiveGroupMaskFar")
                         self.assertEqual(h.last_call_registers["E"], 1 | (index << 1))
                         # Exercise the real save written by OptCycleCheat.

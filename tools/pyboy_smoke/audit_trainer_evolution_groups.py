@@ -50,6 +50,7 @@ sys.path.insert(0, str(REPO_ROOT / "tools" / "pyboy_smoke"))
 
 from harness import RedRogueHarness  # noqa: E402
 from source_constants import (  # noqa: E402
+    names_by_value,
     parse_map_constants,
     parse_rgbds_constants,
     parse_trainer_class_indexes,
@@ -72,7 +73,7 @@ def species_by_name():
 
 
 def species_names():
-    return {v: k for k, v in species_by_name().items()}
+    return names_by_value(species_by_name())
 
 
 def non_kanto_species():

@@ -272,7 +272,8 @@ See [INSTALL.md](INSTALL.md) for toolchain setup (rgbds version in `.rgbds-versi
 or Linux:
 
 ```sh
-make            # pokered.gbc, pokeblue.gbc, pokeblue_debug.gbc
+make            # pokered.gbc, pokeblue_debug.gbc
+make all_roms   # also build pokeblue.gbc for full verification
 ```
 
 Always build all three ROMs when verifying a change. Every link is also archived to `builds/` with its
@@ -306,11 +307,11 @@ on "What's new" lets the playtest bot draft it from the commit messages) and whe
 earlier build still work, then:
 
 1. Refuses uncommitted changes or an unpushed commit, before building anything.
-2. Relinks all three ROMs (so every archive carries this commit), then runs the quick checks
+2. Relinks Red and Debug (so every archive carries this commit), then runs the quick checks
    (`make save_schema`, `make save_converter`, a space report) before `make audit` and `make smoke`, so a
    quick failure shows up early. Any failure stops it; nothing is sent. Each check's output is logged.
 3. Finds the ROMs this run built by content (each archive must match the ROM the build just wrote)
-   and keeps a package in `builds/releases/pokeblue_debug_<stamp>_<hash>/`: all three ROMs with
+   and keeps a package in `builds/releases/pokeblue_debug_<stamp>_<hash>/`: Red and Debug ROMs with
    `.sym` and `.map`, the check logs, and `manifest.json` (full commit, SHA-1 and SHA-256 of every
    file, tool versions, check results, save compatibility, and manual acceptance: pending). A package
    is never overwritten with different bytes. The debug `.gbc`/`.sym` also stay directly in
@@ -320,8 +321,18 @@ earlier build still work, then:
    from `Fixes RR-0012` commits, announces, and replies under the webhook's message in that channel.
    `sent.json` in the package records the message.
 
-`make release RELEASE_ARGS='--notes "New gym" --testing "Gym 3"'` skips the questions,
-`--no-announce` sets the build without announcing it, and `--dry-run` does everything except send.
+Release space reports and static ROM audits cover Red and Debug. Shared source checks,
+save checks and smoke tests still run. Plain `make audit`, `make space`, and CI retain
+all three variants; use `make all_roms` to build all three explicitly.
+
+Use `make release-skip` to skip every question with blank/default answers: the bot drafts
+release notes from commits, testing notes are empty, and save compatibility is `unverified`.
+This still runs every release check and sends the release normally.
+
+`make release RELEASE_ARGS='--notes "New gym" --testing "Gym 3" --save-compat unverified'`
+supplies the answers explicitly. You can combine `make release-skip` with `RELEASE_ARGS`;
+explicit answers take priority. For example, `make release-skip RELEASE_ARGS=--dry-run`
+skips questions and does everything except send. `--no-announce` sets the build without announcing it.
 
 **Save compatibility** is one of `supported` (you loaded a save from an earlier build in this one; say
 which with `--save-compat-from 74f82c1b`), `new_save_required`, or `unverified` (the default when you

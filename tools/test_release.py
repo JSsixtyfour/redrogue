@@ -27,7 +27,7 @@ STAMP = "2026-10-02_120000"
 
 def args(**kw):
     base = dict(notes="n", testing="t", save_compat="unverified", save_compat_from=None, save_compat_notes=None,
-                no_announce=False, dry_run=False)
+                no_announce=False, dry_run=False, skip_prompts=False)
     base.update(kw)
     return SimpleNamespace(**base)
 
@@ -77,6 +77,24 @@ class Tree(unittest.TestCase):
 
 
 class ReleaseFlow(Tree):
+    def test_skip_prompts_uses_blank_defaults_without_asking(self):
+        with self.fake_build(), mock.patch.object(release, "ask", side_effect=AssertionError("unexpected prompt")):
+            self.assertEqual(release.main(["--skip-prompts"]), 0)
+        meta = self.sent[0][1]
+        self.assertEqual(meta["release_notes"], "")
+        self.assertEqual(meta["testing_notes"], "")
+        self.assertEqual(meta["save_compatibility"], "unverified")
+
+    def test_skip_prompts_preserves_explicit_fields(self):
+        with self.fake_build(), mock.patch.object(release, "ask", side_effect=AssertionError("unexpected prompt")):
+            self.assertEqual(release.main(["--skip-prompts", "--notes", "New gym", "--testing", "Gym 3",
+                                           "--save-compat", "supported", "--save-compat-from", "74f82c1b"]), 0)
+        meta = self.sent[0][1]
+        self.assertEqual(meta["release_notes"], "New gym")
+        self.assertEqual(meta["testing_notes"], "Gym 3")
+        self.assertEqual(meta["save_compatibility"], "supported")
+        self.assertEqual(meta["save_compat_from"], "74f82c1b")
+
     def test_release_packages_everything_and_sends_the_debug_rom(self):
         with self.fake_build():
             self.assertEqual(release.release(args()), 0)
@@ -89,6 +107,9 @@ class ReleaseFlow(Tree):
                 self.assertTrue((pkg / f"{r}_{STAMP}_{SHORT}{suffix}").is_file(), (r, suffix))
         manifest = json.loads((pkg / "manifest.json").read_text())
         self.assertEqual(manifest, meta["manifest"])
+        self.assertEqual(set(manifest["artifacts"]), {"pokered", "pokeblue_debug"})
+        self.assertEqual({p.name for p in pkg.glob("*.gbc")},
+                         {f"{r}_{STAMP}_{SHORT}.gbc" for r in ("pokered", "pokeblue_debug")})
         self.assertEqual(manifest["commit"], FULL)
         self.assertEqual(manifest["manual_acceptance"]["status"], "pending")
         self.assertEqual(manifest["artifacts"]["pokeblue_debug"]["gbc"]["sha256"], release.sha256(rom))
@@ -121,7 +142,7 @@ class ReleaseFlow(Tree):
         self.assertFalse(any((self.repo / "builds" / "releases").iterdir()))  # staging cleaned up
 
     def test_missing_map_or_sym_fails_before_sending(self):
-        for skip in (("pokered", ".map"), ("pokeblue", ".sym")):
+        for skip in (("pokered", ".map"), ("pokeblue_debug", ".sym")):
             for f in self.repo.rglob("*"):
                 if f.is_file():
                     f.unlink()
@@ -160,6 +181,11 @@ class ReleaseFlow(Tree):
 
 
 class SaveCompat(unittest.TestCase):
+    def test_skip_prompts_supported_still_requires_tested_build(self):
+        with mock.patch.object(release, "ask", side_effect=AssertionError("unexpected prompt")):
+            with self.assertRaises(release.ReleaseError):
+                release.save_compat(args(skip_prompts=True, save_compat="supported"))
+
     def test_supported_needs_a_tested_build(self):
         with mock.patch.object(release, "ask", lambda prompt: ""):
             with self.assertRaises(release.ReleaseError):
@@ -176,6 +202,18 @@ class SaveCompat(unittest.TestCase):
 
 
 class Checks(unittest.TestCase):
+    def test_build_explicitly_requests_every_release_variant(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(release, "REPO", Path(tmp)):
+            (Path(tmp) / "buildid.asm").touch()
+            with mock.patch.object(release, "run_check", return_value={}) as run:
+                release.checks(Path(tmp), Path(tmp) / "space.json")
+        commands = {call.args[0]: call.args[1] for call in run.call_args_list}
+        self.assertEqual(commands["build"], ["make", "-j8", "pokered.gbc", "pokeblue_debug.gbc"])
+        self.assertEqual(commands["audit"], ["make", "audit", "AUDIT_ROMS=pokered pokeblue_debug"])
+        self.assertEqual(commands["space"][2:4], ["pokered.map", "pokeblue_debug.map"])
+        self.assertNotIn("pokeblue.map", commands["space"])
+        self.assertEqual(commands["smoke"], ["make", "smoke"])
+
     def test_failing_command_is_logged_and_stops(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(release.ReleaseError):

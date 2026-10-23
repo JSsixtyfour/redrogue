@@ -232,7 +232,7 @@ failures (the exit code is unchanged):
 | `redundant_pick` | the selected slot carried a Redundant-layer penalty (forced picks are not counted) |
 | `telemetry_error` | a telemetry hook raised during the battle |
 
-Explosion/Self-Destruct KOs that `AIExplosionTradeVeto` forbade are policy, not misses: they are left out of `missed_ko` and counted as `explosion_vetoes` (the veto runs after the scores are captured; its mask is read at `AIExplosionTradeVeto.masked`). Switch prediction (2026-10-22): `planned_turns`, `player_switches`, `predictions`, `hedges` and `hedge_hits` (the player did switch on a hedged turn); groups add `player_switch_rate`, `hedges` and `hedge_hit_rate`.
+Explosion/Self-Destruct KOs that `AIExplosionTradeVeto` forbade are policy, not misses: they are left out of `missed_ko` and counted as `explosion_vetoes` (the veto runs after the scores are captured; its mask is read at `AIExplosionTradeVeto.masked`). Player switches (2026-10-22): `planned_turns` (battle menus the player answered) and `player_switches` (how many of those the player switched on); groups add `player_switch_rate`.
 
 A selection is `forced` when only one slot has a move, PP left and is not disabled (2026-10-21).
 A forced pick breaks a `status_spam` run and is not counted in `redundant_pick`; records carry
@@ -301,7 +301,9 @@ Each agent step (`autoplay.py`) depends on the mode:
   `LAST_MAP`, `ROGUE_MAP`, unvisited side room. Last resort: talk to everyone.
 - battle and dialogue: press only while the game polls `JoypadLowSensitivity`.
   Moves and switches come from a `benchmark_policies` policy (`--battle-policy`,
-  default `type_switcher`; a Disabled move is treated as out of PP). Reward and
+  default `type_switcher`; a Disabled move is treated as out of PP;
+  `early_switcher` also leaves a losing matchup on any turn, as a human does,
+  for measuring the AI's switch prediction). Reward and
   gift pickers take a random offer, then NO THANKS if the menu reopens (Debug
   2's party and box are full). With `--menu-input real` (the default) each
   choice is a goal: while that menu waits, the agent presses directions until

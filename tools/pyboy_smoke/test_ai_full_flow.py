@@ -242,7 +242,12 @@ class AIFullFlowTest(unittest.TestCase):
         gate = h.hook_flag("AIBestReserveSurvivesThreat")
         h.hook_flag("SwitchEnemyMon", action=lambda:
                     switches.append(h.read8("wEnemyMonPartyPos")))
-        self.assertTrue(self.drive_turns(lambda: len(active) >= 4), f"active={active}")
+        # Stop at the START of the 5th plan, so turns 2-4 (turn 1 is planned
+        # inside boot, before the gate hook) have each finished their switch
+        # check. Stopping at the 4th plan's start left turn 4's check to land
+        # either side of the stopping frame, and a 7k-cycle change elsewhere in
+        # the decision moved it out (measured 2026-10-22).
+        self.assertTrue(self.drive_turns(lambda: len(active) >= 5), f"active={active}")
         print(f"\nL3 refuse active={active} switched-from={switches} gate={gate['count']}")
         self.assertEqual(switches, [])
         self.assertGreaterEqual(gate["count"], 3)
@@ -345,6 +350,9 @@ class AIFullFlowTest(unittest.TestCase):
     # TrainerAI's revalidation (at commit, after the menu) is the player's menu
     # ACTION itself - a switch, an item, or TURN REWIND - never a landed attack.
     # These test AIRevalidateDecisionCaches directly against that board.
+    # AIClearDecisionCaches records the two state keys only with AI_TRAINER_ITEMS
+    # on (TrainerAI's revalidation is their only reader, and it runs only in the
+    # item build), so these tests skip in the shipping build.
     #
     # call_routine cannot be used for AIRevalidateDecisionCaches itself: its own
     # "fresh decision" precondition (every real decision clears the one-hit
@@ -378,6 +386,7 @@ class AIFullFlowTest(unittest.TestCase):
                               lambda: "path" in result, limit=2000)
         return result.get("path"), result.get("cache")
 
+    @unittest.skipUnless(TRAINER_ITEMS, "AI_TRAINER_ITEMS is 0: the state keys are not recorded")
     def test_unchanged_board_reuses_the_ko_answer(self):
         # Nothing simulates a menu action: the keys still match, M is still
         # valid, so the answer comes back through the fast path unchanged.
@@ -391,6 +400,7 @@ class AIFullFlowTest(unittest.TestCase):
         self.assertEqual(path, "store")
         self.assertEqual(cache, before)
 
+    @unittest.skipUnless(TRAINER_ITEMS, "AI_TRAINER_ITEMS is 0: the state keys are not recorded")
     def test_hp_only_change_rederives_without_a_rescan(self):
         # Our own HP is deliberately left OUT of both state keys (TURN REWIND
         # and a heal both change only it), so a drop re-derives fast against
@@ -416,6 +426,7 @@ class AIFullFlowTest(unittest.TestCase):
         self.assertEqual(path, "store")
         self.assertEqual(cache, self.ai["AI_KO_CACHE_YES"])
 
+    @unittest.skipUnless(TRAINER_ITEMS, "AI_TRAINER_ITEMS is 0: the state keys are not recorded")
     def test_defense_drop_forces_a_rescan(self):
         # Our Defense is an input to the player's damage on us (the threat
         # key), so a drop (Screech, Tail Whip) invalidates the cached answer.
@@ -429,6 +440,7 @@ class AIFullFlowTest(unittest.TestCase):
         self.assertEqual(path, "threatStale")
         self.assertIsNone(cache)
 
+    @unittest.skipUnless(TRAINER_ITEMS, "AI_TRAINER_ITEMS is 0: the state keys are not recorded")
     def test_attack_drop_keeps_the_ko_answer(self):
         # Growl lowers only OUR Attack, which the player's damage on us does
         # not read (our own damage OUTPUT estimates do, a separate key): the
@@ -444,6 +456,7 @@ class AIFullFlowTest(unittest.TestCase):
         self.assertEqual(path, "store")
         self.assertEqual(cache, before)
 
+    @unittest.skipUnless(TRAINER_ITEMS, "AI_TRAINER_ITEMS is 0: the state keys are not recorded")
     def test_new_reveal_forces_a_rescan(self):
         # A newly revealed player move slot changes the believed moveset
         # (wAISeenPlayerMoveMask, part of the threat key): the cache cannot
@@ -457,6 +470,7 @@ class AIFullFlowTest(unittest.TestCase):
         self.assertEqual(path, "threatStale")
         self.assertIsNone(cache)
 
+    @unittest.skipUnless(TRAINER_ITEMS, "AI_TRAINER_ITEMS is 0: the state keys are not recorded")
     def test_player_switch_forces_a_rescan(self):
         # wPlayerMonNumber is itself part of both state keys: a party switch
         # (via the battle menu) is always a cache miss, whatever the new mon's

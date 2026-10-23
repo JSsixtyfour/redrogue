@@ -80,6 +80,16 @@ def parse_rgbds_constants(path: Path, known: dict[str, int] | None = None) -> di
     return constants
 
 
+def names_by_value(constants: dict[str, int]) -> dict[int, str]:
+    """value -> name, keeping the FIRST name for each value. Aliases are
+    defined after the name they copy (STARTER1 = CHARMANDER, RESTLESS_SOUL =
+    MAROWAK), so a plain {v: k} inversion reported Marowak as RESTLESS_SOUL."""
+    names: dict[int, str] = {}
+    for name, value in constants.items():
+        names.setdefault(value, name)
+    return names
+
+
 def parse_map_constants(path: Path) -> dict[str, int]:
     """Resolve map_const declarations in their const_def order."""
     current = 0

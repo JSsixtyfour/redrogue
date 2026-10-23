@@ -1,18 +1,25 @@
 #define PROGRAM_NAME "scan_includes"
-#define USAGE_OPTS "[-h|--help] [-s|--strict] filename.asm"
+#define USAGE_OPTS "[-h|--help] [-s|--strict] [-M depfile] filename.asm"
 
 #include "common.h"
 
 #include <ctype.h>
 
+static const char *depfile;
+static const char *root_source;
+
 void parse_args(int argc, char *argv[], bool *strict) {
 	struct option long_options[] = {
 		{"strict", no_argument, 0, 's'},
+		{"make-deps", required_argument, 0, 'M'},
 		{"help", no_argument, 0, 'h'},
 		{0}
 	};
-	for (int opt; (opt = getopt_long(argc, argv, "sh", long_options)) != -1;) {
+	for (int opt; (opt = getopt_long(argc, argv, "sM:h", long_options)) != -1;) {
 		switch (opt) {
+		case 'M':
+			depfile = optarg;
+			break;
 		case 's':
 			*strict = true;
 			break;
@@ -88,7 +95,18 @@ void scan_file(const char *filename, bool strict) {
 					size_t length = strcspn(ptr, "\"");
 					ptr += length + 1;
 					include_path[length] = '\0';
-					printf("%s ", include_path);
+					if (depfile) {
+						printf("%s_deps += %s\n", root_source, include_path);
+						if (is_include) {
+							// Only text INCLUDEs affect the scanned dependency graph.
+							// INCBIN assets still remain object prerequisites above.
+							printf("%s: %s\n", depfile, include_path);
+							// Permit a removed INCLUDE to disappear on the next scan.
+							printf("%s:\n", include_path);
+						}
+					} else {
+						printf("%s ", include_path);
+					}
 					if (is_include) {
 						scan_file(include_path, strict);
 					}
@@ -117,6 +135,10 @@ int main(int argc, char *argv[]) {
 		usage_exit(1);
 	}
 
-	scan_file(argv[0], strict);
+	root_source = argv[0];
+	if (depfile) {
+		printf("%s_deps :=\n", root_source);
+	}
+	scan_file(root_source, strict);
 	return 0;
 }

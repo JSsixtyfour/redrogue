@@ -236,7 +236,7 @@ fodder.
 ### Falkner (FLYING) 
 
 **Band 1: rounds 1-2**
-- Aces: Pidgeotto, Fearow, Noctowl (johto), Togetic
+- Aces: Pidgeotto, Fearow, Noctowl (johto), Togetic (johto)
 - Fodder: Pidgey, Spearow, Doduo, Farfetchd, Zubat, Hoothoot (johto), Natu (johto), Hoppip (johto), Ledyba (johto), Butterfree, Murkrow (johto)
 
 **Band 2: rounds 3-4**
@@ -266,7 +266,7 @@ fodder.
 - Off-type: Oddish, Poliwag, Geodude, Sentret (johto)
 
 **Band 3: rounds 5-6**
-- Aces: Pinsir, Scyther, Venomoth, Scizor (johto), Heracross (johto), Kleavor (johto)
+- Aces: Pinsir, Scyther, Venomoth, Scizor (johto), Heracross (johto), Kleavor (warp)
 - Fodder: Caterpie, Weedle, Paras, Venonat, Scyther, Pinsir, Ledyba (johto), Spinarak (johto), Yanma (johto), Pineco (johto), Heracross (johto), Shuckle (johto)
 - Off-type: Oddish, Poliwag, Geodude, Onix, Sandshrew, Tangela, Sentret (johto)
 

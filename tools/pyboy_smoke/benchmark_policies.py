@@ -16,6 +16,11 @@ for a human (AI_NEXT_STAGE_PROPOSAL_CODEX.md section 6), so this module adds:
                  better. Reads the enemy's real moveset (a benchmark opponent,
                  not a fair-play human model) and never switches two turns in a
                  row, so it cannot ping-pong.
+- early_switcher: type_switcher, and also leaves a LOSING matchup on any turn
+                 for a reserve that is clearly better and survives coming in
+                 (choose_matchup_switch), as a human does before the KO is in
+                 range. Built 2026-10-22 to measure the AI's switch prediction,
+                 which never fires on the turns type_switcher switches on.
 
 Every policy is a pure function of a state snapshot (read_state) and the rules
 parsed from source (load_rules), so each can be unit-tested without a ROM.
@@ -30,8 +35,8 @@ import re
 from source_constants import parse_rgbds_constants
 
 POLICIES = ("best_power", "first_slot", "type_aware", "status_first",
-            "setup_first", "type_switcher")
-SWITCHING_POLICIES = ("type_switcher",)
+            "setup_first", "type_switcher", "early_switcher")
+SWITCHING_POLICIES = ("type_switcher", "early_switcher")
 
 STAT_NEUTRAL = 7  # stat-mod bytes run 1..13
 SLP_MASK = 0x07
@@ -300,7 +305,7 @@ def choose_slot(rules: Rules, state: State, policy: str) -> int:
         slot = setup_slot(rules, state)
         if slot is not None:
             return slot
-    if policy in ("type_aware", "status_first", "setup_first", "type_switcher"):
+    if policy in ("type_aware", "status_first", "setup_first", "type_switcher", "early_switcher"):
         return best_attack(rules, player, state.enemy, legal)[0]
     raise ValueError(f"unknown policy {policy}")
 
@@ -346,6 +351,10 @@ def choose_switch(rules: Rules, state: State, policy: str, switched_last_turn: b
     """Party slot to switch to at the battle menu, or None to fight."""
     if policy not in SWITCHING_POLICIES or switched_last_turn:
         return None
+    if policy == "early_switcher":
+        target = choose_matchup_switch(rules, state)
+        if target is not None:
+            return target
     active = state.player
     if enemy_best_damage(rules, state.enemy, active) < active.hp:
         return None  # not about to be KO'd

@@ -692,7 +692,16 @@ def render(species_ids, by_species, origin_order, stats, kept, total, by_form):
     # 1,016, and 1524 / 254 = 6 pointed straight at it.
     lines.append("\tdw 0 ; species id 0 does not exist")
     lines.append("\tdb 0, 0")
-    species_by_id = {v: k for k, v in species_ids.items()}
+    # Aliases share an id with the real name and come after it in the file
+    # (STARTER1 = CHARMANDER, RESTLESS_SOUL = MAROWAK), so a plain {id: name}
+    # inversion kept the alias, which has no sets: Marowak and the three
+    # starters indexed as empty and every set of theirs was unreachable
+    # (found 2026-10-22 by test_gambler_fields_its_forced_sets). Keep the name
+    # that has sets.
+    species_by_id = {}
+    for k, v in species_ids.items():
+        if by_species.get(k) or v not in species_by_id:
+            species_by_id[v] = k
     for sid in range(1, max_id + 1):
         name = species_by_id.get(sid)
         if name is None or name not in by_species or not by_species[name]:

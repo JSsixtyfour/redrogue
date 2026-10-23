@@ -44,7 +44,7 @@ jobs:
 
       - name: Build all three ROMs
         run: |
-          make -j"$(nproc)"
+          make all_roms -j"$(nproc)"
           .github/checkdiff.sh
 
       - name: Static audit

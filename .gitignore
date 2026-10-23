@@ -1,6 +1,9 @@
 # compiled objects
 *.o
 
+# cached assembly dependency scans
+/.deps/
+
 # compiled graphics
 *.1bpp
 *.2bpp

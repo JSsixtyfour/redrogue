@@ -450,7 +450,10 @@ AIEstimateEnemyDamage::
 	ret
 
 ; A new decision: nothing computed for the previous one is assumed to hold.
-; Also records the state the caches will be filled under (the two state keys).
+; With AI_TRAINER_ITEMS, also records the state the caches will be filled under
+; (the two state keys). Their only reader is AIRevalidateDecisionCaches, which
+; TrainerAI calls only in the item build, so without items they are not
+; computed (~7k cycles per decision, Codex review 2026-10-22).
 ; Clobbers af, hl; preserves bc, de.
 AIClearDecisionCaches::
 	push bc
@@ -465,6 +468,7 @@ AIClearDecisionCaches::
 	ld [hli], a
 	dec b
 	jr nz, .clear
+IF AI_TRAINER_ITEMS
 	call AIEstimateStateKey
 	ld a, e
 	ld [wAIEstimateStateKey], a
@@ -473,6 +477,7 @@ AIClearDecisionCaches::
 	ld [hl], d
 	inc hl
 	ld [hl], e
+ENDC
 	pop de
 	pop bc
 	ret

@@ -52,7 +52,9 @@ import autoplay_team
 import autoplay_world as world
 import benchmark_policies
 from harness import RedRogueHarness
-from source_constants import parse_map_constants, parse_rgbds_constants, parse_trainer_constants
+from source_constants import (
+    names_by_value, parse_map_constants, parse_rgbds_constants, parse_trainer_constants,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = Path(__file__).resolve().parent / "artifacts"
@@ -319,7 +321,7 @@ class AutoplayAgent:
         self.judge = autoplay_team.TeamJudge(ROOT, harness, self.rules) if offer_policy == "merit" else None
         self.enemy_seen: tuple[int, int] | None = None  # the enemy mon the last matchup switch looked at
         maps = parse_map_constants(ROOT / "constants/map_constants.asm")
-        self.map_names = {value: name for name, value in maps.items()}
+        self.map_names = names_by_value(maps)
         self.lobby_map = maps["INDIGO_PLATEAU_LOBBY"]
         self.oaks_lab = maps["OAKS_LAB"]
         self.credit_exchange = maps["CREDIT_EXCHANGE"]
@@ -334,10 +336,10 @@ class AutoplayAgent:
         self.sprite_nurse = sprites["SPRITE_NURSE"]
         self.sprite_poke_ball = sprites["SPRITE_POKE_BALL"]
         self.sprite_clerk = sprites["SPRITE_CLERK"]
-        self.trainer_names = {value: name for name, value in parse_trainer_constants(
-            ROOT / "constants/trainer_constants.asm").items()}
-        self.species_names = {value: name for name, value in parse_rgbds_constants(
-            ROOT / "constants/pokemon_constants.asm").items()}
+        self.trainer_names = names_by_value(parse_trainer_constants(
+            ROOT / "constants/trainer_constants.asm"))
+        self.species_names = names_by_value(parse_rgbds_constants(
+            ROOT / "constants/pokemon_constants.asm"))
         self.opp_id_offset = parse_rgbds_constants(
             ROOT / "constants/trainer_constants.asm")["OPP_ID_OFFSET"]
         items = parse_rgbds_constants(ROOT / "constants/item_constants.asm")

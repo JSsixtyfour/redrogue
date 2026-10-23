@@ -145,11 +145,23 @@ git clone https://github.com/pret/pokered
 cd pokered
 ```
 
-To build **pokered.gbc** and **pokeblue.gbc**:
+To build **pokered.gbc** and **pokeblue_debug.gbc**:
 
 ```bash
 make
 ```
+
+Use `make red` or `make debug` to build just one. The regular Blue ROM remains
+available with `make blue`; `make all_roms` builds all three variants for full
+verification. `make audit`, `make space`, and `make compare_builds` also build
+all three because their checks compare the variants.
+
+For faster builds, use `make -j2` to run two build jobs concurrently. Increase
+the job count if your machine has spare CPU and memory.
+
+Dependency scans are cached in `.deps/` and refresh automatically when a source
+or nested `INCLUDE` changes. `make tidy` also clears this cache. Build timestamps
+and Git IDs are collected only when linking, with one shared identity per build.
 
 ### Build with a local rgbds version
 

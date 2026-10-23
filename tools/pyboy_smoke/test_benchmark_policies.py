@@ -164,6 +164,21 @@ class BenchmarkPolicyTest(unittest.TestCase):
         enemy = self.mon(["WATER", "ROCK"], ["WATER_GUN"])
         self.assertIsNone(bp.choose_matchup_switch(self.rules, self.state(active, enemy, [active, reserve])))
 
+    def test_early_switcher_leaves_a_losing_matchup_before_ko_range(self):
+        active = self.mon(["FIRE"], ["EMBER"])  # full HP: type_switcher stays
+        reserve = self.mon(["GRASS"], ["VINE_WHIP"])
+        enemy = self.mon(["WATER", "ROCK"], ["WATER_GUN"])
+        state = self.state(active, enemy, [active, reserve])
+        self.assertIsNone(bp.choose_switch(self.rules, state, "type_switcher", False))
+        self.assertEqual(bp.choose_switch(self.rules, state, "early_switcher", False), 1)
+        self.assertIsNone(bp.choose_switch(self.rules, state, "early_switcher", True))
+
+    def test_early_switcher_still_dodges_a_ko(self):
+        active = self.mon(["FIRE"], ["EMBER"], hp=30)
+        reserve = self.mon(["GRASS"], ["TACKLE"])
+        state = self.state(active, self.mon(["WATER"], ["SURF"]), [active, reserve])
+        self.assertEqual(bp.choose_switch(self.rules, state, "early_switcher", False), 1)
+
     def test_only_the_switching_policy_switches(self):
         active = self.mon(["FIRE"], ["EMBER"], hp=30)
         reserve = self.mon(["GRASS"], ["TACKLE"])

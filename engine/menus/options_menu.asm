@@ -799,6 +799,7 @@ OptCycleCheat:
 	farcall SaveGameData
 	pop af
 	ldh [hCurrentMenuItem], a
+.done ; test seam: the cursor as this routine leaves it
 	ret
 
 ; ============================================================================
