@@ -83,8 +83,11 @@ GYM_LEADERS = {
     "Blaine": ("BLAINE", 0), "Sabrina": ("SABRINA", 0), "Giovanni": ("GIOVANNI", 0),
     "Bugsy": ("BUGSY", 0), "Whitney": ("WHITNEY", 0), "Morty": ("MORTY", 0),
     "Chuck": ("CHUCK", 0), "Jasmine": ("JASMINE", 0), "Pryce": ("PRYCE", 0),
-    "Clair": ("CLAIR", 0), "Janine": ("JANINE", 0),
+    "Clair": ("CLAIR", 0),
 }
+# Class -> the GYM_LEADERS prefix whose spec list it shares. Janine draws Koga's
+# pools (PARTY_ROSTER.md, 2026-10-23), so her PartySpecPointers row is KogaSpecs.
+SHARED_SPEC_LISTS = {"JANINE": "Koga"}
 
 
 def band_pool_labels():
@@ -579,6 +582,7 @@ class PartySpecCoverageContractTest(unittest.TestCase):
         expected |= STAGE_EVENT_CLASSES
         expected |= MINIBOSS_CLASSES
         expected |= {"RIVAL3", "PROF_OAK"}
+        expected |= set(SHARED_SPEC_LISTS)
         self.assertEqual(len(expected), 34)
         by_index = {v: k for k, v in self.classes.items()}
         num_trainers = max(by_index)
@@ -588,7 +592,11 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                 name = by_index.get(index, f"class {index}")
                 pointer = image.word(base + (index - 1) * 2)
                 with self.subTest(rom=image.name, trainer=name):
-                    if name in expected:
+                    if name in SHARED_SPEC_LISTS:
+                        self.assertEqual(
+                            pointer, image.addr(f"{SHARED_SPEC_LISTS[name]}Specs"),
+                            f"{name} should share {SHARED_SPEC_LISTS[name]}Specs")
+                    elif name in expected:
                         self.assertNotEqual(
                             pointer, 0, f"{name} should have a spec list")
                     else:

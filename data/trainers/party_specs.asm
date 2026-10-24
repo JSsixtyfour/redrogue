@@ -540,7 +540,7 @@ FOR n, 1, NUM_TRAINERS + 1
 	ELIF n == CLAIR
 	dw ClairSpecs
 	ELIF n == JANINE
-	dw JanineSpecs
+	dw KogaSpecs                        ; Janine shares Koga's pools (PARTY_ROSTER.md)
 	ELIF n == WILL
 	dw WillSpecs
 	ELIF n == KAREN
@@ -656,7 +656,8 @@ FalknerSpec3:
 	gym_leader_records  Giovanni, 0
 
 ; ---------------------------------------------------------------------------
-; The seven remaining Johto gym leaders, plus Janine. Phase 7 only draws these
+; The seven remaining Johto gym leaders (Janine reuses KogaSpecs, see
+; PartySpecPointers). Phase 7 only draws these
 ; when BIT_GROUP_JOHTO is enabled, so their ace pools may be Johto-only.
 ;
 ; Morty and Clair have few on-type lines, so their fodder pools carry themed
@@ -683,9 +684,6 @@ FalknerSpec3:
 
 	gym_leader_pointers Clair
 	gym_leader_records  Clair, 0
-
-	gym_leader_pointers Janine
-	gym_leader_records  Janine, 0
 
 ; ---------------------------------------------------------------------------
 ; Will and Karen are Elite Four only and get TWELVE teams, not 24 - see the

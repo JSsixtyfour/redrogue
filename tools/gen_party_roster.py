@@ -81,10 +81,10 @@ REGION_PREFIX = {"a": "Alolan", "g": "Galarian", "h": "Hisuian", "p": "Paldean"}
 
 # Gym leaders that only appear with Johto on, so they have no Kanto-only run to
 # need a Kanto ace for. Measured 2026-10-07: custom_functions/random_stage_selection.asm
-# GymLeaderPool indexes 8-15 (Falkner..Clair) are Johto-only, and Janine's coin flip
-# only runs when the pool is NUM_GYM_POOL_ALL.
+# GymLeaderPool indexes 8-15 (Falkner..Clair) are Johto-only. Janine has no block:
+# she draws Koga's pools (2026-10-23), which Kanto-only runs also use.
 JOHTO_GATED = ("Falkner", "Bugsy", "Whitney", "Morty", "Chuck", "Jasmine", "Pryce",
-               "Clair", "Janine",
+               "Clair",
                "KogaE4", "Will", "Karen")  # Elite Four: drawn only with Johto on
 # Pinned forms that may sit in the Johto run (band_pools.asm header rule): every
 # other pinned form is Time Warp content.

@@ -546,10 +546,11 @@
 
 ; --- Koga --------------------------------------------------------------------
 	band_pool Koga_Ace1
-	band_ace ARBOK
 	band_ace GOLBAT
 	band_ace VENOMOTH
+	band_ace ARBOK
 	band_johto
+	band_ace ARIADOS
 	band_warp
 	band_end
 	band_pool Koga_Fod1
@@ -568,14 +569,20 @@
 	band_mon TENTACOOL
 	band_johto
 	band_mon SPINARAK
+	band_mon QWILFISH
 	band_warp
+	band_mon SLOWPOKE, 1
+	band_mon GRIMER, 1
 	band_end
 	band_pool Koga_Ace2
 	band_ace WEEZING
 	band_ace MUK
 	band_ace VENOMOTH
 	band_johto
+	band_ace CROBAT
 	band_warp
+	band_ace WEEZING, 1
+	band_ace MUK, 1
 	band_end
 	band_pool Koga_Fod2
 	band_mon GASTLY
@@ -593,6 +600,7 @@
 	band_mon TENTACOOL
 	band_johto
 	band_mon SPINARAK
+	band_mon QWILFISH
 	band_warp
 	band_mon SLOWPOKE, 1
 	band_end
@@ -618,7 +626,10 @@
 	band_mon GIRAFARIG
 	band_mon CHIKORITA
 	band_mon SHUCKLE
+	band_mon GLIGAR
+	band_mon SNEASEL
 	band_warp
+	band_mon GRIMER, 1
 	band_end
 	band_pool Koga_Ace3
 	band_ace WEEZING
@@ -629,6 +640,10 @@
 	band_johto
 	band_ace CROBAT
 	band_warp
+	band_ace WEEZING, 1
+	band_ace MUK, 1
+	band_ace SLOWKING, 1
+	band_ace SLOWBRO, 1
 	band_end
 	band_pool Koga_Fod3
 	band_mon GASTLY
@@ -646,7 +661,6 @@
 	band_mon TENTACOOL
 	band_johto
 	band_mon QWILFISH
-	band_mon SPINARAK
 	band_warp
 	band_mon SLOWPOKE, 1
 	band_end
@@ -673,7 +687,10 @@
 	band_mon GIRAFARIG
 	band_mon CHIKORITA
 	band_mon SHUCKLE
+	band_mon GLIGAR
+	band_mon SNEASEL
 	band_warp
+	band_mon GRIMER, 1
 	band_end
 	band_pool Koga_Ace4
 	band_ace NIDOKING
@@ -697,8 +714,6 @@
 	band_mon BELLSPROUT
 	band_mon TENTACOOL
 	band_johto
-	band_mon QWILFISH
-	band_mon SPINARAK
 	band_warp
 	band_mon SLOWPOKE, 1
 	band_end
@@ -1136,7 +1151,6 @@
 	band_mon NATU
 	band_mon HOPPIP
 	band_mon LEDYBA
-	band_mon MURKROW
 	band_warp
 	band_end
 	band_pool Falkner_Ace2
@@ -1208,7 +1222,6 @@
 	band_mon GLIGAR
 	band_mon SKARMORY
 	band_mon MANTINE
-	band_mon MURKROW
 	band_warp
 	band_end
 	band_pool Falkner_Off3
@@ -1253,7 +1266,6 @@
 	band_mon GLIGAR
 	band_mon SKARMORY
 	band_mon MANTINE
-	band_mon MURKROW
 	band_warp
 	band_end
 	band_pool Falkner_Off4
@@ -1385,10 +1397,16 @@
 	band_ace CLEFABLE
 	band_ace WIGGLYTUFF
 	band_ace RATICATE
+	band_ace LICKITUNG
+	band_ace PORYGON
 	band_johto
-	band_ace MILTANK
 	band_ace FURRET
+	band_ace TOGETIC
+	band_ace STANTLER
+	band_ace NOCTOWL
+	band_ace GRANBULL
 	band_warp
+	band_ace RATICATE, 1
 	band_end
 	band_pool Whitney_Fod1
 	band_mon RATTATA
@@ -1397,6 +1415,11 @@
 	band_mon MEOWTH
 	band_mon LICKITUNG
 	band_mon EEVEE
+	band_mon PIDGEY
+	band_mon SPEAROW
+	band_mon FARFETCHD
+	band_mon DODUO
+	band_mon DITTO
 	band_johto
 	band_mon SENTRET
 	band_mon SNUBBULL
@@ -1404,17 +1427,25 @@
 	band_mon TEDDIURSA
 	band_mon TOGEPI
 	band_mon DUNSPARCE
+	band_mon HOOTHOOT
+	band_mon HOUNDOUR
 	band_warp
+	band_mon RATTATA, 1
+	band_mon MEOWTH, 1
 	band_end
 	band_pool Whitney_Ace2
 	band_ace CLEFABLE
 	band_ace WIGGLYTUFF
+	band_ace PERSIAN
+	band_ace KANGASKHAN
 	band_johto
 	band_ace MILTANK
-	band_ace GRANBULL
 	band_ace URSARING
 	band_ace GIRAFARIG
+	band_ace STANTLER
 	band_warp
+	band_ace LICKILICKY
+	band_ace PERSIAN, 1
 	band_end
 	band_pool Whitney_Fod2
 	band_mon RATTATA
@@ -1423,6 +1454,12 @@
 	band_mon MEOWTH
 	band_mon LICKITUNG
 	band_mon EEVEE
+	band_mon DITTO
+	band_mon PORYGON
+	band_mon PIDGEY
+	band_mon SPEAROW
+	band_mon FARFETCHD
+	band_mon DODUO
 	band_johto
 	band_mon SENTRET
 	band_mon SNUBBULL
@@ -1431,7 +1468,13 @@
 	band_mon TOGEPI
 	band_mon DUNSPARCE
 	band_mon GIRAFARIG
+	band_mon SNEASEL
+	band_mon HOUNDOUR
+	band_mon STANTLER
+	band_mon HOOTHOOT
 	band_warp
+	band_mon RATTATA, 1
+	band_mon MEOWTH, 1
 	band_end
 	band_pool Whitney_Off2
 	band_mon DROWZEE
@@ -1446,11 +1489,12 @@
 	band_ace KANGASKHAN
 	band_ace TAUROS
 	band_ace SNORLAX
+	band_ace PERSIAN
 	band_johto
 	band_ace MILTANK
-	band_ace URSARING
 	band_ace PORYGON2
 	band_warp
+	band_ace LICKILICKY
 	band_end
 	band_pool Whitney_Fod3
 	band_mon RATTATA
@@ -1465,6 +1509,10 @@
 	band_mon EEVEE
 	band_mon SNORLAX
 	band_mon PORYGON
+	band_mon PIDGEY
+	band_mon SPEAROW
+	band_mon FARFETCHD
+	band_mon DODUO
 	band_johto
 	band_mon SENTRET
 	band_mon TOGEPI
@@ -1474,7 +1522,12 @@
 	band_mon AIPOM
 	band_mon TEDDIURSA
 	band_mon GIRAFARIG
+	band_mon HOUNDOUR
+	band_mon HOOTHOOT
+	band_mon SNEASEL
 	band_warp
+	band_mon RATTATA, 1
+	band_mon MEOWTH, 1
 	band_end
 	band_pool Whitney_Off3
 	band_mon DROWZEE
@@ -1489,18 +1542,16 @@
 	band_end
 	band_pool Whitney_Ace4
 	band_ace SNORLAX
+	band_ace PERSIAN
+	band_ace TAUROS
 	band_johto
 	band_ace MILTANK
-	band_ace MILTANK
-	band_ace BLISSEY
-	band_ace URSARING
-	band_ace PORYGON2
 	band_warp
-	band_ace LICKILICKY
 	band_ace PORYGON_Z
+	band_ace MOLTRES, 1
+	band_ace JIGGLYPUFF, 1
 	band_end
 	band_pool Whitney_Fod4
-	band_mon RATTATA
 	band_mon CLEFAIRY
 	band_mon JIGGLYPUFF
 	band_mon MEOWTH
@@ -1512,6 +1563,10 @@
 	band_mon EEVEE
 	band_mon SNORLAX
 	band_mon PORYGON
+	band_mon PIDGEY
+	band_mon SPEAROW
+	band_mon FARFETCHD
+	band_mon DODUO
 	band_johto
 	band_mon SENTRET
 	band_mon TOGEPI
@@ -1521,8 +1576,13 @@
 	band_mon AIPOM
 	band_mon TEDDIURSA
 	band_mon GIRAFARIG
+	band_mon HOUNDOUR
+	band_mon HOOTHOOT
+	band_mon SNEASEL
 	band_warp
 	band_mon VAPOREON, 2
+	band_mon RATTATA, 1
+	band_mon MEOWTH, 1
 	band_end
 	band_pool Whitney_Off4
 	band_mon DROWZEE
@@ -1541,101 +1601,114 @@
 ; --- Morty -------------------------------------------------------------------
 	band_pool Morty_Ace1
 	band_ace HAUNTER
-	band_ace GOLBAT
 	band_johto
 	band_ace MISDREAVUS
 	band_warp
 	band_end
 	band_pool Morty_Fod1
 	band_mon GASTLY
-	band_mon ZUBAT
-	band_mon EKANS
-	band_mon GRIMER
-	band_mon KOFFING
 	band_mon CUBONE
+	band_mon VULPIX
 	band_johto
 	band_mon MISDREAVUS
 	band_mon SPINARAK
 	band_mon MURKROW
 	band_mon HOUNDOUR
 	band_mon HOOTHOOT
-	band_mon GIRAFARIG
-	band_mon SUDOWOODO
 	band_warp
+	band_mon VULPIX, 1
 	band_end
 	band_pool Morty_Ace2
-	band_ace HAUNTER
 	band_ace GENGAR
-	band_ace ARBOK
-	band_ace MAROWAK
 	band_johto
-	band_ace MISDREAVUS
 	band_warp
+	band_ace MISMAGIUS
 	band_ace MAROWAK, 1
+	band_ace ANNIHILAPE
 	band_end
-	band_same Morty_Fod2, Morty_Fod1
+	band_pool Morty_Fod2
+	band_mon GASTLY
+	band_mon CUBONE
+	band_mon VULPIX
+	band_johto
+	band_mon MISDREAVUS
+	band_mon MURKROW
+	band_mon HOUNDOUR
+	band_mon HOOTHOOT
+	band_mon GIRAFARIG
+	band_warp
+	band_mon VULPIX, 1
+	band_end
 	band_pool Morty_Off2
 	band_mon DROWZEE
 	band_mon JYNX
 	band_mon EXEGGCUTE
+	band_mon MANKEY
 	band_johto
 	band_mon SNEASEL
+	band_mon SPINARAK
+	band_mon SNUBBULL
+	band_mon SUDOWOODO
 	band_warp
 	band_end
-	band_pool Morty_Ace3
-	band_ace GENGAR
-	band_johto
-	band_ace CROBAT
-	band_ace HOUNDOOM
-	band_ace JOLTEON, 2
-	band_warp
-	band_ace MISMAGIUS
-	band_ace MAROWAK, 1
-	band_end
+	band_same Morty_Ace3, Morty_Ace2
 	band_pool Morty_Fod3
 	band_mon GASTLY
-	band_mon ZUBAT
-	band_mon EKANS
-	band_mon GRIMER
-	band_mon KOFFING
 	band_mon CUBONE
-	band_mon LAPRAS
+	band_mon VULPIX
 	band_johto
 	band_mon MISDREAVUS
-	band_mon SPINARAK
 	band_mon MURKROW
 	band_mon HOUNDOUR
 	band_mon HOOTHOOT
 	band_mon GIRAFARIG
-	band_mon SUDOWOODO
-	band_mon MANTINE
 	band_warp
 	band_mon MAROWAK, 1
 	band_mon ANNIHILAPE
+	band_mon VULPIX, 1
 	band_end
 	band_pool Morty_Off3
 	band_mon DROWZEE
 	band_mon JYNX
 	band_mon EXEGGCUTE
 	band_mon SLOWPOKE
+	band_mon LAPRAS
+	band_mon MANKEY
 	band_johto
 	band_mon SNEASEL
 	band_mon JOLTEON, 2
+	band_mon SNUBBULL
+	band_mon SUDOWOODO
+	band_mon MANTINE
 	band_warp
 	band_end
-	band_pool Morty_Ace4
-	band_ace GENGAR
-	band_ace GENGAR
+	band_same Morty_Ace4, Morty_Ace2
+	band_pool Morty_Fod4
+	band_mon GASTLY
+	band_mon CUBONE
+	band_mon VULPIX
 	band_johto
-	band_ace CROBAT
-	band_ace HOUNDOOM
+	band_mon MISDREAVUS
+	band_mon HOUNDOUR
+	band_mon HOOTHOOT
 	band_warp
-	band_ace MISMAGIUS
-	band_ace MAROWAK, 1
-	band_ace ANNIHILAPE
+	band_mon MAROWAK, 1
+	band_mon ANNIHILAPE
+	band_mon VULPIX, 1
 	band_end
-	band_same Morty_Fod4, Morty_Fod3
-	band_same Morty_Off4, Morty_Off3
+	band_pool Morty_Off4
+	band_mon DROWZEE
+	band_mon JYNX
+	band_mon EXEGGCUTE
+	band_mon SLOWPOKE
+	band_mon LAPRAS
+	band_johto
+	band_mon SNEASEL
+	band_mon JOLTEON, 2
+	band_mon SUDOWOODO
+	band_mon MANTINE
+	band_warp
+	band_end
 
 ; --- Chuck -------------------------------------------------------------------
 	band_pool Chuck_Ace1
@@ -1650,15 +1723,11 @@
 	band_mon MANKEY
 	band_mon MACHOP
 	band_mon POLIWAG
-	band_mon HITMONLEE
-	band_mon HITMONCHAN
 	band_johto
-	band_mon HITMONTOP
 	band_warp
 	band_mon FARFETCHD, 1
 	band_end
 	band_pool Chuck_Ace2
-	band_ace PRIMEAPE
 	band_ace POLIWRATH
 	band_ace MACHAMP
 	band_ace HITMONLEE
@@ -1667,26 +1736,41 @@
 	band_ace HITMONTOP
 	band_ace HERACROSS
 	band_warp
+	band_ace SIRFETCHD
 	band_end
-	band_same Chuck_Fod2, Chuck_Fod1
-	band_pool Chuck_Off2
-	band_mon GEODUDE
-	band_mon ONIX
-	band_mon RHYHORN
-	band_mon MAGNEMITE
+	band_pool Chuck_Fod2
+	band_mon MANKEY
+	band_mon MACHOP
+	band_mon POLIWAG
+	band_mon HITMONLEE
+	band_mon HITMONCHAN
 	band_johto
+	band_mon HITMONTOP
+	band_warp
+	band_mon FARFETCHD, 1
+	band_end
+	band_pool Chuck_Off2
+	band_mon RHYHORN
+	band_mon SANDSHREW
+	band_mon DROWZEE
+	band_johto
+	band_mon SNUBBULL
+	band_mon TEDDIURSA
+	band_mon MAREEP
+	band_mon PHANPY
 	band_warp
 	band_end
 	band_pool Chuck_Ace3
 	band_ace MACHAMP
 	band_ace POLIWRATH
-	band_ace PRIMEAPE
 	band_johto
 	band_ace HERACROSS
 	band_ace HITMONTOP
 	band_warp
+	band_ace ANNIHILAPE
 	band_ace TAUROS, 1
-	band_ace SIRFETCHD
+	band_ace TAUROS, 2
+	band_ace TAUROS, 3
 	band_end
 	band_pool Chuck_Fod3
 	band_mon MANKEY
@@ -1702,39 +1786,51 @@
 	band_mon TAUROS, 1
 	band_end
 	band_pool Chuck_Off3
-	band_mon GEODUDE
-	band_mon ONIX
 	band_mon RHYHORN
-	band_mon MAGNEMITE
-	band_mon KANGASKHAN
 	band_mon TAUROS
+	band_mon SANDSHREW
+	band_mon DROWZEE
+	band_mon SCYTHER
 	band_johto
+	band_mon SNUBBULL
 	band_mon TEDDIURSA
+	band_mon MAREEP
+	band_mon PHANPY
 	band_warp
 	band_end
 	band_pool Chuck_Ace4
 	band_ace MACHAMP
-	band_ace MACHAMP
-	band_ace POLIWRATH
 	band_johto
 	band_ace HERACROSS
-	band_ace HITMONTOP
 	band_warp
 	band_ace ANNIHILAPE
 	band_ace ZAPDOS, 1
 	band_end
-	band_same Chuck_Fod4, Chuck_Fod3
+	band_pool Chuck_Fod4
+	band_mon MANKEY
+	band_mon MACHOP
+	band_mon POLIWAG
+	band_mon HITMONLEE
+	band_mon HITMONCHAN
+	band_johto
+	band_mon HITMONTOP
+	band_mon HERACROSS
+	band_warp
+	band_mon FARFETCHD, 1
+	band_mon TAUROS, 1
+	band_mon TAUROS, 2
+	band_mon TAUROS, 3
+	band_end
 	band_pool Chuck_Off4
-	band_mon GEODUDE
-	band_mon ONIX
 	band_mon RHYHORN
-	band_mon MAGNEMITE
-	band_mon KANGASKHAN
 	band_mon TAUROS
-	band_mon SNORLAX
-	band_mon LAPRAS
+	band_mon SANDSHREW
+	band_mon DROWZEE
+	band_mon SCYTHER
 	band_johto
 	band_mon TEDDIURSA
+	band_mon MAREEP
+	band_mon PHANPY
 	band_warp
 	band_end
 
@@ -1751,6 +1847,7 @@
 	band_mon ONIX
 	band_johto
 	band_mon PINECO
+	band_mon CORSOLA
 	band_warp
 	band_mon DIGLETT, 1
 	band_mon SANDSHREW, 1
@@ -1760,19 +1857,39 @@
 	band_ace MAGNETON
 	band_johto
 	band_ace STEELIX
-	band_ace FORRETRESS
 	band_ace SKARMORY
 	band_ace SCIZOR
 	band_warp
 	band_end
-	band_same Jasmine_Fod2, Jasmine_Fod1
+	band_pool Jasmine_Fod2
+	band_mon MAGNEMITE
+	band_mon ONIX
+	band_johto
+	band_mon PINECO
+	band_mon CORSOLA
+	band_warp
+	band_mon DIGLETT, 1
+	band_mon SANDSHREW, 1
+	band_mon MEOWTH, 2
+	band_mon GEODUDE, 1
+	band_end
 	band_pool Jasmine_Off2
 	band_mon GEODUDE
-	band_mon SANDSHREW
+	band_mon SQUIRTLE
+	band_mon PONYTA
+	band_mon SLOWPOKE
+	band_mon PIKACHU
+	band_mon ELECTABUZZ
+	band_mon EEVEE
 	band_johto
 	band_mon MAREEP
-	band_mon MARILL
+	band_mon CORSOLA
+	band_mon MANTINE
+	band_mon STANTLER
+	band_mon TOGEPI
 	band_warp
+	band_mon PONYTA, 1
+	band_mon SLOWPOKE, 1
 	band_end
 	band_pool Jasmine_Ace3
 	band_johto
@@ -1784,6 +1901,7 @@
 	band_warp
 	band_ace MAGNEZONE
 	band_ace PERSIAN, 2
+	band_ace GOLEM, 1
 	band_end
 	band_pool Jasmine_Fod3
 	band_mon MAGNEMITE
@@ -1792,32 +1910,42 @@
 	band_johto
 	band_mon PINECO
 	band_mon SKARMORY
+	band_mon CORSOLA
 	band_warp
 	band_mon DIGLETT, 1
 	band_mon SANDSHREW, 1
 	band_mon MEOWTH, 2
+	band_mon GEODUDE, 1
 	band_end
 	band_pool Jasmine_Off3
 	band_mon GEODUDE
-	band_mon SANDSHREW
 	band_mon RHYHORN
+	band_mon SQUIRTLE
+	band_mon EEVEE
+	band_mon PIKACHU
+	band_mon ELECTABUZZ
+	band_mon PONYTA
+	band_mon SLOWPOKE
 	band_johto
 	band_mon MAREEP
-	band_mon MARILL
-	band_mon PHANPY
 	band_mon CHINCHOU
+	band_mon MANTINE
+	band_mon STANTLER
+	band_mon TOGEPI
 	band_warp
+	band_mon PONYTA, 1
+	band_mon SLOWPOKE, 1
 	band_end
 	band_pool Jasmine_Ace4
 	band_johto
 	band_ace STEELIX
-	band_ace STEELIX
 	band_ace SCIZOR
 	band_ace SKARMORY
-	band_ace FORRETRESS
 	band_ace AMPHAROS
 	band_warp
 	band_ace MAGNEZONE
+	band_ace GOLEM, 1
+	band_ace MAGNETON, 1
 	band_end
 	band_pool Jasmine_Fod4
 	band_mon MAGNEMITE
@@ -1829,31 +1957,61 @@
 	band_mon DIGLETT, 1
 	band_mon SANDSHREW, 1
 	band_mon MEOWTH, 2
+	band_mon GEODUDE, 1
 	band_end
 	band_pool Jasmine_Off4
 	band_mon GEODUDE
-	band_mon SANDSHREW
 	band_mon RHYHORN
-	band_mon SNORLAX
-	band_mon LAPRAS
+	band_mon SQUIRTLE
+	band_mon EEVEE
+	band_mon PIKACHU
+	band_mon ELECTABUZZ
+	band_mon PONYTA
+	band_mon SLOWPOKE
 	band_johto
 	band_mon MAREEP
-	band_mon MARILL
-	band_mon PHANPY
 	band_mon CHINCHOU
+	band_mon MANTINE
+	band_mon STANTLER
+	band_mon TOGEPI
 	band_warp
+	band_mon MAGNETON, 1
+	band_mon PONYTA, 1
+	band_mon SLOWPOKE, 1
 	band_end
 
 ; --- Pryce -------------------------------------------------------------------
 	band_pool Pryce_Ace1
 	band_ace DEWGONG
-	band_ace JYNX
 	band_johto
 	band_ace PILOSWINE
 	band_ace SNEASEL
 	band_warp
+	band_ace SANDSLASH, 1
 	band_end
 	band_pool Pryce_Fod1
+	band_mon SEEL
+	band_mon SHELLDER
+	band_johto
+	band_mon SWINUB
+	band_mon SNEASEL
+	band_warp
+	band_mon VULPIX, 1
+	band_mon SANDSHREW, 1
+	band_end
+	band_pool Pryce_Ace2
+	band_ace CLOYSTER
+	band_ace JYNX
+	band_ace LAPRAS
+	band_ace DEWGONG
+	band_johto
+	band_ace PILOSWINE
+	band_warp
+	band_ace NINETALES, 1
+	band_ace SANDSLASH, 1
+	band_ace VAPOREON, 1
+	band_end
+	band_pool Pryce_Fod2
 	band_mon SEEL
 	band_mon SHELLDER
 	band_mon JYNX
@@ -1864,30 +2022,25 @@
 	band_mon VULPIX, 1
 	band_mon SANDSHREW, 1
 	band_end
-	band_pool Pryce_Ace2
-	band_ace DEWGONG
-	band_ace CLOYSTER
-	band_ace JYNX
-	band_ace LAPRAS
-	band_johto
-	band_ace PILOSWINE
-	band_warp
-	band_ace NINETALES, 1
-	band_ace SANDSLASH, 1
-	band_end
-	band_same Pryce_Fod2, Pryce_Fod1
 	band_pool Pryce_Off2
 	band_mon PSYDUCK
 	band_mon POLIWAG
+	band_mon SLOWPOKE
+	band_mon TENTACOOL
+	band_mon KRABBY
 	band_johto
 	band_mon WOOPER
 	band_mon MARILL
+	band_mon TEDDIURSA
+	band_mon PHANPY
+	band_mon HITMONTOP
+	band_mon GIRAFARIG
 	band_warp
+	band_mon SLOWPOKE, 1
 	band_end
 	band_pool Pryce_Ace3
 	band_ace LAPRAS
 	band_ace CLOYSTER
-	band_ace DEWGONG
 	band_ace JYNX
 	band_johto
 	band_ace PILOSWINE
@@ -1895,6 +2048,7 @@
 	band_ace MAMOSWINE
 	band_ace WEAVILE
 	band_ace VAPOREON, 1
+	band_ace MR_RIME
 	band_end
 	band_pool Pryce_Fod3
 	band_mon SEEL
@@ -1907,28 +2061,17 @@
 	band_warp
 	band_mon VULPIX, 1
 	band_mon SANDSHREW, 1
+	band_mon MR_RIME
 	band_end
-	band_pool Pryce_Off3
-	band_mon PSYDUCK
-	band_mon POLIWAG
-	band_mon SLOWPOKE
-	band_mon TENTACOOL
-	band_mon KRABBY
-	band_johto
-	band_mon WOOPER
-	band_mon MARILL
-	band_warp
-	band_end
+	band_same Pryce_Off3, Pryce_Off2
 	band_pool Pryce_Ace4
 	band_ace LAPRAS
 	band_ace CLOYSTER
 	band_ace ARTICUNO
+	band_ace JYNX
 	band_johto
 	band_warp
 	band_ace MAMOSWINE
-	band_ace WEAVILE
-	band_ace VAPOREON, 1
-	band_ace MR_RIME
 	band_end
 	band_same Pryce_Fod4, Pryce_Fod3
 	band_pool Pryce_Off4
@@ -1942,7 +2085,12 @@
 	band_mon WOOPER
 	band_mon MARILL
 	band_mon QUAGSIRE
+	band_mon TEDDIURSA
+	band_mon PHANPY
+	band_mon HITMONTOP
+	band_mon GIRAFARIG
 	band_warp
+	band_mon SLOWPOKE, 1
 	band_end
 
 ; --- Clair -------------------------------------------------------------------
@@ -1956,9 +2104,10 @@
 	band_pool Clair_Fod1
 	band_mon DRATINI
 	band_mon HORSEA
-	band_mon MAGIKARP
 	band_mon CHARMANDER
 	band_johto
+	band_mon MAREEP
+	band_mon LARVITAR
 	band_warp
 	band_end
 	band_pool Clair_Ace2
@@ -1971,10 +2120,23 @@
 	band_warp
 	band_ace EXEGGUTOR, 1
 	band_end
-	band_same Clair_Fod2, Clair_Fod1
+	band_pool Clair_Fod2
+	band_mon DRATINI
+	band_mon HORSEA
+	band_mon MAGIKARP
+	band_mon CHARMANDER
+	band_mon AERODACTYL
+	band_johto
+	band_mon LARVITAR
+	band_warp
+	band_mon EXEGGUTOR, 1
+	band_end
 	band_pool Clair_Off2
-	band_mon EKANS
-	band_mon ONIX
+	band_mon POLIWAG
+	band_mon GROWLITHE
+	band_mon RHYHORN
+	band_mon NIDORAN_M
+	band_mon SQUIRTLE
 	band_johto
 	band_mon MAREEP
 	band_warp
@@ -1983,9 +2145,9 @@
 	band_ace DRAGONITE
 	band_ace GYARADOS
 	band_ace CHARIZARD
-	band_ace AERODACTYL
 	band_johto
 	band_ace KINGDRA
+	band_ace TYRANITAR
 	band_warp
 	band_ace EXEGGUTOR, 1
 	band_end
@@ -1997,143 +2159,28 @@
 	band_mon AERODACTYL
 	band_mon LAPRAS
 	band_johto
+	band_mon LARVITAR
 	band_warp
 	band_mon EXEGGUTOR, 1
 	band_end
 	band_pool Clair_Off3
-	band_mon EKANS
-	band_mon ONIX
-	band_mon SEEL
-	band_mon MAGNEMITE
+	band_mon POLIWAG
 	band_johto
 	band_mon MAREEP
-	band_mon PHANPY
+	band_mon MANTINE
 	band_warp
 	band_end
-	band_pool Clair_Ace4
-	band_ace DRAGONITE
-	band_ace DRAGONITE
-	band_ace GYARADOS
-	band_ace CHARIZARD
-	band_ace AERODACTYL
-	band_johto
-	band_ace KINGDRA
-	band_warp
-	band_ace EXEGGUTOR, 1
-	band_end
+	band_same Clair_Ace4, Clair_Ace3
 	band_same Clair_Fod4, Clair_Fod3
 	band_pool Clair_Off4
-	band_mon EKANS
-	band_mon ONIX
-	band_mon SEEL
-	band_mon MAGNEMITE
-	band_mon SNORLAX
+	band_mon GROWLITHE
+	band_mon RHYHORN
+	band_mon NIDORAN_M
+	band_mon SQUIRTLE
 	band_johto
 	band_mon MAREEP
-	band_mon PHANPY
-	band_mon LARVITAR
-	band_warp
-	band_end
-
-; --- Janine ------------------------------------------------------------------
-	band_pool Janine_Ace1
-	band_ace GOLBAT
-	band_ace VENOMOTH
-	band_ace WEEZING
-	band_johto
-	band_ace ARIADOS
-	band_warp
-	band_end
-	band_pool Janine_Fod1
-	band_mon ZUBAT
-	band_mon VENONAT
-	band_mon KOFFING
-	band_mon GRIMER
-	band_mon EKANS
-	band_mon NIDORAN_F
-	band_mon NIDORAN_M
-	band_mon TENTACOOL
-	band_mon WEEDLE
-	band_johto
-	band_mon SPINARAK
-	band_mon QWILFISH
-	band_warp
-	band_end
-	band_pool Janine_Ace2
-	band_ace WEEZING
-	band_ace VENOMOTH
-	band_ace MUK
-	band_johto
-	band_ace CROBAT
-	band_ace ARIADOS
-	band_warp
-	band_end
-	band_same Janine_Fod2, Janine_Fod1
-	band_pool Janine_Off2
-	band_mon DROWZEE
-	band_johto
-	band_mon SNEASEL
-	band_mon MURKROW
-	band_mon HOUNDOUR
-	band_warp
-	band_end
-	band_pool Janine_Ace3
-	band_ace WEEZING
-	band_ace VENOMOTH
-	band_ace MUK
-	band_ace TENTACRUEL
-	band_johto
-	band_ace CROBAT
-	band_ace ARIADOS
-	band_warp
-	band_ace WEEZING, 1
-	band_end
-	band_pool Janine_Fod3
-	band_mon ZUBAT
-	band_mon VENONAT
-	band_mon KOFFING
-	band_mon GRIMER
-	band_mon EKANS
-	band_mon NIDORAN_F
-	band_mon NIDORAN_M
-	band_mon TENTACOOL
-	band_johto
-	band_mon SPINARAK
-	band_mon QWILFISH
-	band_warp
-	band_end
-	band_pool Janine_Off3
-	band_mon DROWZEE
-	band_mon SCYTHER
-	band_johto
-	band_mon SNEASEL
-	band_mon MURKROW
-	band_mon HOUNDOUR
-	band_mon JOLTEON, 2
-	band_mon MISDREAVUS
-	band_warp
-	band_end
-	band_pool Janine_Ace4
-	band_ace WEEZING
-	band_ace TENTACRUEL
-	band_ace NIDOQUEEN
-	band_johto
-	band_ace CROBAT
-	band_ace CROBAT
-	band_warp
-	band_ace MUK, 1
-	band_end
-	band_same Janine_Fod4, Janine_Fod3
-	band_pool Janine_Off4
-	band_mon DROWZEE
-	band_mon SCYTHER
-	band_mon SNORLAX
-	band_johto
-	band_mon SNEASEL
-	band_mon MURKROW
-	band_mon HOUNDOUR
-	band_mon JOLTEON, 2
-	band_mon MISDREAVUS
+	band_mon POLITOED
+	band_mon MANTINE
 	band_warp
 	band_end
 
@@ -2565,15 +2612,25 @@
 	band_warp
 	band_end
 	band_pool Psychic_Ace2
-	band_ace ALAKAZAM
+	band_ace KADABRA
 	band_ace HYPNO
 	band_johto
 	band_warp
 	band_end
 	band_same Psychic_Fod2, Psychic_Fod1
-	band_same Psychic_Ace3, Psychic_Ace2
+	band_pool Psychic_Ace3
+	band_ace ALAKAZAM
+	band_ace HYPNO
+	band_johto
+	band_warp
+	band_end
 	band_same Psychic_Fod3, Psychic_Fod1
-	band_same Psychic_Ace4, Psychic_Ace2
+	band_pool Psychic_Ace4
+	band_ace ALAKAZAM
+	band_ace SLOWBRO
+	band_johto
+	band_warp
+	band_end
 	band_same Psychic_Fod4, Psychic_Fod1
 
 ; --- Burglar -----------------------------------------------------------------
@@ -2597,6 +2654,7 @@
 	band_ace MUK
 	band_ace PERSIAN
 	band_johto
+	band_ace SNEASEL
 	band_warp
 	band_end
 	band_same Burglar_Fod2, Burglar_Fod1
@@ -2607,8 +2665,6 @@
 
 ; --- NurseJoy ----------------------------------------------------------------
 	band_pool NurseJoy_Fod1
-	band_mon KANGASKHAN
-	band_mon SNORLAX
 	band_mon STARYU
 	band_mon PORYGON
 	band_mon EXEGGCUTE
@@ -2629,11 +2685,27 @@
 	band_johto
 	band_warp
 	band_end
-	band_same NurseJoy_Fod2, NurseJoy_Fod1
+	band_pool NurseJoy_Fod2
+	band_mon KANGASKHAN
+	band_mon SNORLAX
+	band_mon STARYU
+	band_mon PORYGON
+	band_mon EXEGGCUTE
+	band_mon CHANSEY
+	band_mon JIGGLYPUFF
+	band_mon CLEFAIRY
+	band_mon PIKACHU
+	band_johto
+	band_mon MILTANK
+	band_mon MARILL
+	band_mon TOGEPI
+	band_warp
+	band_mon VAPOREON, 2
+	band_end
 	band_same NurseJoy_Ace3, NurseJoy_Ace2
-	band_same NurseJoy_Fod3, NurseJoy_Fod1
+	band_same NurseJoy_Fod3, NurseJoy_Fod2
 	band_same NurseJoy_Ace4, NurseJoy_Ace2
-	band_same NurseJoy_Fod4, NurseJoy_Fod1
+	band_same NurseJoy_Fod4, NurseJoy_Fod2
 
 ; --- OfficerJenny ------------------------------------------------------------
 	band_pool OfficerJenny_Fod1
@@ -2716,7 +2788,7 @@
 	band_warp
 	band_end
 	band_pool ChampionLance_Fod1
-	band_mon DRATINI
+	band_mon DRAGONITE
 	band_mon MAGIKARP
 	band_mon AERODACTYL
 	band_mon CHARMANDER
@@ -2728,9 +2800,10 @@
 	band_mon SNORLAX
 	band_mon ELECTABUZZ
 	band_johto
-	band_mon LARVITAR
 	band_mon TOTODILE
 	band_mon MAREEP
+	band_mon TYRANITAR
+	band_mon STEELIX
 	band_warp
 	band_mon EXEGGUTOR, 1
 	band_end
@@ -2740,11 +2813,6 @@
 	band_ace BLASTOISE
 	band_ace VENUSAUR
 	band_ace CHARIZARD
-	band_ace TAUROS
-	band_ace GYARADOS
-	band_ace ARCANINE
-	band_ace EXEGGUTOR
-	band_ace MEW
 	band_johto
 	band_warp
 	band_end
@@ -2756,14 +2824,21 @@
 	band_mon BULBASAUR
 	band_mon CHARMANDER
 	band_mon SQUIRTLE
-	band_mon PIDGEY
 	band_mon KANGASKHAN
 	band_mon LAPRAS
+	band_mon EEVEE
+	band_mon NIDOKING
 	band_johto
 	band_mon CHIKORITA
 	band_mon CYNDAQUIL
 	band_mon TOTODILE
 	band_warp
+	band_mon EXEGGUTOR, 1
+	band_mon TAUROS, 1
+	band_mon TAUROS, 3
+	band_mon TAUROS, 2
+	band_mon ARCANINE, 1
+	band_mon RHYPERIOR
 	band_end
 
 ; --- Gambler -----------------------------------------------------------------
@@ -2940,17 +3015,15 @@
 	band_ace DRAGONITE
 	band_johto
 	band_ace KINGDRA
+	band_ace TYRANITAR
 	band_warp
 	band_end
 	band_pool Lance_Fod1
-	band_mon DRAGONAIR
 	band_mon DRAGONITE
-	band_mon DRATINI
 	band_mon GYARADOS
 	band_mon AERODACTYL
 	band_mon CHARIZARD
 	band_mon HORSEA
-	band_mon SEADRA
 	band_mon LAPRAS
 	band_mon EXEGGUTOR
 	band_mon KANGASKHAN
@@ -2959,8 +3032,6 @@
 	band_mon ELECTABUZZ
 	band_johto
 	band_mon KINGDRA
-	band_mon LARVITAR
-	band_mon PUPITAR
 	band_mon TYRANITAR
 	band_mon STEELIX
 	band_mon FERALIGATR
