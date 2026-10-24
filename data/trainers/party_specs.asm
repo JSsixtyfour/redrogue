@@ -754,7 +754,8 @@ LanceSpecs::
 ;            after the Elite Four Lance's twelve (see LanceSpecs above). Until
 ;            now he fielded the E4 tier-4 records.
 ;   PROF_OAK wTrainerNo 1-3 (ChampionsRoom.asm's roll), one record. ALLOW_UBER
-;            lets his Ace pool's Mew through.
+;            lets an uber in his pools through; none is listed since 2026-10-23
+;            (Mew left his Aces), so it is inert until one is added back.
 ;
 ; Their parties.asm blocks (Rival3Data, LanceData, ProfOakData) are
 ; spec_covered_stubs.

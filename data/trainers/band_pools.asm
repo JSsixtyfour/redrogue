@@ -663,6 +663,7 @@
 	band_mon QWILFISH
 	band_warp
 	band_mon SLOWPOKE, 1
+	band_mon WEEZING, 1
 	band_end
 	band_pool Koga_Off3
 	band_mon PARAS
@@ -716,6 +717,7 @@
 	band_johto
 	band_warp
 	band_mon SLOWPOKE, 1
+	band_mon WEEZING, 1
 	band_end
 	band_same Koga_Off4, Koga_Off3
 
@@ -1847,7 +1849,6 @@
 	band_mon ONIX
 	band_johto
 	band_mon PINECO
-	band_mon CORSOLA
 	band_warp
 	band_mon DIGLETT, 1
 	band_mon SANDSHREW, 1
@@ -1866,7 +1867,6 @@
 	band_mon ONIX
 	band_johto
 	band_mon PINECO
-	band_mon CORSOLA
 	band_warp
 	band_mon DIGLETT, 1
 	band_mon SANDSHREW, 1
@@ -1910,7 +1910,6 @@
 	band_johto
 	band_mon PINECO
 	band_mon SKARMORY
-	band_mon CORSOLA
 	band_warp
 	band_mon DIGLETT, 1
 	band_mon SANDSHREW, 1
@@ -1928,6 +1927,7 @@
 	band_mon SLOWPOKE
 	band_johto
 	band_mon MAREEP
+	band_mon CORSOLA
 	band_mon CHINCHOU
 	band_mon MANTINE
 	band_mon STANTLER
@@ -2125,11 +2125,11 @@
 	band_mon HORSEA
 	band_mon MAGIKARP
 	band_mon CHARMANDER
+	band_mon EXEGGCUTE
 	band_mon AERODACTYL
 	band_johto
 	band_mon LARVITAR
 	band_warp
-	band_mon EXEGGUTOR, 1
 	band_end
 	band_pool Clair_Off2
 	band_mon POLIWAG
