@@ -31,10 +31,13 @@ PokemonTower5FDefaultScript:
 	ld hl, wStatusFlags4
 	set BIT_NO_BATTLES, [hl]
 	predef HealParty
+	call CheckSensitivity
+	jr nz, .steadyHeal
 	call GBFadeOutToWhite
 	call Delay3
 	call Delay3
 	call GBFadeInFromWhite
+.steadyHeal
 	ld a, TEXT_POKEMONTOWER5F_PURIFIEDZONE
 	ldh [hTextID], a
 	call DisplayTextID

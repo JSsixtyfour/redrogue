@@ -18,6 +18,13 @@ AnimatePartyMon::
 	ld a, [hl]
 
 GetAnimationSpeed:
+	push af
+	call CheckSensitivity
+	jr z, .motion
+	pop af
+	jp DelayFrame ; a menu wait must still yield while the icon stays still
+.motion
+	pop af
 	ld c, a
 	ld hl, PartyMonSpeeds
 	add hl, bc

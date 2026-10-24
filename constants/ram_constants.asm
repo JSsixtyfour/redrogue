@@ -71,14 +71,15 @@ DEF BATTLE_SPEED_X4   EQU 2 << 1
 ; the whole party gains EXP from each KO (FaintEnemyPokemon, engine/battle/core.asm).
 ; New games start ON (InitOptions_); a save from before the option reads OFF.
 DEF BIT_EXP_SHARE EQU 3
-; REDUCED battle animations (the middle B. ANIM. setting), for motion
-; sensitivity: animations still play, but every screen shake is skipped
+; REDUCED battle animations (after OFF in the B. ANIM. rotation), for motion
+; sensitivity: includes OFF's disabled move animations, and skips screen and
+; text-window shakes
 ; (PredefShakeScreen*, the slow WX shake, AnimationShakeEnemyHUD), as are the
 ; wavy screen, Double Team's wobble, the screen flashes (AnimationFlashScreen,
 ; AnimationFlashScreenLong) and the overworld poison flash
-; (ApplyOutOfBattlePoisonDamage). Independent of BIT_BATTLE_ANIMATION, which the
-; options row clears whenever it sets this. A save from before the option reads
-; OFF, i.e. full animations.
+; (ApplyOutOfBattlePoisonDamage). The options row also sets BIT_BATTLE_ANIMATION.
+; Consumers honor this bit alone too, for older REDUCED saves. A save from
+; before this option reads zero, i.e. full animations.
 DEF BIT_REDUCED_ANIM EQU 4
 ; ENH GAMMA (2026-10-09): set = Enhanced Colors runs every colour through
 ; GBCGamma's mix matrix + gamma-2 curve (custom_functions/func_gamma.asm), the

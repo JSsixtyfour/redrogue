@@ -483,6 +483,8 @@ SlotMachine_CheckForMatches:
 	jp hl
 
 .flashScreenLoop
+	call CheckSensitivity
+	jr nz, .steadyPayout
 	ldh a, [rBGP]
 	xor $40
 	ldh [rBGP], a
@@ -491,6 +493,7 @@ SlotMachine_CheckForMatches:
 	call DelayFrames
 	dec b
 	jr nz, .flashScreenLoop
+.steadyPayout
 	ld hl, wPayoutCoins
 	ld [hl], d
 	inc hl
@@ -726,10 +729,13 @@ SlotMachine_PayCoinsToPlayer:
 	ld a, [wAnimCounter]
 	dec a
 	jr nz, .skip1
+	call CheckSensitivity
+	jr nz, .resetFlashTimer
 	ldh a, [rOBP0]
 	xor $40 ; make the slot wheel symbols flash
 	ldh [rOBP0], a
     call UpdateGBCPal_OBP0
+.resetFlashTimer
 	ld a, 5
 .skip1
 	ld [wAnimCounter], a

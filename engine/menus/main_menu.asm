@@ -1,19 +1,10 @@
-MainMenu:
+MainMenu::
 	; A complete loss record is authoritative even when main data is torn.
-	rfarcall LossRecoveryBoot
+	call SensitivityLossRecoveryBoot
 	jp c, SpecialEnterMap
 	jp nz, .mainMenuLoop ; damaged active recovery: fail closed, offer New Game
-	farcall RandomSeedStir
-; Check save file
-	call InitOptions
-	xor a
-	ld [wOptionsInitialized], a
-	inc a
-	ld [wSaveFileStatus], a
-	call CheckForPlayerNameInSRAM
-	jr nc, .mainMenuLoop
-
-	predef TryLoadSaveFile
+	; Preserve a pre-intro Sensitivity choice across defaults and save loading.
+	rfarcall InitMainMenuOptions
 
 .mainMenuLoop
 	; The text-speed option only applies while BIT_FAST_TEXT_DELAY is set

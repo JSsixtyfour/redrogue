@@ -49,6 +49,80 @@
 ; it uses farcall/farjp, as both entry points' callers do.
 SECTION FRAGMENT "Options Menu", ROMX
 
+; Before any intro motion or flashes. No saved options have been loaded yet.
+; A enables Sensitivity for this boot; B uses the ordinary intro/title path.
+; Shelved by request: keep the implementation for reference, assemble no bytes.
+IF 0
+StartupSensitivityChoice::
+	call ClearScreen
+	call LoadFontTilePatterns
+	call LoadTextBoxTilePatterns
+	xor a
+	ldh [hWY], a
+	inc a
+	ldh [hAutoBGTransferEnabled], a
+	hlcoord 0, 4
+	lb bc, 8, 18
+	call TextBoxBorder
+	hlcoord 2, 6
+	ld de, .heading
+	call PlaceString
+	hlcoord 2, 9
+	ld de, .enableText
+	call PlaceString
+	hlcoord 2, 11
+	ld de, .normalText
+	call PlaceString
+	call GBPalNormal
+	call Delay3
+.ready
+.wait
+	call DelayFrame
+	call Joypad
+	ldh a, [hJoyPressed]
+	bit B_PAD_A, a
+	jr nz, .enable
+	bit B_PAD_B, a
+	jr z, .wait
+.normal
+	xor a
+	jr .finish
+.enable
+	ld a, 1 << BIT_REDUCED_ANIM
+.finish
+	ld [wOptions3], a
+	call GBPalWhiteOut
+	call ClearScreen
+	ret
+.heading
+	db "Sensitivity mode?@"
+.enableText
+	db "A: On, skip intro@"
+.normalText
+	db "B: Normal startup@"
+ENDC
+
+; Moved intact from MainMenu, with only the accessibility override added.
+; All external entries are far calls; SRAM access remains owned by the helpers.
+InitMainMenuOptions::
+	ld a, [wOptions3]
+	and 1 << BIT_REDUCED_ANIM
+	push af
+	farcall RandomSeedStir
+	farcall InitOptions_
+	xor a
+	ld [wOptionsInitialized], a
+	inc a
+	ld [wSaveFileStatus], a
+	rfarcall CheckForPlayerNameInSRAM_
+	jr nc, .restoreChoice
+	predef TryLoadSaveFile
+.restoreChoice
+	pop af
+	and a
+	ret z
+	jp EnableSensitivity
+
 ; ----------------------------------------------------------------------------
 ; Row descriptor, OPTROW_SIZE bytes.
 ;
@@ -803,27 +877,26 @@ OptCycleCheat:
 	ret
 
 ; ============================================================================
-; The B. ANIM. row: ON / REDUCED / OFF over two bits in two bytes, which is why
-; it is a custom row. OFF is vanilla's wOptions BIT_BATTLE_ANIMATION (set = no
-; move animations); REDUCED is wOptions3 BIT_REDUCED_ANIM (animations play;
-; screen shakes, the wavy screen, flashes and the overworld poison flash do
-; not, see BIT_REDUCED_ANIM). The cycle writes both
-; bits every time, so OFF always leaves REDUCED clear and OFF keeps vanilla's
-; post-move damage shake.
+; The ANIM. row: ON / OFF / Sensitivity over two bits in two bytes.
+; OFF disables move animations with wOptions BIT_BATTLE_ANIMATION.
+; Sensitivity adds wOptions3 BIT_REDUCED_ANIM: everything OFF disables, plus
+; screen/text-window shakes, waves, flashes and the overworld poison flash.
+; The cycle writes both bits every time. The reduced bit takes precedence
+; when reading old saves, where REDUCED did not set the animation-off bit.
 ;
 ;   index 0  ON       neither bit set
-;   index 1  REDUCED  BIT_REDUCED_ANIM
-;   index 2  OFF      BIT_BATTLE_ANIMATION
+;   index 1  OFF      BIT_BATTLE_ANIMATION
+;   index 2  Sensitivity  both bits set
 ; ============================================================================
 
 ; Returns a = the B. ANIM. row's current index, 0-2. Clobbers af.
 OptBattleAnimIndex:
-	ld a, [wOptions]
-	bit BIT_BATTLE_ANIMATION, a
+	ld a, [wOptions3]
+	bit BIT_REDUCED_ANIM, a
 	ld a, 2
 	ret nz
-	ld a, [wOptions3]
-	and 1 << BIT_REDUCED_ANIM
+	ld a, [wOptions]
+	and 1 << BIT_BATTLE_ANIMATION
 	ret z
 	ld a, 1
 	ret
@@ -865,21 +938,22 @@ OptCycleBattleAnim:
 	ld c, a
 	ld hl, wOptions
 	res BIT_BATTLE_ANIMATION, [hl]
-	cp 2
-	jr nz, .animBitDone
+	and a
+	jr z, .animBitDone
 	set BIT_BATTLE_ANIMATION, [hl]
 .animBitDone
 	ld hl, wOptions3
 	res BIT_REDUCED_ANIM, [hl]
-	dec c
+	ld a, c
+	cp 2
 	ret nz
 	set BIT_REDUCED_ANIM, [hl]
 	ret
 
 OptBattleAnimValues:
 	dw OptTextAnimOn
-	dw OptTextAnimReduced
 	dw OptTextAnimOff
+	dw OptTextAnimSensitivity
 
 ; ============================================================================
 ; Hooks
@@ -929,7 +1003,7 @@ OptionsPageInGame:
 ; value ends flush on column 18.
 OptionsRows:
 	optrow OptFollowerLabel,     1, 16, wOptions2, 1 << BIT_FOLLOWER_DISABLED, OptFollowerOrder,    OptOnOffValues,       2, 0
-	optrow_custom OptBattleAnimLabel, 2, 12, OptDrawBattleAnim, OptCycleBattleAnim
+	optrow_custom OptBattleAnimLabel, 2, 8, OptDrawBattleAnim, OptCycleBattleAnim
 	optrow OptColorLabel,        3, 16, wOptions2, 1 << BIT_ENHANCED_COLORS,   OptColorOrder,       OptOnOffValues,       2, 0
 	optrow OptGammaLabel,        4, 16, wOptions3, 1 << BIT_GBC_GAMMA,         OptGammaOrder,       OptOnOffValues,       2, 0
 	optrow Opt60FPSLabel,        5, 16, wOptions2, 1 << BIT_60_FPS,            Opt60FPSOrder,       OptOnOffValues,       2, Opt60FPSHook
@@ -1056,7 +1130,7 @@ OptCheatValues::
 ; ----------------------------------------------------------------------------
 
 OptTextSpeedLabel:   db "TEXT SPD@"
-OptBattleAnimLabel:  db "B. ANIM.@"
+OptBattleAnimLabel:  db "ANIM.@"
 OptBattleStyleLabel: db "B. STYLE@"
 OptAudioLabel:       db "AUDIO@"
 OptDifficultyLabel:  db "DIFFICULTY@"
@@ -1088,10 +1162,10 @@ OptTextSpeed1x:   db " 1X@"
 OptTextSpeed2x:   db " 2X@"
 OptTextSpeed4x:   db " 4X@"
 
-; width 7, column 12: B. ANIM.
-OptTextAnimOn:      db "     ON@"
-OptTextAnimReduced: db "REDUCED@"
-OptTextAnimOff:     db "    OFF@"
+; width 11, column 8: ANIM. (ends at column 6, leaving a one-cell gap)
+OptTextAnimOn:          db "         ON@"
+OptTextAnimSensitivity: db "Sensitivity@"
+OptTextAnimOff:         db "        OFF@"
 
 ; width 5, column 14
 OptTextShift:     db "SHIFT@"

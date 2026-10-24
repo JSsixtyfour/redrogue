@@ -11,11 +11,14 @@ ShakeElevator::
 	ld e, $1
 	ld b, 100
 .shakeLoop ; scroll the BG up and down and play a sound effect
+	call CheckSensitivity
+	jr nz, .steady
 	ld a, e
 	xor $fe
 	ld e, a
 	add d
 	ldh [hSCY], a
+.steady
 	push bc
 	ld c, BANK(SFX_Collision_1)
 	ld a, SFX_COLLISION

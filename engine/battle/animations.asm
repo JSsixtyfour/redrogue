@@ -420,6 +420,10 @@ MoveAnimation:
 	jp TossBallAnimation
 
 .moveAnimation
+	; REDUCED includes OFF, including saves from before it set the OFF bit.
+	ld a, [wOptions3]
+	bit BIT_REDUCED_ANIM, a
+	jr nz, .animationsDisabled
 	; check if battle animations are disabled in the options
 	ld a, [wOptions]
 	bit BIT_BATTLE_ANIMATION, a
@@ -1424,6 +1428,8 @@ AnimationBlinkEnemyMon:
 AnimationBlinkMon:
 ; Make the mon's sprite blink on and off for a second or two.
 	push af
+	call CheckSensitivity
+	jr nz, .done
 	ld c, 6
 .loop
 	push bc
@@ -1436,6 +1442,7 @@ AnimationBlinkMon:
 	pop bc
 	dec c
 	jr nz, .loop
+.done
 	pop af
 	ret
 

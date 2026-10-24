@@ -35,6 +35,15 @@ class StoneEligibilityTest(HarnessTestCase):
     def baseline(self):
         h = self.harness
         h.boot_to_lobby()
+        # boot_to_lobby returns while the lobby is still rolling reward picks,
+        # and those rolls run AllSpeciesCheckFar's family walk over
+        # wEvoDataBuffer. Parking there let TryEvolvingMon overwrite the live
+        # buffer, so the resumed walk popped a species-0 entry as its sentinel
+        # and returned into CryData (measured 2026-10-24; same artifact as
+        # FOLLOWUPS #64). Wait for the overworld loop, then park.
+        overworld = h.hook_flag('OverworldLoop')
+        h.wait_until(lambda: overworld['count'] > 0, 'the lobby overworld loop', 600)
+        h.park_before_hijack()
         h.write8('wStatusFlags6', h.read8('wStatusFlags6') & ~(1 << RAM['BIT_DEBUG2_MODE']))
         h.set_event(EVENTS['EVENT_JOHTO_ACTIVATED'])
         h.set_event(EVENTS['EVENT_KANTO_TIMEWARP_ACTIVATED'])

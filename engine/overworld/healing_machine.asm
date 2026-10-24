@@ -103,6 +103,8 @@ PokeCenterOAMData:
 
 ; d = value to xor with palette
 FlashSprite8Times:
+	call CheckSensitivity
+	ret nz
 	ld b, 8
 .loop
 	ldh a, [rOBP1]

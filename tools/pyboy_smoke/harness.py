@@ -99,6 +99,7 @@ class RedRogueHarness:
         ram_path: Path | None = None,
         cgb_mode: bool = False,
         rom: str = "pokeblue_debug",
+        startup_sensitivity: bool | None = False,
     ):
         """`rom` is the build's file stem: pokeblue_debug (the test build), or
         pokeblue / pokered for build comparisons (compare_builds.py). The
@@ -161,6 +162,15 @@ class RedRogueHarness:
                 )
         if cgb_mode:
             self._install_key1_speed_fix(rom_data)
+        # Ordinary regression fixtures choose normal startup at the new steady
+        # accessibility screen. None leaves the real input loop for UI tests.
+        if "StartupSensitivityChoice.ready" in self.symbols._symbols:
+            def choose_startup(_context):
+                if startup_sensitivity is not None:
+                    target = "enable" if startup_sensitivity else "normal"
+                    self.pyboy.register_file.PC = self.address(
+                        f"StartupSensitivityChoice.{target}")
+            self.register_hook("StartupSensitivityChoice.ready", choose_startup)
         # AI heuristic execution coverage (AI_BACKLOG L3): with
         # REDROGUE_AI_COVERAGE=<file>, hook every label in ai_heuristics'
         # source-derived inventory and, at close, append one JSON line naming

@@ -54,11 +54,15 @@ SubstituteEffect_:
 	ld h, b
 	ld l, c
 	set HAS_SUBSTITUTE_UP, [hl]
-	ld a, [wOptions]
-	bit BIT_BATTLE_ANIMATION, a
 	ld hl, PlayCurrentMoveAnimation
 	ld b, BANK(PlayCurrentMoveAnimation)
+	ld a, [wOptions3]
+	bit BIT_REDUCED_ANIM, a
+	jr nz, .animationDisabled
+	ld a, [wOptions]
+	bit BIT_BATTLE_ANIMATION, a
 	jr z, .animationEnabled
+.animationDisabled
 	ld hl, AnimationSubstitute
 	ld b, BANK(AnimationSubstitute)
 .animationEnabled

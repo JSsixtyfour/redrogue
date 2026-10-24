@@ -316,17 +316,25 @@ GBFadeDecCommon_:
 ; stubs preserves callers in the main-menu and Oak-speech code while giving
 ; the debug-only bank1 payload enough headroom to link.
 InitOptions_::
+	; Keep the accessibility choice when Oak speech initializes a fresh game.
+	ld a, [wOptions3]
+	and 1 << BIT_REDUCED_ANIM
+	ld b, a
 	ld a, 1 << BIT_FAST_TEXT_DELAY
 	ld [wLetterPrintingDelayFlags], a
 	; Instant is the default text speed, not merely an option above FAST.
 	; TEXT_DELAY_INSTANT is 0, and so are the other two wOptions fields'
-	; defaults (battle animation ON, battle style SHIFT), so this clears the
-	; whole byte. PrintLetterDelay's existing zero-delay path picks it up with
+	; defaults (battle animation ON, battle style SHIFT). Only the preserved
+	; Sensitivity choice overrides animation ON. PrintLetterDelay picks it up with
 	; no new check on the per-letter hot path.
 	ASSERT TEXT_DELAY_INSTANT == 0
-	xor a
+	ld a, b
+	rlca
+	rlca
+	rlca ; reduced bit 4 becomes the animation-OFF bit 7
 	ld [wOptions], a
 	ld a, BATTLE_SPEED_X2 | 1 << BIT_EXP_SHARE ; Ironman OFF, BATTLE SPEED 2X, EXP SHARE ON (user defaults 2026-09-28)
+	or b
 	ld [wOptions3], a
 	ld a, (1 << BIT_ENHANCED_COLORS) | (1 << BIT_60_FPS)
 	ld [wOptions2], a

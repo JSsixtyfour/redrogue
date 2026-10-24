@@ -214,10 +214,13 @@ CemChannelerHeal::
 	ld hl, CemChannelerHealText
 	call PrintText
 	predef HealParty
+	call CheckSensitivity
+	jr nz, .steady
 	call GBFadeOutToWhite
 	call Delay3
 	call Delay3
 	call GBFadeInFromWhite
+.steady
 	ld hl, CemChannelerHealedText
 	jp PrintText
 

@@ -229,6 +229,8 @@ EraseMenuCursor::
 ; That allows this to be called without worrying about if a down arrow should
 ; be blinking.
 HandleDownArrowBlinkTiming::
+	call CheckSensitivity
+	ret nz ; leave the authored arrow visible and keep button polling intact
 	ld a, [hl]
 	ld b, a
 	ld a, '▼'

@@ -1,5 +1,39 @@
 ; These routines manage gradual fading
 ; (e.g., entering a doorway)
+; Z = ordinary animation, NZ = Sensitivity. Only a and flags are clobbered.
+CheckSensitivity::
+	ld a, [wOptions3]
+	bit BIT_REDUCED_ANIM, a
+	ret
+
+EnableSensitivity::
+	ld hl, wOptions3
+	set BIT_REDUCED_ANIM, [hl]
+	ld hl, wOptions
+	set BIT_BATTLE_ANIMATION, [hl]
+	ret
+
+; Recovery loads saved WRAM before MainMenu's ordinary options loader.
+; Preserve both its carry/NZ result and the choice made before the intro.
+SensitivityLossRecoveryBoot::
+	ld a, [wOptions3]
+	push af
+	rfarcall LossRecoveryBoot
+	push af
+	pop bc
+	pop af
+	push bc
+	and 1 << BIT_REDUCED_ANIM
+	call nz, EnableSensitivity
+	pop af
+	ret
+
+SensitivityBattleTransition::
+	call GBFadeOutToBlack
+	xor a
+	ldh [hAutoBGTransferEnabled], a
+	ret
+
 LoadGBPal::
 	rfarjp LoadGBPal_
 

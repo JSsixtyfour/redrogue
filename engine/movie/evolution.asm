@@ -128,6 +128,8 @@ Evolution_LoadPic:
 
 Evolution_BackAndForthAnim:
 ; show the mon change back and forth between the new and old species b times
+	call CheckSensitivity
+	ret nz ; retain the outer cancel window, then reveal the new species once
 	ld a, $31
 	ld [wEvoMonTileOffset], a
 	call Evolution_ChangeMonPic

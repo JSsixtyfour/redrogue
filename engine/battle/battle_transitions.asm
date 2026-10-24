@@ -52,6 +52,8 @@ BattleTransition:
 	jr nz, .loop2
 
 	call Delay3
+	call CheckSensitivity
+	jp nz, SensitivityBattleTransition
 	call LoadBattleTransitionTile
 	ld bc, 0
 	ld a, [wLinkState]

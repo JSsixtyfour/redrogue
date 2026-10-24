@@ -114,7 +114,12 @@ InitFromBoot::
 	dec a
 	ldh [hUpdateSpritesEnabled], a
 
+	; Shelved: pre-intro accessibility prompt and intro bypass.
+;	rfarcall StartupSensitivityChoice
+;	call CheckSensitivity
+;	jr nz, .skipIntro
 	predef PlayIntro
+;.skipIntro
 
 	call DisableLCD
 	call ClearVram
@@ -123,6 +128,10 @@ InitFromBoot::
 	ld a, LCDC_DEFAULT
 	ldh [rLCDC], a
 
+;	call CheckSensitivity
+;	jr z, .normalTitle
+;	farjp MainMenu
+;.normalTitle
 	jp PrepareTitleScreen
 
 ClearVram::
