@@ -1164,7 +1164,7 @@ OptTextSpeed4x:   db " 4X@"
 
 ; width 11, column 8: ANIM. (ends at column 6, leaving a one-cell gap)
 OptTextAnimOn:          db "         ON@"
-OptTextAnimSensitivity: db "Sensitivity@"
+OptTextAnimSensitivity: db "  SENSITIVE@"
 OptTextAnimOff:         db "        OFF@"
 
 ; width 5, column 14
