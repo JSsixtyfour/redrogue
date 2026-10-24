@@ -18,6 +18,9 @@ from test_smoke import HarnessTestCase, REPO_ROOT
 
 TOGGLE_CONSTANTS = REPO_ROOT / "constants" / "toggle_constants.asm"
 BIT_DEBUG_MODE = 1
+BIT_ROGUE_GYM_NEXT = 0
+BIT_GYM_CHOICE_LATCHED = 7
+GYM_CHOICE_DOOR2_SHIFT = 3
 TILE_ZERO = 0xF6
 TILE_SPACE = 0x7F
 
@@ -268,6 +271,23 @@ class LobbyNpcRollTest(HarnessTestCase):
         self.assertGreater(shown, 0)
         self.assertGreater(hidden, 0)
         self.assertGreater(hidden, shown, "at ~1/3 odds most rolls should hide")
+
+    def test_psychic_hidden_on_a_gift_visit(self) -> None:
+        # A gift visit is a gym-next visit with the gyms already latched, so the
+        # Psychic used to offer a gym reveal beside two gift-room doors.
+        h = self.harness
+        assert h is not None
+        maps = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
+        h.boot_fight2(seed=1)
+        h.write8("wRogueFlagsBitfield", h.read8("wRogueFlagsBitfield") | (1 << BIT_ROGUE_GYM_NEXT))
+        h.write8("wGymChoice", (1 << BIT_GYM_CHOICE_LATCHED) | (1 << GYM_CHOICE_DOOR2_SHIFT))
+        for door1, hidden in (("BILLS_HOUSE", True), ("PEWTER_GYM", False)):
+            self.set_hidden("TOGGLE_PC_PSYCHIC", not hidden)
+            h.write8("wLobbyDoor1StageMap", maps[door1])
+            h.park_before_hijack()
+            h.call_routine("PCPsychicSetup")
+            with self.subTest(door1=door1):
+                self.assertEqual(self.is_hidden("TOGGLE_PC_PSYCHIC"), hidden)
 
 
 class RoomPcOwnershipFilterTest(HarnessTestCase):

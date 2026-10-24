@@ -323,22 +323,42 @@ BridgeRecordVisit::
 	cp c
 	ret nz
 .offered
-	ld hl, BridgeRoomMaps
-	ld b, NUM_BRIDGE_ROOMS
-.scan
-	ld a, [hli]
-	cp c
-	jr z, .found
-	dec b
-	jr nz, .scan
-	ret
-.found
+	call BridgeIsRoomMap
+	ret nz
 	call GetBridgeCount
 	cp BRIDGE_PER_RUN
 	call c, BridgeIncCount
 	ld a, [wRogueMap]
 	ld [wLobbyDoor1StageMap], a
 	ld [wLobbyDoor2StageMap], a
+	ret
+
+; BridgeIsRoomMap - in: c = map id. OUT: Z if it is a bridge room. Clobbers a/b/hl.
+BridgeIsRoomMap:
+	ld hl, BridgeRoomMaps
+	ld b, NUM_BRIDGE_ROOMS
+.scan
+	ld a, [hli]
+	cp c
+	ret z
+	dec b
+	jr nz, .scan
+	inc b                          ; b = 1 -> NZ: not a bridge room
+	ret
+
+; ============================================================
+; BridgeDoorsOfferedFar  (farcall, from the lobby Psychic's setup, $3C)
+; OUT: e = 1 if this lobby visit's doors lead to gift rooms, else 0. Door 1 is
+; enough: a bridge sets both doors, and BridgeRecordVisit points both back at
+; wRogueMap on entry. In e: Bankswitch destroys a/b/c/h/l.
+; ============================================================
+BridgeDoorsOfferedFar::
+	ld a, [wLobbyDoor1StageMap]
+	ld c, a
+	call BridgeIsRoomMap
+	ld e, 0
+	ret nz
+	inc e
 	ret
 
 ; ============================================================

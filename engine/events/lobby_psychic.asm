@@ -60,15 +60,21 @@ PCLobbyExtrasSetup:
 ; ============================================================
 ; PCPsychicSetup
 ; Shows the Psychic on every gym-next visit (there is always a hidden gym door
-; to foresee, or one already foreseen to repeat), never otherwise. Must run
-; after SelectAndPatchLobbyExit, which latches the gyms. Rolled once per lobby
-; entry (the caller is inside the EVENT_ENTER_ROOM block). The toggle resets on
-; every warp, so both branches are explicit. Also rolls the salesman, trader
-; and move tutor first.
+; to foresee, or one already foreseen to repeat), never otherwise. Not on a
+; gift visit either: the gyms are latched by then, but both doors show gift
+; rooms, so selling a gym reveal there confuses the player. The return from
+; the gift room is the gym choice, and the Psychic is there for it. Must run
+; after SelectAndPatchLobbyExit, which latches the gyms and rolls the gift.
+; Rolled once per lobby entry (the caller is inside the EVENT_ENTER_ROOM
+; block). The toggle resets on every warp, so both branches are explicit. Also
+; rolls the salesman, trader and move tutor first.
 PCPsychicSetup::
 	call PCLobbyExtrasSetup
 	ld a, TOGGLE_PC_PSYCHIC
 	ld [wToggleableObjectIndex], a
+	farcall BridgeDoorsOfferedFar   ; e = 1: the doors lead to gift rooms
+	dec e
+	jr z, .hide
 	ld e, 1
 	farcall RogueGymDoorInfoFar     ; d = door 1's leader, 0 = not a gym visit
 	ld a, d
