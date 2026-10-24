@@ -36,7 +36,7 @@ PlayerAppearanceTable::
 	;                  overworld sprite,    front pic,       back pic,      name
 	player_appearance RedSprite,          RedPicFront,     RedPicBack,    .red
 	player_appearance HikerSprite,        BikerPic,        BikerPicBack,  .biker        ; BikerSprite is a rider on a motorcycle
-	player_appearance CooltrainerMSprite, BirdKeeperPic,   RedPicBack,    .birdKeeper
+	player_appearance CooltrainerMSprite, BirdKeeperPic,   BirdKeeperPicBack, .birdKeeper
 	player_appearance HikerSprite,        BlackbeltPic,    RedPicBack,    .blackbelt
 	player_appearance YoungsterSprite,    BugCatcherPic,   BugCatcherPicBack, .bugCatcher
 	player_appearance SuperNerdSprite,    BurglarPic,      RedPicBack,    .burglar

@@ -492,7 +492,6 @@ WarpGreatball:
 	rarity_mon VULPIX, 1 ; Alolan Vulpix
 	rarity_mon PONYTA, 1 ; Galarian Ponyta
 	rarity_mon SLOWPOKE, 1 ; Galarian Slowpoke
-	rarity_mon TENTACOOL, 1 ; Toedscool
 WarpGreatball_Evos:
 ; Evolution-only form references. Commented entries are NOT direct picks.
 ; rarity_mon RAICHU, 1 ; Pikachu + Moon Stone -> Alolan Raichu
@@ -506,7 +505,6 @@ WarpGreatball_Evos:
 ; rarity_mon RAPIDASH, 1 ; Galarian Ponyta -> Galarian Rapidash
 ; rarity_mon SLOWBRO, 1 ; Galarian Slowpoke -> Galarian Slowbro
 ; rarity_mon SLOWKING, 1 ; Galarian Slowpoke + Water Stone -> Galarian Slowking
-; rarity_mon TENTACRUEL, 1 ; Toedscool -> Toedscruel
 ; rarity_mon FLAREON, 1 ; Eevee + Leaf Stone -> Leafeon
 ; rarity_mon VAPOREON, 1 ; Eevee + Ice Stone -> Glaceon
 ; rarity_mon VAPOREON, 2 ; Eevee + Moon Stone -> Sylveon
@@ -533,6 +531,7 @@ WarpUltraball_End:
 
 WarpMasterball:
 ; Direct form picks, equal weight to each ordinary species entry.
+	rarity_mon TENTACOOL, 1 ; Toedscool
 	rarity_mon ARTICUNO, 1 ; Galarian Articuno
 	rarity_mon ZAPDOS, 1 ; Galarian Zapdos
 	rarity_mon MOLTRES, 1 ; Galarian Moltres
@@ -542,6 +541,7 @@ WarpMasterball:
 	rarity_mon JIGGLYPUFF, 1 ; Scream Tail; never evolves
 WarpMasterball_Evos:
 ; Evolution-only form references. Commented entries are NOT direct picks.
+; rarity_mon TENTACRUEL, 1 ; Toedscool -> Toedscruel
 ; rarity_mon EXEGGUTOR, 1 ; Exeggcute + Moon Stone -> Alolan Exeggutor
 WarpMasterball_End:
 WarpUber:
