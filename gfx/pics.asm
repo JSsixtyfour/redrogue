@@ -246,18 +246,6 @@ HaunterPicBack::       INCBIN "gfx/pokemon/back/haunterb.lz"
 AbraPicFront::         INCBIN "gfx/pokemon/front/abra.lz"
 AbraPicBack::          INCBIN "gfx/pokemon/back/abrab.lz"
 
-; All player back pics must stay in this one section: LoadPlayerBackPic
-; (engine/battle/core.asm) and HoFLoadPlayerPics (engine/movie/hall_of_fame.asm)
-; load whichever one applies using a single BANK(RedPicBack), guarded by the
-; ASSERTs below.
-RedPicBack::           INCBIN "gfx/player/redb.lz"
-GreenPicBack::         INCBIN "gfx/player/greenb.lz" ; ported from Pokemon Yume
-OldManPicBack::        INCBIN "gfx/battle/oldmanb.lz"
-GentlemanPicBack::     INCBIN "gfx/player/gentlemanb.lz"
-BugCatcherPicBack::    INCBIN "gfx/player/bugcatcherb.lz"
-BikerPicBack::         INCBIN "gfx/player/bikerb.lz"
-RocketPicBack::        INCBIN "gfx/player/rocketb.lz"
-
 
 SECTION "Pics 5", ROMX
 
@@ -857,3 +845,21 @@ RhyperiorPicFront::   INCBIN "gfx/pokemon/front/rhyperior.lz"
 RhyperiorPicBack::    INCBIN "gfx/pokemon/back/rhyperiorb.lz"
 MewPicFront::         INCBIN "gfx/pokemon/front/mew.lz" ; from data/pokemon/mew.asm ("bank1" too full)
 MewPicBack::          INCBIN "gfx/pokemon/back/mewb.lz"
+
+
+SECTION "Player Back Pics", ROMX ; pinned to $37 in layout.link
+; All player back pics must stay in this one section: LoadPlayerBackPic
+; (engine/battle/core.asm) and HoFLoadPlayerPics (engine/movie/hall_of_fame.asm)
+; load whichever one applies using a single BANK(RedPicBack), guarded by the
+; ASSERTs there and in the player_appearance macro. Moved out of "Pics 4"
+; ($0C, full) on 2026-10-24; $37 has room for a back per appearance.
+
+RedPicBack::           INCBIN "gfx/player/redb.lz"
+GreenPicBack::         INCBIN "gfx/player/greenb.lz" ; ported from Pokemon Yume
+OldManPicBack::        INCBIN "gfx/battle/oldmanb.lz"
+GentlemanPicBack::     INCBIN "gfx/player/gentlemanb.lz"
+BugCatcherPicBack::    INCBIN "gfx/player/bugcatcherb.lz"
+BikerPicBack::         INCBIN "gfx/player/bikerb.lz"
+RocketPicBack::        INCBIN "gfx/player/rocketb.lz"
+JrTrainerMPicBack::    INCBIN "gfx/player/jr.trainermb.lz"
+JrTrainerFPicBack::    INCBIN "gfx/player/jr.trainerfb.lz"

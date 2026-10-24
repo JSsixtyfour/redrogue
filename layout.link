@@ -84,9 +84,9 @@ ROMX $B
 	"Pics 3"
 	"Battle Engine 5"
 ROMX $C
-	; "Pics 4" must keep RedPicBack, GreenPicBack and OldManPicBack together —
-	; LoadPlayerBackPic loads all three with one BANK(RedPicBack). Adding
-	; GreenPicBack pushed "Battle Engine 6" out to bank $2E.
+	; The player back pics lived here until 2026-10-24 (now "Player Back
+	; Pics" in $37). Adding GreenPicBack had pushed "Battle Engine 6" out
+	; to bank $2E.
 	"Pics 4"
 ROMX $D
 	"Pics 5"
@@ -410,6 +410,10 @@ ROMX $37
 	; $2D on 2026-09-25 to give the room decor code room to grow.
 	"Room Sprites"
 	"Yellow Legacy Pokemon Sprites 2"
+	; Every player back pic, which LoadPlayerBackPic and the Hall of Fame load
+	; with one BANK(RedPicBack). Moved from "Pics 4" ($0C) on 2026-10-24; a
+	; back for each of the 31 appearances would be ~5.1 KB.
+	"Player Back Pics"
 ROMX $39
 	; Gym-leader expansion, Phase 0b (2026-09-10). First use of the $39-$3F
 	; range: banks $35/$36/$37 are now "Pics 13/14/15" (Phase 2R form pics) and

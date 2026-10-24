@@ -7,7 +7,7 @@
 ; enforced by an ASSERT so a stray INCBIN cannot break them silently:
 ;   1. overworld sprites -> BANK(RedSprite)    (SECTION "Player Sprites")
 ;   2. front pics        -> BANK(RedPicFront)  (SECTION "Trainer Pics")
-;   3. back pics         -> BANK(RedPicBack)   (SECTION "Pics 4")
+;   3. back pics         -> BANK(RedPicBack)   (SECTION "Player Back Pics")
 ; This matters because the accessors are reached by farcall from HOME, from the
 ; battle engine and from the menu banks, and Bankswitch preserves only de — it
 ; pops bc and clobbers a — so a per-entry bank byte could not be handed back.
@@ -26,7 +26,7 @@ MACRO player_appearance
 	dw \4
 	ASSERT BANK(\1) == BANK(RedSprite),   "player appearance sprite must be in SECTION \"Player Sprites\""
 	ASSERT BANK(\2) == BANK(RedPicFront), "player appearance front pic must be in SECTION \"Trainer Pics\""
-	ASSERT BANK(\3) == BANK(RedPicBack),  "player appearance back pic must be in SECTION \"Pics 4\""
+	ASSERT BANK(\3) == BANK(RedPicBack),  "player appearance back pic must be in SECTION \"Player Back Pics\""
 ENDM
 
 DEF PLAYER_APPEARANCE_ENTRY_SIZE EQU 8
@@ -47,7 +47,7 @@ PlayerAppearanceTable::
 	player_appearance GamblerSprite,      GamblerPic,      OldManPicBack, .gambler
 	player_appearance GentlemanSprite,    GentlemanPic,    GentlemanPicBack, .gentleman
 	player_appearance HikerSprite,        HikerPic,        RedPicBack,    .hiker
-	player_appearance CooltrainerMSprite, JrTrainerMPic,   RedPicBack,    .jrTrainerM
+	player_appearance CooltrainerMSprite, JrTrainerMPic,   JrTrainerMPicBack, .jrTrainerM
 	player_appearance SuperNerdSprite,    JugglerPic,      RedPicBack,    .juggler
 	player_appearance SuperNerdSprite,    PokemaniacPic,   RedPicBack,    .pokemaniac
 	player_appearance YoungsterSprite,    PsychicPic,      RedPicBack,    .psychic
@@ -63,7 +63,7 @@ PlayerAppearanceTable::
 	player_appearance GreenSprite,        GreenPicFront,   GreenPicBack,  .green
 	player_appearance BeautySprite,       BeautyPic,       GreenPicBack,  .beauty
 	player_appearance ChannelerSprite,    ChannelerPic,    GreenPicBack,  .channeler
-	player_appearance CooltrainerFSprite, JrTrainerFPic,   GreenPicBack,  .jrTrainerF
+	player_appearance CooltrainerFSprite, JrTrainerFPic,   JrTrainerFPicBack, .jrTrainerF
 	player_appearance CooltrainerFSprite, CooltrainerFPic, GreenPicBack,  .coolTrainerF
 	player_appearance CooltrainerFSprite, LassPic,         GreenPicBack,  .lass
 	assert_table_length NUM_PLAYER_APPEARANCES
