@@ -89,6 +89,7 @@ Pokemon & Items are awarded based on a rarity system
 - **Redesigned Options** with Enhanced Colors and Enhanced Gamma, 60 FPS, Follower, text speed,
   battle speed (1x, 2x, 4x), battle animations (on, reduced or off), DIFFICULTY, EXP Share, Ironman
   and audio settings.
+- **Sensitivities Toggle** Animation toggle for individuals with sensitivity issues.
 
 ## Trainer AI Notes
 The is the most advanced RBY Trainer AI that actually plays in the game itself, however there are some caveats and notes:
@@ -98,6 +99,7 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
   - RBY Trainers had endless PP, this led to rare soft locks. This was changed to make it feel fair and prevent soft locks.
 - The difficulty ramps as the game goes on, early trainers battle almost identical to basic RBY trainers (picking random moves), the real advanced AI is later and the hardest setting only takes place in Hard Mode.
 - Trainer switch timing was based on their Pokémon's speed stat in RBY. I changed this to match player battles and later games, switches always take priority now.
+- Enemy Trainers (and for the most part, Players) cannot use items in battle.
 
 # Credits
 ## Pokémon Red Rogue Team
