@@ -202,6 +202,7 @@ ProcBossPatchStageSprite::
 ; caller and this routine itself lives in ROMX.
 ProcStageLoadDispatch::
 	call .dispatch
+	call DisarmWildAreaEntrance
 	; Every map load, once sprites and any procedural contents are final and
 	; before LoadMapData's SET_PAL_OVERWORLD: rebuild the rarity ball colours
 	; (custom_functions/ball_rarity.asm). Battle return and Continue land here too.
@@ -282,6 +283,28 @@ ProcStageLoadDispatch::
 	farcall PCemFinalizeMap
 	pop af
 	call ProcGenerationEndDoubleSpeed
+	ret
+
+; Wild Areas are one-way: every entry map's warp entry 0 (its entrance, the
+; LAST_MAP warp back to the lobby) is pushed off the map on each load, so
+; stepping back onto the arrival tile, or walking off the map edge beside it,
+; leaves nobody. Safe here: LoadMapHeader has already placed the player from
+; that entry, and the finalizers above (PFacFinalize rewrites entry 0) have
+; run. Cemetery floors 2-4 keep theirs; they lead to the floor before.
+DEF WILD_ENTRANCE_NONE EQU $FF ; a disarmed entrance warp's Y
+DisarmWildAreaEntrance:
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_1
+	jr z, .disarm
+	cp PROCEDURAL_FOREST
+	jr z, .disarm
+	cp PROCEDURAL_FACILITY
+	jr z, .disarm
+	cp PROCEDURAL_CEMETERY_1
+	ret nz
+.disarm
+	ld a, WILD_ENTRANCE_NONE
+	ld [wWarpEntries], a
 	ret
 
 ; Called from IndigoPlateauLobby_Script right after SelectAndPatchLobbyExit, so the

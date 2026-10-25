@@ -213,6 +213,7 @@ class CaveSubroomTest(unittest.TestCase):
 
         # Onto ladder A: arrive on it through the retargeted entrance warp.
         h.wait_until(lambda: h.read8("wYCoord") == 39, "on the cave entrance", 600)
+        h.write8("wWarpEntries", 39, offset=0)  # re-arm: entry maps disarm their entrance on load
         h.write8("wWarpEntries", FIRST_LADDER_WARP + a, offset=2)
         h.write8("wWarpEntries", cave, offset=3)
         self.press_until("down", lambda: (h.read8("wXCoord"), h.read8("wYCoord")) == (2 * ax + 1, 2 * ay + 1),
@@ -326,6 +327,7 @@ class CaveSubroomResidentTest(CaveSubroomTest):
             h.write8("wToggleableObjectFlags", byte, offset=i // 8)
         ax, ay = SITES[a]
         h.wait_until(lambda: h.read8("wYCoord") == 39, "on the cave entrance", 600)
+        h.write8("wWarpEntries", 39, offset=0)  # re-arm: entry maps disarm their entrance on load
         h.write8("wWarpEntries", FIRST_LADDER_WARP + a, offset=2)
         h.write8("wWarpEntries", cave, offset=3)
         self.press_until("down", lambda: (h.read8("wXCoord"), h.read8("wYCoord")) == (2 * ax + 1, 2 * ay + 1),
@@ -532,6 +534,7 @@ class CaveResidentFallbackTest(CaveSubroomTest):
 
         # Reload the cave through a real warp: its entrance, retargeted at itself.
         h.wait_until(lambda: h.read8("wYCoord") == 39, "on the cave entrance", 600)
+        h.write8("wWarpEntries", 39, offset=0)  # re-arm: entry maps disarm their entrance on load
         h.write8("wWarpEntries", 0, offset=2)
         h.write8("wWarpEntries", cave, offset=3)
         frame = h.pyboy.frame_count

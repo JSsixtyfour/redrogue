@@ -89,6 +89,7 @@ class FacilityWarpPadTest(unittest.TestCase):
 
         # Arrive standing on pad A through the retargeted entrance warp.
         h.wait_until(lambda: h.read8("wYCoord") == 39, "back on the entrance", 600)
+        h.write8("wWarpEntries", 39, offset=0)  # re-arm: entry maps disarm their entrance on load
         h.write8("wWarpEntries", FIRST_PAD_WARP + a, offset=2)
         h.write8("wWarpEntries", facility, offset=3)
         h.pyboy.button_press("down")

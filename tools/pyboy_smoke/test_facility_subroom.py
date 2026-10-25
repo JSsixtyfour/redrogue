@@ -173,6 +173,7 @@ class FacilitySubroomTest(unittest.TestCase):
 
         # Stand on the pad: arrive on it through the retargeted entrance warp.
         h.wait_until(lambda: h.read8("wYCoord") == 39, "on the entrance", 600)
+        h.write8("wWarpEntries", 39, offset=0)  # re-arm: entry maps disarm their entrance on load
         h.write8("wWarpEntries", FIRST_PAD_WARP + site, offset=2)
         h.write8("wWarpEntries", facility, offset=3)
         self.press_until("down", lambda: (h.read8("wXCoord"), h.read8("wYCoord")) == (px, py),
@@ -273,6 +274,7 @@ class FacilitySuperNerdTest(FacilitySubroomTest):
         piece = self.pieces[self.piece_index()]
         px, py = self.facility_pad_tile(site)
         h.wait_until(lambda: h.read8("wYCoord") == 39, "on the entrance", 600)
+        h.write8("wWarpEntries", 39, offset=0)  # re-arm: entry maps disarm their entrance on load
         h.write8("wWarpEntries", FIRST_PAD_WARP + site, offset=2)
         h.write8("wWarpEntries", facility, offset=3)
         self.press_until("down", lambda: (h.read8("wXCoord"), h.read8("wYCoord")) == (px, py),

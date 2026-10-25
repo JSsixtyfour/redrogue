@@ -95,13 +95,18 @@ class FacilitySelfWarpTest(unittest.TestCase):
         layout = h.read_bytes("wOverworldMap", 601)
         self.assertEqual(h.warp_entries()[0][2:], [0, LAST_MAP],
                          "entrance warp is no longer the LAST_MAP warp this test retargets")
+        self.assertEqual(h.warp_entries()[0][0], 0xFF,
+                         "entrance warp is armed: the player can walk back to the lobby")
+        entrance_y = 39
         self.assertTrue(
             h.read_sram_bytes("sProcFacilityItemGot", 1)[0] & 1 << BIT_PFAC_OBJECTS_SHOWN,
             "first entry did not record that the stage's objects were shown",
         )
 
         for warp in range(SELF_WARPS):
-            # wWarpEntries is reloaded from ROM on every map load: re-patch.
+            # wWarpEntries is reloaded from ROM on every map load and the
+            # entrance disarmed: re-arm and re-patch.
+            h.write8("wWarpEntries", entrance_y, offset=0)
             h.write8("wWarpEntries", 0, offset=2)          # dest warp 0 (0-based)
             h.write8("wWarpEntries", facility, offset=3)   # dest map: here
             self.step_off_south_edge(facility, f"self-warp {warp + 1}")
@@ -118,8 +123,11 @@ class FacilitySelfWarpTest(unittest.TestCase):
                 self.assertEqual(h.read_bytes("wOverworldMap", 601), layout,
                                  "re-entry regenerated the layout")
 
-        # Leaving through the untouched entrance still reaches the lobby and is
-        # still credited exactly once, after any number of self-warps.
+        # A LAST_MAP warp (the entrance, re-armed by hand since play disarms it)
+        # still reaches the lobby and is credited exactly once, after any
+        # number of self-warps.
+        self.assertEqual(h.warp_entries()[0][0], 0xFF, "self-warp re-armed the entrance")
+        h.write8("wWarpEntries", entrance_y, offset=0)
         self.step_off_south_edge(lobby, "exit to lobby")
         self.assertEqual(h.read8("wBattleCount"), battle_count + self.exit_battles)
 

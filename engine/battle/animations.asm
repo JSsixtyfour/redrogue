@@ -1836,7 +1836,9 @@ popo
 MinimizedMonSpriteEnd:
 
 AnimationSlideMonDownAndHide:
-; Slides the mon's sprite down and disappears. Used in Acid Armor.
+; Slides the mon's sprite down, then blinks it back in. Used in Acid Armor.
+; Vanilla zeroed the pic tiles here, leaving the mon invisible until it was
+; reloaded; ShinRed's fix (blink + show) is taken instead.
 	ld a, TILEMAP_SLIDE_DOWN_MON_PIC_7X5
 	ld c, 2
 .loop
@@ -1855,12 +1857,8 @@ AnimationSlideMonDownAndHide:
 	pop bc
 	dec c
 	jr nz, .loop
-	call AnimationHideMonPic
-	ld hl, wTempPic
-	ld bc, PIC_SIZE tiles
-	xor a
-	call FillMemory
-	jp CopyTempPicToMonPic
+	call AnimationBlinkMon
+	jp AnimationShowMonPic
 
 _AnimationSlideMonOff:
 ; Slides the mon's sprite off the screen horizontally by e tiles and waits
