@@ -21,11 +21,11 @@
 ; ---------------------------------------------------------------------------
 DifficultySelectDescriptions:
 	dw .veryEasy, .easy, .normal, .hard, .veryHard
-.veryEasy: db "Foes 30% lower.<NEXT>Simple AI, most ¥.@"
-.easy:     db "Foes 20% lower.<NEXT>More prize money.@"
-.normal:   db "Foes 10% lower.<NEXT>A bit more money.@"
-.hard:     db "The intended run:<NEXT>full-level foes.@"
-.veryHard: db "Foes 10% higher.<NEXT>Smarter AI early.@"
+.veryEasy: db "Never or rarely<NEXT>played POKéMON.@"
+.easy:     db "Played POKéMON<NEXT>before, not much.@"
+.normal:   db "Regular player who<NEXT>knows the basics.@"
+.hard:     db "Has run Nuzlockes<NEXT>or played comp.@"
+.veryHard: db "Expert RBY player<NEXT>wants a challenge.@"
 
 ; Display order, easiest to hardest -> stored DIFFICULTY_* value. Same values as
 ; OptDifficultyOrder in options_menu.asm (a different bank, so duplicated).
