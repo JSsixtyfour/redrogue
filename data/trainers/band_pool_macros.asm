@@ -5,9 +5,9 @@
 ; band_pools.asm is INCLUDEd four times; BAND_POOL_PASS picks what each macro
 ; emits:
 ;   3  `DEF BAND_HAS_<name> EQU 1` per pool, aliases included (party_specs.asm,
-;      first). banded_round_spec reads BAND_HAS_<Char>_Ace<band> and
-;      BAND_HAS_<Char>_Off<band> to decide whether a band has an ace slot and an
-;      off-type slot. Only presence is known this early: the POOL_BAND_* ids
+;      first). banded_round_spec reads BAND_HAS_<Char>_AceR<round>,
+;      BAND_HAS_<Char>_Ace<band> and BAND_HAS_<Char>_Off<band> to decide whether
+;      a round has its own ace pool, a band has an ace slot and an off-type slot. Only presence is known this early: the POOL_BAND_* ids
 ;      below do not exist yet, which is why this is a separate pass.
 ;   0  `const POOL_BAND_<name>` per pool (inside pools.asm's const_def)
 ;   1  one TrainerPoolTable row per pool

@@ -9,7 +9,7 @@ ItemPrices::
 	bcd3 0     ; SURFBOARD
 	bcd3 1000  ; SAFARI_BALL
 	bcd3 0     ; POKEDEX
-	bcd3 2100  ; MOON_STONE
+	bcd3 3500  ; MOON_STONE
 	bcd3 100   ; ANTIDOTE
 	bcd3 250   ; BURN_HEAL
 	bcd3 250   ; ICE_HEAL
@@ -31,9 +31,9 @@ ItemPrices::
 	bcd3 550   ; ESCAPE_ROPE
 	bcd3 350   ; REPEL
 	bcd3 0     ; OLD_AMBER
-	bcd3 2100  ; FIRE_STONE
-	bcd3 2100  ; THUNDER_STONE
-	bcd3 2100  ; WATER_STONE
+	bcd3 3500  ; FIRE_STONE
+	bcd3 3500  ; THUNDER_STONE
+	bcd3 3500  ; WATER_STONE
 	bcd3 2500  ; HP_UP
 	bcd3 2500  ; PROTEIN
 	bcd3 2500  ; IRON
@@ -46,7 +46,7 @@ ItemPrices::
 	bcd3 6000  ; ITEM_2C, BIG PEARL
 	bcd3 0     ; BIKE_VOUCHER
 	bcd3 950   ; X_ACCURACY
-	bcd3 2100  ; LEAF_STONE
+	bcd3 3500  ; LEAF_STONE
 	bcd3 0     ; CARD_KEY
 	bcd3 10000 ; NUGGET
 	bcd3 20000 ; ITEM_32, BIG NUGGET
@@ -115,9 +115,9 @@ ItemPrices::
 	bcd3 0     ; ELEMENT_PRISM
 	bcd3 0     ; M_GENE
 	bcd3 0     ; M_TOME
-	bcd3 2100  ; SUN_STONE
-	bcd3 2100  ; DUSK_STONE
-	bcd3 2100  ; ICE_STONE
+	bcd3 3500  ; SUN_STONE
+	bcd3 3500  ; DUSK_STONE
+	bcd3 3500  ; ICE_STONE
 	bcd3 0     ; MIST_STONE
 	assert_table_length NUM_ITEMS + NUM_FLOORS + 21
 
@@ -133,15 +133,16 @@ ItemPrices::
 ; ELEMENT_PRISM is deliberately absent - it is an NPC gift, never for sale.
 ;
 ; 2026-10-09 (player feedback #4): halved, halves rounded up (was 30/20/25/25/25/
-; 35/30/15/15/15). Upgrade costs (credit_mart.asm) are unchanged.
+; 35/30/15/15/15). Upgrade costs (credit_mart.asm) were unchanged at that time.
+; 2026-10-25: approved 25% cut, nearest whole credit (halves rounded up).
 CreditItemPrices::
-	bcd3 15    ; SHINY_CHARM
-	bcd3 10    ; AMULET_COIN
-	bcd3 13    ; TURN_REWIND
-	bcd3 13    ; RARE_SCOPE
-	bcd3 13    ; RARE_LENS
-	bcd3 18    ; DV_BOOSTER
-	bcd3 15    ; STAT_BOOSTER
-	bcd3 8     ; DOOR_DICE
-	bcd3 8     ; MON_DICE
-	bcd3 8     ; ITEM_DICE
+	bcd3 11    ; SHINY_CHARM
+	bcd3 8    ; AMULET_COIN
+	bcd3 10    ; TURN_REWIND
+	bcd3 10    ; RARE_SCOPE
+	bcd3 10    ; RARE_LENS
+	bcd3 14    ; DV_BOOSTER
+	bcd3 11    ; STAT_BOOSTER
+	bcd3 6     ; DOOR_DICE
+	bcd3 6     ; MON_DICE
+	bcd3 6     ; ITEM_DICE

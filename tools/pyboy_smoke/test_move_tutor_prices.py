@@ -191,7 +191,7 @@ class TutorMovePriceRomTest(unittest.TestCase):
         credit_price = self._list_price(
             LISTS["CREDITLISTMENU"], 2, ITEMS["SHINY_CHARM"], credit_prices
         )
-        self.assertEqual(credit_price["price"], [0x00, 0x00, 0x15])  # halved 2026-10-09
+        self.assertEqual(credit_price["price"], [0x00, 0x00, 0x11])  # approved 25% cut 2026-10-25
 
 
 class TutorTransactionRomTest(unittest.TestCase):

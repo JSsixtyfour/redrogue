@@ -303,9 +303,9 @@ DEF NUM_TM_PRICE_TIERS EQU const_value
 DEF TM_PRICE_F_BCD EQU $01
 DEF TM_PRICE_D_BCD EQU $02
 DEF TM_PRICE_C_BCD EQU $04
-DEF TM_PRICE_B_BCD EQU $06
-DEF TM_PRICE_A_BCD EQU $10
-DEF TM_PRICE_S_BCD EQU $14
+DEF TM_PRICE_B_BCD EQU $05
+DEF TM_PRICE_A_BCD EQU $09
+DEF TM_PRICE_S_BCD EQU $12
 
 ; --- Lobby clerk (stat/TM) odds ----------------------------------------------
 ; Random_StatTM_Mart_Selection (engine/items/random_item_selection_mart.asm).

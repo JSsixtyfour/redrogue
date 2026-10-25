@@ -12,11 +12,8 @@
 ; Currency is wPlayerCoins (the old Game Corner coin counter), so HasEnoughCoins
 ; and SubBCDPredef are reused unchanged. Costs are BCD throughout.
 ;
-; Why the upgrade vendor quotes its price in text instead of an inline column:
-; GetItemPrice can only key off an item id, but an upgrade's cost depends on the
-; item's CURRENT tier, so the same id has three different prices over its life.
-; Rather than rebuild a price table in RAM every redraw, the upgrade list runs
-; with wPrintItemPrices = 0 and the cost appears in the confirmation box.
+; Upgrade prices are resolved by GetCreditListPrice from the current SRAM tier.
+; The list and purchase flow use the same CreditUpgradeTable.
 
 DEF CREDIT_VENDOR_ITEMS    EQU 0
 DEF CREDIT_VENDOR_UPGRADES EQU 1
@@ -61,16 +58,23 @@ CreditVendorMenu::
 	ld [wInitListType], a
 	callfar InitList              ; sets wNameListType = ITEM_NAME for GetItemName
 	call SaveScreenTilesToBuffer1
+	xor a
+	ldh [hCurrentMenuItem], a
+	ld [wListScrollOffset], a
 
 .menuLoop
 	call LoadScreenTilesFromBuffer1
 	call PrintCreditBalanceBox
 	call PointListAtCreditStock
-	xor a
-	ldh [hCurrentMenuItem], a
-	ld [wListScrollOffset], a
 	call DisplayListMenuID
 	jr c, .exit                   ; player backed out with B
+	; Confirmation menus overwrite the cursor. Keep both list coordinates
+	; on the stack across the transaction and the greeting redraw.
+	ldh a, [hCurrentMenuItem]
+	ld b, a
+	ld a, [wListScrollOffset]
+	ld c, a
+	push bc
 
 	ld a, [wWhichPrizeWindow]
 	and a
@@ -85,7 +89,10 @@ CreditVendorMenu::
 	call BuildCreditVendorList
 	ld a, [wCreditItemList]
 	and a
-	jr z, .exit
+	jr nz, .stillStock
+	pop bc
+	jr .exit
+.stillStock
 	; Re-establish the greeting and re-snapshot the screen. YesNoChoice
 	; (home/yes_no.asm) calls SaveScreenTilesToBuffer1 itself on the way in, so
 	; by now buffer 1 holds the "So, you want X?" confirmation rather than the
@@ -95,6 +102,8 @@ CreditVendorMenu::
 	ld hl, CreditVendorGreetingText
 	call PrintText
 	call SaveScreenTilesToBuffer1
+	pop bc
+	call RestoreCreditListPosition
 	jr .menuLoop
 
 .exit
@@ -115,12 +124,7 @@ PointListAtCreditStock:
 	ld [wListPointer + 1], a
 	ld a, CREDITLISTMENU          ; 1 byte per entry, and no bag info box
 	ld [wListMenuID], a
-	ld a, [wWhichPrizeWindow]
-	and a
-	ld a, 0                       ; ld does not disturb the flags set above
-	jr nz, .noPriceColumn
-	ld a, 2                       ; 2 = credit format (see home/list_menu.asm)
-.noPriceColumn
+	ld a, 2                       ; credit format, including tier-dependent upgrades
 	ld [wPrintItemPrices], a
 	; bias the table so item $66 resolves to CreditItemPrices' first row
 	ld bc, CreditItemPrices - (SHINY_CHARM - 1) * 3
@@ -161,6 +165,51 @@ PrintCreditBalanceBox:
 ; ============================================================
 ; CreditBuyItem — sell wCurItem to the player for its credit price.
 ; ============================================================
+; b = saved visible row, c = saved scroll offset. Only move when the last
+; selected entry disappeared, choosing the preceding item rather than CANCEL.
+RestoreCreditListPosition::
+	ld a, [wCreditItemList]
+	ld d, a
+	ld a, b
+	add c
+	cp d
+	jr c, .store
+	ld a, b
+	and a
+	jr z, .scrollBack
+	dec b
+	jr .store
+.scrollBack
+	dec c
+.store
+	ld a, b
+	ldh [hCurrentMenuItem], a
+	ld a, c
+	ld [wListScrollOffset], a
+	ret
+
+; List engine entry: return the same price table used by CreditBuyUpgrade.
+; de survives the far return; hItemPrice is the list engine's BCD result.
+GetCreditListPrice::
+	ld a, [wWhichPrizeWindow]
+	and a
+	jp z, GetItemPrice
+	call FindUpgradeRowForCurItem
+	ret nc
+	call GetKeyItemTier
+	ld b, 0
+	ld c, a
+	inc hl
+	inc hl
+	add hl, bc
+	ld a, [hl]
+	ldh [hItemPrice + 2], a
+	xor a
+	ldh [hItemPrice], a
+	ldh [hItemPrice + 1], a
+	ld de, hItemPrice
+	ret
+
 CreditBuyItem:
 	call LoadCreditPriceOfCurItem
 	call HasEnoughCoins
@@ -655,22 +704,24 @@ CreditSaleTable:
 ; item id, key item index, cost to reach TIER 2 / TIER 3 / (unused) (1-byte
 ; BCD each). Indexed by current internal tier; the third cost would buy
 ; internal 3 / TIER 4, which MAX_KEY_ITEM_TIER never offers.
+; 2026-10-25: live TIER 2/3 costs reduced 25%, nearest whole credit, halves up.
+; The unavailable TIER 4 column is retained unchanged.
 CreditUpgradeTable:
-	db LEFTOVERS,     KEY_ITEM_BIT_LEFTOVERS_OWNED / 2,     $10, $20, $40
-	db PP_TONIC,      KEY_ITEM_BIT_PP_TONIC_OWNED / 2,      $10, $20, $40
-	db KO_DEFIANCE,   KEY_ITEM_BIT_KO_DEFIANCE_OWNED / 2,   $20, $40, $80
+	db LEFTOVERS,     KEY_ITEM_BIT_LEFTOVERS_OWNED / 2,     $08, $15, $40
+	db PP_TONIC,      KEY_ITEM_BIT_PP_TONIC_OWNED / 2,      $08, $15, $40
+	db KO_DEFIANCE,   KEY_ITEM_BIT_KO_DEFIANCE_OWNED / 2,   $15, $30, $80
 	;db EXP_ALL,       KEY_ITEM_BIT_EXP_ALL_OWNED / 2,       $15, $30, $60 ; now an option (BIT_EXP_SHARE)
-	db SHINY_CHARM,   KEY_ITEM_BIT_SHINY_CHARM_OWNED / 2,   $30, $60, $99
-	db AMULET_COIN,   KEY_ITEM_BIT_AMULET_COIN_OWNED / 2,   $15, $30, $60
-	db TURN_REWIND,   KEY_ITEM_BIT_TURN_REWIND_OWNED / 2,   $25, $50, $75
-	db RARE_SCOPE,    KEY_ITEM_BIT_RARE_SCOPE_OWNED / 2,    $20, $40, $80
-	db RARE_LENS,     KEY_ITEM_BIT_RARE_LENS_OWNED / 2,     $20, $40, $80
-	db DV_BOOSTER,    KEY_ITEM_BIT_DV_BOOSTER_OWNED / 2,    $25, $50, $75
-	db STAT_BOOSTER,  KEY_ITEM_BIT_STAT_BOOSTER_OWNED / 2,  $20, $40, $80
-	db DOOR_DICE,     KEY_ITEM_BIT_DOOR_DICE_OWNED / 2,     $15, $30, $60
-	db MON_DICE,      KEY_ITEM_BIT_MON_DICE_OWNED / 2,      $15, $30, $60
-	db ITEM_DICE,     KEY_ITEM_BIT_ITEM_DICE_OWNED / 2,     $15, $30, $60
-	db ELEMENT_PRISM, KEY_ITEM_BIT_ELEMENT_PRISM_OWNED / 2, $20, $40, $80
+	db SHINY_CHARM,   KEY_ITEM_BIT_SHINY_CHARM_OWNED / 2,   $23, $45, $99
+	db AMULET_COIN,   KEY_ITEM_BIT_AMULET_COIN_OWNED / 2,   $11, $23, $60
+	db TURN_REWIND,   KEY_ITEM_BIT_TURN_REWIND_OWNED / 2,   $19, $38, $75
+	db RARE_SCOPE,    KEY_ITEM_BIT_RARE_SCOPE_OWNED / 2,    $15, $30, $80
+	db RARE_LENS,     KEY_ITEM_BIT_RARE_LENS_OWNED / 2,     $15, $30, $80
+	db DV_BOOSTER,    KEY_ITEM_BIT_DV_BOOSTER_OWNED / 2,    $19, $38, $75
+	db STAT_BOOSTER,  KEY_ITEM_BIT_STAT_BOOSTER_OWNED / 2,  $15, $30, $80
+	db DOOR_DICE,     KEY_ITEM_BIT_DOOR_DICE_OWNED / 2,     $11, $23, $60
+	db MON_DICE,      KEY_ITEM_BIT_MON_DICE_OWNED / 2,      $11, $23, $60
+	db ITEM_DICE,     KEY_ITEM_BIT_ITEM_DICE_OWNED / 2,     $11, $23, $60
+	db ELEMENT_PRISM, KEY_ITEM_BIT_ELEMENT_PRISM_OWNED / 2, $15, $30, $80
 	db $ff
 
 CreditVendorGreetingText:

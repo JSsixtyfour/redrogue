@@ -379,6 +379,11 @@ ExitListMenu::
 ; unpriced relearner/deleter lists must not interpret move IDs as item IDs.
 GetListEntryPrice::
 	ld a, [wListMenuID]
+	cp CREDITLISTMENU
+	jr nz, .ordinary
+	rfarjp GetCreditListPrice
+.ordinary
+	ld a, [wListMenuID]
 	cp MOVESLISTMENU
 	jp nz, GetItemPrice
 	ld a, [wPrintItemPrices]

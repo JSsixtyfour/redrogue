@@ -18,6 +18,7 @@ DOC FORMAT (see the doc's own "How to edit" section for the designer's view):
     <free prose>                 ignored
     **Band <n>...**              n = 1..NUM_BANDS
     - Aces: A, B (johto), C (warp)
+    - Aces (round <r>): ...      gym leaders only: replaces Aces for round r
     - Fodder: ...
     - Off-type: ...
 
@@ -28,7 +29,8 @@ entry twice doubles its odds. Within a run, doc order is asm order.
 Run tags are case-insensitive; (time warp) and (timewarp) also mean (warp).
 
 EMITTED SHAPE. Per character, band 1..n, lists in Ace / Fod / Off order, one
-`band_pool <Prefix>_<Ace|Fod|Off><band>` each. Pool ORDER IS POOL IDS: pools.asm
+`band_pool <Prefix>_<Ace|Fod|Off><band>` each, then the band's round aces as
+`band_pool <Prefix>_AceR<round>`. Pool ORDER IS POOL IDS: pools.asm
 numbers them in the order this file defines them, so reordering characters or
 bands renumbers pools (harmless: specs refer to them by name).
 
@@ -66,6 +68,10 @@ GENERATED_SECTIONS = ("Gym leaders", "Mini-bosses", "Wild-area trainers",
 LISTS = (("Aces", "Ace"), ("Fodder", "Fod"), ("Off-type", "Off"))
 KIND_OF_BULLET = dict(LISTS)
 BULLET_OF_KIND = {k: b for b, k in LISTS}
+# `- Aces (round <r>):` is a per-round ace list (2026-10-25): banded_round_spec
+# uses <Prefix>_AceR<r> for that round instead of the band's Ace<band>. Gym
+# leaders only: their round is the gym round, the unit the list is written for.
+ROUND_ACE_SECTIONS = ("Gym leaders",)
 GROUPS = ("kanto", "johto", "warp")
 
 # Form files whose display name is not "<Region> <Species>".
@@ -175,8 +181,14 @@ class Names:
 
 # --- doc model -----------------------------------------------------------------
 #
-# characters: list of dicts {section, prefix, header, prose, bands}
+# characters: list of dicts {section, prefix, header, prose, bands, round_aces}
 # bands: {band: {kind: [(species, form, group), ...]}}
+# round_aces: {round: [(species, form, group), ...]}, the `- Aces (round r):` lists
+
+def band_rounds(band):
+    """The gym rounds a band covers (GYM_BAND_ROUNDS = 2)."""
+    return (2 * band - 1, 2 * band)
+
 
 ENTRY_RE = re.compile(r"^(?P<name>.+?)(?:\s*\((?P<tag>johto|(?:time\s*)?warp)\))?$", re.I)
 
@@ -201,7 +213,7 @@ def parse_doc(text, names):
                 fail("character header must start with an asm prefix: {!r}".format(line))
             if any(c["prefix"] == m.group(1) for c in chars):
                 fail("character {} defined twice".format(m.group(1)))
-            cur = {"section": section, "prefix": m.group(1), "bands": {}}
+            cur = {"section": section, "prefix": m.group(1), "bands": {}, "round_aces": {}}
             chars.append(cur)
             band = None
             continue
@@ -216,16 +228,27 @@ def parse_doc(text, names):
                 fail("{} band {} defined twice".format(cur["prefix"], band))
             cur["bands"][band] = {}
             continue
-        m = re.match(r"-\s+([A-Za-z-]+):\s*(.*)$", line)
+        m = re.match(r"-\s+([A-Za-z-]+)(?:\s+\(round\s+(\d+)\))?:\s*(.*)$", line, re.I)
         if m:
             if band is None:
                 fail("list outside a **Band n** block")
-            bullet, body = m.group(1), m.group(2)
+            bullet, rnd, body = m.group(1), m.group(2), m.group(3)
             if bullet not in KIND_OF_BULLET:
                 fail("unknown list {!r} (expected {})".format(
                     bullet, ", ".join(b for b, _ in LISTS)))
             kind = KIND_OF_BULLET[bullet]
-            if kind in cur["bands"][band]:
+            if rnd is not None:
+                rnd = int(rnd)
+                if kind != "Ace":
+                    fail("only Aces can be given per round, not {}".format(bullet))
+                if cur["section"] not in ROUND_ACE_SECTIONS:
+                    fail("per-round Aces are for gym leaders only")
+                if rnd not in band_rounds(band):
+                    fail("round {} is not in band {} (rounds {})".format(
+                        rnd, band, "-".join(str(r) for r in band_rounds(band))))
+                if rnd in cur["round_aces"]:
+                    fail("{} lists Aces (round {}) twice".format(cur["prefix"], rnd))
+            elif kind in cur["bands"][band]:
                 fail("{} band {} lists {} twice".format(cur["prefix"], band, bullet))
             entries = []
             for item in [p.strip() for p in body.split(",") if p.strip()]:
@@ -240,7 +263,10 @@ def parse_doc(text, names):
             if not entries:
                 fail("{} band {} {} is empty; delete the line instead".format(
                     cur["prefix"], band, bullet))
-            cur["bands"][band][kind] = entries
+            if rnd is not None:
+                cur["round_aces"][rnd] = entries
+            else:
+                cur["bands"][band][kind] = entries
     for c in chars:
         for b, lists in c["bands"].items():
             if "Fod" not in lists:
@@ -266,6 +292,8 @@ ASM_HEADER = """\
 ;   Off<n>  ONE slot per team, and the fallback when a fodder slot finds every
 ;           on-type species already on the team (see PARTY_GEN_OFFTYPE_SLOT).
 ;           Also evolved by level.
+;   AceR<r> optional, gym leaders: round r's ace pool, used INSTEAD of its
+;           band's Ace<n> (the doc's `- Aces (round r):` line).
 ;
 ; Each pool has a Kanto run, then `band_johto`, then `band_warp`, then
 ; `band_end`. A run only takes part when its species group is on. A form entry
@@ -313,6 +341,18 @@ def emit_asm(chars):
                     continue
                 name = "{}_{}{}".format(c["prefix"], kind, band)
                 body = tuple(pool_lines(kind, entries))
+                if body in seen:
+                    out.append("\tband_same {}, {}".format(name, seen[body]))
+                    continue
+                seen[body] = name
+                out.append("\tband_pool {}".format(name))
+                out.extend(body)
+            for rnd in band_rounds(band):
+                entries = c["round_aces"].get(rnd)
+                if entries is None:
+                    continue
+                name = "{}_AceR{}".format(c["prefix"], rnd)
+                body = tuple(pool_lines("Ace", entries))
                 if body in seen:
                     out.append("\tband_same {}, {}".format(name, seen[body]))
                     continue
@@ -509,6 +549,29 @@ def lint(chars, names, groups=None, evo_targets=None, bst=None):
     out = []
     for c in chars:
         who = c["prefix"]
+        for rnd in sorted(c["round_aces"]):
+            entries = c["round_aces"][rnd]
+            band = (rnd + 1) // 2
+            if band not in c["bands"]:
+                out.append(("error", "{} Aces (round {}): band {} has no block".format(
+                    who, rnd, band)))
+            if who not in JOHTO_GATED and not any(g == "kanto" for _, _, g in entries):
+                out.append(("error", "{} Aces (round {}): no Kanto (untagged) ace, "
+                            "so a Kanto-only run has none".format(who, rnd)))
+            for sp, form, g in entries:
+                shown = names.display(sp, form)
+                if form is not None:
+                    if not (g == "warp" or (g == "johto" and (sp, form) in JOHTO_FORMS)):
+                        out.append(("error", "{} Aces (round {}): {} is a pinned form, so it "
+                                    "must be tagged (warp)".format(who, rnd, shown)))
+                    continue
+                sg = groups.get(sp)
+                if sg == "johto" and g == "kanto":
+                    out.append(("error", "{} Aces (round {}): {} is a Johto-group species "
+                                "and needs (johto) or (warp)".format(who, rnd, shown)))
+                elif sg == "warp" and g != "warp":
+                    out.append(("error", "{} Aces (round {}): {} is a Warp-group species "
+                                "and needs (warp)".format(who, rnd, shown)))
         for band in sorted(c["bands"]):
             lists = c["bands"][band]
             # Every kind, not only gym leaders: an Ace pool with no eligible
@@ -714,6 +777,8 @@ def fieldable_species(char, graph):
                         out.add(s)
                         if kind != "Ace":
                             todo.extend(graph.get(s, []))
+    for entries in char.get("round_aces", {}).values():
+        out.update(sp for sp, _, _ in entries)
     return out
 
 

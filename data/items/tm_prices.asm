@@ -67,7 +67,7 @@ TechnicalMachinePrices:
 	nybble TM_PRICE_TIER_A ; TM38 FIRE_BLAST (A)
 	nybble TM_PRICE_TIER_B ; TM39 SWIFT (B)
 	nybble TM_PRICE_TIER_D ; TM40 SKULL_BASH (D)
-	nybble TM_PRICE_TIER_S ; TM41 SOFTBOILED (S)
+	nybble TM_PRICE_TIER_A ; TM41 SOFTBOILED (A; pricing override)
 	nybble TM_PRICE_TIER_D ; TM42 DREAM_EATER (D)
 	nybble TM_PRICE_TIER_C ; TM43 SKY_ATTACK (C)
 	nybble TM_PRICE_TIER_C ; TM44 REST (C)

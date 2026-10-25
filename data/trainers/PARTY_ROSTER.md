@@ -20,6 +20,9 @@ mix rows in `data/trainers/party_specs.asm`.
 - **Aces:** one is rolled at random for the last slot of every team. Used **exactly as written**,
   never evolved, so write the form you want at that band's levels. List one twice to double its
   odds. **Optional:** a band with no `- Aces:` line has no ace, and every slot is fodder.
+- **Aces (round N):** gym leaders only, optional. Replaces the band's Aces for that one round,
+  so gym 1 (ace L13) and gym 2 (ace L20) need not share a list. The band's other round keeps
+  the plain `- Aces:` line. Same rules as Aces: as written, and at least one untagged entry.
 - **Fodder:** fills the other slots, **evolved by level** by the trainer engine, so list base
   forms (`Geodude`, not `Golem`). A pick that matches the ace species is rerolled.
 - **Off-type:** fills **one** slot, and is the fallback when every on-type fodder species is
@@ -89,6 +92,7 @@ fodder.
 ### Misty (WATER)
 
 **Band 1: rounds 1-2**
+- Aces (round 1): Wartortle, Poliwhirl, Seaking, Starmie
 - Aces: Starmie, Tentacruel, Vaporeon
 - Fodder: Seel, Psyduck, Krabby, Kabuto, Shellder, Omanyte, Poliwag, Tentacool, Horsea, Goldeen, Magikarp, Eevee, Slowpoke, Squirtle, Remoraid (johto), Wooper (johto), Marill (johto), Totodile (johto), Corsola (johto), Wiglett (warp)
 
@@ -176,6 +180,7 @@ has no block of her own. Edit Koga's lists for both of them.
 ### Blaine (FIRE)
 
 **Band 1: rounds 1-2**
+- Aces (round 1): Charmeleon, Magmar
 - Aces: Magmar, Charmeleon, Flareon
 - Fodder: Vulpix, Growlithe, Ponyta, Charmander, Cyndaquil (johto), Slugma (johto), Houndour (johto)
 
@@ -217,7 +222,11 @@ has no block of her own. Edit Koga's lists for both of them.
 
 ### Giovanni (GROUND)
 
+Gym 1 has its own aces (2026-10-25): at L13 Marowak and Dugtrio already carry Bone Club and
+Dig, Ground STAB a gym 1 team cannot answer. They wait for gym 2.
+
 **Band 1: rounds 1-2**
+- Aces (round 1): Onix, Sandslash, Nidorino, Nidorina
 - Aces: Onix, Sandslash, Dugtrio, Marowak
 - Fodder: Nidoran M, Nidoran F, Diglett, Sandshrew, Geodude, Cubone, Rhyhorn, Phanpy (johto), Wooper (johto), Larvitar (johto), Swinub (johto), Toedscool (warp)
 
@@ -281,6 +290,7 @@ has no block of her own. Edit Koga's lists for both of them.
 ### Whitney (NORMAL) 
 
 **Band 1: rounds 1-2**
+- Aces (round 1): Raticate, Furret (johto), Lickitung, Porygon
 - Aces: Clefable, Wigglytuff, Raticate, Lickitung, Furret (johto), Togetic (johto), Stantler (johto), Alolan Raticate (warp), Porygon, Noctowl (johto), Granbull (johto)
 - Fodder: Rattata, Clefairy, Jigglypuff, Meowth, Lickitung, Eevee, Sentret (johto), Snubbull (johto), Aipom (johto), Teddiursa (johto), Togepi (johto), Dunsparce (johto), Pidgey, Spearow, Farfetch'd, Doduo, Hoothoot (johto), Houndour (johto), Alolan Rattata (warp), Alolan Meowth (warp), Ditto
 
@@ -326,6 +336,7 @@ Ghost lines exist without Time Warp.
 ### Chuck (FIGHTING)
 
 **Band 1: rounds 1-2**
+- Aces (round 1): Primeape, Hitmonchan, Machop
 - Aces: Primeape, Poliwrath, Machoke, Hitmonchan
 - Fodder: Mankey, Machop, Poliwag, Galarian Farfetchd (warp)
 

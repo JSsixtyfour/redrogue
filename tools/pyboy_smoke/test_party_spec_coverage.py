@@ -350,12 +350,15 @@ class PartySpecCoverageContractTest(unittest.TestCase):
                             f"{label}'s own pool is not {prefix}_Fod{band}")
                         want_slots = [mons - 1] + ([OFFTYPE_SLOT] if band >= 2 else [])
                         self.assertEqual([o[0] for o in overrides], want_slots)
-                        for (slot, flags, fields), kind in zip(overrides, ("Ace", "Off")):
+                        # A round's own AceR<round> pool wins over its band's Ace.
+                        ace = (f"{prefix}_AceR{round_no}" if f"{prefix}_AceR{round_no}" in labels
+                               else f"{prefix}_Ace{band}")
+                        for (slot, flags, fields), want in zip(overrides, (ace, f"{prefix}_Off{band}")):
                             self.assertEqual(flags, 1 << BIT_POVR_POOL)
                             self.assertEqual(
                                 image.pool_list_addr(fields[BIT_POVR_POOL][0]),
-                                image.addr(labels[f"{prefix}_{kind}{band}"]),
-                                f"{label} slot {slot:02X} is not {prefix}_{kind}{band}")
+                                image.addr(labels[want]),
+                                f"{label} slot {slot:02X} is not {want}")
 
     def test_elite_four_records_use_the_four_tier_grid(self):
         """Twelve teams on the E4 grid, not 24 on the gym grid.

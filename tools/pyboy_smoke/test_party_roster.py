@@ -77,6 +77,41 @@ class KantoAceRuleTest(unittest.TestCase):
                                       prefix="JessieJames"))
 
 
+class RoundAceTest(unittest.TestCase):
+    """`- Aces (round r):` emits <Prefix>_AceR<r>, which banded_round_spec uses
+    for round r instead of the band's Ace<band>."""
+    BAND1 = "**Band 1: rounds 1-2**\n{}- Aces: Onix\n- Fodder: Geodude\n"
+
+    def emit(self, line, **kw):
+        return gpr.emit_asm(gpr.parse_doc(doc(self.BAND1.format(line), **kw), NAMES))
+
+    def test_round_list_emits_its_own_pool(self):
+        asm = self.emit("- Aces (round 1): Graveler\n")
+        self.assertIn("band_pool Brock_AceR1\n\tband_ace GRAVELER\n", asm)
+        self.assertIn("band_pool Brock_Ace1\n", asm)
+        self.assertNotIn("AceR2", asm)
+
+    def test_identical_round_list_is_an_alias(self):
+        self.assertIn("band_same Brock_AceR2, Brock_Ace1", self.emit("- Aces (round 2): Onix\n"))
+
+    def test_round_outside_its_band_fails(self):
+        with self.assertRaisesRegex(gpr.RosterError, "round 3 is not in band 1"):
+            self.emit("- Aces (round 3): Onix\n")
+
+    def test_only_aces_and_only_gym_leaders(self):
+        with self.assertRaisesRegex(gpr.RosterError, "only Aces"):
+            self.emit("- Fodder (round 1): Onix\n")
+        with self.assertRaisesRegex(gpr.RosterError, "gym leaders only"):
+            self.emit("- Aces (round 1): Onix\n", section="Mini-bosses", prefix="GiovanniMiniBoss")
+
+    def test_kanto_and_run_rules_apply(self):
+        errs = messages(self.BAND1.format("- Aces (round 1): Sudowoodo\n"), "error")
+        self.assertTrue(any("Aces (round 1)" in e and "Johto-group" in e for e in errs), errs)
+        errs = messages(self.BAND1.format("- Aces (round 1): Sudowoodo (johto)\n"), "error")
+        self.assertTrue(any("Aces (round 1)" in e and "no Kanto" in e for e in errs), errs)
+        self.assertEqual([], messages(self.BAND1.format("- Aces (round 1): Graveler\n"), "error"))
+
+
 class RunRuleTest(unittest.TestCase):
     def band(self, fodder):
         return "**Band 1: rounds 1-2**\n- Aces: Onix\n- Fodder: {}\n".format(fodder)

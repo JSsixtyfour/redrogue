@@ -394,7 +394,9 @@ def leader_battle(g: GameData, cfg: Config, leader: parse.LeaderRecord, rnd: int
     # PartyGenPreRollAce: the ace is drawn first (party still empty) and the
     # other slots dedupe against it; it is still fielded in the last slot.
     ace_lv = apply_difficulty(max(1, min(base + (n - 1) * step, MAX_LEVEL)), cfg.difficulty)
-    ace = draw_pool(g, cfg, f"{pre}Ace{band}", ace_lv, [], allow_uber, rng, keep=True)
+    # A round's own AceR<rnd> list wins over the band's (banded_round_spec).
+    ace_pool = f"{pre}AceR{rnd}" if f"{pre}AceR{rnd}" in g.pools else f"{pre}Ace{band}"
+    ace = draw_pool(g, cfg, ace_pool, ace_lv, [], allow_uber, rng, keep=True)
     mons: list[tuple[str, int]] = []
     for slot in range(n):
         lv = apply_difficulty(max(1, min(base + slot * step, MAX_LEVEL)), cfg.difficulty)

@@ -493,43 +493,11 @@ PrintBagInfoText::
 	ld d, 1                    ; the clerk's text box layout
 	farcall PrintItemDescription
 	ret
-; Credit Exchange upgrade vendor: show which tier the highlighted item would be
-; bought up to. Must NOT fall through to .restoreDefaultText - that repaints
-; from wTextBoxBuffer, which only the mart populates (via
-; SaveTextBoxTilesToBuffer), so here it would repaint garbage.
+; Credit lists have their own preview; keep it out of the tight rogue bank.
 .creditVendor
-	ld a, [wWhichPrizeWindow]
-	dec a                      ; 1 = the upgrade vendor (see credit_mart.asm)
-	ret nz                     ; the item seller has no tier to advertise
 	call GetCurrentMenuItem
-	cp $ff
-	ret z                      ; CANCEL row
-	ld [wCurItem], a
-	call GetKeyItemTierForCurItem
-	cp MAX_KEY_ITEM_TIER
-	ret nc                     ; already maxed; it should not be listed anyway
-	ld hl, .UpgradeTierStrings
-	ld de, 18                  ; each entry below is 17 chars + terminator
-	inc a
-.findUpgradeTier
-	dec a
-	jr z, .gotUpgradeTier
-	add hl, de
-	jr .findUpgradeTier
-.gotUpgradeTier
-	push hl
-	hlcoord 1, 14
-	lb bc, 3, 18
-	call ClearScreenArea
-	pop de
-	hlcoord 1, 15
-	jp PlaceString
-
-; Indexed by CURRENT internal tier, naming the tier the purchase leads to:
-; internal 0 (TIER 1) buys TIER 2, internal 1 (TIER 2) buys TIER 3.
-.UpgradeTierStrings:
-	db "Upgrade to TIER 2@"
-	db "Upgrade to TIER 3@"
+	ld e, a
+	farjp PrintCreditUpgradeInfo
 
 .restoreDefaultText
 	ld de, wTextBoxBuffer

@@ -195,3 +195,128 @@ MACRO item_desc
 ENDM
 
 INCLUDE "data/items/descriptions.asm"
+
+; e = highlighted item ($ff = CANCEL). Called only in active credit lists.
+; The preview is refreshed before input and after scrolling. Clear CANCEL too,
+; so a previous item's benefit cannot linger under the cancel row.
+PrintCreditUpgradeInfo::
+	push de
+	hlcoord 1, 14
+	lb bc, 3, 18
+	call ClearScreenArea
+	pop de
+	ld a, e
+	cp $ff
+	ret z
+	ld [wCurItem], a
+	ld a, [wWhichPrizeWindow]
+	and a
+	jr nz, .upgrade
+	ld d, 1
+	jp PrintItemDescription
+.upgrade
+	farcall GetKeyItemTierInE
+	ld a, e
+	cp MAX_KEY_ITEM_TIER
+	ret nc
+	push af
+	ld a, [wCurItem]
+	ld hl, CreditUpgradeInfoTable
+.find
+	cp [hl]
+	jr z, .found
+	ld bc, 73 ; item id + two tiers, each two 18-byte terminated lines
+	add hl, bc
+	jr .find
+.found
+	inc hl
+	pop af
+	and a
+	jr z, .tierReady
+	ld bc, 36
+	add hl, bc
+.tierReady
+	push hl
+	ld d, h
+	ld e, l
+	hlcoord 1, 14
+	call PlaceString
+	pop hl
+	ld bc, 18
+	add hl, bc
+	ld d, h
+	ld e, l
+	hlcoord 1, 16
+	jp PlaceString
+
+CreditUpgradeInfoTable:
+	db LEFTOVERS
+	db "T2 HP 1/16▶1/12  @"
+	db "After each battle@"
+	db "T3 HP 1/12▶1/8   @"
+	db "After each battle@"
+	db PP_TONIC
+	db "T2 PP 1/16▶1/14  @"
+	db "After each battle@"
+	db "T3 PP 1/14▶1/12  @"
+	db "After each battle@"
+	db KO_DEFIANCE
+	db "T2 Saves 1▶2     @"
+	db "Per run          @"
+	db "T3 Saves 2▶3     @"
+	db "Per run          @"
+	db SHINY_CHARM
+	db "T2 1/128▶1/64    @"
+	db "Shiny odds       @"
+	db "T3 1/64▶1/32     @"
+	db "Shiny odds       @"
+	db AMULET_COIN
+	db "T2 +10%▶+15%     @"
+	db "Prize money      @"
+	db "T3 +15%▶+20%     @"
+	db "Prize money      @"
+	db TURN_REWIND
+	db "T2 Rewinds 2▶3   @"
+	db "Per run          @"
+	db "T3 Rewinds 3▶4   @"
+	db "Per run          @"
+	db RARE_SCOPE
+	db "T2 +31▶+63 /256  @"
+	db "Wild rarity roll @"
+	db "T3 +63▶+95 /256  @"
+	db "Wild rarity roll @"
+	db RARE_LENS
+	db "T2 +12▶+25 /256  @"
+	db "Item rarity roll @"
+	db "T3 +25▶+38 /256  @"
+	db "Item rarity roll @"
+	db DV_BOOSTER
+	db "T2 Min. DV 6▶10  @"
+	db "New party members@"
+	db "T3 Min. DV 10▶13 @"
+	db "New party members@"
+	db STAT_BOOSTER
+	db "T2 Stat EXP 2x▶3x@"
+	db "From battles     @"
+	db "T3 Stat EXP 3x▶4x@"
+	db "From battles     @"
+	db DOOR_DICE
+	db "T2 Rerolls 1▶2   @"
+	db "Per run          @"
+	db "T3 Rerolls 2▶3   @"
+	db "Per run          @"
+	db MON_DICE
+	db "T2 Rerolls 1▶2   @"
+	db "Per run          @"
+	db "T3 Rerolls 2▶3   @"
+	db "Per run          @"
+	db ITEM_DICE
+	db "T2 Rerolls 1▶2   @"
+	db "Per run          @"
+	db "T3 Rerolls 2▶3   @"
+	db "Per run          @"
+	db ELEMENT_PRISM
+	db "T2 +10%▶+15%     @"
+	db "Typed move damage@"
+	db "T3 +15%▶+20%     @"
+	db "Typed move damage@"

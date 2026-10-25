@@ -13,6 +13,8 @@
 ;   Off<n>  ONE slot per team, and the fallback when a fodder slot finds every
 ;           on-type species already on the team (see PARTY_GEN_OFFTYPE_SLOT).
 ;           Also evolved by level.
+;   AceR<r> optional, gym leaders: round r's ace pool, used INSTEAD of its
+;           band's Ace<n> (the doc's `- Aces (round r):` line).
 ;
 ; Each pool has a Kanto run, then `band_johto`, then `band_warp`, then
 ; `band_end`. A run only takes part when its species group is on. A form entry
@@ -188,6 +190,14 @@
 	band_mon CORSOLA
 	band_warp
 	band_mon DIGLETT, 2
+	band_end
+	band_pool Misty_AceR1
+	band_ace WARTORTLE
+	band_ace POLIWHIRL
+	band_ace SEAKING
+	band_ace STARMIE
+	band_johto
+	band_warp
 	band_end
 	band_pool Misty_Ace2
 	band_ace STARMIE
@@ -740,6 +750,12 @@
 	band_mon HOUNDOUR
 	band_warp
 	band_end
+	band_pool Blaine_AceR1
+	band_ace CHARMELEON
+	band_ace MAGMAR
+	band_johto
+	band_warp
+	band_end
 	band_pool Blaine_Ace2
 	band_ace ARCANINE
 	band_ace RAPIDASH
@@ -1027,6 +1043,14 @@
 	band_mon SWINUB
 	band_warp
 	band_mon TENTACOOL, 1
+	band_end
+	band_pool Giovanni_AceR1
+	band_ace ONIX
+	band_ace SANDSLASH
+	band_ace NIDORINO
+	band_ace NIDORINA
+	band_johto
+	band_warp
 	band_end
 	band_pool Giovanni_Ace2
 	band_ace NIDOKING
@@ -1435,6 +1459,14 @@
 	band_mon RATTATA, 1
 	band_mon MEOWTH, 1
 	band_end
+	band_pool Whitney_AceR1
+	band_ace RATICATE
+	band_ace LICKITUNG
+	band_ace PORYGON
+	band_johto
+	band_ace FURRET
+	band_warp
+	band_end
 	band_pool Whitney_Ace2
 	band_ace CLEFABLE
 	band_ace WIGGLYTUFF
@@ -1728,6 +1760,13 @@
 	band_johto
 	band_warp
 	band_mon FARFETCHD, 1
+	band_end
+	band_pool Chuck_AceR1
+	band_ace PRIMEAPE
+	band_ace HITMONCHAN
+	band_ace MACHOP
+	band_johto
+	band_warp
 	band_end
 	band_pool Chuck_Ace2
 	band_ace POLIWRATH

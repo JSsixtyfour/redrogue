@@ -377,6 +377,10 @@ INCLUDE "data/trainers/band_pools.asm"
 ;              before. Absent (and no pin): no last-slot override, and
 ;              BIT_PSPEC_ACE_LAST is cleared, so every slot is fodder and the
 ;              mix deals its quotas over the whole team.
+;   AceR<rnd>  a per-round ace list (the doc's `- Aces (round r):`, gym leaders
+;              only, 2026-10-25). Wins over Ace<band> for that one round, so a
+;              band's two rounds can field different aces: one list cannot be
+;              fair at both the gym 1 ace level and the gym 2 one.
 ;   Off<band>  present: a BIT_POVR_POOL override on PARTY_GEN_OFFTYPE_SLOT.
 ;              Absent: none. Gym leaders have no Off1, which is what the old
 ;              `IF _band >= 2` encoded.
@@ -393,6 +397,8 @@ MACRO banded_round_spec
 	DEF _flags = \6
 	IF _NARG >= 7
 	DEF _ace = 2                        ; pinned species
+	ELIF DEF(BAND_HAS_\1_AceR{d:_rnd})
+	DEF _ace = 3                        ; this round's own Ace pool
 	ELIF DEF(BAND_HAS_\1_Ace{d:_band})
 	DEF _ace = 1                        ; Ace pool
 	ELSE
@@ -406,6 +412,9 @@ MACRO banded_round_spec
 	ELIF _ace == 1
 	slot_override _n - 1, 1 << BIT_POVR_POOL
 	db POOL_BAND_\1_Ace{d:_band}
+	ELIF _ace == 3
+	slot_override _n - 1, 1 << BIT_POVR_POOL
+	db POOL_BAND_\1_AceR{d:_rnd}
 	ENDC
 	IF DEF(BAND_HAS_\1_Off{d:_band})
 	slot_override PARTY_GEN_OFFTYPE_SLOT, 1 << BIT_POVR_POOL

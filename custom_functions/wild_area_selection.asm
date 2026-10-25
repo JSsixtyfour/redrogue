@@ -21,7 +21,11 @@ WildAreaTypeBit:
 ; StageEventRoll  (Phase 7a)
 ; Rolls this lobby selection's stage event into wStageEvent: STAGE_EVENT_CHANCE
 ; out of 256 that anything happens at all, then a uniform pick over the wired
-; types (1..STAGE_EVENT_MAX_ROLLABLE). The phase field is left at
+; eligible types. Before round 3, exclude the two Pokemon thieves: the
+; ordinary reward path has only supplied three Pokemon entering round 2.
+; Burglar, Joy and Jenny remain eligible, with the same overall event chance.
+; This is a progression gate, not a check of the player's current party count.
+; The phase field is left at
 ; STAGE_EVENT_PHASE_WAITING and bit 5 clear, which is the correct starting
 ; state for every type.
 ;
@@ -43,9 +47,16 @@ IF STAGE_EVENT_CHANCE < 256
 	cp STAGE_EVENT_CHANCE
 	ret nc                        ; no event on this wild area
 ENDC
-	ld c, STAGE_EVENT_MAX_ROLLABLE
-	call Rangerandom              ; a = [0, MAX_ROLLABLE-1]
-	inc a                         ; -> [1, MAX_ROLLABLE]; 0 is STAGE_EVENT_NONE
+	lb bc, 1, STAGE_EVENT_MAX_ROLLABLE ; b = first type, c = number of types
+	ld a, [wBattleCount]
+	cp 2 * ROUND_BATTLES           ; round 3 is the first eligible round
+	jr nc, .rollType
+	ASSERT STAGE_EVENT_JESSIE_JAMES == 1 && STAGE_EVENT_PSYCHIC == 2
+	ASSERT STAGE_EVENT_BURGLAR == 3 && STAGE_EVENT_MAX_ROLLABLE >= 3
+	lb bc, STAGE_EVENT_BURGLAR, STAGE_EVENT_MAX_ROLLABLE - 2
+.rollType
+	call Rangerandom              ; preserves bc/de
+	add b                         ; uniform pick over eligible types
 	ld [wStageEvent], a
 	ret
 
