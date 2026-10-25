@@ -184,10 +184,22 @@ WitchPrepChallengeParams::
 	jr z, WitchComputeTurnLimit
 	cp CHALLENGE_PARTY_LIMIT
 	ret nz
-	; Challenge 7: limit = 2 + round, capped at 5. Read by the entry check
-	; (WitchCheckPartyLimit); later party growth is allowed.
+	; Challenge 7: starter + all progression reward Pokemon - 1, capped at 5.
+	; The initial Reward Room adds one; each completed route adds another.
+	; WitchZoneRound counts prior rounds. A gym-next visit also includes this
+	; round's route reward (including a paired gym's replacement Reward Room).
+	; Thus round 2's route allows 2, its gym 3; round 3 allows 3 then 4.
+	; Use progression, not actual party size: purchases, rentals, captures or
+	; skipped rewards never change the quote. Entry-only enforcement is unchanged.
 	call WitchZoneRound
-	add 2
+	inc a ; starter + initial reward - 1 + prior rounds' route rewards
+	ld b, a
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_ROGUE_GYM_NEXT, a
+	ld a, b
+	jr z, .capPartyLimit
+	inc a ; this round's route reward is available before its gym
+.capPartyLimit
 	cp PARTY_LENGTH
 	jr c, .partyLimitOk
 	ld a, PARTY_LENGTH - 1

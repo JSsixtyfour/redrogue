@@ -173,10 +173,9 @@ PCWitchSetup::
     ld [wWitchPrize], a
     ret
 .notLegendaryGate
-    ; CHALLENGE_NO_REWARD_POKEMON and CHALLENGE_NO_RANDOM_ITEM both suppress
-    ; the reward menu, which never runs before a gym (gyms are fixed vanilla
-    ; maps, not a randomized stage) - reroll so a gym visit never offers a
-    ; challenge with no real downside
+    ; Reward suppression and reduced reward rarity have no downside before
+    ; a gym: gyms have no stage reward Pokemon or random item. Reroll all
+    ; three reward challenges on gym visits.
     ;
     ; The finale is route-mode regardless of BIT_ROGUE_GYM_NEXT: Victory Road is
     ; a real stage WITH a reward menu, so those challenges are meaningful there,
@@ -193,6 +192,8 @@ PCWitchSetup::
     cp CHALLENGE_NO_REWARD_POKEMON
     jr z, .rollChallenge
     cp CHALLENGE_NO_RANDOM_ITEM
+    jr z, .rollChallenge
+    cp CHALLENGE_REDUCED_RARITY
     jr z, .rollChallenge
     cp CHALLENGE_GAMBLERS_PARADISE
     jr z, .rollChallenge   ; Game Corner replaces a route, not a gym
