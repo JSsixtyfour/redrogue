@@ -16,7 +16,7 @@ Pokemon & Items are awarded based on a rarity system
 - Apple/iOS: SameBoy https://sameboy.github.io/downloads/
 - Android: Pizza Boy C https://play.google.com/store/apps/details?id=it.dbtecno.pizzaboy
 - Real Hardware: Everdrive https://krikzz.com/
-  - Pokemon Red Rogue works on Game Boy, Super Game Boy, and Game Boy Color. However, for the best playing experience it is recommend that you play on Game Boy Color. Otherwise, various features will be excluded from the game and you may experience some minor slowdown.
+  - Pokemon Red Rogue works on Game Boy, Super Game Boy, and Game Boy Color. However, for the best playing experience, it is recommend that you play on Game Boy Color. Otherwise, various features will be excluded from the game and you may experience some minor slowdown.
 
 ## Features
 - Enhanced Colors
