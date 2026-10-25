@@ -107,8 +107,8 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
 - The_Smashfather - Developer
 ### Sprite Artists
 - halofactory: Trainer Back Sprites
-- SkidMarc25: Red/Green Style Johto Pokemon Sprites
-- Kyle Glor: Pokemon Sprites
+- SkidMarc25: Red/Green Style Johto Pokémon Sprites
+- Kyle Glor: Trainer Back Sprites, Pokémon Sprites
 - TheQuickSlash
 - Sope!
 ### Playtesters
