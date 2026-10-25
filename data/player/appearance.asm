@@ -37,12 +37,12 @@ PlayerAppearanceTable::
 	player_appearance RedSprite,          RedPicFront,     RedPicBack,    .red
 	player_appearance HikerSprite,        BikerPic,        BikerPicBack,  .biker        ; BikerSprite is a rider on a motorcycle
 	player_appearance CooltrainerMSprite, BirdKeeperPic,   BirdKeeperPicBack, .birdKeeper
-	player_appearance HikerSprite,        BlackbeltPic,    RedPicBack,    .blackbelt
+	player_appearance HikerSprite,        BlackbeltPic,    BlackbeltPicBack, .blackbelt
 	player_appearance YoungsterSprite,    BugCatcherPic,   BugCatcherPicBack, .bugCatcher
 	player_appearance SuperNerdSprite,    BurglarPic,      RedPicBack,    .burglar
-	player_appearance CooltrainerMSprite, CooltrainerMPic, RedPicBack,    .coolTrainerM
+	player_appearance CooltrainerMSprite, CooltrainerMPic, CooltrainerMPicBack, .coolTrainerM
 	player_appearance HikerSprite,        CueBallPic,      RedPicBack,    .cueBall
-	player_appearance SuperNerdSprite,    EngineerPic,     RedPicBack,    .engineer
+	player_appearance SuperNerdSprite,    EngineerPic,     EngineerPicBack, .engineer
 	player_appearance FisherSprite,       FisherPic,       RedPicBack,    .fisherman
 	player_appearance GamblerSprite,      GamblerPic,      OldManPicBack, .gambler
 	player_appearance GentlemanSprite,    GentlemanPic,    GentlemanPicBack, .gentleman
@@ -54,17 +54,17 @@ PlayerAppearanceTable::
 	player_appearance RockerSprite,       RockerPic,       RedPicBack,    .rocker
 	player_appearance RocketSprite,       RocketPic,       RocketPicBack, .rocket
 	player_appearance SailorSprite,       SailorPic,       RedPicBack,    .sailor
-	player_appearance ScientistSprite,    ScientistPic,    RedPicBack,    .scientist
+	player_appearance ScientistSprite,    ScientistPic,    ScientistPicBack, .scientist
 	player_appearance SuperNerdSprite,    SuperNerdPic,    RedPicBack,    .superNerd
 	player_appearance CooltrainerMSprite, SwimmerPic,      RedPicBack,    .swimmer      ; SwimmerSprite depicts swimming, not walking
-	player_appearance RockerSprite,       TamerPic,        RedPicBack,    .tamer
+	player_appearance RockerSprite,       TamerPic,        TamerPicBack,  .tamer
 	player_appearance YoungsterSprite,    YoungsterPic,    RedPicBack,    .youngster
 	; Female entries start here — see FIRST_FEMALE_APPEARANCE.
 	player_appearance GreenSprite,        GreenPicFront,   GreenPicBack,  .green
-	player_appearance BeautySprite,       BeautyPic,       GreenPicBack,  .beauty
+	player_appearance BeautySprite,       BeautyPic,       BeautyPicBack, .beauty
 	player_appearance ChannelerSprite,    ChannelerPic,    GreenPicBack,  .channeler
 	player_appearance CooltrainerFSprite, JrTrainerFPic,   JrTrainerFPicBack, .jrTrainerF
-	player_appearance CooltrainerFSprite, CooltrainerFPic, GreenPicBack,  .coolTrainerF
+	player_appearance CooltrainerFSprite, CooltrainerFPic, CooltrainerFPicBack, .coolTrainerF
 	player_appearance CooltrainerFSprite, LassPic,         GreenPicBack,  .lass
 	assert_table_length NUM_PLAYER_APPEARANCES
 
