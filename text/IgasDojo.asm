@@ -18,7 +18,7 @@ _IgasDojoIgaIntroText::
     line "whoever is"
     cont "willing to"
     cont "challenge him."
-	done
+	prompt
 
 _IgaGift1Desc::
 	text "A snake with"

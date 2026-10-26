@@ -10,7 +10,7 @@ _ViridianSchoolHouseCooltrainerFText::
 	para "Be sure to read"
 	line "the blackboard"
 	cont "carefully!"
-	done
+	prompt
 
 _ViridianSchoolHouseCooltrainerFAlreadyGotText::
 	text "Come back and"

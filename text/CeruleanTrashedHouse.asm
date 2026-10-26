@@ -7,7 +7,7 @@ _CeruleanTrashedHouseFishingGuruWhatsLostIsLostText::
 	text "I'm OFFICER JENNY."
 	line "I keep the peace"
 	cont "here in CERULEAN."
-	done
+	prompt
 
 _CeruleanTrashedHouseGirlText::
 	text "TEAM ROCKET must"

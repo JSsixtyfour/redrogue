@@ -2,7 +2,7 @@ _FlorasGrottoFloraText::
 	text "I'm FLORA. This"
 	line "grotto nurtures"
 	cont "life and growth."
-	done
+	prompt
 
 _FlorasGrottoFloraAlreadyGotText::
 	text "May your team"

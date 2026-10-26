@@ -2,7 +2,7 @@ _ViridianNicknameHouseBaldingGuyText::
 	text "Ah, a young"
 	line "TRAINER! Let me"
 	cont "share my wisdom."
-	done
+	prompt
 
 _ViridianNicknameHouseLittleGirlText::
 	text "My Daddy loves"
