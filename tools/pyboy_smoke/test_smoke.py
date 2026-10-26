@@ -2321,18 +2321,30 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         )
 
     def test_procedural_cemetery_generation(self) -> None:
-        # 3, not 1, since the Phase 7 rollout: the floor's pokeball plus the
-        # two stage-event NPC slots, which every cemetery floor now declares
-        # (floor 1 hosts the arrival, floors 2-4 can hold the hideout). Same
-        # reasoning as the forest's 5 -> 7 above.
-        #
-        # 4 since PROCEDURAL_SUBROOMS_PLAN Phase 4: object 4 is the possessed
-        # Channeler, on one random floor per Cemetery. He has his picture only
-        # on that floor (test_cemetery_channeler.py checks the rest), so only
-        # the first 3 are placed on distinct tiles here.
+        # Only the ball is unconditional. Event NPCs may belong on a later
+        # floor; the Channeler appears on one random floor (covered separately).
         self.assert_generation_contract(
-            "Procedural Cemetery", "PROCEDURAL_CEMETERY_1", 20, 18, 4, False, placed=3
+            "Procedural Cemetery", "PROCEDURAL_CEMETERY_1", 20, 18, 4, False, placed=1
         )
+        constants = parse_rgbds_constants(REPO_ROOT / "constants" / "ram_constants.asm")
+        event = self.harness.read8("wStageEvent")
+        event_type = event & constants["STAGE_EVENT_TYPE_MASK"]
+        phase = (event & constants["STAGE_EVENT_PHASE_MASK"]) >> constants["STAGE_EVENT_PHASE_SHIFT"]
+        # Floor 1 hosts waiting villains. Good NPCs always use the hideout,
+        # which is on floors 2-4; hiding villains use that same later floor.
+        npcs_here = (0 < event_type < constants["STAGE_EVENT_JOY"]
+                     and phase == constants["STAGE_EVENT_PHASE_WAITING"])
+        positions = self.harness.sprite_positions(3)
+        if event_type and not npcs_here:
+            self.assertEqual(positions[1:], [[-4, -4], [-4, -4]])
+            for slot in (2, 3):
+                self.assertEqual(self.harness.read8(f"wSprite{slot:02d}StateData1"), 0,
+                                 "event NPC is visible on the wrong floor")
+        else:
+            for y, x in positions[1:]:
+                self.assertIn(y, range(18))
+                self.assertIn(x, range(20))
+            self.assertEqual(len({tuple(position) for position in positions}), 3)
         floor = (self.harness.read_sram_bytes("sProcCemeteryItemGot", 1, bank=0)[0] >> 4) & 3
         sprites = parse_rgbds_constants(REPO_ROOT / "constants" / "sprite_constants.asm")
         self.assertEqual(self.harness.read8("wSprite04StateData1"),

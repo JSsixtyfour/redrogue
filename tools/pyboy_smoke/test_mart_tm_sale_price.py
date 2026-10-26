@@ -13,9 +13,9 @@ ROOT = Path(__file__).resolve().parents[2]
 class MartTMSalePriceTest(unittest.TestCase):
     def test_tm_offer_replaces_stale_money_in_all_roms(self):
         # One machine from every price tier, including the reported Fissure.
-        # Half the buy price: F-S 1/2/4/6/10/14 thousand since 2026-10-09.
+        # Half the buy price: F-S 1/2/4/5/9/12 thousand.
         cases = ((0xC4, 500), (0xC9, 1000), (0xE3, 2000),
-                 (0xCC, 3000), (0xC6, 5000), (0xD0, 7000))
+                 (0xCC, 2500), (0xC6, 4500), (0xD0, 6000))
         for variant in ("pokered", "pokeblue", "pokeblue_debug"):
             self.check_rom(variant, cases)
 
