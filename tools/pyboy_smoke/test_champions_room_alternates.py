@@ -1,14 +1,13 @@
 """Runtime checks for Phase 7e: Lance and Oak as alternate Champions.
 
 ChampionsRoomHideUnusedChampion (scripts/ChampionsRoom.asm) reads wRunChampion
-(rolled by RollChampion, custom_functions/final_sequence.asm) and hides
+(rolled by RollChampion, custom_functions/final_sequence.asm), shows the
+selected champion even if an earlier run hid it, and hides
 whichever two of {CHAMPIONSROOM_RIVAL, CHAMPIONSROOM_LANCE,
 CHAMPIONSROOM_OAK_CHAMPION} are not this run's Champion, mirroring
-FuchsiaGymHideUnusedLeader's two-way form extended to three candidates. All
-three are declared ON in data/maps/toggleable_objects.asm, so the property
-that matters is purely which TWO end up with a wToggleableObjectFlags bit
-set - the build cannot see this at all, and a wrong branch here would leave
-either zero or two champions standing in the room.
+FuchsiaGymHideUnusedLeader's two-way form extended to three candidates.
+Checks both new-game visible defaults and stale hidden flags from prior runs.
+Exactly the two unselected champions must end up hidden in either case.
 
 Roll budget: call_routine corrupts the machine after roughly ten invocations
 on one boot (project_call_routine_harness_limits); each test method below
@@ -40,7 +39,7 @@ class ChampionsRoomAlternatesTest(HarnessTestCase):
         byte = h.read8("wToggleableObjectFlags", offset=toggle_index // 8)
         return bool(byte & (1 << (toggle_index % 8)))
 
-    def _clear_all_three(self) -> None:
+    def _set_all_three(self, hidden: bool = False) -> None:
         # ToggleableObjectFlagAction's bit test is (index & 7) into byte
         # (index >> 3) of wToggleableObjectFlags - the same arithmetic here.
         h = self.harness
@@ -49,15 +48,34 @@ class ChampionsRoomAlternatesTest(HarnessTestCase):
             byte_offset = toggle_index // 8
             bit = 1 << (toggle_index % 8)
             current = h.read8("wToggleableObjectFlags", offset=byte_offset)
-            h.write8("wToggleableObjectFlags", current & ~bit & 0xFF, offset=byte_offset)
+            value = current | bit if hidden else current & ~bit & 0xFF
+            h.write8("wToggleableObjectFlags", value, offset=byte_offset)
 
-    def _run_for(self, champion_class: str) -> None:
+    def _run_for(self, champion_class: str, hidden: bool = False) -> None:
         h = self.harness
         assert h is not None
-        self._clear_all_three()
+        self._set_all_three(hidden)
         h.write8("wRunChampion", self.classes[champion_class])
         h.park_before_hijack()
         h.call_routine("ChampionsRoomHideUnusedChampion")
+
+    def _check_stale_hidden_champion(self, champion_class: str, selected: int) -> None:
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        # Earlier runs may have hidden any champion, including the new selection.
+        self._run_for(champion_class, hidden=True)
+        for toggle in (self.rival_toggle, self.lance_toggle, self.oak_toggle):
+            self.assertEqual(self._is_hidden(toggle), toggle != selected)
+
+    def test_rival3_restores_stale_hidden_champion(self) -> None:
+        self._check_stale_hidden_champion("RIVAL3", self.rival_toggle)
+
+    def test_lance_restores_stale_hidden_champion(self) -> None:
+        self._check_stale_hidden_champion("LANCE", self.lance_toggle)
+
+    def test_oak_restores_stale_hidden_champion(self) -> None:
+        self._check_stale_hidden_champion("PROF_OAK", self.oak_toggle)
 
     # -- one call per test, one fresh boot per test --------------------------
 

@@ -21,9 +21,9 @@ ChampionsRoomPatchWarps:
 ; ============================================================
 ; ChampionsRoomHideUnusedChampion
 ; Exactly one of Blue/Lance/Oak-as-champion is this run's Champion
-; (wRunChampion). All three are declared ON in
-; data/maps/toggleable_objects.asm, so only the other two need a HideObject
-; call, mirroring FuchsiaGymHideUnusedLeader's two-way form.
+; (wRunChampion). Explicitly restore the selected champion: HideObject flags
+; persist between runs, so an earlier visit may have hidden this run's choice.
+; Then hide the other two. This also repairs existing saves on room entry.
 ; CLOBBERS: a
 ; ============================================================
 ChampionsRoomHideUnusedChampion:
@@ -33,6 +33,9 @@ ChampionsRoomHideUnusedChampion:
 	cp PROF_OAK
 	jr z, .oak
 .rival3
+	ld a, TOGGLE_CHAMPIONS_ROOM_RIVAL
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
 	ld a, TOGGLE_CHAMPIONS_ROOM_LANCE
 	ld [wToggleableObjectIndex], a
 	predef HideObject
@@ -40,6 +43,9 @@ ChampionsRoomHideUnusedChampion:
 	ld [wToggleableObjectIndex], a
 	predef_jump HideObject
 .lance
+	ld a, TOGGLE_CHAMPIONS_ROOM_LANCE
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
 	ld a, TOGGLE_CHAMPIONS_ROOM_RIVAL
 	ld [wToggleableObjectIndex], a
 	predef HideObject
@@ -47,6 +53,9 @@ ChampionsRoomHideUnusedChampion:
 	ld [wToggleableObjectIndex], a
 	predef_jump HideObject
 .oak
+	ld a, TOGGLE_CHAMPIONS_ROOM_OAK_CHAMPION
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
 	ld a, TOGGLE_CHAMPIONS_ROOM_RIVAL
 	ld [wToggleableObjectIndex], a
 	predef HideObject
