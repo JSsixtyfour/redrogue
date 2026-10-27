@@ -300,13 +300,9 @@ Evolution_PartyMonLoop: ; loop over party mons
 	ld [wPokedexNum], a
 	xor a
 	ld [wMonDataLocation], a
-	; Battle EXP already offered every crossed-level move before evolution, using
-	; the species that existed at each point in the timeline. Do not add a second,
-	; evolved-species move at the same final level. Stone, trade, and Rare Candy
-	; evolutions occur out of battle and retain the established behavior below.
-	ldh a, [hIsInBattle]
-	and a
-	jr nz, .skipPostEvolutionLevelMove
+	; Also offer the evolved species' moves at this level, including during
+	; battle cleanup (Abra -> Kadabra needs level-16 Confusion). The level-up
+	; learner already skips known moves, including moves offered before evolving.
 ; Re-publish before the learnset read. The header loaded up at the evolution's
 ; own PublishFormContext/GetMonHeader pair is the right one, but
 ; PrepareFusionAndBridgeRayCalcStats sits between it and here and may load a
@@ -319,10 +315,6 @@ Evolution_PartyMonLoop: ; loop over party mons
 	call PublishFormContext
 	call GetMonHeader
 	call LearnMoveFromLevelUp
-	jr .finishedPostEvolutionLevelMove
-.skipPostEvolutionLevelMove
-	ld a, [wCurSpecies]
-	ld [wCurPartySpecies], a
 .finishedPostEvolutionLevelMove
 	; NOTE: this LearnMoveFromLevelUp is the EVOLUTION path (learn the NEW
 	; species' moves after evolving) - NOT the normal level-up path. A fusion

@@ -116,11 +116,11 @@ AzaleaGymTrainerHeaders:
 ; project_gametrainer_def_trainers_inheritance_bug.
 	def_trainers 2
 AzaleaGymTrainerHeader0:
-	trainer EVENT_BEAT_AZALEA_GYM_TRAINER_0, 5, AzaleaGymCooltrainerM1BattleText, AzaleaGymCooltrainerM1EndBattleText, AzaleaGymCooltrainerM1AfterBattleText
+	trainer EVENT_BEAT_AZALEA_GYM_TRAINER_0, 3, AzaleaGymCooltrainerM1BattleText, AzaleaGymCooltrainerM1EndBattleText, AzaleaGymCooltrainerM1AfterBattleText
 AzaleaGymTrainerHeader1:
-	trainer EVENT_BEAT_AZALEA_GYM_TRAINER_1, 2, AzaleaGymCooltrainerM2BattleText, AzaleaGymCooltrainerM2EndBattleText, AzaleaGymCooltrainerM2AfterBattleText
+	trainer EVENT_BEAT_AZALEA_GYM_TRAINER_1, 3, AzaleaGymCooltrainerM2BattleText, AzaleaGymCooltrainerM2EndBattleText, AzaleaGymCooltrainerM2AfterBattleText
 AzaleaGymTrainerHeader2:
-	trainer EVENT_BEAT_AZALEA_GYM_TRAINER_2, 5, AzaleaGymCooltrainerM3BattleText, AzaleaGymCooltrainerM3EndBattleText, AzaleaGymCooltrainerM3AfterBattleText
+	trainer EVENT_BEAT_AZALEA_GYM_TRAINER_2, 1, AzaleaGymCooltrainerM3BattleText, AzaleaGymCooltrainerM3EndBattleText, AzaleaGymCooltrainerM3AfterBattleText
 	db -1 ; end
 
 AzaleaGymReceivedTMText:

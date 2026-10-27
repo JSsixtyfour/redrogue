@@ -105,6 +105,68 @@ class EvolutionFlowFixture:
 
 
 class EvolutionFlowTest(EvolutionFlowFixture, HarnessTestCase):
+    def run_abra_evolution_move(self, *, bench, already_known=False):
+        h = self.harness
+        mon = lambda name, level, moves: dict(
+            species=SPECIES[name], level=level, moves=[MOVES[m] for m in moves])
+        abra = mon('ABRA', 16, ['TACKLE', 'CONFUSION'] if already_known else ['TACKLE'])
+        party = [mon('SNORLAX', 50, ['TACKLE']), abra] if bench else [abra]
+        h.inject_fight2_spec(
+            party, [mon('MAGIKARP', 2, ['SPLASH'])] * 2,
+            trainer_class=TRAINERS['COOLTRAINER_M'], ai_tier=0,
+        )
+        h.boot_fight2(seed=1)
+        h.write8('wOptions', h.read8('wOptions') | 0x40)
+        slot = int(bench)
+        seeded = []
+        def seed(_):
+            # Seed eligibility after EXP; the ROM owns evolution and learning.
+            if not seeded:
+                h.write8('wCanEvolveFlags', 1 << slot)
+                seeded.append(True)
+        h.register_hook('RogueTryMidBattleEvolution', seed)
+        learned = []
+        def learn(_):
+            learned.append((h.read8('hWhichPokemon'), h.read8('wMoveNum')))
+        h.register_hook('LearnMove', learn)
+        final = {}
+        def finish(_):
+            # Capture before FIGHT2 can reset the party later in the same tick.
+            final.update(
+                species=h.read8(f'wPartyMon{slot + 1}Species'),
+                moves=h.read_bytes(f'wPartyMon{slot + 1}Moves', 4),
+                pp=h.read_bytes(f'wPartyMon{slot + 1}PP', 4),
+                battle_moves=h.read_bytes('wBattleMonMoves', 4))
+        h.register_hook('EndOfBattle.clearBattleState', finish)
+        crashed = h.hook_flag('CrashScreen')
+        for frame in range(6500):
+            if frame % 12 == 0:
+                h.pyboy.button_press('a')
+            elif frame % 12 == 2:
+                h.pyboy.button_release('a')
+            h.tick(1)
+            if final or crashed['count']:
+                break
+        self.assertEqual(crashed['count'], 0)
+        self.assertTrue(final, h.diagnostic_state())
+        self.assertEqual(final['species'], SPECIES['KADABRA'])
+        moves = final['moves']
+        self.assertEqual(moves.count(MOVES['CONFUSION']), 1)
+        pp = final['pp']
+        self.assertGreater(pp[moves.index(MOVES['CONFUSION'])] & 0x3f, 0)
+        self.assertEqual(learned.count((slot, MOVES['CONFUSION'])), int(not already_known))
+        if not bench:
+            self.assertEqual(final['battle_moves'], moves)
+
+    def test_benched_abra_learns_confusion_after_battle(self):
+        self.run_abra_evolution_move(bench=True)
+
+    def test_active_abra_learns_confusion_midbattle(self):
+        self.run_abra_evolution_move(bench=False)
+
+    def test_evolution_does_not_offer_known_confusion(self):
+        self.run_abra_evolution_move(bench=True, already_known=True)
+
     def test_active_midbattle_and_bench_after_recovery(self):
         self.run_evolution()
 

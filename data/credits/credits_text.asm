@@ -134,6 +134,7 @@ CreditsTextPointers:
 	dw CredRRRGBDS
 	dw CredRRBGB
 	dw CredRRPyBoy
+	dw CredRRKEP2
 	assert_table_length NUM_CRED_STRINGS
 
 CredVersion:
@@ -226,7 +227,7 @@ CredSpecial:
 CredProducers:
 	db -4, "PRODUCERS@"
 CredProducer:
-	db -4, "PRODUCER@"
+	db -3, "PRODUCER@"
 CredExecutive:
 	db -8, "EXECUTIVE PRODUCER@"
 CredTamada:
@@ -286,8 +287,8 @@ CredRRArtists:        credits_string "SPRITE ARTISTS"
 CredRRSkidMarc:       credits_string "SKIDMARC25"
 CredRRHalo:           credits_string "HALOFACTORY"
 CredRRKyle:           credits_string "KYLE GLOR"
-CredRRThanks:         credits_string "BUILT WITH WORK"
-CredRRThanks2:        credits_string "FROM THESE PROJECTS"
+CredRRThanks:         credits_string "BUILT FROM WORK"
+CredRRThanks2:        credits_string "IN THESE PROJECTS"
 CredRRPret:           credits_string "PRET POKERED"
 CredRRShinRed:        credits_string "SHIN POKEMON RED"
 CredRRJojobear:       credits_string "JOJOBEAR13"
@@ -309,10 +310,10 @@ CredRRZach:           credits_string "ZUPERZACH"
 CredRRPureRGB:        credits_string "PURERGB"
 CredRRVortyne:        credits_string "VORTYNE"
 CredRRYume:           credits_string "POKEMON YUME"
-CredRRPokefanMarc:    credits_string "POKEFANMARCEL"
+CredRRPokefanMarc:    credits_string "POKEFAN MARCEL"
 CredRRExYellow:       credits_string "EXTREME YELLOW"
 CredRRRainbowMP:      credits_string "RAINBOWMETALPIGEON"
-CredRRKEP:            credits_string "KANTO EXPANSION PAK"
+CredRRKEP:            credits_string "KANTO"
 CredRRMemento:        credits_string "MEMENTOMARTHA"
 CredRRAlbatross:      credits_string "ALBATROSS"
 CredRRRedPP:          credits_string "RED++"
@@ -348,3 +349,4 @@ CredRRPolishedMap:    credits_string "POLISHED MAP"
 CredRRRGBDS:          credits_string "RGBDS"
 CredRRBGB:            credits_string "BGB"
 CredRRPyBoy:          credits_string "PYBOY"
+CredRRKEP2:           credits_string "EXPANSION PAK"

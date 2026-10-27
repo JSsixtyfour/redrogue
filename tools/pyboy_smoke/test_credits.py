@@ -201,6 +201,54 @@ class CreditsMenuRollTest(unittest.TestCase):
         self.wait_for(lambda: bool(rows), "first credits text", 300)
         self.assertEqual(rows[0], [0x81, 0x98])
 
+    def test_entire_roll_has_centered_text_with_no_row_overflow(self) -> None:
+        screens = []
+
+        def capture(_context):
+            screens.append([
+                self.h.read8("wTileMap", offset=offset) for offset in range(20 * 18)
+            ])
+
+        for label in ("Credits.fadeInText", "Credits.showText",
+                      "Credits.fadeInTextAndShowMon", "Credits.showTextAndShowMon"):
+            self.h.register_hook(label, capture)
+        self.open_credits("a")
+        self.tap("select")
+        self.wait_for(lambda: self.the_end["count"], "the complete credits roll", 14000)
+        commands = [token for token in _db_tokens(REPO_ROOT / "data/credits/credits_order.asm")
+                    if token in SCREEN_COMMANDS]
+        self.assertEqual(len(screens), len(commands))
+        # The last screen uses copyright graphics rather than font characters.
+        for index, screen in enumerate(screens[:-1]):
+            for y in range(18):
+                row = screen[y * 20:(y + 1) * 20]
+                with self.subTest(screen=index + 1, row=y, tiles=row):
+                    if y < 4 or y >= 14:
+                        self.assertEqual(row, [0x7e] * 20)
+                    elif y not in (6, 8, 10, 12):
+                        self.assertEqual(row, [0x7f] * 20)
+                    else:
+                        occupied = [x for x, tile in enumerate(row) if tile != 0x7f]
+                        if occupied:
+                            left, right = occupied[0], 19 - occupied[-1]
+                            self.assertLessEqual(abs(left - right), 1)
+
+        def encoded(value):
+            return [0x7f if char == " " else ord(char) - ord("A") + 0x80
+                    for char in value]
+
+        for screen_index, y, value in ((2, 6, "BUILT FROM WORK"),
+                                       (2, 8, "IN THESE PROJECTS"),
+                                       (12, 8, "POKEFAN MARCEL"),
+                                       (14, 6, "KANTO"),
+                                       (14, 8, "EXPANSION PAK"),
+                                       (14, 10, "MEMENTOMARTHA"),
+                                       (14, 12, "ALBATROSS")):
+            row = screens[screen_index][y * 20:(y + 1) * 20]
+            start = (20 - len(value)) // 2
+            self.assertEqual(row, [0x7f] * start + encoded(value)
+                             + [0x7f] * (20 - start - len(value)))
+
     def test_start_held_from_the_menu_does_not_skip(self) -> None:
         # Pick CREDITS with START and keep holding it well into the roll.
         self.open_credits("start", hold=90)

@@ -134,6 +134,7 @@
 	const CRED_RR_RGBDS
 	const CRED_RR_BGB
 	const CRED_RR_PYBOY
+	const CRED_RR_KEP_2
 DEF NUM_CRED_STRINGS EQU const_value
 
 	const_def -1, -1
