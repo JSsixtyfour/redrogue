@@ -216,6 +216,12 @@ RoguePairMapLoad::
 	ret nz
 	call RogueIsPairBadgeCount
 	ret nz
+	; The active gym must already own its badge. An in-progress gym B still
+	; has the pair badge count, including in older saves with gym-next clear.
+	ld a, [wRogueCurGymBadgeMask]
+	ld hl, wObtainedBadges
+	and [hl]
+	ret z
 	ldh a, [hCurMap]
 	cp INDIGO_PLATEAU_LOBBY
 	ret z
@@ -231,6 +237,10 @@ RoguePairRewardRoomEntry::
 	ResetEvent EVENT_STEP_FORWARD
 	ResetEvent EVENT_GOT_ROGUE_POKEMON
 	ResetEvent EVENT_ROGUE_POKEMON_OFFERED
+	; A stale patched exit must not credit another route after gym B. Return
+	; to the lobby with route-next intact when this is not a pair checkpoint.
+	call RogueIsPairBadgeCount
+	jr nz, .credited
 	ld hl, wRogueFlagsBitfield
 	bit BIT_ROGUE_GYM_NEXT, [hl]
 	jr nz, .credited            ; a re-entry must not credit the route twice

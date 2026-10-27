@@ -93,14 +93,13 @@ CreditVendorMenu::
 	pop bc
 	jr .exit
 .stillStock
-	; Re-establish the greeting and re-snapshot the screen. YesNoChoice
-	; (home/yes_no.asm) calls SaveScreenTilesToBuffer1 itself on the way in, so
-	; by now buffer 1 holds the "So, you want X?" confirmation rather than the
-	; clean shopfront - without this the loop restores that stale prompt and it
-	; sits under the menu for the rest of the visit. The Pokemart never hits
-	; this because it confirms with TWO_OPTION_MENU instead of YesNoChoice.
-	ld hl, CreditVendorGreetingText
-	call PrintText
+	; YesNoChoice replaces buffer 1 with the confirmation screen. Rebuild
+	; a blank shop textbox before saving it again; the list draws the current
+	; item's description. Printing the greeting here flashes it first.
+	ld a, MESSAGE_BOX
+	ld [wTextBoxID], a
+	call DisplayTextBoxID
+	call UpdateSprites
 	call SaveScreenTilesToBuffer1
 	pop bc
 	call RestoreCreditListPosition
@@ -705,23 +704,24 @@ CreditSaleTable:
 ; BCD each). Indexed by current internal tier; the third cost would buy
 ; internal 3 / TIER 4, which MAX_KEY_ITEM_TIER never offers.
 ; 2026-10-25: live TIER 2/3 costs reduced 25%, nearest whole credit, halves up.
+; 2026-10-27: live costs reduced another 20%, nearest whole credit.
 ; The unavailable TIER 4 column is retained unchanged.
 CreditUpgradeTable:
-	db LEFTOVERS,     KEY_ITEM_BIT_LEFTOVERS_OWNED / 2,     $08, $15, $40
-	db PP_TONIC,      KEY_ITEM_BIT_PP_TONIC_OWNED / 2,      $08, $15, $40
-	db KO_DEFIANCE,   KEY_ITEM_BIT_KO_DEFIANCE_OWNED / 2,   $15, $30, $80
+	db LEFTOVERS,     KEY_ITEM_BIT_LEFTOVERS_OWNED / 2,     $06, $12, $40
+	db PP_TONIC,      KEY_ITEM_BIT_PP_TONIC_OWNED / 2,      $06, $12, $40
+	db KO_DEFIANCE,   KEY_ITEM_BIT_KO_DEFIANCE_OWNED / 2,   $12, $24, $80
 	;db EXP_ALL,       KEY_ITEM_BIT_EXP_ALL_OWNED / 2,       $15, $30, $60 ; now an option (BIT_EXP_SHARE)
-	db SHINY_CHARM,   KEY_ITEM_BIT_SHINY_CHARM_OWNED / 2,   $23, $45, $99
-	db AMULET_COIN,   KEY_ITEM_BIT_AMULET_COIN_OWNED / 2,   $11, $23, $60
-	db TURN_REWIND,   KEY_ITEM_BIT_TURN_REWIND_OWNED / 2,   $19, $38, $75
-	db RARE_SCOPE,    KEY_ITEM_BIT_RARE_SCOPE_OWNED / 2,    $15, $30, $80
-	db RARE_LENS,     KEY_ITEM_BIT_RARE_LENS_OWNED / 2,     $15, $30, $80
-	db DV_BOOSTER,    KEY_ITEM_BIT_DV_BOOSTER_OWNED / 2,    $19, $38, $75
-	db STAT_BOOSTER,  KEY_ITEM_BIT_STAT_BOOSTER_OWNED / 2,  $15, $30, $80
-	db DOOR_DICE,     KEY_ITEM_BIT_DOOR_DICE_OWNED / 2,     $11, $23, $60
-	db MON_DICE,      KEY_ITEM_BIT_MON_DICE_OWNED / 2,      $11, $23, $60
-	db ITEM_DICE,     KEY_ITEM_BIT_ITEM_DICE_OWNED / 2,     $11, $23, $60
-	db ELEMENT_PRISM, KEY_ITEM_BIT_ELEMENT_PRISM_OWNED / 2, $15, $30, $80
+	db SHINY_CHARM,   KEY_ITEM_BIT_SHINY_CHARM_OWNED / 2,   $18, $36, $99
+	db AMULET_COIN,   KEY_ITEM_BIT_AMULET_COIN_OWNED / 2,   $09, $18, $60
+	db TURN_REWIND,   KEY_ITEM_BIT_TURN_REWIND_OWNED / 2,   $15, $30, $75
+	db RARE_SCOPE,    KEY_ITEM_BIT_RARE_SCOPE_OWNED / 2,    $12, $24, $80
+	db RARE_LENS,     KEY_ITEM_BIT_RARE_LENS_OWNED / 2,     $12, $24, $80
+	db DV_BOOSTER,    KEY_ITEM_BIT_DV_BOOSTER_OWNED / 2,    $15, $30, $75
+	db STAT_BOOSTER,  KEY_ITEM_BIT_STAT_BOOSTER_OWNED / 2,  $12, $24, $80
+	db DOOR_DICE,     KEY_ITEM_BIT_DOOR_DICE_OWNED / 2,     $09, $18, $60
+	db MON_DICE,      KEY_ITEM_BIT_MON_DICE_OWNED / 2,      $09, $18, $60
+	db ITEM_DICE,     KEY_ITEM_BIT_ITEM_DICE_OWNED / 2,     $09, $18, $60
+	db ELEMENT_PRISM, KEY_ITEM_BIT_ELEMENT_PRISM_OWNED / 2, $12, $24, $80
 	db $ff
 
 CreditVendorGreetingText:

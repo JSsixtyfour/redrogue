@@ -70,6 +70,24 @@ class GymChoiceLobbyTest(HarnessTestCase):
         self.assertEqual(self.door2_block(), OPEN_DOOR_BLOCK, "door 2 is walled off")
         h.wait_until(lambda: h.read8("wNumSigns") == 2, "both door signs live", 300)
 
+    def test_reported_four_badge_koga_sabrina_choice_keeps_both_doors(self) -> None:
+        h = self.harness
+        h.boot_to_lobby(battle_count=37)
+        h.park_before_hijack()
+        for slot, leader in enumerate((0x27,0x25,0x1d,0x22,0x26,0x24,0x28,0x23)):
+            h.write8('wRunGymLineup',leader,offset=slot)
+        h.write8('wObtainedBadges',0xaa)
+        h.write8('wGymChoice',0xb4)
+        h.write8('wRogueFlagsBitfield',1)
+        h.write8('wBridgeState',0x80)  # completed gifts: inspect the gym choice itself
+        h.call_routine('SelectAndPatchLobbyExit',limit=60000)
+        self.assertEqual(h.read8('wLobbyDoor1StageMap'),MAPS['FUCHSIA_GYM'])
+        self.assertEqual(h.read8('wLobbyDoor2StageMap'),MAPS['SAFFRON_GYM'])
+        self.assertEqual(h.read8('wGymChoice'),0xb4)
+        h.call_routine('Lobby_UpdateExitDoor')
+        self.assertEqual(self.door2_block(),OPEN_DOOR_BLOCK)
+        h.wait_until(lambda: h.read8('wNumSigns')==2,'Koga/Sabrina signs',300)
+
     def test_the_choice_survives_a_lobby_reroll(self) -> None:
         """Re-entering (or a save) keeps the same two gyms until a badge is won."""
         h = self.harness

@@ -635,8 +635,8 @@ WarpFound2::
 	ld a, [wLobbyDoor2StageMap]
 .gotRandomStageMap
 	ldh [hCurMap], a
-	ld a, INDIGO_PLATEAU_LOBBY
-	ld [wWarpedFromWhichMap], a
+	; WarpFound2 already recorded the actual source. Reward-room doors use
+	; this resolver too; keep their source for the lobby checkpoint gate.
 	ld a, 1
 	ld [wWarpedFromWhichWarp], a
 	call PlayMapChangeSound

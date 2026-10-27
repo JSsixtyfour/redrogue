@@ -8,6 +8,39 @@ MAPS = parse_map_constants(REPO_ROOT / 'constants/map_constants.asm')
 EVENTS = parse_rgbds_constants(REPO_ROOT / 'constants/event_constants.asm')
 
 class KeySwapCheckpointTest(HarnessTestCase):
+    def test_reward_room_door_records_real_source_and_opens_checkpoint(self):
+        h = self.harness
+        h.boot_to_lobby(battle_count=21)
+        h.write8('wObtainedBadges', 7)
+        h.write8('wBattleCount', 25)
+        h.write8('wGymChoice', 0x80 | 5 << 3 | 5)
+        h.write8('wRogueFlagsBitfield', 0)
+        h.enter_stage_door1(MAPS['REWARD_ROOM'], description='pair reward room')
+        for _ in range(8):
+            h.tap('b',4);h.tick(30)
+        self.assertEqual(h.read8('wBattleCount'),29)
+        self.assertEqual(h.read8('wYCoord'),6)
+        # Walk to the authored upper door. A floor tile in the warp table
+        # alone does not invoke the door-collision path.
+        for _ in range(8):
+            x=h.read8('wXCoord')
+            if x==6:
+                break
+            h.tap('left' if x>6 else 'right',4)
+            h.tick(24)
+        self.assertEqual(h.read8('wXCoord'),6)
+        opened=h.hook_flag('LobbyKeySwapOpen.open')
+        h.pyboy.button_press('up')
+        for _ in range(20):
+            h.tick(20)
+            if h.read8('hCurMap')==MAPS['INDIGO_PLATEAU_LOBBY']:
+                break
+        h.pyboy.button_release('up')
+        h.wait_until(lambda: opened['count']>0,'actual pair checkpoint arrival',1200)
+        self.assertEqual(h.read8('hCurMap'),MAPS['INDIGO_PLATEAU_LOBBY'])
+        self.assertEqual(h.read8('wWarpedFromWhichMap'),MAPS['REWARD_ROOM'])
+        self.assertEqual(h.read8('wBattleCount'),29)
+
     def boot(self):
         h = self.harness
         h.boot_fight2(seed=17)

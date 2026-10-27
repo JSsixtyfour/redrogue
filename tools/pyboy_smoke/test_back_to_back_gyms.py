@@ -7,8 +7,9 @@ offered and did not take. "A pair is waiting" is derived, not stored: a pair
 badge count with BIT_ROGUE_GYM_NEXT clear.
 """
 import unittest
+import io
 
-from source_constants import parse_map_constants, parse_rgbds_constants
+from source_constants import parse_map_constants, parse_rgbds_constants, parse_trainer_class_indexes
 from test_smoke import HarnessTestCase, REPO_ROOT
 
 MAPS = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")
@@ -97,6 +98,7 @@ class PairBadgeTest(HarnessTestCase):
         """Continue (or any reload) rebuilds the gym's warps from its map data."""
         h = self.harness
         h.write8("hCurMap", MAPS["PEWTER_GYM"])
+        h.write8("wRogueCurGymBadgeMask", 1)  # this is the already-defeated gym A
         cases = (
             (badges(PAIR_A), False, True),       # waiting for the Reward Room
             (badges(PAIR_B), False, True),
@@ -115,6 +117,53 @@ class PairBadgeTest(HarnessTestCase):
                 want = REWARD_ROOM if patched else LOBBY
                 self.assertEqual(self.exit_maps(), [want, want, MAPS["ROUTE_1"]])
         h.write8("hCurMap", LOBBY)
+
+    def test_gym_b_battle_reload_does_not_create_another_reward_room(self) -> None:
+        """Exercise leader start, reload before badge award, and badge award in order."""
+        h = self.harness
+        baseline = io.BytesIO()
+        h.save_state(baseline)
+        for earned, count, slot, leader, gym in (
+            (7, 32, 3, "ERIKA", "CELADON_GYM"),
+            (63, 56, 6, "BLAINE", "CINNABAR_GYM"),
+        ):
+            with self.subTest(gym=gym):
+                baseline.seek(0); h.load_state(baseline)
+                h.park_before_hijack()
+                h.write8("hCurMap", MAPS[gym])
+                h.write8("wObtainedBadges", earned)
+                h.write8("wBattleCount", count)
+                h.write8("wRogueCurGymBadgeMask", 1 << slot)
+                h.write8("wGymChoice", LATCHED | slot << SHIFT | slot)
+                h.write8("wRogueFlagsBitfield", 1)
+                self.fake_gym_warps()
+                classes = parse_trainer_class_indexes(REPO_ROOT / "constants/trainer_constants.asm")
+                h.pyboy.register_file.D = 160 + classes[leader]
+                h.call_routine("InitGymBattle")
+                self.assertTrue(h.read8("wRogueFlagsBitfield") & 1)
+                h.call_routine("RoguePairMapLoad")
+                self.assertEqual(self.exit_maps()[:2], [LOBBY, LOBBY])
+                # Also reject a pre-fix save which already cleared gym-next.
+                h.write8("wRogueFlagsBitfield", 0)
+                h.call_routine("RoguePairMapLoad")
+                self.assertEqual(self.exit_maps()[:2], [LOBBY, LOBBY])
+                h.call_routine("RogueAwardCurrentGymBadge")
+                self.assertEqual(h.read8("wObtainedBadges"), earned | 1 << slot)
+                self.assertEqual(self.exit_maps()[:2], [LOBBY, LOBBY])
+
+    def test_an_ineligible_reward_room_does_not_skip_another_route(self) -> None:
+        h = self.harness
+        for earned, count in ((15, 33), (127, 57)):
+            with self.subTest(badges=earned):
+                h.park_before_hijack()
+                h.write8("wObtainedBadges", earned)
+                h.write8("wBattleCount", count)
+                h.write8("wRogueFlagsBitfield", 0)
+                h.call_routine("RoguePairRewardRoomEntry")
+                self.assertEqual(h.read8("wBattleCount"), count)
+                self.assertFalse(h.read8("wRogueFlagsBitfield") & 1)
+                self.assertEqual(h.read8("wLobbyDoor1StageMap"), LOBBY)
+                self.assertEqual(h.read8("wLobbyDoor2StageMap"), LOBBY)
 
     def test_the_mid_run_reward_room_rewards_like_a_stage(self) -> None:
         """Run start: a flat level. Mid-run: the stage path, the gym tier of the

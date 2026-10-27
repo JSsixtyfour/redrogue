@@ -12,7 +12,7 @@ UPGRADES = re.findall(r"^\s*db (\w+),\s+KEY_ITEM_BIT_\w+_OWNED / 2,\s+\$([0-9a-f
 
 
 APPROVED_PURCHASES = {'SHINY_CHARM': 11, 'AMULET_COIN': 8, 'TURN_REWIND': 10, 'RARE_SCOPE': 10, 'RARE_LENS': 10, 'DV_BOOSTER': 14, 'STAT_BOOSTER': 11, 'DOOR_DICE': 6, 'MON_DICE': 6, 'ITEM_DICE': 6}
-APPROVED_UPGRADES = {'LEFTOVERS': (8, 15), 'PP_TONIC': (8, 15), 'KO_DEFIANCE': (15, 30), 'SHINY_CHARM': (23, 45), 'AMULET_COIN': (11, 23), 'TURN_REWIND': (19, 38), 'RARE_SCOPE': (15, 30), 'RARE_LENS': (15, 30), 'DV_BOOSTER': (19, 38), 'STAT_BOOSTER': (15, 30), 'DOOR_DICE': (11, 23), 'MON_DICE': (11, 23), 'ITEM_DICE': (11, 23), 'ELEMENT_PRISM': (15, 30)}
+APPROVED_UPGRADES = {'LEFTOVERS': (6, 12), 'PP_TONIC': (6, 12), 'KO_DEFIANCE': (12, 24), 'SHINY_CHARM': (18, 36), 'AMULET_COIN': (9, 18), 'TURN_REWIND': (15, 30), 'RARE_SCOPE': (12, 24), 'RARE_LENS': (12, 24), 'DV_BOOSTER': (15, 30), 'STAT_BOOSTER': (12, 24), 'DOOR_DICE': (9, 18), 'MON_DICE': (9, 18), 'ITEM_DICE': (9, 18), 'ELEMENT_PRISM': (12, 24)}
 
 
 class CreditStoreRuntimeTest(ItemDescriptionRuntimeBase):
@@ -56,7 +56,7 @@ class CreditStoreRuntimeTest(ItemDescriptionRuntimeBase):
         base = h.address("wCreditItemList")
         h.pyboy.memory[base:base+3] = [1, ITEMS["SHINY_CHARM"], 0xff]
         self.run_routine("PrintListMenuEntries")
-        self.assertIn("45", self.tile_row(11, 5, 8))
+        self.assertIn("36", self.tile_row(11, 5, 8))
 
     def test_every_upgrade_previews_both_real_benefits_and_clears_cancel(self):
         for item, _, _ in UPGRADES:

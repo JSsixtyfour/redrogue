@@ -929,8 +929,9 @@ InitGymBattle::
     ld [wTrainerNo], a          ; set trainer no within gym leaders options
     ld a, 1
 	ld [wIsTrainerBattle], a    ; start battle
-	ld hl, wRogueFlagsBitfield
-	res 0, [hl]                 ; route is next after this gym
+	; Keep gym-next through the battle's map reload. The leader's post-battle
+	; badge script clears it only after the win is finalized; clearing it here
+	; makes gym B look like a completed gym A at a pair badge count.
 	ret
 
 ; d = Current Elite Four member, ie. OPP_LORELEI
