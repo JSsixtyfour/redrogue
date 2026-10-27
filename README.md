@@ -157,6 +157,9 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
    - difficulty modes
    - Cubone overworld sprite
    - AI Work
+#### Programmer:  
+- Porygondolier
+   - mid-battle evolution
 ### Credits For Kanto Expansion Pak:
 #### Creator:
 - MementoMartha
@@ -240,7 +243,7 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
      - [Trainers are Not Pokemon](https://github.com/pret/pokered/wiki/Trainers-are-not-Pokemon)
 - suloku [Experience Share](https://github.com/pret/pokered/wiki/Experience-System-&-Exp.-All-Enhancements-(Single-message,-etc))
 - Patrik Rak: [CMWC random number generator (with optimisations by Einar Saukas and Alan Albrecht)](https://gist.github.com/raxoft/2275716fea577b48f7f0)
-- Porygondolier [Trainer Movesets](https://github.com/pret/pokered/wiki/Edit-the-trainer-movesets)
+- VimesCarrot [Trainer Movesets](https://github.com/pret/pokered/wiki/Edit-the-trainer-movesets)
 - Pret Tutorials:https://github.com/pret/pokered/wiki/Tutorials
 
 **Tutorials**
