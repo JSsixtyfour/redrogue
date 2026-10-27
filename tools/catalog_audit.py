@@ -9,8 +9,8 @@ Errors (exit 1):
     NO_MOVE, no move twice, every move learnable (tools/learnset_legality.py),
     a credit (credit_type not PENDING, set_name not empty) whose label fits;
   - tutor rule (user decision 2026-10-27): no ACTIVE row needs a move its line
-    can only get from a move tutor. TUTOR_RULE_ENFORCED is False until Phase 3
-    marks the 75 existing tutor sets EXCLUDED; until then it only warns;
+    can only get from a move tutor. TUTOR_RULE_ENFORCED is True since Phase 3
+    marked the tutor-dependent sets EXCLUDED (False downgrades it to a warning);
   - data/trainers/movesets.asm and rental_origins.asm match the catalog;
   - coverage: no (species/form, level, requested tier mask) that has a curated
     set in COVERAGE_BASELINE loses its last one, apart from ACCEPTED_HOLES.
@@ -33,17 +33,17 @@ import gen_rental_origins
 
 ROOT = g.ROOT
 COVERAGE_BASELINE = os.path.join(ROOT, "tools", "corpus", "moveset_coverage_baseline.json")
-TUTOR_RULE_ENFORCED = False
+TUTOR_RULE_ENFORCED = True
 # (species or corpus form name, requested mask name, first level, last level): holes the
 # user accepted (MOVESET_REVISION_DECISIONS_2026-10-27.md), so the generated fallback is fine.
 ACCEPTED_HOLES = [
     ("ARCANINE", "TIER_GAMBLER", 1, 100),     # Gambler Arcanine (tutor Fire Spin) removed
-    ("SHELLDER", "TIER_HARD | TIER_ELITE", 31, 42),
     ("SHELLDER", "TIER_NORMAL | TIER_HARD", 31, 42),
+    # Kakuna and Metapod: the retired sets were their only moves anyway (user 2026-10-27).
+    *[(sp, m, 25, 100) for sp in ("KAKUNA", "METAPOD")
+      for m in ("TIER_EASY | TIER_NORMAL", "TIER_NORMAL", "TIER_NORMAL | TIER_HARD")],
     ("GENGAR", "TIER_EASY | TIER_NORMAL", 25, 28),
     ("GENGAR", "TIER_NORMAL", 25, 28),
-    ("LAPRAS", "TIER_HARD | TIER_ELITE", 31, 34),
-    ("LAPRAS", "TIER_NORMAL | TIER_HARD", 31, 34),
 ]
 TIER_VALUES = {name: 1 << int(bit) for name, bit in re.findall(
     r"^DEF\s+(TIER_\w+)\s+EQU\s+1\s*<<\s*(\d+)",

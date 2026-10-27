@@ -1,4 +1,4 @@
-"""START close provides an explicit SGB palette/attribute recovery boundary."""
+"""Ordinary START close does not reapply SGB palettes after recovery revert."""
 from pathlib import Path
 import unittest
 
@@ -34,16 +34,10 @@ class StartMenuSGBPaletteTest(unittest.TestCase):
             h.tick(60)
             self.assertEqual(h.read8('hWY'), 144)
             self.assertEqual(party['count'], 0)
-            if sgb and not cgb:
-                self.assertEqual(refresh['count'] - refresh_before, 1)
-                self.assertEqual(len(packets), 2)
-                self.assertEqual(packets[0], [0x51]+[0]*15)  # PAL_SET: PAL_ROUTE
-                self.assertEqual(packets[1], [0x21,1,3,0,0,0,19,17]+[0]*8)
-            else:
-                self.assertEqual(refresh['count'], refresh_before)
-                self.assertEqual(packets, [])
-            # Full map inspection ensures the refresh leaves the restored
-            # overworld tilemap and its wrapped physical BG map in agreement.
+            self.assertEqual(refresh['count'], refresh_before)
+            self.assertEqual(packets, [])
+            # Compare the restored overworld tilemap with the full wrapped
+            # physical BG map after ordinary menu close.
             sx, sy = h.read8('hSCX')//8, h.read8('hSCY')//8
             actual = [h.pyboy.memory[0x9800+((sy+y)%32)*32+(sx+x)%32]
                       for y in range(18) for x in range(20)]
@@ -51,10 +45,10 @@ class StartMenuSGBPaletteTest(unittest.TestCase):
         finally:
             h.close()
 
-    def test_sgb_b_close_refreshes_room(self):
+    def test_sgb_b_close_skips_palette_refresh(self):
         self.check_close(sgb=True)
 
-    def test_sgb_start_close_refreshes_room(self):
+    def test_sgb_start_close_skips_palette_refresh(self):
         self.check_close(sgb=True, button='start')
 
     def test_dmg_close_skips_refresh(self):

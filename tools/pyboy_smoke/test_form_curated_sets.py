@@ -103,11 +103,16 @@ class FormCuratedSetTest(unittest.TestCase):
         self.check_form_draws_own_sets("SLOWBRO", 1, 42)
 
     def test_form_without_sets_falls_back_instead_of_borrowing_base_sets(self):
-        # Toedscool (TENTACOOL form 1) has no corpus records; plain Tentacool does.
-        self.assertIsNone(self.form_records("TENTACOOL", 1))
-        self.assertTrue(self.eligible(self.base_records("TENTACOOL"), 25),
-                        "control: base Tentacool must have a set at 25, or this proves nothing")
-        verdict, moves = self.select("TENTACOOL", 1, 25)
+        # A (species, form) with no MovesetFormIndex entry whose base species has sets.
+        # Toedscool (TENTACOOL form 1) was the example until the 2026-10-27 revision gave
+        # every shipped form sets, so look for an unused form index instead.
+        species, form = next((sp, f) for sp in ("TENTACOOL", "PIKACHU", "EXEGGUTOR", "SLOWBRO") for f in (3, 2, 1)
+                             if self.form_records(sp, f) is None
+                             and self.eligible(self.base_records(sp), 25))
+        self.assertIsNone(self.form_records(species, form))
+        self.assertTrue(self.eligible(self.base_records(species), 25),
+                        f"control: base {species} must have a set at 25, or this proves nothing")
+        verdict, moves = self.select(species, form, 25)
         self.assertEqual(verdict, ["none"])
         self.assertEqual(moves, [0xEE] * 4, "a fallback must not write moves")
 

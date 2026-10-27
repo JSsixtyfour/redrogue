@@ -95,7 +95,7 @@ class RentalStadiumSetTest(unittest.TestCase):
         header = h.address("wEnemyMon2")
         constants = corpus.parse_rgbds_constants(ROOT / "data/trainers/party_specs.asm")
         for i in range(6):
-            h.write8("wEnemyMon2", constants["MIX_ELITE"] if i == 4 else 0, offset=i)
+            h.write8("wEnemyMon2", constants["MIX_GYM_MID"] if i == 4 else 0, offset=i)  # Bayleef's sets are TIER_NORMAL since the 2026-10-27 regrade
         h.write8("wPartyGenSpecPtr", header & 255)
         h.write8("wPartyGenSpecPtr", header >> 8, offset=1)
         h.write8("wEnemyPartyCount", 1)

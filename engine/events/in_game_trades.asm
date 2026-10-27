@@ -179,8 +179,14 @@ InGameTrade_DoTrade:
 	ld a, [wCurEnemyLevel]
 	push af
 	call LoadHpBarAndStatusTilePatterns
+	; wWhichTrade aliases wTradedPlayerMonSpecies. Keep the trade ID while
+	; the animation owns that union, then restore it before form/result checks.
+	ld a, [wWhichTrade]
+	push af
 	call InGameTrade_PrepareTradeData
 	predef InternalClockTradeAnim
+	pop af
+	ld [wWhichTrade], a
 	pop af
 	ld [wCurEnemyLevel], a
 	pop af

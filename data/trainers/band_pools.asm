@@ -2901,7 +2901,6 @@
 	band_mon TENTACRUEL
 	band_mon MOLTRES
 	band_mon NINETALES
-	band_mon ARCANINE
 	band_mon FLAREON
 	band_mon TANGELA
 	band_johto

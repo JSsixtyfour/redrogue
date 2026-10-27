@@ -2,7 +2,7 @@
 ; IDs match the existing MovesetSpeciesIndex corpus, not name keywords.
 ; Bit i marks origin i as an official Pokemon Stadium rental set.
 RentalStadiumOrigins:
-	db $20, $00, $00, $00, $00, $00, $00, $00
-	db $c0, $ff, $ff, $07, $00, $00, $00, $00
+	db $20, $00, $00, $00, $80, $00, $00, $00
+	db $00, $00, $00, $00, $00, $fa, $03, $00
 	db $00, $00, $00, $00, $00, $00, $00, $00
-	db $00, $00, $00, $00, $00, $00, $00, $00
+	db $00, $c0, $00, $00, $00, $00, $00, $00

@@ -673,13 +673,17 @@ trainer's (the roster path). Only the species and the moves come from here (part
 
 ### Gambler (Gambler's Paradise)
 
+**Arcanine was removed from the pool on 2026-10-27** (moveset revision): its Fire Spin comes only from a
+move tutor, and tutor-dependent sets are excluded from the game. Rapidash, Ninetales, Moltres and
+Flareon remain as the fire trappers.
+
 **The pool** is one Fodder list, used in every round. Entries are **evolved by level** like any
 fodder (Dragonair becomes Dragonite at 55, Onix becomes Steelix at 38), and the moves are looked
 up on the species actually fielded. Duplicates are allowed, as they always were for gamblers.
 No pinned forms: the roster rolls its own forms, and a set cannot name one.
 
 **Band 1: every round**
-- Fodder: Dugtrio, Rhydon, Marowak, Golem, Tauros, Nidoking, Dragonite, Dragonair, Rapidash, Arbok, Lickitung, Onix, Pinsir, Omastar, Kingler, Cloyster, Tentacruel, Moltres, Ninetales, Arcanine, Flareon, Tangela
+- Fodder: Dugtrio, Rhydon, Marowak, Golem, Tauros, Nidoking, Dragonite, Dragonair, Rapidash, Arbok, Lickitung, Onix, Pinsir, Omastar, Kingler, Cloyster, Tentacruel, Moltres, Ninetales, Flareon, Tangela
 
 #### Sets: TIER_GAMBLER | TIER_HARD
 
@@ -721,7 +725,6 @@ any level or by TM/tutor. Notes cite this repo's data (`e:NNNN` = a line of
 | Tentacruel | Wrap, Hydro Pump, Bubblebeam, Constrict | WRAP e:2920, HYDRO_PUMP e:2921, BUBBLEBEAM e:2915, CONSTRICT e:2916(spd drop) |
 | Moltres | Fire Spin, Fire Blast, Sky Attack, Agility | FIRE_SPIN e:1594, FIRE_BLAST e:1592, SKY_ATTACK e:1593, AGILITY e:1590 |
 | Ninetales | Fire Spin, Fire Blast, Flamethrower, Confuse Ray | FIRE_SPIN e:1718, FIRE_BLAST TM, FLAMETHROWER e:1716, CONFUSE_RAY e:1714 |
-| Arcanine | Fire Spin, Fire Blast, Body Slam, Take Down | FIRE_SPIN tut e:666, FIRE_BLAST TM, BODY_SLAM TM, TAKE_DOWN e:661 |
 | Flareon | Fire Spin, Fire Blast, Body Slam, Quick Attack | FIRE_SPIN e:2095, FIRE_BLAST e:2096, BODY_SLAM TM, QUICK_ATTACK e:2089 |
 | Tangela | Bind, Sleep Powder, Mega Drain, Stun Spore | BIND e:869, SLEEP_POWDER e:865, MEGA_DRAIN e:866, STUN_SPORE e:864 |
 | Rhyperior | Horn Drill, Body Slam, Earthquake, Rock Slide | Rhydon evolves at L40 (trade rule). spd40 slow: HORN_DRILL e:4765/TM, BODY_SLAM TM(para), EQ e:4767/TM, ROCK_SLIDE e:4764/TM. Horn Drill, not Rhydon's Fissure, for variety |

@@ -243,5 +243,28 @@ class TrainerBlackoutTest(BlackoutFixture, HarnessTestCase):
         self.assertTrue(after_name.endswith(letters(name)), (name, boxes))
         self.assertNotIn(letters(creator).split()[0], after_name, boxes)
 
+    def test_blackout_prints_smogon_credit(self):
+        # Phase 3 credits: "by Smogon's / <role or format> set." (creator on line 1).
+        parts = loss_label_parts()
+        origin = next(o for o, (c, n) in sorted(parts.items())
+                      if letters(c) == 'Smogon' and n.count('<CONT>') == 1)
+        creator, name = parts[origin]
+        boxes = self.run_loss(force_origin=origin)
+        self.assertEqual(len(boxes), 3, boxes)
+        self.assertTrue(boxes[2].endswith(letters(name)), (name, boxes))
+        self.assertIn('Smogon', boxes[2], boxes)  # a one-line name leaves the creator on screen
+
+    def test_blackout_prints_stadium_rental_label(self):
+        # A creator-less Stadium label added by Phase 3: the creator part places nothing
+        # and the name carries the whole label.
+        parts = loss_label_parts()
+        origin = max(o for o, (c, n) in parts.items()
+                     if c == '' and 'Rental' in n and n.count('<CONT>') == 1)
+        creator, name = parts[origin]
+        boxes = self.run_loss(force_origin=origin)
+        self.assertEqual(len(boxes), 3, boxes)
+        self.assertTrue(boxes[2].endswith(letters(name)), (name, boxes))
+
+
 if __name__ == '__main__':
     unittest.main()

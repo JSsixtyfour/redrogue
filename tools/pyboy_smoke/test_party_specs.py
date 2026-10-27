@@ -572,6 +572,40 @@ class SourceAssignmentSmokeTest(HarnessTestCase):
                          [m["MSRC_LEARNSET"]] * 3)
 
 
+_RECORD_RE = re.compile(r"^	db (\w+), (\w+), (\w+), (\w+), ([A-Z_| ]+?), (\d+), (\d+), (\d+)", re.M)
+
+
+def _curated_runs():
+    """{SPECIES: [(moves, tier tokens, lo, hi)]} from the species runs of
+    data/trainers/movesets.asm (form records live in a later section and are skipped)."""
+    text = (REPO_ROOT / "data/trainers/movesets.asm").read_text(encoding="utf-8")
+    runs, name = {}, None
+    for line in text.splitlines():
+        m = re.match(r"^(\w+)::", line)
+        if m:                      # any label ends the previous run (forms use MovesetForm_)
+            name = m.group(1)[len("Moveset_"):] if m.group(1).startswith("Moveset_") else None
+            if name:
+                runs[name] = []
+        elif name:
+            r = _RECORD_RE.match(line)
+            if r:
+                runs[name].append((list(r.group(i) for i in range(1, 5)),
+                                   {t.strip() for t in r.group(5).split("|")},
+                                   int(r.group(7)), int(r.group(8))))
+    return runs
+
+
+def _pick(mask_tokens, want):
+    """The first species (alphabetical) for which want(records matching the mask) is a
+    (level, record) pair; the tests below pin behaviour, not one species' data."""
+    for species, recs in sorted(_curated_runs().items()):
+        hits = [r for r in recs if r[1] & mask_tokens]
+        found = want(hits)
+        if found:
+            return species, found
+    raise AssertionError(f"no species in movesets.asm fits {sorted(mask_tokens)}")
+
+
 class SetMovesetSmokeTest(HarnessTestCase):
     """PartyGenApplySetMoveset (MSRC_SET), driven directly.
 
@@ -582,12 +616,16 @@ class SetMovesetSmokeTest(HarnessTestCase):
     single most-repeated bug class when it goes wrong, so it gets its own
     real-ROM test rather than trusting the assembly.
 
-    BAYLEEF has exactly one curated record (data/trainers/movesets.asm):
-    RAZOR_LEAF, BODY_SLAM, REFLECT, TOXIC, TIER_HARD, level range 35-100. One
-    record makes the "found" case deterministic with no RNG dependency: only
-    one record can ever be picked, so there is nothing to sample and no seed
-    to depend on. MIX_ELITE's set_tier_mask is TIER_HARD | TIER_ELITE.
+    The species under test is picked from data/trainers/movesets.asm (_pick): one
+    with exactly one record matching the mix row's tier mask, so the "found" case
+    is deterministic with no RNG dependency: only one record can ever be picked,
+    so there is nothing to sample and no seed to depend on. (Until 2026-10-27 this
+    pinned BAYLEEF and GROWLITHE by name, which every catalog revision broke.)
+    MIX_ELITE's set_tier_mask is TIER_HARD | TIER_ELITE.
     """
+
+    ELITE_TOKENS = {"TIER_HARD", "TIER_ELITE"}
+    NORMAL_TOKENS = {"TIER_NORMAL"}
 
     def _setup(self, mix_id, species_name, level):
         h = self.harness
@@ -626,14 +664,14 @@ class SetMovesetSmokeTest(HarnessTestCase):
         assert h is not None
         h.boot_fight2(seed=1)
         moves = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
-        self._setup(_mix_id("MIX_ELITE"), "BAYLEEF", 50)
+        species, (rec_moves, _lo, _hi) = _pick(
+            self.ELITE_TOKENS,
+            lambda hits: (hits[0][0], hits[0][2], hits[0][3]) if len(hits) == 1 and hits[0][2] <= 50 <= hits[0][3] else None)
+        self._setup(_mix_id("MIX_ELITE"), species, 50)
         found, result = self._run()
-        self.assertTrue(found, "BAYLEEF has one TIER_HARD record and MIX_ELITE "
-                                "allows TIER_HARD; expected a match")
-        self.assertEqual(
-            result,
-            [moves["RAZOR_LEAF"], moves["BODY_SLAM"], moves["REFLECT"], moves["TOXIC"]],
-        )
+        self.assertTrue(found, f"{species} has one Hard/Elite record covering level 50 and "
+                               "MIX_ELITE allows it; expected a match")
+        self.assertEqual(result, [moves[m] for m in rec_moves])
         pp = h.read_bytes("wEnemyMon1PP", 4)
         for i, p in enumerate(pp):
             with self.subTest(slot=i):
@@ -653,37 +691,41 @@ class SetMovesetSmokeTest(HarnessTestCase):
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
-        # Tier matches (MIX_ELITE allows TIER_HARD), but level 34 is one under
-        # BAYLEEF's only record (35-100). The widened window only relaxes
+        # Tier matches (MIX_ELITE allows TIER_HARD), but the level is one under
+        # the species' only Hard/Elite record. The widened window only relaxes
         # lvl_max, so a set written for higher levels must still be refused -
         # this isolates the level check from the tier check above.
-        self._setup(_mix_id("MIX_ELITE"), "BAYLEEF", 34)
+        species, (_moves, lo, _hi) = _pick(
+            self.ELITE_TOKENS,
+            lambda hits: (hits[0][0], hits[0][2], hits[0][3]) if len(hits) == 1 and hits[0][2] >= 2 else None)
+        self._setup(_mix_id("MIX_ELITE"), species, lo - 1)
         found, _ = self._run()
-        self.assertFalse(found, "level 34 is below BAYLEEF's 35-100 record "
+        self.assertFalse(found, f"level {lo - 1} is below {species}'s {lo}-{_hi} record "
                                 "and the window never widens upward")
 
     def test_widened_window_reaches_a_record_just_below_the_level(self):
         """No set covers the level exactly, so the second attempt widens down.
 
-        GROWLITHE's one TIER_NORMAL record (EMBER, LEER, TAKE_DOWN, FIRE_SPIN)
-        covers 30-35 and MIX_GYM_MID allows TIER_NORMAL only. Level 40 misses
-        the exact window and is caught by SET_LEVEL_SLACK_BELOW; one level past
-        the slack is not.
+        A species with exactly one TIER_NORMAL record (hi <= 89) and MIX_GYM_MID,
+        which allows TIER_NORMAL only. A level 5 past the record's top misses the
+        exact window and is caught by SET_LEVEL_SLACK_BELOW; one level past the
+        slack is not.
         """
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
         moves = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
-        self._setup(_mix_id("MIX_GYM_MID"), "GROWLITHE", 40)
+        slack = _balance("SET_LEVEL_SLACK_BELOW")
+        species, (rec_moves, _lo, hi) = _pick(
+            self.NORMAL_TOKENS,
+            lambda hits: (hits[0][0], hits[0][2], hits[0][3]) if len(hits) == 1 and hits[0][3] + slack + 1 <= 100 else None)
+        self._setup(_mix_id("MIX_GYM_MID"), species, hi + 5)
         found, result = self._run()
-        self.assertTrue(found, "level 40 is within SET_LEVEL_SLACK_BELOW of "
-                               "GROWLITHE's 30-35 NORMAL record")
-        self.assertEqual(
-            result,
-            [moves["EMBER"], moves["LEER"], moves["TAKE_DOWN"], moves["FIRE_SPIN"]],
-        )
-        level = 35 + _balance("SET_LEVEL_SLACK_BELOW") + 1
-        self._setup(_mix_id("MIX_GYM_MID"), "GROWLITHE", level)
+        self.assertTrue(found, f"level {hi + 5} is within SET_LEVEL_SLACK_BELOW of "
+                               f"{species}'s NORMAL record ending at {hi}")
+        self.assertEqual(result, [moves[m] for m in rec_moves])
+        level = hi + slack + 1
+        self._setup(_mix_id("MIX_GYM_MID"), species, level)
         found, _ = self._run()
         self.assertFalse(found, f"level {level} is past the widened window")
 
