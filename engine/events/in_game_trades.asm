@@ -255,15 +255,26 @@ InGameTrade_RestoreScreen:
 	farjp LoadWildData
 
 InGameTrade_PrepareTradeData:
+	; Received form first, by the same rule as the AddPartyMon publish in
+	; InGameTrade_DoTrade: only a TRADE_FOR_RANDOM trade has one, from
+	; wroguenpctradeform. Read wWhichTrade before the store below: it aliases
+	; wTradedPlayerMonSpecies. (Until 2026-10-27 this matched the species against
+	; wRoguePokemon1, which the lobby trades never write.)
+	; `ld a, 0` not `xor a` - the flags from the `cp` have to reach the jr.
+	ld a, [wWhichTrade]
+	cp TRADE_FOR_RANDOM
+	ld a, 0
+	jr nz, .noReceivedForm
+	ld a, [wroguenpctradeform]
+.noReceivedForm
+	ld [wTradedEnemyMonForm], a
 	ld hl, wTradedPlayerMonSpecies
 	ld a, [wInGameTradeGiveMonSpecies]
 	ld [hli], a ; wTradedPlayerMonSpecies
 	ld a, [wInGameTradeReceiveMonSpecies]
 	ld [hl], a ; wTradedEnemyMonSpecies
-	; Both forms, for the animation's pics, palettes and names. Given: the
-	; party mon's own catch-rate form bits. Received: the rogue trade's offer
-	; form, with the same species guard as the AddPartyMon publish above, so an
-	; authored trade never inherits a reward slot's form.
+	; The given mon's form, for the animation's pics, palettes and names: the
+	; party mon's own catch-rate form bits (the received form is set above).
 	ldh a, [hWhichPokemon]
 	ld hl, wPartyMon1CatchRate
 	ld bc, PARTYMON_STRUCT_LENGTH
@@ -274,14 +285,6 @@ InGameTrade_PrepareTradeData:
 	rlca
 	rlca
 	ld [wTradedPlayerMonForm], a
-	ld a, [wInGameTradeReceiveMonSpecies]
-	ld hl, wRoguePokemon1
-	cp [hl]
-	ld a, 0                    ; not xor a: the cp flags must reach the jr
-	jr nz, .noReceivedForm
-	ld a, [wRoguePokemonForm1]
-.noReceivedForm
-	ld [wTradedEnemyMonForm], a
 	ld hl, wPartyMonOT
 	ld bc, NAME_LENGTH
 	ldh a, [hWhichPokemon]

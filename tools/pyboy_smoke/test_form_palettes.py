@@ -12,6 +12,7 @@ from pathlib import Path
 import unittest
 
 from harness import RedRogueHarness
+from source_constants import parse_rgbds_constants
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -103,18 +104,20 @@ class FormPalettesTest(unittest.TestCase):
         self.assertEqual(record[14:16], [0, 0])
 
         # Trade data: the given mon's form from its party struct, the received
-        # one from the rogue offer only when the species matches it.
+        # one from wroguenpctradeform only on a TRADE_FOR_RANDOM trade (the same
+        # rule InGameTrade_DoTrade uses for the AddPartyMon publish).
+        trades = parse_rgbds_constants(REPO_ROOT / "constants/script_constants.asm")
         h.write8("hWhichPokemon", 0)
         h.write8("wInGameTradeGiveMonSpecies", VULPIX)
         h.write8("wInGameTradeReceiveMonSpecies", VULPIX)
-        h.write8("wRoguePokemon1", VULPIX)
-        h.write8("wRoguePokemonForm1", 1)
+        h.write8("wWhichTrade", trades["TRADE_FOR_RANDOM"])
+        h.write8("wroguenpctradeform", 1)
         h.call_routine("InGameTrade_PrepareTradeData", limit=20000)
         self.assertEqual(h.read8("wTradedPlayerMonForm"), 1)
         self.assertEqual(h.read8("wTradedEnemyMonForm"), 1)
 
         h.write8("wPartyMon1", 0x01, offset=CATCH_RATE_OFFSET)   # form 0
-        h.write8("wRoguePokemon1", VULPIX ^ 1)                   # not the offer
+        h.write8("wWhichTrade", trades["TRADE_FOR_TERRY"])       # an authored trade
         h.call_routine("InGameTrade_PrepareTradeData", limit=20000)
         self.assertEqual(h.read8("wTradedPlayerMonForm"), 0)
         self.assertEqual(h.read8("wTradedEnemyMonForm"), 0, "authored trades never inherit an offer form")

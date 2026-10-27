@@ -1008,6 +1008,9 @@ NEXTU
 wSavedY::
 wTempSCX::
 ; which entry from TradeMons to select
+; Shares $CD37 with wTradedPlayerMonSpecies (trade animation data): InGameTrade_PrepareTradeData
+; reads it before its first store there, and InGameTrade_DoTrade restores it after the
+; animation. Nothing between those two points may read it.
 wWhichTrade::
 wDexMaxSeenMon::
 wPPRestoreItem::

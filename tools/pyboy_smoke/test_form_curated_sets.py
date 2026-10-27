@@ -112,8 +112,14 @@ class FormCuratedSetTest(unittest.TestCase):
         self.assertIsNone(self.form_records(species, form))
         self.assertTrue(self.eligible(self.base_records(species), 25),
                         f"control: base {species} must have a set at 25, or this proves nothing")
+        # The selector has no form bounds check: any nonzero form scans MovesetFormIndex
+        # to its end, so an unused index takes the same path a set-less real form would.
+        scanned = self.h.hook_flag("PartyGenApplySetMovesetMask.formLookup")
+        base_read = self.h.hook_flag("PartyGenApplySetMovesetMask.haveIndex")
         verdict, moves = self.select(species, form, 25)
         self.assertEqual(verdict, ["none"])
+        self.assertEqual(scanned["count"], 1, "the form index scan did not run")
+        self.assertEqual(base_read["count"], 0, "a set-less form read a species index")
         self.assertEqual(moves, [0xEE] * 4, "a fallback must not write moves")
 
     def test_plain_form_still_uses_the_species_index(self):

@@ -233,8 +233,8 @@ LoadTradingGFXAndMonNames:
 ; eaten by the give-side name and the received mon would fall back to its base
 ; name. Same two-name-paths trap as in_game_trades.asm.
 ;
-; wTradedEnemyMonForm carries the species guard (InGameTrade_PrepareTradeData:
-; only the rogue trade's offer, wRoguePokemon1, can have a form), so an authored
+; wTradedEnemyMonForm is 0 unless wWhichTrade is TRADE_FOR_RANDOM, then the
+; offer's wroguenpctradeform (InGameTrade_PrepareTradeData), so an authored
 ; TradeMons entry can never inherit a reward slot's form.
 	ld a, [wTradedEnemyMonForm]
 	ld [wFormContextForm], a

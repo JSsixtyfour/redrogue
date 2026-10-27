@@ -1837,7 +1837,6 @@ JynxEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
-	db 10, SING
 	db 17, CONFUSION
 	db 18, LICK ; Red/Blue level-up move restored
 	db 23, DOUBLESLAP

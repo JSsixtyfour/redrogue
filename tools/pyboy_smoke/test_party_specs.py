@@ -707,7 +707,7 @@ class SetMovesetSmokeTest(HarnessTestCase):
         """No set covers the level exactly, so the second attempt widens down.
 
         A species with exactly one TIER_NORMAL record (hi <= 89) and MIX_GYM_MID,
-        which allows TIER_NORMAL only. A level 5 past the record's top misses the
+        which allows TIER_NORMAL only. One level past the record's top misses the
         exact window and is caught by SET_LEVEL_SLACK_BELOW; one level past the
         slack is not.
         """
@@ -719,9 +719,9 @@ class SetMovesetSmokeTest(HarnessTestCase):
         species, (rec_moves, _lo, hi) = _pick(
             self.NORMAL_TOKENS,
             lambda hits: (hits[0][0], hits[0][2], hits[0][3]) if len(hits) == 1 and hits[0][3] + slack + 1 <= 100 else None)
-        self._setup(_mix_id("MIX_GYM_MID"), species, hi + 5)
+        self._setup(_mix_id("MIX_GYM_MID"), species, hi + 1)
         found, result = self._run()
-        self.assertTrue(found, f"level {hi + 5} is within SET_LEVEL_SLACK_BELOW of "
+        self.assertTrue(found, f"level {hi + 1} is within SET_LEVEL_SLACK_BELOW of "
                                f"{species}'s NORMAL record ending at {hi}")
         self.assertEqual(result, [moves[m] for m in rec_moves])
         level = hi + slack + 1

@@ -40,9 +40,14 @@ class TradeRedrawTest(unittest.TestCase):
             restored=h.hook_flag('InGameTrade_RestoreScreen')
             finished=h.hook_flag('InGameTrade_DoTrade.tradeSucceeded')
             exchanges=h.hook_flag('InGameTrade_PrepareTradeData')
+            # The animation's received form, read as it starts (after PrepareTradeData).
+            anim_form=[]
+            h.register_hook('InternalClockTradeAnim',lambda _: anim_form.append(h.read8('wTradedEnemyMonForm')))
             results=[]
+            text_bank,text_addr=h.symbols.get('_TradedForText')
             def result_text(_):
-                if h.pyboy.register_file.HL==h.address('_TradedForText'):
+                if (h.pyboy.register_file.HL==text_addr
+                        and h.read8('hLoadedROMBank')==text_bank):
                     results.append(h.pyboy.frame_count)
             h.register_hook('TextCommandProcessor',result_text)
             blocked=[]
@@ -76,6 +81,7 @@ class TradeRedrawTest(unittest.TestCase):
             stride=h.address('wPartyMon2CatchRate')-h.address('wPartyMon1CatchRate')
             catch_rate=h.read8('wPartyMon1CatchRate',(h.read8('wPartyCount')-1)*stride)
             self.assertEqual(catch_rate & 0x60,form << 5)
+            self.assertEqual(anim_form,[form],"the animation showed a different form than the party got")
             self.assertFalse(h.hook_errors,h.hook_errors)
         finally:
             h.close()
