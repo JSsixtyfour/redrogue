@@ -107,27 +107,33 @@ IsObjectHidden:
 	jr nz, .ordinarySlot
 	farjp LobbyKeySwapObjectHidden
 .ordinarySlot
+	; The lobby owns a fixed service roster. Read the same live toggle bits
+	; directly, as the procedural-stage slot mappings below already do.
+	; Slot 13's checkpoint gate was handled above; unassigned slots retain
+	; the ordinary list lookup. No visibility result is cached.
+	ldh a, [hCurMap]
+	cp INDIGO_PLATEAU_LOBBY
+	jr nz, .ordinaryMap
 	ld a, b
-	cp 1
-	jr z, .checkMaybeRoguePG
-	cp 2
-	jr z, .checkMaybeRoguePG
-	cp 3
-	jr z, .checkMaybeRoguePG
-	cp 4
-	jr z, .checkMaybeRoguePG
-	cp 5
-    jr z, .checkMaybeRoguePG
-	cp 6
-	jr z, .checkMaybeRoguePB
-	cp 7
-	jr z, .checkMaybeRoguePB
-	cp 8
-	jr z, .checkMaybeRoguePB
-	cp 9
-	jr z, .checkMaybeRoguePB
+	sub PC_PSYCHIC
+	jp c, .notHidden ; nurse, clerks and daycare/relearner are never toggled
+	cp PC_RENTAL_OFFICIAL - PC_PSYCHIC + 1
+	jp nc, .normalCheck
+	add TOGGLE_PC_PSYCHIC
+	ld c, a
+	jp .checkRewardBit
+	ASSERT PC_WITCH - PC_PSYCHIC == TOGGLE_PC_WITCH - TOGGLE_PC_PSYCHIC
+	ASSERT PC_POKESALESMAN - PC_PSYCHIC == TOGGLE_PC_POKESALESMAN - TOGGLE_PC_PSYCHIC
+	ASSERT PC_TRADENERD - PC_PSYCHIC == TOGGLE_PC_TRADENERD - TOGGLE_PC_PSYCHIC
+	ASSERT PC_MOVETUTOR - PC_PSYCHIC == TOGGLE_PC_MOVETUTOR - TOGGLE_PC_PSYCHIC
+	ASSERT PC_RENTAL_OFFICIAL - PC_PSYCHIC == TOGGLE_PC_RENTAL_OFFICIAL - TOGGLE_PC_PSYCHIC
+.ordinaryMap
+	ld a, b
+	dec a
+	cp 5 ; slots 1-5
+	jr c, .checkMaybeRoguePG
 	cp 10
-	jr z, .checkMaybeRoguePB
+	jr c, .checkMaybeRoguePB ; slots 6-10
 	jp .normalCheck
 .checkMaybeRoguePG
 	; The three map-class questions below go through GetCurMapStageClass's

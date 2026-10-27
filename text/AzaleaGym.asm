@@ -17,8 +17,9 @@ _AzaleaGymBugsyPreBattleText::
 	done
 
 _AzaleaGymBugsyReceivedBadgeText::
-	text "Whoa, amazing!"
-	line "You're an expert"
+	text "Whoa,"
+	line "amazing!"
+	cont "You're an expert"
 	cont "on #MON!"
 
 	para "My research isn't"

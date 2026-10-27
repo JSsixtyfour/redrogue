@@ -18,7 +18,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from harness import RedRogueHarness
-from source_constants import parse_map_constants
+from source_constants import parse_map_constants, parse_rgbds_constants
 
 ROOT = Path(__file__).resolve().parents[2]
 LABELS = ("VBlank", "PrepareOAMData", "_UpdateSprites", "UpdateNPCSprite",
@@ -117,9 +117,48 @@ def snapshot(h):
 
 def sample(h, timing, name, repeats):
     metadata = snapshot(h)
+    # Random is called directly by VBlank just after PrepareOAMData returns.
+    # Sample there, rather than at a frame boundary partway through OAM writes.
+    oam_frames = []
+    vblank_start, vblank_end = h.address("VBlank"), h.address("DelayFrame")
+
+    def observe_oam(_):
+        sp = h.pyboy.register_file.SP
+        caller = h.pyboy.memory[sp] | h.pyboy.memory[sp+1] << 8
+        if not vblank_start <= caller < vblank_end:
+            return
+        oam = h.read_bytes("wShadowOAM", 160)
+        lines = [0] * 144
+        entries = 0
+        for index in range(0, 160, 4):
+            y, x = oam[index:index+2]
+            if not 0 < x < 168:
+                continue
+            top = y - 16
+            rows = range(max(0, top), min(144, top+8))
+            if not rows:
+                continue
+            entries += 1
+            for row in rows:
+                lines[row] += 1
+        slots = [slot for slot in range(16)
+                 if h.read8("wSpriteStateData1", slot*16)
+                 and h.read8("wSpriteStateData1", slot*16+2) != 255]
+        oam_frames.append((entries, max(lines), slots))
+
+    def oam_summary():
+        peak = max(oam_frames, key=lambda row: len(row[2])) if oam_frames else None
+        return {"visible_entries": summary([row[0] for row in oam_frames]),
+                "entries_on_busiest_scanline": summary([row[1] for row in oam_frames]),
+                "visible_slots": summary([len(row[2]) for row in oam_frames]),
+                "slots_at_peak": peak[2] if peak else []}
+
+    h.register_hook("Random", observe_oam)
     timing.begin()
     h.tick(120)
     idle = timing.finish()
+    idle_oam = oam_summary()
+    oam_frames.clear()
     timing.begin()
     frames = []
     occupancy = []
@@ -129,11 +168,14 @@ def sample(h, timing, name, repeats):
         occupancy.append(sum(0 < h.pyboy.memory[h.address("wShadowOAM") + i] < 160
                              for i in range(0, 160, 4)))
     walking = timing.finish()
+    walking_oam = oam_summary()
+    h.unregister_hook("Random", observe_oam)
     assert position(h) == tuple(metadata["xy"])
     assert not h.hook_errors, h.hook_errors
     return {"area": name, "fixture": metadata, "idle": idle, "walking": walking,
             "frames_per_tile": summary(frames), "frames_per_tile_all": frames,
-            "oam_entries_at_segment_end": occupancy}
+            "oam_entries_at_segment_end": occupancy,
+            "idle_oam": idle_oam, "walking_oam": walking_oam}
 
 
 def main():
@@ -145,6 +187,7 @@ def main():
     parser.add_argument("--cgb", action="store_true")
     parser.add_argument("--repeats", type=int, default=12)
     parser.add_argument("--single", action="store_true", help="first visibility/follower fixture only")
+    parser.add_argument("--crowded", action="store_true", help="also walk past the central counter with all services offered")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     results = []
@@ -159,6 +202,15 @@ def main():
             h.boot_to_lobby()
             h.tick(120)
             h.wait_until(lambda: not (h.read8("wFontLoaded") & 1), "lobby text closed", 600)
+            if args.crowded:
+                toggles = parse_rgbds_constants(ROOT / "constants/toggle_constants.asm")
+                def all_services(_):
+                    for name in ("PSYCHIC","WITCH","POKESALESMAN","TRADENERD","MOVETUTOR","RENTAL_OFFICIAL"):
+                        bit = toggles["TOGGLE_PC_" + name]
+                        address = h.address("wToggleableObjectFlags") + bit // 8
+                        h.pyboy.memory[address] &= ~(1 << (bit % 8))
+                h.register_hook("IndigoPlateauLobby_Script", all_services)
+                h.tick(60)
             if checkpoint:
                 def eligibility(_):
                     h.write8("wBattleCount", 29)
@@ -170,9 +222,12 @@ def main():
             stem = f"{'checkpoint' if checkpoint else 'normal'}_follower{int(follower)}"
             # Entrance (7,10); tutor (2,3); counter front (11,7).
             step(h, "up")
-            for name, route in [("entrance", []),
+            routes = [("entrance", []),
                                 ("tutor", [("up",3),("left",5),("up",4)]),
-                                ("counter", [("down",4),("right",9)])]:
+                                ("counter", [("down",4),("right",9)])]
+            if args.crowded:
+                routes.append(("crowded_counter", [("left",3)]))
+            for name, route in routes:
                 for direction, count in route:
                     for _ in range(count):
                         step(h, direction)
@@ -189,7 +244,7 @@ def main():
             h.close()
     report = {"rom_sha256": hashlib.sha256((args.rom_root / "pokeblue_debug.gbc").read_bytes()).hexdigest(),
               "mode": "CGB" if args.cgb else "DMG", "light": args.light,
-              "repeats": args.repeats, "results": results}
+              "repeats": args.repeats, "crowded": args.crowded, "results": results}
     (args.output / "profile.json").write_text(json.dumps(report, indent=2) + "\n")
 
 

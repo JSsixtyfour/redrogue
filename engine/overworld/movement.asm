@@ -596,6 +596,18 @@ CheckSpriteAvailability:
 	call GetTileSpriteStandsOn
 	call .VisibilityTest
 	jr nc, .spriteInvisible
+	; Rounded-up and rounded-down Y select the same four tiles when aligned.
+	; Keep the sampled tile in c for the grass-priority comparison below.
+	ld c, a
+	ldh a, [hCurrentSpriteOffset]
+	add SPRITESTATEDATA1_YPIXELS
+	ld l, a
+	ld h, HIGH(wSpriteStateData1)
+	ld a, [hl]
+	add 4
+	and $f
+	ld a, c
+	jr z, .spriteVisible
 	call GetTileSpriteStandsOn_roundUP
 	call .VisibilityTest
 	jr c, .spriteVisible

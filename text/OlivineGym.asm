@@ -1,6 +1,6 @@
 _OlivineGymJasminePreBattleText::
-	text "Allow me to intro-"
-	line "duce myself."
+	text "Allow me to"
+	line "introduce myself."
 
 	para "I am JASMINE, a"
 	line "GYM LEADER."
@@ -9,14 +9,16 @@ _OlivineGymJasminePreBattleText::
 	done
 
 _OlivineGymJasmineReceivedBadgeText::
-	text "…You are a better"
-	line "trainer than me,"
+	text "…You are"
+	line "a better trainer"
+	cont "than me,"
 
 	para "in both skill and"
 	line "kindness."
 
-	para "In accordance with"
-	line "LEAGUE rules, I"
+	para "In accordance"
+	line "with LEAGUE"
+	cont "rules, I"
 
 	para "confer upon you"
 	line "this BADGE."
@@ -58,7 +60,8 @@ _OlivineGymCooltrainerMEndBattleText::
 _OlivineGymCooltrainerMAfterBattleText::
 	text "JASMINE uses"
 	line "#MON with"
-	cont "unknown properties"
+	cont "unknown"
+	cont "properties"
 	done
 
 _OlivineGymGuideAdviceText::
