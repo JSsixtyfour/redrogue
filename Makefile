@@ -172,10 +172,13 @@ save_converter:
 # Also fails when data/trainers/band_pools.asm is not what PARTY_ROSTER.md generates,
 # and runs the slow source-only test modules that `make smoke` skips
 # (SOURCE_ONLY_MODULES in tools/pyboy_smoke/run_smoke.py).
+# Also fails when tools/corpus/moveset_catalog.tsv breaks a set rule, drops a
+# coverage cell, or no longer matches movesets.asm (tools/catalog_audit.py).
 # Releases select Red + Debug; plain make audit retains full three-ROM coverage.
 AUDIT_ROMS ?= $(roms:.gbc=)
 audit: $(addsuffix .gbc,$(AUDIT_ROMS))
 	python3 tools/gen_party_roster.py --check
+	python3 tools/catalog_audit.py
 	python3 tools/static_audit/test_rules.py
 	python3 tools/static_audit/run_all.py $(foreach rom,$(AUDIT_ROMS),--rom $(rom)) $(if $(INFO),--info)
 	python3 tools/pyboy_smoke/run_smoke.py --source-only

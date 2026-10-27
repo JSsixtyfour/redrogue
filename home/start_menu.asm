@@ -94,4 +94,13 @@ CloseStartMenu::
 	bit B_PAD_A, a
 	jr nz, CloseStartMenu
 	call LoadTextBoxTilePatterns
+	; Reapply the SGB room colours/attributes after an external cartridge menu.
+	; CGB owns a separate restoration path; DMG needs no SGB packets.
+	ldh a, [hGBC]
+	and a
+	jr nz, .close
+	ld a, [wOnSGB]
+	and a
+	call nz, RunDefaultPaletteCommand
+.close
 	jp CloseTextDisplay

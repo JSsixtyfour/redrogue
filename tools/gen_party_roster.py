@@ -633,7 +633,7 @@ def lint(chars, names, groups=None, evo_targets=None, bst=None):
 # tools/gen_movesets.py reads every table through load_signature_sets() and writes each
 # row into data/trainers/movesets.asm, tagged `; roster <Prefix>`; --check here fails
 # when the two disagree, so `make audit` catches a doc edit that was never regenerated
-# (gen_movesets itself needs the K: corpus and is not part of the audit).
+# (tools/catalog_audit.py, also in the audit, checks the whole file against the catalog).
 #
 # A set reaches a battle only through a mix row whose set_tier_mask shares a bit with
 # its tiers. A character's OWN bit (TIER_GAMBLER, or a free TIER_SIGNATURE_7) is
@@ -974,8 +974,8 @@ def main():
             bad = True
         if sets_stale:
             print("gen_party_roster: data/trainers/movesets.asm's `; roster` records differ "
-                  "from the doc's Sets tables; run `py tools/gen_movesets.py` (it reads "
-                  "the corpus on the K: drive, so from Windows)", file=sys.stderr)
+                  "from the doc's Sets tables; run `python3 tools/gen_movesets.py`",
+                  file=sys.stderr)
             bad = True
         if bad:
             return 1
@@ -984,8 +984,7 @@ def main():
         return 0
     if sets_stale:
         print("gen_party_roster: note: a Sets table changed; also run "
-              "`py tools/gen_movesets.py` (from Windows: it reads the K: corpus)",
-              file=sys.stderr)
+              "`python3 tools/gen_movesets.py`", file=sys.stderr)
     write(OUT, asm)
     if new_doc != doc_text:
         write(DOC, new_doc)
