@@ -95,7 +95,7 @@ class BatchTwoRuntimeTest(unittest.TestCase):
         h = self.harness
         ids = sprite_ids()
         h.boot_debug1(self.maps["SILPH_CO_DORM"])
-        chosen = ("MEW", "VAPOREON", "JOLTEON")  # one per shape
+        chosen = ("MEW", "VAPOREON", "JOLTEON", "PORYGON")  # shapes plus imported walking sheet
         for slot, name in enumerate(chosen, start=1):
             h.write8(f"wSprite0{slot}StateData1", ids[name])
         self.park()

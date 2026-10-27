@@ -128,4 +128,5 @@ SpriteSheetPointerTable:
 	overworld_sprite WigglytuffSprite, 12      ; SPRITE_WIGGLYTUFF
 	overworld_sprite_slice GameboyKidSprite, 0, 4 ; SPRITE_LOBBY_MOVE_TUTOR
 	overworld_sprite_slice LinkReceptionistSprite, 0, 4 ; SPRITE_LOBBY_RENTAL_OFFICIAL
+	overworld_sprite PorygonSprite, 12          ; SPRITE_PORYGON
 	assert_table_length NUM_SPRITES

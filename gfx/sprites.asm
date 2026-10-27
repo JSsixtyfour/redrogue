@@ -252,6 +252,9 @@ Seel2Sprite:: ; standing poses only, repeated as the walk frames
 
 ; Bank $3E is full after the sheets above; the one-pose sheets follow in $37.
 SECTION "Yellow Legacy Pokemon Sprites 2", ROMX, BANK[$37]
+PorygonSprite::
+	INCBIN "gfx/sprites/porygon.2bpp"
+	ASSERT @ - PorygonSprite == 24 tiles
 JolteonSprite:: ; one pose, repeated for all six frames
 	INCBIN "gfx/sprites/jolteon.2bpp"
 	INCBIN "gfx/sprites/jolteon.2bpp"

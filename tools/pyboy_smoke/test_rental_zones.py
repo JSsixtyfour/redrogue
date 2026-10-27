@@ -9,6 +9,7 @@ import test_rental_replacement as replacement
 from source_constants import parse_map_constants, parse_rgbds_constants
 from test_move_tutor_prices import return_from_call
 from test_save_header import ColdBoot, dump_sram
+from routine_session import isolated_routine_calls
 
 
 class RentalZoneTest(unittest.TestCase):
@@ -164,21 +165,22 @@ class RentalZoneTest(unittest.TestCase):
             self.assertEqual(h.read8("wRentalZone"), zone)
 
     def test_each_loaded_hub_reclaims_recovers_and_saves_once(self):
+        with isolated_routine_calls(self.h):
+            self.check_loaded_hub_transactions()
+
+    def check_loaded_hub_transactions(self):
         h = self.h
-        h.park_before_hijack()
         baseline = io.BytesIO()
         h.save_state(baseline)
-        # The direct transaction fixture is parked inside VBlank. Sprite
-        # updates can wait for graphics; the live lobby case below runs them.
+        # Direct calls use a synthetic caller. Mock graphics/text waits;
+        # the live lobby test below exercises those through the real map.
         h.register_hook("UpdateSprites", lambda _: return_from_call(h))
         h.register_hook("RentalSettlementPopup", lambda _: return_from_call(h))
         saves = []
         h.register_hook("SaveGameData", lambda _: saves.append(h.read8("hCurMap")))
         for hub in ("REWARD_ROOM", "INDIGO_PLATEAU_LOBBY"):
-            # Each hub is an independent transaction. Restore the complete
-            # starting machine before seeding it; the previous hub's final
-            # load can leave an unsafe frame-tail resume point. Within this
-            # hub, carry all party/box/SRAM state through the actual calls.
+            # Each hub starts from the same fixture. Within the hub, carry
+            # party/box/SRAM state through every real transaction and save.
             h.load_state(baseline)
             saves.clear()
             self.seed(h, 5, {5:[25], 8:[30]}, 167)

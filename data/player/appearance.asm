@@ -44,7 +44,7 @@ PlayerAppearanceTable::
 	player_appearance HikerSprite,        CueBallPic,      RedPicBack,    .cueBall
 	player_appearance SuperNerdSprite,    EngineerPic,     EngineerPicBack, .engineer
 	player_appearance FisherSprite,       FisherPic,       RedPicBack,    .fisherman
-	player_appearance GamblerSprite,      GamblerPic,      OldManPicBack, .gambler
+	player_appearance GamblerSprite,      GamblerPic,      GamblerPicBack, .gambler
 	player_appearance GentlemanSprite,    GentlemanPic,    GentlemanPicBack, .gentleman
 	player_appearance HikerSprite,        HikerPic,        RedPicBack,    .hiker
 	player_appearance CooltrainerMSprite, JrTrainerMPic,   JrTrainerMPicBack, .jrTrainerM

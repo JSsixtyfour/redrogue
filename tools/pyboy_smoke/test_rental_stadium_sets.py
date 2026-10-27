@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 import sys
 from harness import RedRogueHarness
+from routine_session import isolated_routine_calls
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -13,10 +14,15 @@ class RentalStadiumSetTest(unittest.TestCase):
     def setUp(self):
         self.h = RedRogueHarness(ROOT, Path(__file__).parent / "artifacts")
         self.h.boot_to_lobby()
+        self.calls = isolated_routine_calls(self.h)
+        self.calls.__enter__()
         self.species = corpus.parse_species_constants(ROOT / "constants/pokemon_constants.asm")
 
     def tearDown(self):
-        self.h.close()
+        try:
+            self.calls.__exit__(None, None, None)
+        finally:
+            self.h.close()
 
     def select(self, species, level, tier=31, form=0):
         h = self.h
@@ -92,8 +98,6 @@ class RentalStadiumSetTest(unittest.TestCase):
             h.write8("wEnemyMon2", constants["MIX_ELITE"] if i == 4 else 0, offset=i)
         h.write8("wPartyGenSpecPtr", header & 255)
         h.write8("wPartyGenSpecPtr", header >> 8, offset=1)
-        # call_routine lets the parked game finish its frame after returning, and
-        # that tail can write wCurEnemyLevel (GetRewardMonLevel, FOLLOWUPS #67).
         h.write8("wEnemyPartyCount", 1)
         h.write8("wPartyGenSlot", 0)
         h.write8("wCurEnemyLevel", 50)
