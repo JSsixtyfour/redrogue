@@ -267,6 +267,7 @@ Rogue_Lab_Script_PokeballText_3:
 ; starter, then random; it sets wRivalStarter + wRivalStarterBallSpriteIndex.
 ; We then fall through to walk Blue to that ball.
 OaksLabRivalPicksAndWalks:
+	rfarcall RunTimerStart
 	farcall RivalPickStarter
 	; fall through
 

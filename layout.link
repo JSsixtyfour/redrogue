@@ -48,7 +48,6 @@ ROMX $5
 	; 2026-09-16 - see that bank's comment for why.
 ROMX $6
 	"Maps 1"
-	"Play Time"
 	"Maps 2"
 	"Doors and Ledges"
 ROMX $7
@@ -128,6 +127,9 @@ ROMX $12
 	; SpriteNybbleReverseTable is indexed by low byte alone.
 	ALIGN 8
 	"Sprite Plane Split"
+	; Keep both clocks in the same bank: VBlank's existing farcall reaches
+	; TrackPlayTime, which updates the run clock with a plain local call.
+	"Play Time"
 ROMX $13
 	; "Trainer Pics" also holds RedPicFront/GreenPicFront so that every pic
 	; PlayerAppearanceTable can select shares one bank. That pushed "Predefs"

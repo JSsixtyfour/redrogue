@@ -26,7 +26,7 @@
  },
  "recovery_keep_wram": {
   "about": "Saved-WRAM fields a recovery carries from the old save into the target's post-reset Dorm template. Everything else in the main save block comes from the template. Measured against RogueResetRunState: see SAVE_COMPATIBILITY_RUNBOOK.md, 'Recovery parity'.",
-  "labels": ["wPlayerName", "wPlayerID", "wRivalName", "wPokedexOwned", "wPokedexSeen", "wOptions", "wOptions2", "wOptions3", "wNumHoFTeams", "wGymsUsedMask"],
+  "labels": ["wPlayerName", "wPlayerID", "wRivalName", "wPokedexOwned", "wPokedexSeen", "wOptions", "wOptions2", "wOptions3", "wNumHoFTeams", "wGymsUsedMask", "wRunRecordCount", "wRunRecordsFirst", "wRunRecordsLast"],
   "event_bytes": "persistent zone: wEventFlags bytes below RUN_EVENTS_START/8 and from RUN_EVENTS_END/8 on"
  }
 }

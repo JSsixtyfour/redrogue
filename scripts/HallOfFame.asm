@@ -30,6 +30,7 @@ HallOfFameResetEventsAndSaveScript:
 	ldh [hJoyIgnore], a
 	call HallOfFameIsAIRetry
 	jr c, .aiRetry
+	rfarcall RunRecordsCommit
 	predef HallOfFamePC
 	xor a                          ; retry marker: normal clear
 	jr .presented

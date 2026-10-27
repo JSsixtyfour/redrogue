@@ -51,7 +51,10 @@ ENGINE_WRAM = {"wPlayerName", "wPartyCount", "wPartySpecies", "wBoxCount", "wCur
                # migration tradeFormAdded (schema 10 -> 11)
                "wOptions3", "wroguenpctradeform",
                # migration flagsRenumbered (schema 10 -> 11)
-               "wToggleableObjectFlags"}
+               "wToggleableObjectFlags",
+               # migration runRecordsAdded (schema 12 -> 13)
+               "wRunRecordCount", "wRunRecordsFirst", "wRunRecordsLast",
+               "wRunTimerState", "wRunTimerHours", "wRunTimerMinutes", "wRunTimerSeconds", "wRunTimerFrames"}
 
 # Steps whose per-migration table flag_translation() computes and attaches to the target schema.
 FLAG_STEP = "flagsRenumbered"

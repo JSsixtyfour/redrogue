@@ -258,6 +258,7 @@ ChampionsRoomRivalDefeatedScript:
 	ldh a, [hIsInBattle]
 	cp $ff
 	jp z, ResetRivalScript
+	rfarcall RunTimerFinish
     xor a
 	ld [wIsTrainerBattle], a
 	call UpdateSprites

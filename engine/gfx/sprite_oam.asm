@@ -28,7 +28,6 @@ PrepareOAMData::
 	inc e
 	inc e
 	ld a, [de] ; [x#SPRITESTATEDATA1_IMAGEINDEX]
-	ld [wSavedSpriteImageIndex], a
 	cp $ff ; off-screen (don't draw)
 	jr nz, .visible
 
@@ -36,6 +35,19 @@ PrepareOAMData::
 	jp .nextSprite
 
 .visible
+	; All four OAM tiles share this base. Cache it once in this routine's
+	; existing scratch byte; bc/hl are not live until the facing-table lookup.
+	push af
+	swap a
+	and $f
+	ld l, a
+	ld h, 0
+	ld bc, .tileBases
+	add hl, bc
+	ld a, [hl]
+	ld [wSavedSpriteImageIndex], a
+	pop af
+
 	cp $a0 ; is the sprite unchanging like an item ball or boulder?
 	jr c, .usefacing
 
@@ -99,21 +111,6 @@ PrepareOAMData::
 	ld b, a
 
 	ld a, [wSavedSpriteImageIndex]
-	swap a                   ; high nybble determines sprite used (0 is always player sprite, next are some npcs)
-	and $f
-
-	; Preserve the two legacy small slots; lobby slices use the freed base 10.
-	push hl
-	push bc
-	ld c, a
-	ld b, 0
-	ld hl, .tileBases
-	add hl, bc
-	ld a, [hl]
-	pop bc
-	pop hl
-
-.next2
 	add b ; add the tile offset from the table (based on frame and facing direction)
 	pop bc
 	ld [de], a ; tile id
@@ -209,6 +206,7 @@ PrepareOAMData::
 	jr .clear
 
 .tileBases
+	; Preserve the two legacy small slots; lobby slices use the freed base 10.
 	db 0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120, 124, 108, 112
 
 GetSpriteScreenXY:

@@ -205,6 +205,7 @@ FallenLogOpen:
 ; New game's single SRAM-init farcall (InitPlayerData, bank $03, ~10 B free):
 ; the final-team archive, the reward offer DVs, then the fallen log.
 IronmanNewGameSRAMInit::
+	rfarcall RunRecordsInit
 	rfarcall RentalResetRecord
 	farcall FinalTeamArchiveInit
 	call RogueOfferDVsClear ; same bank ($3C), reward_offer_info.asm

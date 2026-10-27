@@ -397,6 +397,22 @@
     // the plain species, which is what an offer rolled before this change delivered anyway.
     // Schema 11 -> 12: immutable loss record uses only previously free bytes.
     // Converting a main save never imports an active source transaction.
+    runRecordsAdded: function (bytes, from, to) {
+      var names = ["wRunRecordCount", "wRunRecordsFirst", "wRunRecordsLast",
+                   "wRunTimerState", "wRunTimerHours", "wRunTimerMinutes", "wRunTimerSeconds", "wRunTimerFrames"];
+      var sizes = [1, 9, 6, 1, 1, 1, 1, 1];
+      for (var i = 0; i < names.length; i++) {
+        var f = wramField(to, names[i]), at = wramOffset(to, names[i]);
+        if (!f || f.size !== sizes[i] || at < 0) return "run records layout not recognised";
+        bytes.fill(0, at, at + sizes[i]);
+      }
+      // A source loss journal names its exact schema. Never carry it across conversion.
+      var error = STEPS.lossRecoveryAdded(bytes, from, to);
+      if (error) return error;
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
     lossRecoveryAdded: function (bytes, from, to) {
       var names = ["sLossRecovery1", "sLossRecovery2", "sLossRecovery3", "sLossRecoveryCRC", "sLossRecoveryValid"];
       for (var i = 0; i < names.length; i++) {

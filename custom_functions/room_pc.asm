@@ -1,6 +1,6 @@
 ; custom_functions/room_pc.asm
 ;
-; The SilphCoDorm room PC: KEY ITEMS / FURNITURE / DECORATIONS / HALL OF FAME
+; The SilphCoDorm room PC: KEY ITEMS / FURNITURE / DECORATIONS / RECORDS
 ; / LOG OFF. Modelled on engine/menus/players_pc.asm's structure (TextBoxBorder
 ; + PlaceString + HandleMenuInput cursor struct) and PlayerPCCartridgeSwap's
 ; farcall-out/return-to-menu template for each option. FURNITURE/DECORATIONS
@@ -43,7 +43,7 @@ RoomPC::
 	ldh a, [hUILayoutFlags]
 	res BIT_DOUBLE_SPACED_MENU, a
 	ldh [hUILayoutFlags], a
-	; HALL OF FAME is gated by the existence of an actual recorded team.
+	; RECORDS always exists; its submenu retains the Hall of Fame viewer.
 	; TOGGLES is gated independently by the persistent expansion events. Keep
 	; this two-bit layout mask in the unused tail of wBuffer for the rest of
 	; this menu; RoomDrawPickList uses only wBuffer + 0..6. Bit 0 is HALL OF
@@ -51,7 +51,7 @@ RoomPC::
 	ld c, 3                      ; LOG OFF index before optional rows
 	xor a
 	ld [wBuffer + 7], a          ; HALL OF FAME absent
-	ld a, [wNumHoFTeams]
+	ld a, 1 ; RECORDS is always available, including before the first clear
 	and a
 	jr z, .checkToggleGate
 	ld a, 1
@@ -199,12 +199,8 @@ RoomPC::
 	ld a, c
 	and a
 	jr nz, .consumeHofSlot
-	farcall PKMNLeaguePC
-	; The Hall of Fame pics land in vFrontPic (vChars2 $00-$30), over the Dorm
-	; tileset, so the room drew as repeated garbage tiles after log off. The
-	; generic PC's PKMNLeague follows this call with ReloadMainMenu's
-	; ReloadMapData (engine/menus/pc.asm); do the same.
-	call ReloadMapData
+	rfarcall RoomRecordsMenu
+	; The submenu restores map graphics after using the Hall of Fame viewer.
 	jp .menu
 .consumeHofSlot
 	dec c
@@ -269,7 +265,7 @@ RoomPC::
 .DecorationsString:
 	db "DECORATIONS@"
 .HallOfFameString:
-	db "HALL OF FAME@"
+	db "RECORDS@"
 .TogglesString:
 	db "TOGGLES@"
 .LogOffString:
@@ -458,8 +454,8 @@ RoomBottomNameTable:
 ; Two lines of at most 18 characters, joined by <NEXT>; they are drawn at
 ; (1,14) and (1,16) inside the standard text box by RoomPrintDescription.
 
-; RoomPC's own top menu. HALL OF FAME is controlled by the actual recorded
-; team count, while TOGGLES is controlled by the persistent activation events.
+; RoomPC's own top menu. The historical HoF slot now always holds RECORDS;
+; TOGGLES is controlled by the persistent activation events.
 ; Keep a table for each combination because either optional row can be absent
 ; independently in an imported or otherwise unusual save.
 RoomPCDescTable:
@@ -467,7 +463,7 @@ RoomPCDescTable:
 .KeyItems:    db "Store or take back<NEXT>your KEY ITEMS.@"
 .Furniture:   db "Rearrange the room<NEXT>and its fixtures.@"
 .Decorations: db "Set out dolls and<NEXT>keepsakes on show.@"
-.HallOfFame:  db "Look back on your<NEXT>past CHAMPIONS.@"
+.HallOfFame:  db "View run times<NEXT>and CHAMPIONS.@"
 .Toggles:     db "Turn extra species<NEXT>pools on or off.@"
 .LogOff:      db "Close the PC.@"
 

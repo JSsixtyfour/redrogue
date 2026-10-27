@@ -58,7 +58,9 @@
 ; delivered), migration tradeFormAdded.
 ; Schema 12: free-only direct-loss recovery record, initialized invalid by
 ; lossRecoveryAdded. Existing payload and companion addresses do not move.
-DEF SAVE_SCHEMA_ID EQU 12
+; Schema 13: per-run clock and top five Champion times in existing saved pads.
+; No existing field moves. Legacy runs have no known start time and stay idle.
+DEF SAVE_SCHEMA_ID EQU 13
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; "RRSG" as raw ASCII, not through the game's text charmap.

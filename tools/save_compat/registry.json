@@ -101,6 +101,12 @@
    "to": "12",
    "steps": ["lossRecoveryAdded"],
    "verified": "Development: acceptance pending; free-only record initialized invalid, no existing SRAM field moves."
+  },
+  {
+   "from": "12",
+   "to": "13",
+   "steps": ["runRecordsAdded"],
+   "verified": "2026-10-26: all three ROMs build; schema 13 matches. Converter 22 pass/1 legacy-fixture skip; focused run-record/PC/loss-recovery PyBoy 16 pass/2 skips; make audit passes (49 source checks, zero unallowlisted bug findings). No existing address moves. Legacy active runs are unranked. BGB full starter-to-Champion choreography and real converted-save cold Continue remain pending."
   }
  ]
 }

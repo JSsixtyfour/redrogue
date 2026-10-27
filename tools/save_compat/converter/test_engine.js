@@ -167,6 +167,38 @@ test("schema 11 to 12: direct-loss record initializes invalid, existing profile 
   }
 });
 
+test("schema 12 to 13: run records initialize empty without moving existing fields", () => {
+  const from = PKG.schemas["12"], to = PKG.schemas["13"];
+  const save = syntheticSave("12"), pkg = packageTargeting("13");
+  const labels = ["wRunRecordCount", "wRunRecordsFirst", "wRunRecordsLast",
+                  "wRunTimerState", "wRunTimerHours", "wRunTimerMinutes", "wRunTimerSeconds", "wRunTimerFrames"];
+  const cleared = new Set();
+  for (const label of labels) {
+    const f = to.saved_wram.find((f) => f.label === label), at = wramOffset(to, label);
+    for (let i = 0; i < f.size; i++) { save[at + i] = 0xa5; cleared.add(at + i); }
+  }
+  for (const f of to.sram.filter((f) => /^sLossRecovery/.test(f.label)))
+    for (let i = 0; i < f.size; i++) cleared.add(offsetOf(f.bank, f.address) + i);
+  recomputeChecksums(save, from);
+  const out = api.convert(save, pkg, { mode: "continue" });
+  assert.equal(out.ok, true, out.reason);
+  for (const label of labels) {
+    const f = to.saved_wram.find((f) => f.label === label), at = wramOffset(to, label);
+    for (let i = 0; i < f.size; i++) assert.equal(out.bytes[at + i], 0, label);
+  }
+  for (const f of from.sram) {
+    const t = to.sram.find((t) => t.label === f.label);
+    assert.equal(t.address, f.address, f.label);
+    assert.equal(t.size, f.size, f.label);
+  }
+  const mainSum = to.checksums.find((c) => c.name === "main");
+  cleared.add(offsetOf(mainSum.at_bank, mainSum.at));
+  for (let i = 0; i < 8; i++) cleared.add(0x2040 + i);
+  for (let i = 0; i < save.length; i++)
+    if (!cleared.has(i)) assert.equal(out.bytes[i], save[i], `unrelated byte ${i}`);
+  assert.equal(api.checksumStatus(out.bytes, to).main, true);
+});
+
 test("schema 1 to 2: item counts keep their indices, spare slots are 0, the rest moves unchanged", () => {
   // The only fields allowed to differ are the arrays (checked below) and two labels in the
   // bag-display union member: it grew (wStatPocketBuf 32 -> 38), so they moved further than

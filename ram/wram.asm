@@ -3127,7 +3127,10 @@ wObtainedHiddenCoinsFlags:: flag_array MAX_HIDDEN_COINS
 ; $02 = surfing
 wWalkBikeSurfState:: db
 
-	ds 10
+; Permanent run records, carved from saved padding. First three HH:MM:SS
+; entries here, last two after wTrainerHeaderPtr. Outside the run reset.
+wRunRecordCount:: db
+wRunRecordsFirst:: ds 9
 
 wTownVisitedFlag:: flag_array NUM_CITY_MAPS
 
@@ -3318,7 +3321,7 @@ ASSERT wTMPocketBuf >= wEnemyMon2, "pocket buffers must start past wEnemyMon1 (o
 
 wTrainerHeaderPtr:: dw
 
-	ds 6
+wRunRecordsLast:: ds 6 ; last two HH:MM:SS entries, formerly saved padding
 
 ; the trainer the player must face after getting a wrong answer in the Cinnabar
 ; gym quiz
@@ -3334,7 +3337,12 @@ wCurMapScript:: db
 wDayCareDepositBattleCount:: db
 wDayCareDepositBattleCount2:: db
 
-	ds 5
+; Independent per-run clock in saved padding. 0=idle, 1=running, 2=won.
+wRunTimerState:: db
+wRunTimerHours:: db
+wRunTimerMinutes:: db
+wRunTimerSeconds:: db
+wRunTimerFrames:: db
 
 wPlayTimeHours:: db
 wPlayTimeMaxed:: db

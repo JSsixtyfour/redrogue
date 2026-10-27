@@ -3,6 +3,8 @@ TrackPlayTime::
 	ld a, [wStatusFlags6]
 	bit BIT_GAME_TIMER_COUNTING, a
 	ret z
+	call RunTimerTick
+	ASSERT BANK(TrackPlayTime) == BANK(RunTimerTick), "both clocks must share a ROM bank"
 	ld a, [wPlayTimeMaxed]
 	and a
 	ret nz
