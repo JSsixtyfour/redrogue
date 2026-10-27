@@ -491,6 +491,14 @@ RogueWitchDiscountBuyPrice::
 	ld a, [wWitchPrizesEarned + 1]  ; prize 10 is bit 1 of the HIGH byte
 	and 1 << (PRIZE_CHEAP_ITEMS - 9)
 	ret z
+	; DivideBCD consumes hMoney, leaving the remainder. Preserve the full
+	; purchase total on the stack so the discount is subtracted from it.
+	ldh a, [hMoney]
+	push af
+	ldh a, [hMoney + 1]
+	push af
+	ldh a, [hMoney + 2]
+	push af
 	; hMoney / 10 -> hDivideBCDQuotient (DivideBCD divides hMoney by the
 	; divisor and aliases the quotient over hDivideBCDDivisor - see
 	; engine/math/bcd.asm). This is BCD math (unlike the plain-binary EXP
@@ -501,6 +509,12 @@ RogueWitchDiscountBuyPrice::
 	ld a, $10               ; BCD ten - NOT decimal 16
 	ldh [hDivideBCDDivisor + 2], a
 	predef DivideBCDPredef3
+	pop af
+	ldh [hMoney + 2], a
+	pop af
+	ldh [hMoney + 1], a
+	pop af
+	ldh [hMoney], a
 	; hMoney -= hMoney / 10
 	ld de, hMoney + 2
 	ld hl, hDivideBCDQuotient + 2
