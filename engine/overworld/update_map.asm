@@ -42,6 +42,12 @@ ReplaceTileBlock:
 ;gbcnote - it is useful to have a version of RedrawMapView that does not mess with hAutoBGTransferEnabled
 ;used particularly for clean enhanced GBC colors during in-game trades
 RedrawMapView_NoChangeAutoBGTransfer:
+	; DMG/SGB cannot fit the automatic window copy plus a two-row redraw in
+	; VBlank. Use the normal save/disable/restore lifecycle there; retaining
+	; automatic transfer is only needed by the enhanced CGB colour path.
+	ldh a, [hGBC]
+	and a
+	jr z, RedrawMapView
 	ldh a, [hIsInBattle]
 	inc a
 	ret z

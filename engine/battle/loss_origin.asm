@@ -7,8 +7,10 @@
 ; team.". ReadTrainer records one LossOriginLabels index per enemy slot in
 ; wEnemyMoveOrigins while it builds the party; this reads the slot that was out.
 ;
-; Shares bank $35 with LossOriginLabels (data/trainers/movesets.asm), so the
-; table's dw pointers are read directly.
+; A label is a (creator, name) pair (LossOriginLabels, data/trainers/movesets.asm)
+; of indices into LossOriginCreators ("Smogon's") and LossOriginNames
+; ("<CONT>BoltBeam set."), printed back to back. All three tables share bank
+; $35 with this code, so their dw pointers are read directly.
 SECTION "Loss Origin Text", ROMX, BANK[$35]
 
 PrintLossOrigin::
@@ -46,20 +48,40 @@ PrintLossOrigin::
 	ld h, 0
 	add hl, hl
 	ld de, LossOriginLabels
-	add hl, de
+	add hl, de                 ; hl -> db creator, name
 	ld a, [hli]
-	ld d, [hl]
-	ld e, a
-	ld h, b
-	ld l, c
-	call PlaceString           ; returns bc = cursor after the label
+	ld e, [hl]
+	push de                    ; e = name index
+	ld de, LossOriginCreators
+	call .placePart            ; creator 0 is "@": places nothing
+	pop de
+	ld a, e
+	ld de, LossOriginNames
+	call .placePart
+.placed                        ; test hook: the whole label is on screen
 	ld h, b
 	ld l, c
 	ld de, .prompt
 	call PlaceString
 	jp TextScriptEnd
 
+; a = index into the dw string table at de; places it at cursor bc.
+; Returns bc = cursor after the string (PlaceString). Clobbers af, de, hl.
+.placePart
+	ld l, a
+	ld h, 0
+	add hl, hl
+	add hl, de
+	ld a, [hli]
+	ld d, [hl]
+	ld e, a
+	ld h, b
+	ld l, c
+	jp PlaceString
+
 .prompt
 	db "<PROMPT>@"
 
 ASSERT BANK(LossOriginLabels) == BANK(PrintLossOrigin)
+ASSERT BANK(LossOriginCreators) == BANK(PrintLossOrigin)
+ASSERT BANK(LossOriginNames) == BANK(PrintLossOrigin)

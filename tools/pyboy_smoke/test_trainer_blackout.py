@@ -3,9 +3,38 @@
 Only HP/KO Defiance are forced at the first live battle-loop entry. All
 faint handling, battle cleanup, map scripts and warps execute normally.
 """
+import re
 import unittest
 from test_smoke import HarnessTestCase, REPO_ROOT
 from source_constants import parse_map_constants, parse_rgbds_constants, parse_trainer_constants
+
+
+def loss_label_parts():
+    """{origin id: (creator text, name text)} from the generated label tables."""
+    text = (REPO_ROOT / 'data/trainers/movesets.asm').read_text(encoding='utf-8')
+    creators = dict(re.findall(r'^\.creator(\d+): db "(.*)@"', text, re.M))
+    names = dict(re.findall(r'^\.name(\d+): db "(.*)@"', text, re.M))
+    return {int(o): (creators[c], names[n])
+            for c, n, o in re.findall(r'^\tdb (\d+), (\d+) ; (\d+):', text, re.M)}
+
+
+def letters(text):
+    """Letters only, one space between runs: the box's ligature/punctuation tiles drop out."""
+    return ' '.join(re.sub(r"<CONT>|'[stdlvrm]|[^A-Za-z]", ' ', text).split())
+
+
+def box_letters(h):
+    """The battle text box (tilemap rows 12-17), decoded the same way."""
+    out = []
+    for tile in h.read_bytes('wTileMap', 20 * 18)[20 * 12:]:
+        if 0x80 <= tile <= 0x99:
+            out.append(chr(ord('A') + tile - 0x80))
+        elif 0xA0 <= tile <= 0xB9:
+            out.append(chr(ord('a') + tile - 0xA0))
+        else:
+            out.append(' ')
+    return ' '.join(''.join(out).split())
+
 
 class BlackoutFixture:
     def check_checkpoint_cold_continue(self, *, cgb=False):
@@ -23,7 +52,11 @@ class BlackoutFixture:
         finally:
             boot.close()
 
-    def run_loss(self, *, leader=False, unvisited_hub=False, normal_save=False):
+    def run_loss(self, *, leader=False, unvisited_hub=False, normal_save=False,
+                 force_origin=None):
+        """force_origin: overwrite the winning slot's wEnemyMoveOrigins entry as
+        PrintLossOrigin starts; returns the text box seen at each .placePart
+        entry and at .placed (all [] when not forced)."""
         h = self.harness
         maps = parse_map_constants(REPO_ROOT / 'constants/map_constants.asm')
         stride = h.address('wPartyMon2HP') - h.address('wPartyMon1HP')
@@ -97,6 +130,15 @@ class BlackoutFixture:
             loss_codes.append((h.pyboy.register_file.A, h.read8('hIsInBattle'), pos,
                                h.read8('wEnemyMoveOrigins', pos) if pos < 6 else None))
         h.register_hook('PrintLossOrigin.gotCode', loss_code)
+        boxes = []
+        if force_origin is not None:
+            def force(_):
+                pos = h.read8('wEnemyMonPartyPos')
+                if pos < 6:
+                    h.write8('wEnemyMoveOrigins', force_origin, pos)
+            h.register_hook('PrintLossOrigin', force)
+            for label in ('PrintLossOrigin.placePart', 'PrintLossOrigin.placed'):
+                h.register_hook(label, lambda _: boxes.append(box_letters(h)))
         # The lower trainer sees (4,7); Brock is spoken to from (4,2).
         for _ in range(11 if leader else 7):
             h.move_tile('up')
@@ -158,6 +200,7 @@ class BlackoutFixture:
         if leader:
             trainers = parse_trainer_constants(REPO_ROOT / 'constants/trainer_constants.asm')
             self.assertEqual(fainted, [trainers['BROCK']])
+        return boxes
 
 
 class TrainerBlackoutTest(BlackoutFixture, HarnessTestCase):
@@ -181,6 +224,24 @@ class TrainerBlackoutTest(BlackoutFixture, HarnessTestCase):
 
     def test_brock_blackout(self):
         self.run_loss(leader=True)
+
+    def test_blackout_prints_creator_and_name_parts(self):
+        # The hardest layout: a creator that wraps to two lines, then a
+        # two-line name. Each part is its own PlaceString; the name opens with
+        # <CONT>, so a lost cursor or a skipped scroll shows up in the box.
+        parts = loss_label_parts()
+        origin = next(o for o, (c, n) in sorted(parts.items())
+                      if '<CONT>' in c and n.count('<CONT>') == 2)
+        creator, name = parts[origin]
+        boxes = self.run_loss(force_origin=origin)
+        self.assertEqual(len(boxes), 3, boxes)  # placePart x2, then placed
+        before, after_creator, after_name = boxes
+        self.assertIn('You were defeated by', before)
+        # Two lines show at a time: after the creator, both of its lines.
+        self.assertIn(letters(creator), after_creator, (creator, boxes))
+        # After the name, only its two lines remain (the creator scrolled off).
+        self.assertTrue(after_name.endswith(letters(name)), (name, boxes))
+        self.assertNotIn(letters(creator).split()[0], after_name, boxes)
 
 if __name__ == '__main__':
     unittest.main()

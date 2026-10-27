@@ -24,7 +24,7 @@ RewardRoom_Object:
 	object_event 11,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_ROGUE_REWARD_POKEBALL_3
 	; The skipped route's item ball (TOGGLE_STAGE_RANDOM_ITEM): shown only on a
 	; back-to-back pair's mid-run visit, beside the three Poke Balls.
-	object_event 14,  5, SPRITE_POKE_BALL, STAY, NONE, TEXT_REWARDROOM_RANDOM_ITEM
+	object_event  8,  2, SPRITE_POKE_BALL, STAY, NONE, TEXT_REWARDROOM_RANDOM_ITEM
 	; A route's trade NPC (TOGGLE_ROGUE_TRADE_NPC): stands in for ball 1 while a
 	; trade is up (RogueRefresh), so the two never show on the tile together.
 	object_event  5,  5, SPRITE_COOLTRAINER_M, STAY, DOWN, TEXT_REWARDROOM_TRADE_NPC

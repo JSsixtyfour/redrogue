@@ -85,9 +85,13 @@ from `Set Creator` plus the record's heading name ("; SPECIES - Set Name"): a
 named person gives "Elo Bandit's Special Amnesia set", a Stadium rental gives
 its cup name, Red Rogue originals all share fixed index 2 (their heading names
 are internal design labels, not player-facing), and a record with no usable
-creator falls back to its `Suggested Loss Text` category. Labels are pre-wrapped
-for the battle text box: the engine prints "by " in front, so line 1 holds 15
-columns and later lines 18, joined by <CONT>, at most LABEL_MAX_LINES lines.
+creator falls back to its `Suggested Loss Text` category. Each label is a
+(creator, name) pair of indices into two shared string tables, printed back to
+back, so "Smogon's" and "BoltBeam set." are each stored once. Pre-wrapped for
+the battle text box: the engine prints "by " in front, so line 1 holds 15
+columns and later lines 18, joined by <CONT>. A creator-less label gets
+LABEL_MAX_LINES lines; a creator owns line 1 (two lines if it wraps) and its
+name gets NAME_LINES lines after it.
 
 Usage:  python3 tools/gen_movesets.py [--check] [--source PATH]
 """
@@ -212,6 +216,11 @@ FORM_FILES = {
     "UMBREON": "umbreon", "VOLTORB_HISUI": "hvoltorb",
     "VULPIX_ALOLA": "avulpix", "WEEZING_GALAR": "gweezing",
     "ZAPDOS_GALAR": "gzapdos",
+    # 2026-10-27: forms with no corpus record, named for moveset_catalog.tsv's
+    # rows (the user's Scream Tail and Toedscruel sets, the packet's additions).
+    "SCREAM_TAIL": "screamtail", "SANDY_SHOCKS": "sandyshocks",
+    "TOEDSCOOL": "toedscool", "TOEDSCRUEL": "toedscruel",
+    "WIGLETT": "wiglett", "WUGTRIO": "wugtrio",
 }
 FORM_NAMES = set(FORM_FILES)
 FORM_RECORD_RE = re.compile(r"^\s*form_record\s+([A-Z_][A-Z0-9_]*)\s*,\s*(\d+)", re.M)
@@ -252,7 +261,8 @@ CREATOR_NAME_FIXES = {
 }
 LINE1_WIDTH = 15         # "by " takes the first 3 of the box's 18 columns
 LINE_WIDTH = 18
-LABEL_MAX_LINES = 3
+LABEL_MAX_LINES = 3      # a creator-less label
+NAME_LINES = 2           # a set name after its creator's line(s)
 # Characters the game font has (constants/charmap.asm) besides letters/digits.
 FONT_PUNCT = set(" ()[]:;'-?!.%/,é")
 
@@ -273,27 +283,29 @@ def article(word):
 
 
 def loss_label(rec):
+    """(creator, name) for the record's blackout label. creator is "" for a
+    category label ("a Generated set"); display_text adds the possessive."""
     creator = rec.get("Set Creator") or ""
     name = rec.get("_name")
     if creator in CREATOR_CATEGORY:
-        return CREATOR_CATEGORY[creator]
+        return ("", CREATOR_CATEGORY[creator])
     if creator.startswith("Official Pok"):
         # "Poke Cup Rentals" -> "a Poke Cup Rental"
         event = re.sub(r"Rentals$", "Rental", rec.get("Attribution Event") or "")
         event = re.sub(r"\bPoke\b", "Poké", event)  # the corpus spells it both ways
         rental = to_font(name or event or "Stadium rental")
-        return f"{article(rental)} {rental}"
+        return ("", f"{article(rental)} {rental}")
     if creator and creator != "UNRESOLVED":
         who = to_font(CREATOR_NAME_FIXES.get(creator, creator))
         if not name:
-            return f"{who}'s set"
+            return (who, "set")
         what = to_font(name)
         if not re.search(r"(set|team|build|rental)$", what, re.I):
             what += " set"
-        return f"{who}'s {what}"
+        return (who, what)
     loss = rec.get("Suggested Loss Text") or ""
     loss = re.sub(r"^You (lost to|got caught by) ", "", loss).rstrip(".")
-    return to_font(loss) if loss else "a sourced RBY set"
+    return ("", to_font(loss) if loss else "a sourced RBY set")
 
 
 def tiles(text):
@@ -301,17 +313,38 @@ def tiles(text):
     return len(re.sub(r"'[stdlvrm]", "x", text))
 
 
-def wrap_label(label):
-    """Word-wrap into at most LABEL_MAX_LINES lines (15 tiles, then 18), ending
-    in '.', dropping trailing whole words that do not fit. A first word too wide
-    for line 1 leaves line 1 empty ("by" alone) rather than splitting the word."""
-    widths = [LINE1_WIDTH] + [LINE_WIDTH] * (LABEL_MAX_LINES - 1)
+def wrap_creator(who):
+    """Word-wrap "<who>'s" onto line 1 (15 tiles) and at most one more line,
+    never trimming: a creator's name prints whole. A first word too wide for
+    line 1 leaves line 1 empty ("by" alone), as wrap_label does."""
+    widths = [LINE1_WIDTH, LINE_WIDTH]
+    lines, cur = [], ""
+    for w in f"{who}'s".split(" "):
+        trial = f"{cur} {w}" if cur else w
+        if tiles(trial) > widths[len(lines)]:
+            lines.append(cur)
+            cur = w
+            assert len(lines) < len(widths), f"creator {who!r} needs more than 2 lines"
+        else:
+            cur = trial
+    lines.append(cur)
+    assert all(tiles(l) <= widths[i] for i, l in enumerate(lines)), (who, lines)
+    return lines
+
+
+def wrap_label(label, widths=None):
+    """Word-wrap into the given line widths (default: all LABEL_MAX_LINES lines,
+    15 tiles then 18), ending in '.', dropping trailing whole words that do not
+    fit. A first word too wide for line 1 leaves line 1 empty ("by" alone)
+    rather than splitting the word."""
+    if widths is None:
+        widths = [LINE1_WIDTH] + [LINE_WIDTH] * (LABEL_MAX_LINES - 1)
     words = label.split(" ")
     words[-1] += "."                     # the full stop travels with the last word
     lines, cur = [], ""
     for w in words:
         while True:
-            if len(lines) == LABEL_MAX_LINES:
+            if len(lines) == len(widths):
                 break
             trial = f"{cur} {w}" if cur else w
             if tiles(trial) <= widths[len(lines)]:
@@ -319,7 +352,7 @@ def wrap_label(label):
                 break
             lines.append(cur)            # cur may be "" only on line 1
             cur = ""
-        if len(lines) == LABEL_MAX_LINES:
+        if len(lines) == len(widths):
             break
     else:
         lines.append(cur)
@@ -333,7 +366,17 @@ def wrap_label(label):
 
 
 def display_text(label):
-    return "<CONT>".join(wrap_label(label))
+    """(creator text, name text) as the two strings PrintLossOrigin places one
+    after the other. A creator fills line 1 (two lines if it must wrap) and
+    the name always gets NAME_LINES full lines after it, so one name string
+    serves every creator. label is a loss_label() pair or a plain category
+    string (no creator). Also the origin dedupe key: equal pairs share an id."""
+    creator, name = ("", label) if isinstance(label, str) else label
+    if not creator:
+        return ("", "<CONT>".join(wrap_label(name)))
+    who = wrap_creator(creator)
+    widths = [LINE_WIDTH] * NAME_LINES
+    return ("<CONT>".join(who), "<CONT>" + "<CONT>".join(wrap_label(name, widths)))
 
 # Keys may carry digits and hyphens ("Rental Species-Aware Score", "Level 15
 # Legality Basis"). A key this rejects resets the block, dropping every field
@@ -487,7 +530,43 @@ def is_illegal(moves, learnable, label, stats):
     return bool(bad)
 
 
-def build(source_path):
+def new_stats():
+    stats = defaultdict(int)
+    stats["dropped_unknown_species_names"] = set()
+    stats["dropped_form_names"] = set()
+    stats["dropped_unknown_move_names"] = set()
+    stats["dropped_illegal_detail"] = []
+    stats["roster_illegal_detail"] = []
+    return stats
+
+
+def load_learnable():
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import learnset_legality
+    return learnset_legality.load()
+
+
+def credit_type(rec):
+    """Which kind of source a corpus record credits (catalog column)."""
+    creator = rec.get("Set Creator") or ""
+    if creator.startswith("Official Pok"):
+        return "STADIUM"
+    if creator == "Red Rogue project original":
+        return "ORIGINAL"
+    if creator.startswith("Smogon community standard"):
+        return "SMOGON"
+    if creator and creator != "UNRESOLVED" and creator not in CREATOR_CATEGORY:
+        return "PERSON"
+    return "CATEGORY"
+
+
+def normalize(source_path, stats, learnable):
+    """Stage A: every corpus record as one row, in corpus order. A row is what
+    the catalog stores: kind ("species", "form", or "dropped"), the final moves
+    (name fixes, CORPUS_FIXES, removed-move slots, salvage), the corpus window
+    BEFORE the level bump, the tier, the label (creator, name), and `origin`:
+    whether the record takes a loss-origin id. Status is ACTIVE for a record
+    the game uses; a dropped one is ARCHIVED with the reason in `note`."""
     species_ids = parse_species_constants(POKEMON_CONSTANTS)
     move_names = parse_move_constants(MOVE_CONSTANTS)
     records = parse_records(source_path)
@@ -495,17 +574,51 @@ def build(source_path):
     # Umbreon sets), and an exact assert broke on every addition. The floor
     # still catches a parser that silently stops matching `db` lines.
     assert len(records) >= 1946, f"only {len(records)} corpus records parsed"
+    rows = []
+    for rec in records:
+        creator, name = loss_label(rec)
+        row = {"species": rec["species"], "moves": list(rec["moves"]), "status": "ARCHIVED",
+               "origin": False, "tier": "", "lo": "", "hi": "", "creator": creator,
+               "set_name": name, "credit_type": credit_type(rec), "asm_comment": "", "note": "",
+               "source": rec.get("Source") or "", "source_creator": rec.get("Set Creator") or "",
+               "heading": rec.get("_name") or ""}
+        rows.append(row)
+        species = resolve_species(rec["species"], species_ids, stats)
+        if species is None:
+            if form_key(rec["species"]) is None:
+                row.update(kind="dropped", note="DROPPED: species or form not in this tree")
+                continue
+            row["kind"] = "form"
+            key = form_key(rec["species"])
+        else:
+            row["kind"] = "species"
+            key = species
+        moves = resolve_moves(rec["moves"], move_names, stats, rec["species"])
+        if moves is None:
+            row["note"] = "DROPPED: names a move not in this tree"
+            continue
+        row["tier"] = resolve_tier(rec, stats)
+        row["lo"], row["hi"] = resolve_level_range(rec, stats)
+        # The origin is taken BEFORE the legality drop: rental_origins.asm's
+        # bitmap is keyed by origin_id, so a label keeps its index even when
+        # every set carrying it is dropped.
+        row["origin"] = True
+        moves, comment = salvage(moves, learnable[key], stats)
+        row["moves"], row["asm_comment"] = moves, comment
+        if is_illegal(moves, learnable[key], rec["species"] if row["kind"] == "form" else species, stats):
+            row["note"] = "DROPPED: a move this mon cannot learn"
+            continue
+        row["status"] = "ACTIVE"
+    return species_ids, rows, len(records)
 
-    stats = defaultdict(int)
-    stats["dropped_unknown_species_names"] = set()
-    stats["dropped_form_names"] = set()
-    stats["dropped_unknown_move_names"] = set()
-    stats["dropped_illegal_detail"] = []
-    stats["roster_illegal_detail"] = []
-    sys.path.insert(0, os.path.join(ROOT, "tools"))
-    import learnset_legality
-    learnable = learnset_legality.load()
 
+def assemble(species_ids, rows, total, stats, learnable):
+    """Stage B: rows -> the tables render() writes. Origin ids are numbered in
+    this order: the fixed engine labels, species rows, the PARTY_ROSTER.md
+    character sets, then form rows, so a label keeps its id across runs. The
+    level bump runs here, against the live learnsets, so a learnset edit moves
+    a set's floor without touching the catalog. A row's `segments` (catalog)
+    emit one record each; corpus rows have exactly one."""
     origin_order = []
     origin_index = {}
 
@@ -515,36 +628,31 @@ def build(source_path):
             origin_order.append(text)
         return origin_index[text]
 
+    def emit(row, key, out):
+        origin_id = origin_id_for(display_text((row["creator"], row["set_name"])))
+        if row["status"] != "ACTIVE":
+            return 0
+        segments = row.get("segments") or [(row["lo"], row["hi"], row["tier"])]
+        for lo, hi, tier in segments:
+            if row["species"] not in LEVEL_BUMP_EXEMPT:
+                if len(segments) > 1 and max(
+                        (learnable[key][mv] for mv in row["moves"] if mv != "NO_MOVE"), default=0) > hi:
+                    continue             # a later segment starts above this one's top
+                lo, hi = bump_level(row["moves"], learnable[key], lo, hi, stats)
+            out.append((row["moves"], tier, origin_id, lo, hi)
+                       + ((row["asm_comment"],) if row["asm_comment"] else ()))
+        return 1
+
     # Deduped on the DISPLAYED text: two labels that wrap/trim to the same
     # lines share one entry. Indices 0-3 are the engine's LOSS_ORIGIN_*.
     for label in FIXED_LABELS:
         origin_id_for(display_text(label))
     by_species = defaultdict(list)
     by_form = defaultdict(list)
-    form_recs = []
     kept = 0
-    for rec in records:
-        species = resolve_species(rec["species"], species_ids, stats)
-        if species is None:
-            if form_key(rec["species"]) is not None:
-                form_recs.append(rec)    # after the roster sets: see below
-            continue
-        moves = resolve_moves(rec["moves"], move_names, stats, rec["species"])
-        if moves is None:
-            continue
-        tier = resolve_tier(rec, stats)
-        lvl_min, lvl_max = resolve_level_range(rec, stats)
-        # Assigned BEFORE the legality drop: rental_origins.asm's bitmap is
-        # keyed by origin_id, so a label must keep its index even when every
-        # set carrying it is dropped.
-        origin_id = origin_id_for(display_text(loss_label(rec)))
-        moves, note = salvage(moves, learnable[species], stats)
-        if is_illegal(moves, learnable[species], species, stats):
-            continue
-        if species not in LEVEL_BUMP_EXEMPT:
-            lvl_min, lvl_max = bump_level(moves, learnable[species], lvl_min, lvl_max, stats)
-        by_species[species].append((moves, tier, origin_id, lvl_min, lvl_max) + ((note,) if note else ()))
-        kept += 1
+    for row in rows:
+        if row["kind"] == "species" and row["origin"]:
+            kept += emit(row, row["species"], by_species[row["species"]])
 
     # Character sets (party roster Phases 6-7): every "#### Sets: <tiers>" table in
     # data/trainers/PARTY_ROSTER.md, appended AFTER the corpus so every corpus
@@ -567,28 +675,87 @@ def build(source_path):
             by_species[species].append((list(moves), tiers, origin, 1, 100, "roster " + table["prefix"]))
             stats["roster_sets"] += 1
 
-    # Form records go LAST so every origin_id assigned above keeps its index
+    # Form rows go LAST so every origin_id assigned above keeps its index
     # (rental_origins.asm's bitmap is keyed by them). Keyed by corpus name;
     # render() emits them in their own section with MovesetFormIndex.
-    for rec in form_recs:
-        moves = resolve_moves(rec["moves"], move_names, stats, rec["species"])
-        if moves is None:
-            continue
-        tier = resolve_tier(rec, stats)
-        lvl_min, lvl_max = resolve_level_range(rec, stats)
-        origin_id = origin_id_for(display_text(loss_label(rec)))
-        fl = learnable[form_key(rec["species"])]
-        moves, note = salvage(moves, fl, stats)
-        if is_illegal(moves, fl, rec["species"], stats):
-            continue
-        if rec["species"] not in LEVEL_BUMP_EXEMPT:
-            lvl_min, lvl_max = bump_level(moves, fl, lvl_min, lvl_max, stats)
-        by_form[rec["species"]].append((moves, tier, origin_id, lvl_min, lvl_max) + ((note,) if note else ()))
-        stats["form_kept"] += 1
-        kept += 1
+    for row in rows:
+        if row["kind"] == "form" and row["origin"]:
+            n = emit(row, form_key(row["species"]), by_form[row["species"]])
+            stats["form_kept"] += n
+            kept += n
+    for name in [n for n, recs in by_form.items() if not recs]:
+        del by_form[name]                # a form whose every row was dropped
 
     assert len(origin_order) <= 255, f"{len(origin_order)} labels overflow the 1-byte origin_id"
-    return species_ids, by_species, origin_order, stats, kept, len(records), by_form
+    return species_ids, by_species, origin_order, stats, kept, total, by_form
+
+
+def build(source_path):
+    stats = new_stats()
+    learnable = load_learnable()
+    species_ids, rows, total = normalize(source_path, stats, learnable)
+    return assemble(species_ids, rows, total, stats, learnable)
+
+
+# --- The moveset catalog (tools/corpus/moveset_catalog.tsv) -------------------
+# Every set ever considered, one row each, ACTIVE or not (MOVESET_REVISION_
+# IMPLEMENTATION_PLAN.md). Rows are normalize()'s rows plus an id and segments.
+CATALOG = os.path.join(ROOT, "tools", "corpus", "moveset_catalog.tsv")
+CATALOG_FIELDS = ["id", "status", "kind", "species", "move1", "move2", "move3", "move4",
+                  "segments", "credit_type", "creator", "set_name", "origin", "asm_comment",
+                  "note", "source", "source_creator", "heading", "packet_id"]
+CATALOG_STATUSES = {"ACTIVE", "ARCHIVED", "REJECTED", "HELD", "EXCLUDED"}
+
+
+def format_segments(segments):
+    return ";".join(f"{lo}-{hi}:{tier}" for lo, hi, tier in segments)
+
+
+def parse_segments(text):
+    out = []
+    for part in filter(None, text.split(";")):
+        window, tier = part.split(":", 1)
+        lo, hi = window.split("-")
+        out.append((int(lo), int(hi), tier.strip()))
+    return out
+
+
+def write_catalog(rows, path=CATALOG):
+    import csv
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f, delimiter="\t", lineterminator="\n", quoting=csv.QUOTE_MINIMAL)
+        w.writerow(CATALOG_FIELDS)
+        for row in rows:
+            segs = row.get("segments")
+            if segs is None:
+                segs = [(row["lo"], row["hi"], row["tier"])] if row["tier"] else []
+            w.writerow([*(str(row.get(k, "")) for k in CATALOG_FIELDS[:4]), *row["moves"],
+                        format_segments(segs), row["credit_type"], row["creator"], row["set_name"],
+                        int(bool(row["origin"])), row["asm_comment"], row["note"], row["source"],
+                        row["source_creator"], row["heading"], row.get("packet_id", "")])
+
+
+def read_catalog(path=CATALOG):
+    """Rows in file order, shaped like normalize()'s (segments parsed)."""
+    import csv
+    rows = []
+    with open(path, encoding="utf-8", newline="") as f:
+        for rec in csv.DictReader(f, delimiter="\t"):
+            if rec["status"] not in CATALOG_STATUSES:
+                sys.exit(f"catalog row {rec['id']}: unknown status {rec['status']!r}")
+            segs = parse_segments(rec["segments"])
+            lo, hi, tier = segs[0] if segs else ("", "", "")
+            rows.append({**rec, "moves": [rec[f"move{i}"] for i in range(1, 5)],
+                         "segments": segs, "lo": lo, "hi": hi, "tier": tier,
+                         "origin": rec["origin"] == "1"})
+    return rows
+
+
+def build_from_catalog(path=CATALOG):
+    stats = new_stats()
+    learnable = load_learnable()
+    rows = read_catalog(path)
+    return assemble(parse_species_constants(POKEMON_CONSTANTS), rows, len(rows), stats, learnable)
 
 
 def render(species_ids, by_species, origin_order, stats, kept, total, by_form):
@@ -749,14 +916,36 @@ def render(species_ids, by_species, origin_order, stats, kept, total, by_form):
     lines.append("")
     for i, const in enumerate(("LEARNSET", "GENERATED", "ORIGINAL", "CHAMPION")):
         lines.append(f"ASSERT LOSS_ORIGIN_{const} == {i}")
+    # Creator 0 is the empty string: category labels print their name alone.
+    creators = [""] + sorted({c for c, _ in origin_order if c})
+    names = sorted({n for _, n in origin_order})
+    creator_id = {c: i for i, c in enumerate(creators)}
+    name_id = {n: i for i, n in enumerate(names)}
+    assert len(creators) <= 256 and len(names) <= 256, (len(creators), len(names))
     lines.append(f"DEF NUM_LOSS_ORIGINS EQU {len(origin_order)}")
+    lines.append("; db creator, name: LossOriginCreators then LossOriginNames, printed back to back.")
     lines.append("LossOriginLabels::")
     lines.append("\ttable_width 2, LossOriginLabels")
-    for i, _ in enumerate(origin_order):
-        lines.append(f"\tdw .label{i}")
+    for i, (creator, name) in enumerate(origin_order):
+        shown = (creator + name).replace("<CONT>", " / ").lstrip(" /")
+        lines.append(f"\tdb {creator_id[creator]}, {name_id[name]} ; {i}: {shown}")
     lines.append("\tassert_table_length NUM_LOSS_ORIGINS")
-    for i, text in enumerate(origin_order):
-        lines.append(f'.label{i}: db "{text}@"')
+    lines.append("")
+    lines.append("LossOriginCreators::")
+    lines.append("\ttable_width 2, LossOriginCreators")
+    for i, _ in enumerate(creators):
+        lines.append(f"\tdw .creator{i}")
+    lines.append(f"\tassert_table_length {len(creators)}")
+    for i, text in enumerate(creators):
+        lines.append(f'.creator{i}: db "{text}@"')
+    lines.append("")
+    lines.append("LossOriginNames::")
+    lines.append("\ttable_width 2, LossOriginNames")
+    for i, _ in enumerate(names):
+        lines.append(f"\tdw .name{i}")
+    lines.append(f"\tassert_table_length {len(names)}")
+    for i, text in enumerate(names):
+        lines.append(f'.name{i}: db "{text}@"')
     lines.append("")
     return "\n".join(lines) + "\n"
 
