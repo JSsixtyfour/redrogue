@@ -117,6 +117,7 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
 - halofactory
 - pun
 - Josh Brody
+- MayRai
 ## Source Mod Credits
 ### Shin Pokemon Red
 #### Creators:
@@ -183,11 +184,16 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
    - HBlank tile copying
    - map-redraw speedups
    - AI Heuristics
-   - assorted fixes.
+   - assorted fixes
 ### Credits For Yellow Legacy:
 #### Creators:
 - TheSmithPlays - Developer
 - cRz Shadows - Developer
+    - Faster saves
+    - Faster Nurse Joy
+    - Box-full reminder
+    - Multilevel Move Learning
+    - assorted fixes
 #### Sprite Artists:
 - Pokemon overworld sprites
     - Isona
