@@ -267,6 +267,11 @@ class Battle:
     mons: list[tuple[str, int]]
     trainer: bool
     money_base: int = 0       # 0 = pays nothing
+    # For the moveset mirror (movesets.py), set by the spec builders only:
+    # BIT_PSPEC_ACE_LAST (the last slot takes the mix's strongest source), and the
+    # round/tier the spec record was built for (0 = a roster, read off count).
+    ace_last: bool = False
+    spec_round: int = 0
 
     @property
     def money_level(self) -> int:
@@ -372,7 +377,7 @@ def spec_battle(g: GameData, cfg: Config, kind: str, count: int, n: int, base: i
             sp = draw_pool(g, cfg, pool, lv, [m for m, _ in mons], allow_uber, rng,
                            no_rival=rival_starter if ace == "RIVAL_STARTER_PLACEHOLDER" else None)
         mons.append((sp, lv))
-    return Battle(kind, count, mons, True, money_base)
+    return Battle(kind, count, mons, True, money_base, ace_last=ace is not None)
 
 
 def leader_battle(g: GameData, cfg: Config, leader: parse.LeaderRecord, rnd: int, rng: random.Random) -> Battle:
@@ -408,7 +413,8 @@ def leader_battle(g: GameData, cfg: Config, leader: parse.LeaderRecord, rnd: int
         else:
             sp = draw_pool(g, cfg, f"{pre}Fod{band}", lv, used, allow_uber, rng, fallback=off)
         mons.append((sp, lv))
-    return Battle("leader", g.knobs["ROUND_BATTLES"] * rnd, mons, True, g.money[class_name(leader.name)])
+    return Battle("leader", g.knobs["ROUND_BATTLES"] * rnd, mons, True, g.money[class_name(leader.name)],
+                  ace_last=True, spec_round=rnd)
 
 
 # who -> PARTY_ROSTER.md prefix. KARATE is modelled here for tests but is not rolled by
@@ -453,7 +459,7 @@ def miniboss_battle(g: GameData, cfg: Config, who: str, count: int, rival_starte
         else:
             sp = draw_pool(g, cfg, f"{pre}Fod{band}", lv, used, False, rng, no_rival=no_rival, fallback=off)
         mons.append((sp, lv))
-    return Battle(kind, count, mons, True, g.money[f"{who}_MINIBOSS"])
+    return Battle(kind, count, mons, True, g.money[f"{who}_MINIBOSS"], ace_last=True, spec_round=r)
 
 
 def e4_battle(g: GameData, cfg: Config, member: parse.E4Record, count: int, rng: random.Random) -> Battle:
@@ -466,8 +472,10 @@ def e4_battle(g: GameData, cfg: Config, member: parse.E4Record, count: int, rng:
     pre = f"POOL_BAND_{member.name}_"
     ace_lv = apply_difficulty(max(1, min(base + 5 * step, MAX_LEVEL)), cfg.difficulty)
     ace = draw_pool(g, cfg, f"{pre}Ace1", ace_lv, [], False, rng, keep=True)
-    return spec_battle(g, cfg, "e4", count, 6, base, step, f"{pre}Fod1", ace, False,
-                       g.money[class_name(member.name)], rng)
+    b = spec_battle(g, cfg, "e4", count, 6, base, step, f"{pre}Fod1", ace, False,
+                    g.money[class_name(member.name)], rng)
+    b.spec_round = tier
+    return b
 
 
 def stage_event_battle(g: GameData, cfg: Config, count: int, rng: random.Random,
@@ -480,7 +488,9 @@ def stage_event_battle(g: GameData, cfg: Config, count: int, rng: random.Random,
     k = g.knobs
     n, base, step = k[f"STAGE_EVENT_R{r}_MONS"], k[f"STAGE_EVENT_R{r}_BASE"], k[f"STAGE_EVENT_R{r}_STEP"]
     if pool.startswith("POOL_"):
-        return spec_battle(g, cfg, "stage_event", count, n, base, step, pool, None, False, g.money[cls], rng)
+        b = spec_battle(g, cfg, "stage_event", count, n, base, step, pool, None, False, g.money[cls], rng)
+        b.spec_round = r
+        return b
     # stage_event_banded_records: tier -> band 1-2/3-4/5-6/7-9, Fod<band> on every
     # slot, an Ace<band> draw (as written) in the last slot when the band has one.
     band = min((r - 1) // GYM_BAND_ROUNDS + 1, 4)
@@ -490,8 +500,10 @@ def stage_event_battle(g: GameData, cfg: Config, count: int, rng: random.Random,
     if ace_pool:
         ace_lv = apply_difficulty(max(1, min(base + (n - 1) * step, MAX_LEVEL)), cfg.difficulty)
         ace = draw_pool(g, cfg, ace_pool, ace_lv, [], False, rng, keep=True)
-    return spec_battle(g, cfg, "stage_event", count, n, base, step, f"{pre}Fod{band}", ace, False,
-                       g.money[cls], rng)
+    b = spec_battle(g, cfg, "stage_event", count, n, base, step, f"{pre}Fod{band}", ace, False,
+                    g.money[cls], rng)
+    b.spec_round = r
+    return b
 
 
 def wild_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Battle:

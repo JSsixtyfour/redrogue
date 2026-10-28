@@ -396,6 +396,19 @@ MoveRankWeightTable::
 	db  1,  4, 16, 40, 64, 64,  0 ; RANK_ROW_ELITE
 	assert_table_length NUM_RANK_ROWS
 
+; The lowest level a TM-only move of each grade may be rolled at
+; (PartyGenTMGated). The levels are knobs in constants/balance_constants.asm;
+; MOVE_RANK_OFFLIST has no entry, since off-list moves never reach the gate.
+TMGateLevelByRank::
+	table_width 1, TMGateLevelByRank
+	db TM_GATE_LEVEL_F
+	db TM_GATE_LEVEL_D
+	db TM_GATE_LEVEL_C
+	db TM_GATE_LEVEL_B
+	db TM_GATE_LEVEL_A
+	db TM_GATE_LEVEL_S
+	assert_table_length MOVE_RANK_OFFLIST
+
 ; TM/HM move ids, indexed by wMonHLearnset bit position: bit i of that bitfield
 ; means "can learn TMMovesForPartyGen[i]" (the convention CanLearnTM establishes
 ; in engine/items/tms.asm, where the same counter indexes both).

@@ -523,6 +523,50 @@ def bump_level(moves, learnable, lvl_min, lvl_max, stats):
     return lvl_min, lvl_max
 
 
+_TM_GATE = None
+
+
+def tm_gate_data():
+    """(levelup, rank, gate): what tm_gate_level reads, loaded once.
+    levelup = learnset_legality.load(levelup_only=True); rank = MoveRankByID
+    grade per move name; gate = TM_GATE_LEVEL_<grade> from balance_constants.asm."""
+    global _TM_GATE
+    if _TM_GATE is None:
+        sys.path.insert(0, os.path.join(ROOT, "tools"))
+        import learnset_legality
+        grades = "FDCBAS"
+        rank, on = {}, False
+        with open(os.path.join(ROOT, "data", "moves", "move_ranks.asm"), encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("MoveRankByID::"):
+                    on = True
+                elif on and line.startswith("MoveFlagsByID"):
+                    break
+                m = re.match(r"\s*db MOVE_RANK_(\w+) ; (\w+)", line) if on else None
+                if m and m.group(1) in grades:
+                    rank[m.group(2)] = m.group(1)
+        with open(os.path.join(ROOT, "constants", "balance_constants.asm"), encoding="utf-8") as f:
+            gate = dict(re.findall(r"^DEF TM_GATE_LEVEL_([FDCBAS]) EQU (\d+)", f.read(), re.M))
+        assert sorted(gate) == sorted(grades), f"TM_GATE_LEVEL_* knobs: {sorted(gate)}"
+        _TM_GATE = (learnset_legality.load(levelup_only=True), rank, {g: int(v) for g, v in gate.items()})
+    return _TM_GATE
+
+
+def tm_gate_level(moves, key):
+    """The TM level gate (balance_constants.asm): the lowest level this set may be
+    used at once its TM-only moves are gated by grade. A move the line learns by
+    level-up counts from that level when it is earlier than its gate; the
+    level-up floor itself is bump_level's job."""
+    levelup, rank, gate = tm_gate_data()
+    lv = levelup.get(key, {})
+    need = 1
+    for mv in moves:
+        if mv == "NO_MOVE" or mv not in rank:
+            continue
+        need = max(need, min(lv.get(mv, 999), gate[rank[mv]]))
+    return need
+
+
 def salvage(moves, learnable, stats):
     """Swap each illegal move for its first legal SUBSTITUTES entry not already
     in the set. Returns (moves, note); note is "" if nothing changed. Moves with
@@ -666,6 +710,13 @@ def assemble(species_ids, rows, total, stats, learnable):
                         (learnable[key][mv] for mv in row["moves"] if mv != "NO_MOVE"), default=0) > hi:
                     continue             # a later segment starts above this one's top
                 lo, hi = bump_level(row["moves"], learnable[key], lo, hi, stats)
+                gated = tm_gate_level(row["moves"], key)
+                if gated > lo:
+                    if gated > hi:
+                        stats["tm_gate_closed"] += 1
+                        continue         # the whole window sits under the gate
+                    stats["tm_gate_raised"] += 1
+                    lo = gated
             out.append((row["moves"], tier, origin_id, lo, hi)
                        + ((row["asm_comment"],) if row["asm_comment"] else ()))
         return 1
@@ -800,7 +851,10 @@ def catalog_header(rows, stats, kept):
         f"; Level-bumped: {stats['level_bumped']} records had lvl_min raised to the level the mon's",
         ";   line first learns all four moves (lvl_max raised to match if passed).",
         ";   Mew, Mewtwo, Celebi, Lugia and Ho-Oh are exempt (LEVEL_BUMP_EXEMPT).",
-        f"; Plus {stats['roster_sets']} character sets (levels 1-100, tagged `; roster <Prefix>`)",
+        f"; TM level gate: {stats['tm_gate_raised']} records had lvl_min raised to the gate of their",
+        f";   strongest TM-only move (TM_GATE_LEVEL_*, balance_constants.asm); {stats['tm_gate_closed']}",
+        ";   catalog segments sat wholly under it and are not emitted. Same exemption.",
+        f"; Plus {stats['roster_sets']} character sets (levels 1-100, tagged `; roster <Prefix>`, not gated)",
         ";   from the Sets tables in data/trainers/PARTY_ROSTER.md.",
         f"; Plus {stats['form_kept']} regional/eeveelution FORM records in their own",
         ";   section, found through MovesetFormIndex. A form mon never reads its base",

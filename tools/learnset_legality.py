@@ -110,12 +110,16 @@ def _records(path, suffix):
     return parsed
 
 
-def load(_parents=False):
+def load(_parents=False, levelup_only=False):
     """Return {key: {move: earliest level}}, key = species name or (base, form index).
 
     The level is the lowest level-up level anywhere in the line (the mon or a
     pre-evolution); 0 means no level gate (level-1 list, TM/HM or tutor).
-    `move in load()[key]` is the legality test."""
+    `move in load()[key]` is the legality test.
+
+    levelup_only: only what the line learns by LEVELLING, level-1 moves at 1;
+    a move it can get only from a TM/HM or a tutor is absent (the TM level
+    gate in gen_movesets.py needs the two told apart)."""
     mons = {}
     for path in glob.glob(os.path.join(POKEMON, "base_stats", "*.asm")):
         s = _stats_file(path)
@@ -177,8 +181,12 @@ def load(_parents=False):
             s = mons[k]
             for mv, lvl in s["levelup"].items():
                 moves[mv] = min(lvl, moves.get(mv, lvl))
-            for mv in s["l1"] | s["tm"] | s["tutor"]:
-                moves[mv] = 0
+            if levelup_only:
+                for mv in s["l1"]:
+                    moves[mv] = min(1, moves.get(mv, 1))
+            else:
+                for mv in s["l1"] | s["tm"] | s["tutor"]:
+                    moves[mv] = 0
             stack += parents[k]
         learnable[key] = moves
     return learnable

@@ -58,6 +58,24 @@ DEF GYM_R8_STEP EQU 2
 ; hand the mon its moves early.
 DEF SET_LEVEL_SLACK_BELOW EQU 10
 
+; --- TM level gate (MOVESET_DIFFICULTY_ANALYSIS_2026-10-27.md R2.2) ----------
+; Gen 1 TMs have no level requirement, so without this a level-11 gym ace could
+; field Earthquake. A TM-ONLY move (one the mon does not learn by level-up at or
+; below its level) of grade G is allowed only from level TM_GATE_LEVEL_G, the
+; grade being its MoveRankByID entry. Two readers, one table:
+;   - PartyGenDrawCandidate: a TM-only draw under the gate is ineligible, for
+;     every generated source (MSRC_RANDOM_TM, MSRC_RANDOM_TM_ONLY).
+;   - tools/gen_movesets.py: a curated set's lvl_min is raised to the gate of its
+;     strongest TM-only move (a move the line learns by level-up counts at that
+;     level instead, if lower); a set whose window closes is not emitted.
+; The levels follow the gym ace curve (11 18 25 31 37 44 51 57).
+DEF TM_GATE_LEVEL_F EQU 1
+DEF TM_GATE_LEVEL_D EQU 1
+DEF TM_GATE_LEVEL_C EQU 15
+DEF TM_GATE_LEVEL_B EQU 22
+DEF TM_GATE_LEVEL_A EQU 30
+DEF TM_GATE_LEVEL_S EQU 36
+
 ; --- Elite Four -------------------------------------------------------------
 ; Tier t (1-4, from wBattleCount 86-89): slot 0 is E4_BASE_LEVEL + t, and each
 ; slot adds E4_LEVEL_STEP. Read through the E4_T curve in party_specs.asm.
@@ -202,6 +220,37 @@ DEF DIFF_PRIZE_BONUS_PCT_EASY      EQU 74  ; x1.74 (was 71)
 DEF DIFF_PRIZE_BONUS_PCT_VERY_EASY EQU 115 ; x2.15 (was 111)
 DEF DIFF_PRIZE_BONUS_PCT_HARD      EQU 18  ; x1.18 (was 16)
 DEF DIFF_PRIZE_BONUS_PCT_VERY_HARD EQU 18  ; x1.18 (was 16)
+; Moveset strength (MOVESET_DIFFICULTY_ANALYSIS_2026-10-27.md R2.3). The
+; MovesetMixTable as written is VERY HARD; each easier setting subtracts from it.
+; Read through DifficultyMovesetMods (rogue_build_party.asm).
+; DIFF_SET_PCT_*: chance (of 100) an MSRC_SET slot uses a curated set at all; the
+;   rest take the mix row's fallback, as a set slot with no matching set does.
+;   0 is VERY EASY's old "never a curated set" rule.
+; DIFF_RANK_DELTA_*: added to every mix row's rank_row (clamped BAD..ELITE): which
+;   move grades a generated roll prefers.
+; DIFF_TM_CAP_DELTA_*: added to every mix row's tm_cap (clamped 0..NUM_MOVES).
+; DIFF_TM_GATE_SHIFT_*: levels added to every TM_GATE_LEVEL_* for generated rolls.
+;   Curated sets keep the unshifted gate (their windows are built offline).
+DEF DIFF_SET_PCT_NORMAL           EQU 65
+DEF DIFF_SET_PCT_EASY             EQU 40
+DEF DIFF_SET_PCT_VERY_EASY        EQU 0
+DEF DIFF_SET_PCT_HARD             EQU 85
+DEF DIFF_SET_PCT_VERY_HARD        EQU 100
+DEF DIFF_RANK_DELTA_NORMAL        EQU -1
+DEF DIFF_RANK_DELTA_EASY          EQU -2
+DEF DIFF_RANK_DELTA_VERY_EASY     EQU -2
+DEF DIFF_RANK_DELTA_HARD          EQU -1
+DEF DIFF_RANK_DELTA_VERY_HARD     EQU 0
+DEF DIFF_TM_CAP_DELTA_NORMAL      EQU -1
+DEF DIFF_TM_CAP_DELTA_EASY        EQU -1
+DEF DIFF_TM_CAP_DELTA_VERY_EASY   EQU -2
+DEF DIFF_TM_CAP_DELTA_HARD        EQU 0
+DEF DIFF_TM_CAP_DELTA_VERY_HARD   EQU 0
+DEF DIFF_TM_GATE_SHIFT_NORMAL     EQU 3
+DEF DIFF_TM_GATE_SHIFT_EASY       EQU 6
+DEF DIFF_TM_GATE_SHIFT_VERY_EASY  EQU 10
+DEF DIFF_TM_GATE_SHIFT_HARD       EQU 0
+DEF DIFF_TM_GATE_SHIFT_VERY_HARD  EQU 0
 
 ; --- Economy -------------------------------------------------------------
 ; BCD, $3000 = Y3000. Read by engine/movie/oak_speech/init_player_data.asm.

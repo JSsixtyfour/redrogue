@@ -887,6 +887,11 @@ class RolledMovesetSmokeTest(HarnessTestCase):
         species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
         move_ids = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
         sources = parse_rgbds_constants(REPO_ROOT / "constants/party_spec_constants.asm")
+        # VERY HARD: the mix table as written. Other settings move tm_cap and the
+        # TM gate (DifficultyMovesetMods), which test_balance_movesets_match_rom covers.
+        ram = parse_rgbds_constants(REPO_ROOT / "constants/ram_constants.asm")
+        h.write8("wOptions2", (h.read8("wOptions2") & ~ram["DIFFICULTY_MASK"] & 0xFF)
+                 | ram["DIFFICULTY_VERY_HARD"])
         RequireFlagsSmokeTest._set_synthetic_header(self, _mix_id(mix))
         h.write8("wEnemyPartyCount", 1)
         h.write8("wPartyGenSlot", 0)

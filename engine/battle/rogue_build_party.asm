@@ -1633,12 +1633,11 @@ PartyGenApplyMoveset:
 .notExplicit
 	cp MSRC_SET
 	jr nz, PartyGenRollMoveset
-; VERY EASY never uses curated sets (player feedback #7): the slot takes its mix
-; row's fallback, the same path as a species with no matching set.
-	ld a, [wOptions2]
-	and DIFFICULTY_MASK
-	cp DIFFICULTY_VERY_EASY
-	jr z, .setFallback
+; DIFF_SET_PCT_* decides whether this set slot uses a curated set at all. A slot
+; that loses the roll takes its mix row's fallback, the same path as a species
+; with no matching set. VERY EASY's 0% is the old "never" rule (player feedback #7).
+	call PartyGenDiffAllowsSet
+	jr nc, .setFallback
 	call PartyGenApplySetMoveset
 	ret c                          ; a matching curated set was found and written
 	jr .setFallback
@@ -2233,6 +2232,8 @@ PartyGenDrawCandidate:
 	jr nc, .filter
 	call PartyGenTMCapReached
 	jr c, .ineligible
+	call PartyGenTMGated           ; carry set if this mon is under its grade's gate
+	jr c, .ineligible
 	jr .filter
 
 ; --- level-up segment ---
@@ -2307,6 +2308,20 @@ PartyGenRankWeight:
 	jr c, .rowInRange
 	xor a                          ; a malformed row reads as the easiest one
 .rowInRange
+; The difficulty's DIFF_RANK_DELTA_*, clamped to BAD..ELITE. d is free (pushed).
+	ld d, a
+	call PartyGenDiffMods
+	inc hl                         ; DIFF_MODS_RANK_DELTA
+	ld a, d
+	add [hl]
+	bit 7, a
+	jr z, .notBelowBad
+	xor a
+.notBelowBad
+	cp NUM_RANK_ROWS
+	jr c, .rowShifted
+	ld a, NUM_RANK_ROWS - 1
+.rowShifted
 	ld hl, MoveRankWeightTable
 	ld bc, NUM_MOVE_RANKS
 	call AddNTimes                 ; hl -> that row
@@ -2728,8 +2743,22 @@ PartyGenTMCapReached:
 	call PartyGenMixRow
 	ld bc, 8                       ; mix row -> tm_cap
 	add hl, bc
-	ld a, [hl]
-	ld b, a                        ; b = tm_cap; bc is restored by the pop below
+	ld b, [hl]                     ; b = tm_cap; bc is restored by the pop below
+; The difficulty's DIFF_TM_CAP_DELTA_*, clamped to 0..NUM_MOVES.
+	call PartyGenDiffMods
+	inc hl
+	inc hl                         ; DIFF_MODS_TM_CAP_DELTA
+	ld a, b
+	add [hl]
+	bit 7, a
+	jr z, .notNegative
+	xor a
+.notNegative
+	cp NUM_MOVES + 1
+	jr c, .capShifted
+	ld a, NUM_MOVES
+.capShifted
+	ld b, a
 	ld a, [wPartyGenTMUsed]
 ; Compared as `used < cap` and then inverted, rather than as `cap < used`. The
 ; latter reads naturally and is off by one: used == cap must count as reached,
@@ -2738,6 +2767,38 @@ PartyGenTMCapReached:
 	ccf                            ; carry SET iff the cap is reached
 	pop de
 	pop bc
+	ret
+
+; INPUT:  e = a TM-only move id
+; OUTPUT: carry SET if wCurEnemyLevel is under TMGateLevelByRank for its grade
+;         plus the difficulty's DIFF_TM_GATE_SHIFT_* (the TM level gate,
+;         balance_constants.asm). An off-list move returns carry clear: the
+;         eligibility filter rejects it on its own.
+; CLOBBERS af, hl. PRESERVES bc/de.
+PartyGenTMGated:
+	call PartyGenMoveRank          ; a = MOVE_RANK_*; preserves bc/de
+	cp MOVE_RANK_OFFLIST
+	ret nc
+	add LOW(TMGateLevelByRank)
+	ld l, a
+	adc HIGH(TMGateLevelByRank)
+	sub l
+	ld h, a                        ; hl = &TMGateLevelByRank[rank]
+	push de
+	ld d, [hl]                     ; d = the grade's gate
+	call PartyGenDiffMods
+	inc hl
+	inc hl
+	inc hl                         ; DIFF_MODS_TM_GATE_SHIFT
+	ld a, d
+	add [hl]
+	jr nc, .noOverflow
+	ld a, $FF
+.noOverflow
+	ld d, a
+	ld a, [wCurEnemyLevel]
+	cp d                           ; carry SET iff level < gate
+	pop de
 	ret
 
 ; Spends one unit of tm_cap if the move in e is TM-only.
@@ -3074,6 +3135,83 @@ GymMixByBand:
 	assert_table_length NUM_GYM_BANDS
 
 ; ===========================================================================
+; Difficulty and movesets (MOVESET_DIFFICULTY_ANALYSIS_2026-10-27.md R2.3)
+;
+; MovesetMixTable as written is VERY HARD; each setting's row below says how
+; much easier the movesets are, from the DIFF_* knobs in balance_constants.asm.
+; Read on the hot path (every candidate draw reads the rank delta), so a row is
+; reached by index, not by a search.
+; ===========================================================================
+DEF DIFF_MODS_SET_PCT       EQU 0
+DEF DIFF_MODS_RANK_DELTA    EQU 1
+DEF DIFF_MODS_TM_CAP_DELTA  EQU 2
+DEF DIFF_MODS_TM_GATE_SHIFT EQU 3
+DEF DIFF_MODS_SIZE          EQU 4
+
+MACRO difficulty_moveset_mods
+	db DIFF_SET_PCT_\1, LOW(DIFF_RANK_DELTA_\1), LOW(DIFF_TM_CAP_DELTA_\1), DIFF_TM_GATE_SHIFT_\1
+	ASSERT DIFF_SET_PCT_\1 <= 100, "DIFF_SET_PCT_\1 is a percent"
+ENDM
+
+; One row per stored DIFFICULTY_* value, in stored order (DifficultyLevelPct's).
+DifficultyMovesetMods:
+	table_width DIFF_MODS_SIZE, DifficultyMovesetMods
+	difficulty_moveset_mods NORMAL
+	difficulty_moveset_mods EASY
+	difficulty_moveset_mods VERY_EASY
+	difficulty_moveset_mods HARD
+	difficulty_moveset_mods VERY_HARD
+	assert_table_length NUM_AI_DIFFICULTY_ROWS
+ASSERT DIFFICULTY_NORMAL == 0 && DIFFICULTY_EASY == 1 && DIFFICULTY_VERY_EASY == 2 \
+	&& DIFFICULTY_HARD == 3 && DIFFICULTY_VERY_HARD == 4, \
+	"DifficultyMovesetMods rows are in stored DIFFICULTY_* order"
+
+; OUTPUT: hl -> this difficulty's DifficultyMovesetMods row (a corrupt option
+;         byte reads as NORMAL, the new-game default).
+; CLOBBERS af, hl. PRESERVES bc/de.
+PartyGenDiffMods:
+	ld a, [wOptions2]
+	and DIFFICULTY_MASK
+	cp NUM_AI_DIFFICULTY_ROWS
+	jr c, .inRange
+	xor a
+.inRange
+	ASSERT DIFF_MODS_SIZE == 4
+	add a
+	add a
+	add LOW(DifficultyMovesetMods)
+	ld l, a
+	adc HIGH(DifficultyMovesetMods)
+	sub l
+	ld h, a
+	ret
+
+; OUTPUT: carry SET if this MSRC_SET slot may use a curated set: a 0..99 roll
+;         under the difficulty's DIFF_SET_PCT_*. A character's own sets
+;         (TIER_GAMBLER, TIER_SIGNATURE_7 in the mix's tier mask) are the
+;         character, not a difficulty lever: always allowed.
+; CLOBBERS af, hl. PRESERVES bc/de.
+PartyGenDiffAllowsSet:
+	push bc
+	call PartyGenMixRow
+	ld bc, 6                       ; mix row -> set_tier_mask
+	add hl, bc
+	pop bc
+	ld a, [hl]
+	and TIER_GAMBLER | TIER_SIGNATURE_7
+	jr z, .roll
+	scf
+	ret
+.roll
+	call PartyGenDiffMods          ; hl -> DIFF_MODS_SET_PCT
+	push bc
+	ld c, 100
+	call Rangerandom               ; a = 0..99; preserves bc/de/hl
+	pop bc
+	cp [hl]                        ; carry SET iff roll < percent
+	ret
+
+; ===========================================================================
 ; RogueApplyMixToParty
 ;
 ; INPUT: a = MovesetMixTable row id
@@ -3162,6 +3300,8 @@ ASSERT BANK(RogueBuildParty) == BANK(MoveRankWeightTable), \
        "RogueBuildParty reads MoveRankWeightTable in-bank"
 ASSERT BANK(RogueBuildParty) == BANK(TMMovesForPartyGen), \
        "RogueBuildParty reads TMMovesForPartyGen in-bank"
+ASSERT BANK(RogueBuildParty) == BANK(TMGateLevelByRank), \
+       "PartyGenTMGated reads TMGateLevelByRank in-bank"
 
 ; Outside-battle rental generation. Caller owns a temporary initialized enemy
 ; mon at slot 0, preserves overworld scratch, and copies out the result.
@@ -3280,7 +3420,17 @@ RentalGenerateMovesForSlot::
 	ld a, [hl]
 	ld [wPartyGenSource], a
 .generated
+; Rentals are the player's mons, so the difficulty's moveset penalties
+; (DifficultyMovesetMods) do not apply: the roll runs as VERY HARD, the mix table
+; as written. VERY EASY's own "no curated set" rule above still does.
+	ld a, [wOptions2]
+	push af
+	and LOW(~DIFFICULTY_MASK)
+	or DIFFICULTY_VERY_HARD
+	ld [wOptions2], a
 	call PartyGenRollMoveset
+	pop af
+	ld [wOptions2], a
 .ready
 	ld a, [wPartyGenSource]
 	ld [wRentalOfferSource], a
