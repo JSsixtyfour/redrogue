@@ -645,6 +645,23 @@ RentalSettleZoneReturn::
 	ld a, [wRentalState]
 	cp RENTAL_ACTIVE
 	jp nz, RentalAdvanceOpportunity
+	ldh a, [hCurMap]
+	cp INDIGO_PLATEAU_LOBBY
+	jr nz, .servicesHidden
+	; The lobby's rolled residents still carry the previous visit's toggles
+	; until PCPsychicSetup rerolls them after this popup. Hide them so the
+	; popup frame cannot show one who is about to vanish; every one of these
+	; toggles is rewritten explicitly by the hub setup that follows.
+	ASSERT TOGGLE_PC_RENTAL_OFFICIAL - TOGGLE_PC_PSYCHIC == 5
+	ld a, TOGGLE_PC_PSYCHIC
+.hideService
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	ld a, [wToggleableObjectIndex]
+	inc a
+	cp TOGGLE_PC_RENTAL_OFFICIAL + 1
+	jr nz, .hideService
+.servicesHidden
 	call UpdateSprites
 	call RentalSettleAndSave
 	ret nc
