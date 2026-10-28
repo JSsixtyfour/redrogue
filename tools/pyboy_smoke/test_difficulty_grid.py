@@ -49,11 +49,13 @@ GYM_BAND = ("MIX_GYM_EARLY", "MIX_GYM_MID", "MIX_GYM_LATE", "MIX_ELITE")
 
 # The rank_row ladder the grid is meant to describe, per kind, by band. Each
 # kind's ladder never falls; the leader's gyms 3-4 row stays on NORMAL on
-# purpose (2026-10-05), sharing it with that band's trainers.
+# purpose (2026-10-05), sharing it with that band's trainers. The gyms 5-6
+# trainer row moved HARD -> NORMAL in the 2026-10-27 moveset rebalance
+# (MOVESET_DIFFICULTY_ANALYSIS_2026-10-27.md step 4.2).
 RANK_LADDER = {
     "route": ("RANK_ROW_BAD", "RANK_ROW_EASY", "RANK_ROW_NORMAL",
               "RANK_ROW_HARD"),
-    "trainer": ("RANK_ROW_EASY", "RANK_ROW_NORMAL", "RANK_ROW_HARD",
+    "trainer": ("RANK_ROW_EASY", "RANK_ROW_NORMAL", "RANK_ROW_NORMAL",
                 "RANK_ROW_HARD"),
     "leader": ("RANK_ROW_NORMAL", "RANK_ROW_NORMAL", "RANK_ROW_HARD",
                "RANK_ROW_ELITE"),
