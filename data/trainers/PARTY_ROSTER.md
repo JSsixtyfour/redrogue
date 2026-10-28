@@ -513,7 +513,11 @@ Pokemon still headline his team.
 The optional ambush battles in the Wild Area. One team per round (1-9), on the same bands as the
 gym leaders except that **band 4 covers rounds 7-9**. Team size is that round's largest route team
 (2/3/4/4/5/5/6/6/6), levels are `STAGE_EVENT_R<n>_BASE` + 1 per slot, and the moveset row is the
-route row for the round.
+route row for the round (tiers 1-2 early, 3-4 mid, 5-6 late, 7-9 final).
+
+**Rarity ramps by band** (2026-10-27 rebalance, MOVESET_DIFFICULTY_ANALYSIS_2026-10-27.md R5.3): band 1 is Poke and
+Great Ball species only, Ultra Ball species join from band 2, Master Ball species only in band 4. Each Kanto
+run is kept 9+ deep where the team is 5-6 mons.
 
 **Aces are optional** here, per band: a band with an `- Aces:` line puts a rolled ace in the last
 slot; a band without one is all fodder, as these trainers always were. A band that HAS aces needs
@@ -530,45 +534,45 @@ unlocks. Band 1 has no ace (a 2-3 mon ambush); bands 2-4 roll Arbok or Weezing, 
 signature pair (seeded 2026-10-07, edit freely).
 
 **Band 1: rounds 1-2**
-- Fodder: Meowth, Ekans, Lickitung, Shellder, Chansey, Koffing, Scyther, Clefairy, Growlithe, Mr Mime, Magikarp, Bellsprout, Pidgey, Pinsir, Grimer, Porygon, Krabby, Hitmonlee, Machop, Rhyhorn, Zubat, Mankey, Yanma (johto), Stantler (johto), Sneasel (johto), Hoppip (johto)
+- Fodder: Ekans, Koffing, Growlithe, Bellsprout, Pidgey, Grimer, Krabby, Zubat, Mankey, Meowth, Lickitung, Shellder, Clefairy, Magikarp, Porygon, Machop, Hoppip (johto), Yanma (johto), Sneasel (johto)
 
 **Band 2: rounds 3-4**
 - Aces: Arbok, Weezing
-- Fodder: Meowth, Ekans, Lickitung, Shellder, Chansey, Koffing, Scyther, Clefairy, Growlithe, Mr Mime, Magikarp, Bellsprout, Pidgey, Pinsir, Grimer, Porygon, Krabby, Hitmonlee, Machop, Rhyhorn, Zubat, Mankey, Yanma (johto), Stantler (johto), Sneasel (johto), Hoppip (johto)
+- Fodder: Ekans, Koffing, Growlithe, Bellsprout, Pidgey, Grimer, Krabby, Zubat, Mankey, Meowth, Lickitung, Shellder, Clefairy, Magikarp, Porygon, Machop, Hoppip (johto), Yanma (johto), Sneasel (johto), Rhyhorn, Hitmonlee
 
 **Band 3: rounds 5-6**
 - Aces: Arbok, Weezing
-- Fodder: Meowth, Ekans, Lickitung, Shellder, Chansey, Koffing, Scyther, Clefairy, Growlithe, Mr Mime, Magikarp, Bellsprout, Pidgey, Pinsir, Grimer, Porygon, Krabby, Hitmonlee, Machop, Rhyhorn, Zubat, Mankey, Yanma (johto), Stantler (johto), Sneasel (johto), Hoppip (johto)
+- Fodder: Ekans, Koffing, Growlithe, Grimer, Mankey, Meowth, Lickitung, Shellder, Clefairy, Magikarp, Porygon, Machop, Hoppip (johto), Yanma (johto), Sneasel (johto), Rhyhorn, Hitmonlee, Scyther, Pinsir, Mr Mime, Chansey, Stantler (johto)
 
 **Band 4: rounds 7-9**
 - Aces: Arbok, Weezing
-- Fodder: Meowth, Ekans, Lickitung, Shellder, Chansey, Koffing, Scyther, Clefairy, Growlithe, Mr Mime, Magikarp, Bellsprout, Pidgey, Pinsir, Grimer, Porygon, Krabby, Hitmonlee, Machop, Rhyhorn, Zubat, Mankey, Yanma (johto), Stantler (johto), Sneasel (johto), Hoppip (johto)
+- Fodder: Ekans, Koffing, Growlithe, Grimer, Mankey, Meowth, Lickitung, Shellder, Clefairy, Magikarp, Porygon, Machop, Hoppip (johto), Yanma (johto), Sneasel (johto), Rhyhorn, Hitmonlee, Scyther, Pinsir, Mr Mime, Chansey, Stantler (johto)
 
 ### Psychic (The Psychic)
 
 Themed on the type, the same brief Sabrina's pool follows. Band 1 has no ace; bands 2-4 roll Alakazam or Hypno (seeded 2026-10-07, edit freely).
 
 **Band 1: rounds 1-2**
-- Fodder: Abra, Slowpoke, Drowzee, Exeggcute, Mr Mime, Jynx, Psyduck, Staryu, Clefairy, Porygon, Natu (johto), Girafarig (johto)
+- Fodder: Psyduck, Poliwag, Slowpoke, Drowzee, Venonat, Clefairy, Porygon, Natu (johto), Girafarig (johto), Misdreavus (johto), Galarian Slowpoke (warp)
 
 **Band 2: rounds 3-4**
 - Aces: Kadabra, Hypno
-- Fodder: Abra, Slowpoke, Drowzee, Exeggcute, Mr Mime, Jynx, Psyduck, Staryu, Clefairy, Porygon, Natu (johto), Girafarig (johto)
+- Fodder: Psyduck, Poliwag, Slowpoke, Drowzee, Venonat, Clefairy, Porygon, Natu (johto), Girafarig (johto), Misdreavus (johto), Galarian Slowpoke (warp), Abra, Mr Mime, Jynx, Mr Rime (warp)
 
 **Band 3: rounds 5-6**
 - Aces: Alakazam, Hypno
-- Fodder: Abra, Slowpoke, Drowzee, Exeggcute, Mr Mime, Jynx, Psyduck, Staryu, Clefairy, Porygon, Natu (johto), Girafarig (johto)
+- Fodder: Psyduck, Slowpoke, Drowzee, Venonat, Clefairy, Porygon, Natu (johto), Girafarig (johto), Misdreavus (johto), Galarian Slowpoke (warp), Abra, Mr Mime, Jynx, Mr Rime (warp)
 
 **Band 4: rounds 7-9**
 - Aces: Alakazam, Slowbro
-- Fodder: Abra, Slowpoke, Drowzee, Exeggcute, Mr Mime, Jynx, Psyduck, Staryu, Clefairy, Porygon, Natu (johto), Girafarig (johto)
+- Fodder: Psyduck, Slowpoke, Drowzee, Venonat, Clefairy, Porygon, Natu (johto), Girafarig (johto), Misdreavus (johto), Galarian Slowpoke (warp), Abra, Mr Mime, Jynx, Mr Rime (warp), Exeggcute, Staryu
 
 ### Burglar (The Burglar)
 
 Sneaky, venomous, urban-pest flavour rather than a type theme (Gen 1 has no Dark type to draw on). Band 1 has no ace; bands 2-4 roll Muk or Persian (seeded 2026-10-07, edit freely).
 
 **Band 1: rounds 1-2**
-- Fodder: Rattata, Ekans, Grimer, Koffing, Zubat, Meowth, Sandshrew, Gastly, Mankey, Diglett, Murkrow (johto), Sneasel (johto)
+- Fodder: Rattata, Ekans, Grimer, Koffing, Zubat, Meowth, Sandshrew, Mankey, Diglett, Murkrow (johto), Sneasel (johto)
 
 **Band 2: rounds 3-4**
 - Aces: Muk, Persian, Sneasel (johto)
@@ -587,38 +591,38 @@ Sneaky, venomous, urban-pest flavour rather than a type theme (Gen 1 has no Dark
 "Healing and cute", seeded from the donor species in `reference/yellow_legacy/joy_jenny/options.asm`, taken as a pool rather than pasted as the donor's flat level-65 team. Sylveon is VAPOREON form 2 and the one deliberate non-base entry: it is Time Warp content, so it carries `(warp)`, which is the only thing that stops a Kanto-only run fielding one (a pinned form index is passed through ungated). Eevee cannot guarantee it, because Eevee picks its evolution at random. Consequence: a round-1 Time Warp run can field a level-5 Sylveon, accepted as the price of having it. Band 1 has no ace; bands 2-4 roll Chansey or Snorlax (seeded 2026-10-07, edit freely).
 
 **Band 1: rounds 1-2**
-- Fodder: Staryu, Porygon, Exeggcute, Chansey, Jigglypuff, Clefairy, Pikachu, Miltank (johto), Marill (johto), Togepi (johto), Sylveon (warp)
+- Fodder: Jigglypuff, Magnemite, Clefairy, Pikachu, Porygon, Squirtle, Ponyta, Marill (johto), Swinub (johto), Sunkern (johto), Togepi (johto), Chikorita (johto), Sylveon (warp)
 
 **Band 2: rounds 3-4**
-- Aces: Chansey, Snorlax
-- Fodder: Kangaskhan, Snorlax, Staryu, Porygon, Exeggcute, Chansey, Jigglypuff, Clefairy, Pikachu, Miltank (johto), Marill (johto), Togepi (johto), Sylveon (warp)
+- Aces: Chansey, Clefable, Wigglytuff
+- Fodder: Jigglypuff, Magnemite, Clefairy, Pikachu, Porygon, Squirtle, Ponyta, Marill (johto), Swinub (johto), Sunkern (johto), Togepi (johto), Chikorita (johto), Sylveon (warp), Chansey, Kangaskhan, Miltank (johto)
 
 **Band 3: rounds 5-6**
-- Aces: Chansey, Snorlax
-- Fodder: Kangaskhan, Snorlax, Staryu, Porygon, Exeggcute, Chansey, Jigglypuff, Clefairy, Pikachu, Miltank (johto), Marill (johto), Togepi (johto), Sylveon (warp)
+- Aces: Chansey, Clefable, Wigglytuff
+- Fodder: Jigglypuff, Magnemite, Clefairy, Pikachu, Porygon, Squirtle, Ponyta, Marill (johto), Swinub (johto), Sunkern (johto), Togepi (johto), Chikorita (johto), Sylveon (warp), Chansey, Kangaskhan, Miltank (johto)
 
 **Band 4: rounds 7-9**
 - Aces: Chansey, Snorlax
-- Fodder: Kangaskhan, Snorlax, Staryu, Porygon, Exeggcute, Chansey, Jigglypuff, Clefairy, Pikachu, Miltank (johto), Marill (johto), Togepi (johto), Sylveon (warp)
+- Fodder: Jigglypuff, Magnemite, Clefairy, Pikachu, Porygon, Squirtle, Ponyta, Marill (johto), Swinub (johto), Sunkern (johto), Togepi (johto), Chikorita (johto), Sylveon (warp), Chansey, Kangaskhan, Miltank (johto), Snorlax, Staryu, Exeggcute
 
 ### OfficerJenny (Officer Jenny)
 
 Police-dog and patrol flavour, same donor source as Nurse Joy. Every entry is at its BASE form (Growlithe not Arcanine, Pidgey not Pidgeot, and so on): the trainer evolution engine promotes each one at a high enough level, so listing the base fixes the round-1 case without weakening round 9. Hitmonchan has no evolution in either direction here, so it is its own base. The Kanto run is deliberately 9 deep: the retry cap is 8, so a tighter pool repeats a species outright. Band 1 has no ace; bands 2-4 roll Arcanine (seeded 2026-10-07, edit freely).
 
 **Band 1: rounds 1-2**
-- Fodder: Pidgey, Squirtle, Tangela, Gastly, Paras, Growlithe, Machop, Ponyta, Hitmonchan, Spinarak (johto), Hoppip (johto), Chikorita (johto), Totodile (johto), Marill (johto), Snubbull (johto), Remoraid (johto)
+- Fodder: Pidgey, Paras, Growlithe, Squirtle, Tangela, Machop, Ponyta, Hitmonchan, Doduo, Spinarak (johto), Hoppip (johto), Marill (johto), Snubbull (johto), Remoraid (johto), Chikorita (johto), Totodile (johto)
 
 **Band 2: rounds 3-4**
 - Aces: Arcanine
-- Fodder: Pidgey, Squirtle, Tangela, Gastly, Paras, Growlithe, Machop, Ponyta, Hitmonchan, Spinarak (johto), Hoppip (johto), Chikorita (johto), Totodile (johto), Marill (johto), Snubbull (johto), Remoraid (johto)
+- Fodder: Pidgey, Paras, Growlithe, Squirtle, Tangela, Machop, Ponyta, Hitmonchan, Doduo, Spinarak (johto), Hoppip (johto), Marill (johto), Snubbull (johto), Remoraid (johto), Chikorita (johto), Totodile (johto), Gastly
 
 **Band 3: rounds 5-6**
 - Aces: Arcanine
-- Fodder: Pidgey, Squirtle, Tangela, Gastly, Paras, Growlithe, Machop, Ponyta, Hitmonchan, Spinarak (johto), Hoppip (johto), Chikorita (johto), Totodile (johto), Marill (johto), Snubbull (johto), Remoraid (johto)
+- Fodder: Pidgey, Paras, Growlithe, Squirtle, Tangela, Machop, Ponyta, Hitmonchan, Doduo, Spinarak (johto), Hoppip (johto), Marill (johto), Snubbull (johto), Remoraid (johto), Chikorita (johto), Totodile (johto), Gastly
 
 **Band 4: rounds 7-9**
 - Aces: Arcanine
-- Fodder: Pidgey, Squirtle, Tangela, Gastly, Paras, Growlithe, Machop, Ponyta, Hitmonchan, Spinarak (johto), Hoppip (johto), Chikorita (johto), Totodile (johto), Marill (johto), Snubbull (johto), Remoraid (johto)
+- Fodder: Pidgey, Paras, Growlithe, Squirtle, Tangela, Machop, Ponyta, Hitmonchan, Doduo, Spinarak (johto), Hoppip (johto), Marill (johto), Snubbull (johto), Remoraid (johto), Chikorita (johto), Totodile (johto), Gastly
 
 ## Champions
 

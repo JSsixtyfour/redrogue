@@ -140,13 +140,14 @@ DEF GYM_BAND4_MIX       EQU MIX_ELITE
 ;                  random" on teams that never exceed 3)
 ;   TRAINER_MID    1 random+TM, rest random            (the old row's TM slot
 ;                  only reached a 6th mon, which rounds 3-5 never field)
-;   TRAINER_LATE   1 curated set, 1 random+TM, rest random
+;   TRAINER_LATE   1 curated set, 1 random+TM, rest random (NORMAL preference
+;                  since the 2026-10-27 rebalance; TRAINER_FINAL stays HARD)
 ;   TRAINER_FINAL  1 curated set, rest random+TM       (the old rounds 6-8 row,
 ;                  with its set always landing; sets now NORMAL or HARD so the
 ;                  curated mon is no softer than its random+TM teammates)
-;   GYM_EARLY  2 mons: ace set (NORMAL), one full learnset. Most gym 1-2 aces
-;              have no curated set at levels 11-18, so the fallback is the
-;              plain level-up roll, keeping the opening gyms soft.
+;   GYM_EARLY  2 mons: ace set (BAD only), one full learnset. Most gym 1-2 aces
+;              have no Bad set at levels 11-18, so the fallback is the plain
+;              level-up roll, keeping the opening gyms soft.
 ;   GYM_MID    3 mons: ace set (NORMAL only), one random, one random+TM, all on
 ;              RANK_ROW_NORMAL with tm_cap 2.
 ;   GYM_LATE   4 mons: two sets (NORMAL or HARD), one random+TM, one TM-only
@@ -158,7 +159,7 @@ DEF GYM_BAND4_MIX       EQU MIX_ELITE
 ;
 ;   band       gyms 1-2  gyms 3-4  gyms 5-6  gyms 7-8
 ;   route      BAD       EASY      NORMAL    HARD
-;   trainer    EASY      NORMAL    HARD      HARD
+;   trainer    EASY      NORMAL    NORMAL    HARD
 ;   leader     NORMAL    NORMAL    HARD      ELITE
 ;
 ; Routes sit between the gyms on either side of them: a band's route is no
@@ -184,13 +185,13 @@ MovesetMixTable::
 	mix     0,   0,   1,   2,  0,   0,  0,                       RANK_ROW_HARD,   1,   0,              MOVEFLAG_EXPLOSION, MSRC_LEARNSET       ; ROUTE_FINAL
 	mix     0,   0,   0,   0,  0,   0,  0,                       RANK_ROW_EASY,   0,   0,              0,                  MSRC_RANDOM         ; TRAINER_EARLY
 	mix     0,   0,   0,   1,  0,   0,  0,                       RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM         ; TRAINER_MID
-	mix     0,   0,   0,   1,  0,   1,  TIER_EASY | TIER_NORMAL, RANK_ROW_HARD,   2,   0,              0,                  MSRC_RANDOM         ; TRAINER_LATE
+	mix     0,   0,   0,   1,  0,   1,  TIER_EASY | TIER_NORMAL, RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM         ; TRAINER_LATE
 	mix     0,   0,   0,   0,  0,   1,  TIER_NORMAL | TIER_HARD, RANK_ROW_HARD,   3,   0,              0,                  MSRC_RANDOM_TM      ; TRAINER_FINAL
-	mix     0,   1,   0,   0,  0,   1,  TIER_NORMAL,             RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM         ; GYM_EARLY
+	mix     0,   1,   0,   0,  0,   1,  TIER_BAD,                RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM         ; GYM_EARLY
 	mix     0,   0,   1,   1,  0,   1,  TIER_NORMAL,             RANK_ROW_NORMAL, 2,   0,              0,                  MSRC_RANDOM         ; GYM_MID
 	mix     0,   0,   0,   1,  1,   2,  TIER_NORMAL | TIER_HARD, RANK_ROW_HARD,   3,   0,              0,                  MSRC_RANDOM_TM      ; GYM_LATE
 	mix     0,   0,   0,   1,  1,   3,  TIER_HARD | TIER_ELITE,  RANK_ROW_ELITE,  4,   MOVEFLAG_SLEEP, 0,                  MSRC_RANDOM_TM      ; ELITE
-	mix     0,   0,   0,   0,  0,   6,  TIER_ELITE,              RANK_ROW_ELITE,  4,   MOVEFLAG_SLEEP, 0,                  MSRC_RANDOM_TM      ; E4_SETS
+	mix     0,   0,   0,   0,  0,   5,  TIER_ELITE,              RANK_ROW_ELITE,  4,   MOVEFLAG_SLEEP, 0,                  MSRC_RANDOM_TM      ; E4_SETS
 	mix     0,   0,   0,   0,  0,   6,  TIER_GAMBLER,            RANK_ROW_HARD,   3,   0,              0,                  MSRC_RANDOM_TM      ; GAMBLER
 	assert_table_length NUM_MOVESET_MIXES
 
@@ -831,12 +832,12 @@ ProfOakSpec:
 MACRO stage_event_mix
 	IF (\1) <= 2
 	DEF _semix = MIX_ROUTE_EARLY
-	ELIF (\1) <= 5
+	ELIF (\1) <= 4
 	DEF _semix = MIX_ROUTE_MID
-	ELIF (\1) <= 8
+	ELIF (\1) <= 6
 	DEF _semix = MIX_ROUTE_LATE
 	ELSE
-	DEF _semix = MIX_TRAINER_LATE
+	DEF _semix = MIX_ROUTE_FINAL
 	ENDC
 ENDM
 

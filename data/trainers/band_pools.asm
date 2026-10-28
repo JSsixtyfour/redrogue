@@ -2592,33 +2592,26 @@
 
 ; --- JessieJames -------------------------------------------------------------
 	band_pool JessieJames_Fod1
-	band_mon MEOWTH
 	band_mon EKANS
-	band_mon LICKITUNG
-	band_mon SHELLDER
-	band_mon CHANSEY
 	band_mon KOFFING
-	band_mon SCYTHER
-	band_mon CLEFAIRY
 	band_mon GROWLITHE
-	band_mon MR_MIME
-	band_mon MAGIKARP
 	band_mon BELLSPROUT
 	band_mon PIDGEY
-	band_mon PINSIR
 	band_mon GRIMER
-	band_mon PORYGON
 	band_mon KRABBY
-	band_mon HITMONLEE
-	band_mon MACHOP
-	band_mon RHYHORN
 	band_mon ZUBAT
 	band_mon MANKEY
+	band_mon MEOWTH
+	band_mon LICKITUNG
+	band_mon SHELLDER
+	band_mon CLEFAIRY
+	band_mon MAGIKARP
+	band_mon PORYGON
+	band_mon MACHOP
 	band_johto
-	band_mon YANMA
-	band_mon STANTLER
-	band_mon SNEASEL
 	band_mon HOPPIP
+	band_mon YANMA
+	band_mon SNEASEL
 	band_warp
 	band_end
 	band_pool JessieJames_Ace2
@@ -2627,28 +2620,76 @@
 	band_johto
 	band_warp
 	band_end
-	band_same JessieJames_Fod2, JessieJames_Fod1
+	band_pool JessieJames_Fod2
+	band_mon EKANS
+	band_mon KOFFING
+	band_mon GROWLITHE
+	band_mon BELLSPROUT
+	band_mon PIDGEY
+	band_mon GRIMER
+	band_mon KRABBY
+	band_mon ZUBAT
+	band_mon MANKEY
+	band_mon MEOWTH
+	band_mon LICKITUNG
+	band_mon SHELLDER
+	band_mon CLEFAIRY
+	band_mon MAGIKARP
+	band_mon PORYGON
+	band_mon MACHOP
+	band_mon RHYHORN
+	band_mon HITMONLEE
+	band_johto
+	band_mon HOPPIP
+	band_mon YANMA
+	band_mon SNEASEL
+	band_warp
+	band_end
 	band_same JessieJames_Ace3, JessieJames_Ace2
-	band_same JessieJames_Fod3, JessieJames_Fod1
+	band_pool JessieJames_Fod3
+	band_mon EKANS
+	band_mon KOFFING
+	band_mon GROWLITHE
+	band_mon GRIMER
+	band_mon MANKEY
+	band_mon MEOWTH
+	band_mon LICKITUNG
+	band_mon SHELLDER
+	band_mon CLEFAIRY
+	band_mon MAGIKARP
+	band_mon PORYGON
+	band_mon MACHOP
+	band_mon RHYHORN
+	band_mon HITMONLEE
+	band_mon SCYTHER
+	band_mon PINSIR
+	band_mon MR_MIME
+	band_mon CHANSEY
+	band_johto
+	band_mon HOPPIP
+	band_mon YANMA
+	band_mon SNEASEL
+	band_mon STANTLER
+	band_warp
+	band_end
 	band_same JessieJames_Ace4, JessieJames_Ace2
-	band_same JessieJames_Fod4, JessieJames_Fod1
+	band_same JessieJames_Fod4, JessieJames_Fod3
 
 ; --- Psychic -----------------------------------------------------------------
 	band_pool Psychic_Fod1
-	band_mon ABRA
+	band_mon PSYDUCK
+	band_mon POLIWAG
 	band_mon SLOWPOKE
 	band_mon DROWZEE
-	band_mon EXEGGCUTE
-	band_mon MR_MIME
-	band_mon JYNX
-	band_mon PSYDUCK
-	band_mon STARYU
+	band_mon VENONAT
 	band_mon CLEFAIRY
 	band_mon PORYGON
 	band_johto
 	band_mon NATU
 	band_mon GIRAFARIG
+	band_mon MISDREAVUS
 	band_warp
+	band_mon SLOWPOKE, 1
 	band_end
 	band_pool Psychic_Ace2
 	band_ace KADABRA
@@ -2656,24 +2697,100 @@
 	band_johto
 	band_warp
 	band_end
-	band_same Psychic_Fod2, Psychic_Fod1
+	band_pool Psychic_Fod2
+	band_mon PSYDUCK
+	band_mon POLIWAG
+	band_mon SLOWPOKE
+	band_mon DROWZEE
+	band_mon VENONAT
+	band_mon CLEFAIRY
+	band_mon PORYGON
+	band_mon ABRA
+	band_mon MR_MIME
+	band_mon JYNX
+	band_johto
+	band_mon NATU
+	band_mon GIRAFARIG
+	band_mon MISDREAVUS
+	band_warp
+	band_mon SLOWPOKE, 1
+	band_mon MR_RIME
+	band_end
 	band_pool Psychic_Ace3
 	band_ace ALAKAZAM
 	band_ace HYPNO
 	band_johto
 	band_warp
 	band_end
-	band_same Psychic_Fod3, Psychic_Fod1
+	band_pool Psychic_Fod3
+	band_mon PSYDUCK
+	band_mon SLOWPOKE
+	band_mon DROWZEE
+	band_mon VENONAT
+	band_mon CLEFAIRY
+	band_mon PORYGON
+	band_mon ABRA
+	band_mon MR_MIME
+	band_mon JYNX
+	band_johto
+	band_mon NATU
+	band_mon GIRAFARIG
+	band_mon MISDREAVUS
+	band_warp
+	band_mon SLOWPOKE, 1
+	band_mon MR_RIME
+	band_end
 	band_pool Psychic_Ace4
 	band_ace ALAKAZAM
 	band_ace SLOWBRO
 	band_johto
 	band_warp
 	band_end
-	band_same Psychic_Fod4, Psychic_Fod1
+	band_pool Psychic_Fod4
+	band_mon PSYDUCK
+	band_mon SLOWPOKE
+	band_mon DROWZEE
+	band_mon VENONAT
+	band_mon CLEFAIRY
+	band_mon PORYGON
+	band_mon ABRA
+	band_mon MR_MIME
+	band_mon JYNX
+	band_mon EXEGGCUTE
+	band_mon STARYU
+	band_johto
+	band_mon NATU
+	band_mon GIRAFARIG
+	band_mon MISDREAVUS
+	band_warp
+	band_mon SLOWPOKE, 1
+	band_mon MR_RIME
+	band_end
 
 ; --- Burglar -----------------------------------------------------------------
 	band_pool Burglar_Fod1
+	band_mon RATTATA
+	band_mon EKANS
+	band_mon GRIMER
+	band_mon KOFFING
+	band_mon ZUBAT
+	band_mon MEOWTH
+	band_mon SANDSHREW
+	band_mon MANKEY
+	band_mon DIGLETT
+	band_johto
+	band_mon MURKROW
+	band_mon SNEASEL
+	band_warp
+	band_end
+	band_pool Burglar_Ace2
+	band_ace MUK
+	band_ace PERSIAN
+	band_johto
+	band_ace SNEASEL
+	band_warp
+	band_end
+	band_pool Burglar_Fod2
 	band_mon RATTATA
 	band_mon EKANS
 	band_mon GRIMER
@@ -2689,82 +2806,107 @@
 	band_mon SNEASEL
 	band_warp
 	band_end
-	band_pool Burglar_Ace2
-	band_ace MUK
-	band_ace PERSIAN
-	band_johto
-	band_ace SNEASEL
-	band_warp
-	band_end
-	band_same Burglar_Fod2, Burglar_Fod1
 	band_same Burglar_Ace3, Burglar_Ace2
-	band_same Burglar_Fod3, Burglar_Fod1
+	band_same Burglar_Fod3, Burglar_Fod2
 	band_same Burglar_Ace4, Burglar_Ace2
-	band_same Burglar_Fod4, Burglar_Fod1
+	band_same Burglar_Fod4, Burglar_Fod2
 
 ; --- NurseJoy ----------------------------------------------------------------
 	band_pool NurseJoy_Fod1
-	band_mon STARYU
-	band_mon PORYGON
-	band_mon EXEGGCUTE
-	band_mon CHANSEY
 	band_mon JIGGLYPUFF
+	band_mon MAGNEMITE
 	band_mon CLEFAIRY
 	band_mon PIKACHU
+	band_mon PORYGON
+	band_mon SQUIRTLE
+	band_mon PONYTA
 	band_johto
-	band_mon MILTANK
 	band_mon MARILL
+	band_mon SWINUB
+	band_mon SUNKERN
 	band_mon TOGEPI
+	band_mon CHIKORITA
 	band_warp
 	band_mon VAPOREON, 2
 	band_end
 	band_pool NurseJoy_Ace2
 	band_ace CHANSEY
-	band_ace SNORLAX
+	band_ace CLEFABLE
+	band_ace WIGGLYTUFF
 	band_johto
 	band_warp
 	band_end
 	band_pool NurseJoy_Fod2
-	band_mon KANGASKHAN
-	band_mon SNORLAX
-	band_mon STARYU
-	band_mon PORYGON
-	band_mon EXEGGCUTE
-	band_mon CHANSEY
 	band_mon JIGGLYPUFF
+	band_mon MAGNEMITE
 	band_mon CLEFAIRY
 	band_mon PIKACHU
+	band_mon PORYGON
+	band_mon SQUIRTLE
+	band_mon PONYTA
+	band_mon CHANSEY
+	band_mon KANGASKHAN
 	band_johto
-	band_mon MILTANK
 	band_mon MARILL
+	band_mon SWINUB
+	band_mon SUNKERN
 	band_mon TOGEPI
+	band_mon CHIKORITA
+	band_mon MILTANK
 	band_warp
 	band_mon VAPOREON, 2
 	band_end
 	band_same NurseJoy_Ace3, NurseJoy_Ace2
 	band_same NurseJoy_Fod3, NurseJoy_Fod2
-	band_same NurseJoy_Ace4, NurseJoy_Ace2
-	band_same NurseJoy_Fod4, NurseJoy_Fod2
+	band_pool NurseJoy_Ace4
+	band_ace CHANSEY
+	band_ace SNORLAX
+	band_johto
+	band_warp
+	band_end
+	band_pool NurseJoy_Fod4
+	band_mon JIGGLYPUFF
+	band_mon MAGNEMITE
+	band_mon CLEFAIRY
+	band_mon PIKACHU
+	band_mon PORYGON
+	band_mon SQUIRTLE
+	band_mon PONYTA
+	band_mon CHANSEY
+	band_mon KANGASKHAN
+	band_mon SNORLAX
+	band_mon STARYU
+	band_mon EXEGGCUTE
+	band_johto
+	band_mon MARILL
+	band_mon SWINUB
+	band_mon SUNKERN
+	band_mon TOGEPI
+	band_mon CHIKORITA
+	band_mon MILTANK
+	band_warp
+	band_mon VAPOREON, 2
+	band_end
 
 ; --- OfficerJenny ------------------------------------------------------------
 	band_pool OfficerJenny_Fod1
 	band_mon PIDGEY
-	band_mon SQUIRTLE
-	band_mon TANGELA
-	band_mon GASTLY
 	band_mon PARAS
 	band_mon GROWLITHE
+	band_mon SQUIRTLE
+	band_mon TANGELA
 	band_mon MACHOP
 	band_mon PONYTA
 	band_mon HITMONCHAN
+	band_mon DODUO
 	band_johto
 	band_mon SPINARAK
 	band_mon HOPPIP
-	band_mon CHIKORITA
-	band_mon TOTODILE
 	band_mon MARILL
 	band_mon SNUBBULL
 	band_mon REMORAID
+	band_mon CHIKORITA
+	band_mon TOTODILE
 	band_warp
 	band_end
 	band_pool OfficerJenny_Ace2
@@ -2772,11 +2914,31 @@
 	band_johto
 	band_warp
 	band_end
-	band_same OfficerJenny_Fod2, OfficerJenny_Fod1
+	band_pool OfficerJenny_Fod2
+	band_mon PIDGEY
+	band_mon PARAS
+	band_mon GROWLITHE
+	band_mon SQUIRTLE
+	band_mon TANGELA
+	band_mon MACHOP
+	band_mon PONYTA
+	band_mon HITMONCHAN
+	band_mon DODUO
+	band_mon GASTLY
+	band_johto
+	band_mon SPINARAK
+	band_mon HOPPIP
+	band_mon MARILL
+	band_mon SNUBBULL
+	band_mon REMORAID
+	band_mon CHIKORITA
+	band_mon TOTODILE
+	band_warp
+	band_end
 	band_same OfficerJenny_Ace3, OfficerJenny_Ace2
-	band_same OfficerJenny_Fod3, OfficerJenny_Fod1
+	band_same OfficerJenny_Fod3, OfficerJenny_Fod2
 	band_same OfficerJenny_Ace4, OfficerJenny_Ace2
-	band_same OfficerJenny_Fod4, OfficerJenny_Fod1
+	band_same OfficerJenny_Fod4, OfficerJenny_Fod2
 
 ; --- Rival3 ------------------------------------------------------------------
 	band_pool Rival3_Fod1

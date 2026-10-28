@@ -26,6 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import curve  # noqa: E402
 import model  # noqa: E402
+import movesets  # noqa: E402
 import parse  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -35,6 +36,9 @@ ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 HISTORY_CSV = HERE / "data" / "economy_history.csv"
 HISTORY_ROWS_SHOWN = 12
+# The moveset mirror rolls every slot of every battle, so its section uses at most this many
+# runs however many the report asks for (the shares settle well before 2000).
+MOVESET_RUNS_CAP = 300
 
 # Battle terms: least-squares fit over the WON battles in
 # tools/balance/data/battle_time.csv (calibrate_battle_time.py, 2026-09-25):
@@ -367,6 +371,57 @@ def section_duration(g: parse.GameData, args, out: Path) -> list[str]:
     return lines
 
 
+def _grade_mean(s: dict, rnd: int, kinds=None) -> float | None:
+    """Mean move grade (F=0 .. S=5, four slots) of round `rnd`, over `kinds` or every kind."""
+    gs = gn = 0
+    for (r, kind), (a, n) in s["grade"].items():
+        if r == rnd and (kinds is None or kind in kinds):
+            gs += a
+            gn += n
+    return gs / (4 * gn) if gn else None
+
+
+def _class_share(s: dict, rnd: int, cls: int, kinds=("Route", "Trainer")) -> float | None:
+    """Share of the round's `kinds` mons in rarity class index `cls` (3 = Master)."""
+    tot = hit = 0
+    for kind in kinds:
+        c = s["rarity"].get((rnd, kind))
+        if c:
+            tot += sum(c.values())
+            hit += c[cls]
+    return hit / tot if tot else None
+
+
+def section_movesets(g: parse.GameData, args, out: Path) -> list[str]:
+    runs_n = min(args.runs, MOVESET_RUNS_CAP)
+    lines = ["## 8. Movesets and enemy rarity (HARD, EXP Share on)\n",
+             "How enemy movesets are sourced and what rarity classes appear, by round, from "
+             "`tools/balance/movesets.py` (a mirror of the party builder, checked against the ROM by "
+             "`test_balance_movesets_match_rom.py`). Kanto run. "
+             f"{runs_n} runs (capped at {MOVESET_RUNS_CAP}).\n"]
+    d = movesets.load()
+    summaries = {}
+    for diff in ("hard", "very_easy"):
+        cfg = model.Config(difficulty=diff, exp_all="equal", policy="rotate", groups=("KANTO",))
+        runs = model.simulate(g, cfg, runs_n, args.seed)
+        summaries[diff] = movesets.summarize(d, g, cfg, runs, args.seed)
+    hard, easy = summaries["hard"], summaries["very_easy"]
+    lines.append(movesets.format_summary(hard).replace("\n## ", "\n### ").replace("## ", "### ", 1))
+    lines.append("")
+    lines.append("### Very Easy, for comparison\n")
+    lines.append("| Round | Mean move grade (all kinds) | Enemy mons with a TM-only A or S move |")
+    lines.append("|---|---|---|")
+    for rnd in range(1, 10):
+        grade = _grade_mean(easy, rnd)
+        st = easy["strong"].get(rnd)
+        if grade is None or not st:
+            continue
+        lines.append(f"| {rnd} | {grade:.2f} | {movesets._pct(st[1], st[0])} |")
+    lines.append("")
+    args.movesets = hard
+    return lines
+
+
 def history_row(g: parse.GameData, args) -> dict:
     eco = args.economy
     row = {
@@ -413,6 +468,26 @@ def history_row(g: parse.GameData, args) -> dict:
         for r, cp in enumerate(lv["rows"][:8], 1):
             row[f"team_gym{r}"] = round(cp["team_rolled"], 2)
     row.update(credit_awards())
+    # Movesets and rarity (added 2026-10-27, HARD): leader set share and mean move grade
+    # per gym round, the share of mons with a TM-only A/S move, the Master Ball share of
+    # route + gym trainer mons, and the share of those trainers with a legendary bird.
+    # Older rows leave them empty.
+    ms = getattr(args, "movesets", None)
+    if ms:
+        def pct(x):
+            return "" if x is None else round(100 * x, 1)
+
+        for r in range(1, 9):
+            c = ms["spread"].get((r, "Leader"))
+            row[f"set_share_leader_r{r}"] = pct(c["Set"] / sum(c.values())) if c else ""
+            row[f"move_grade_leader_r{r}"] = (round(_grade_mean(ms, r, ("Leader",)), 2)
+                                              if ms["grade"].get((r, "Leader")) else "")
+        for r in range(1, 10):
+            n, a, _ = ms["strong"].get(r, (0, 0, 0))
+            row[f"tm_strong_r{r}"] = pct(a / n) if n else ""
+            row[f"master_share_r{r}"] = pct(_class_share(ms, r, 3))
+            bn, bk = ms["birds"].get(r, (0, 0))
+            row[f"bird_rate_r{r}"] = pct(bk / bn) if bn else ""
     return row
 
 
@@ -548,7 +623,7 @@ def section_shopping(g: parse.GameData, args, out: Path) -> list[str]:
 
 
 def section_history(g: parse.GameData, args, out: Path) -> list[str]:
-    lines = ["## 8. Economy history\n",
+    lines = ["## 9. Economy history\n",
              f"`{HISTORY_CSV.relative_to(ROOT).as_posix()}` gets one row per report run on the "
              "unmodified knobs (what-if runs with `--set` are not recorded). Commit it with the "
              "tuning change it measures.\n"]
@@ -603,7 +678,7 @@ def level_findings(args) -> list[str]:
 
 def section_findings(args) -> list[str]:
     return [
-        "## 9. Findings\n",
+        "## 10. Findings\n",
         *level_findings(args),
         "2. **Special encounters: two wild areas and two mini-bosses every run.** "
         "`SpecialEncounterPolicy`'s joint quota (completed encounters, by half-run) is mirrored by "
@@ -619,7 +694,7 @@ def section_findings(args) -> list[str]:
 
 def section_caveats() -> list[str]:
     return [
-        "## 10. Known approximations\n",
+        "## 11. Known approximations\n",
         "- Johto/Warp runs: leaders are sampled from all 17 records and the E4 stays the Kanto "
         "four. The real Phase 7 lineup roll isn't mirrored. The default uses the Kanto lineup.\n",
         "- The Gambler class, witch challenges and other prizes, Element Prism, Rare Scope, and the "
@@ -685,7 +760,8 @@ def main(argv: list[str] | None = None) -> int:
     lines = ["# Red Rogue Balance Report\n",
              f"Generated from `tools/balance/report.py`, {args.runs} runs per config, seed {args.seed}.\n"]
     for section in (section_headline, section_witch_exp, section_levels, section_difficulty,
-                    section_wild_vs_route, section_money, section_shopping, section_duration, section_history):
+                    section_wild_vs_route, section_money, section_shopping, section_duration, section_movesets,
+                    section_history):
         lines += section(g, args, out)
     lines += section_findings(args)
     lines += section_caveats()
