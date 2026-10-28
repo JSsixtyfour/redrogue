@@ -167,6 +167,37 @@ test("schema 11 to 12: direct-loss record initializes invalid, existing profile 
   }
 });
 
+test("schema 13 to 14: Endless state initializes inactive without moving existing fields", () => {
+  const from = PKG.schemas["13"], to = PKG.schemas["14"];
+  const save = syntheticSave("13"), pkg = packageTargeting("14");
+  const labels = ["wEndlessDepth", "wEndlessFlags"];
+  const cleared = new Set();
+  for (const label of labels) {
+    const at = wramOffset(to, label);
+    save[at] = 0xa5; // the old pad byte, filled with noise
+    cleared.add(at);
+  }
+  recomputeChecksums(save, from);
+  const out = api.convert(save, pkg, { mode: "continue" });
+  assert.equal(out.ok, true, out.reason);
+  for (const label of labels) assert.equal(out.bytes[wramOffset(to, label)], 0, label);
+  for (const f of from.saved_wram) {
+    const t = to.saved_wram.find((t) => t.label === f.label);
+    if (t) assert.equal(wramOffset(to, f.label), wramOffset(from, f.label), f.label);
+  }
+  for (const f of from.sram) {
+    const t = to.sram.find((t) => t.label === f.label);
+    assert.equal(t.address, f.address, f.label);
+    assert.equal(t.size, f.size, f.label);
+  }
+  const mainSum = to.checksums.find((c) => c.name === "main");
+  cleared.add(offsetOf(mainSum.at_bank, mainSum.at));
+  for (let i = 0; i < 8; i++) cleared.add(0x2040 + i);
+  for (let i = 0; i < save.length; i++)
+    if (!cleared.has(i)) assert.equal(out.bytes[i], save[i], `unrelated byte ${i}`);
+  assert.equal(api.checksumStatus(out.bytes, to).main, true);
+});
+
 test("schema 12 to 13: run records initialize empty without moving existing fields", () => {
   const from = PKG.schemas["12"], to = PKG.schemas["13"];
   const save = syntheticSave("12"), pkg = packageTargeting("13");

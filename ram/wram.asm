@@ -3083,7 +3083,23 @@ wOptions3:: db
 ; later address shifts (2026-10-13).
 wroguenpctradeform:: db
 
-	ds 2  ; was ds 3; 1 byte carved in place for wroguenpctradeform above.
+; Endless mode (ENDLESS_MODE_CHECKPOINT_A.md). CARVED IN PLACE from the last two
+; bytes of the dead pad below (ds 2 -> ds 0): zero WRAM0 cost, no later address
+; shifts, so loss_recovery.asm's region ASSERTs still hold (schema 14,
+; 2026-10-28). Saved, but BELOW wGameProgressFlagsEnd, so the run-reset and
+; new-game FillMemory do NOT sweep them: RogueResetRunState and InitPlayerData
+; each zero both explicitly.
+; Circuits completed beyond the first this run. 0 = the ordinary run, and every
+; non-Endless path behaves exactly as before; nonzero IS "Endless active".
+; Saturates at $ff rather than wrapping.
+wEndlessDepth:: db
+; bit 0 BIT_ENDLESS_ARRIVAL_PENDING: the continuation is committed and saved in
+; the Hall of Fame but its route warp has not landed. Continue routes to
+; wRogueMap instead of the Dorm; the route's arrival clears it. Bits 1-7 unused.
+wEndlessFlags:: db
+
+	; was ds 2; both bytes carved in place for wEndlessDepth/wEndlessFlags above.
+	; was ds 3; 1 byte carved in place for wroguenpctradeform above.
 	      ; was ds 4; 1 byte carved in place for wOptions3 above.
 	      ; was ds 5; 1 byte carved in place for wStageEventScratch above.
 	      ; was ds 36 on master. Shrunk by 10 to offset the procedural-cave merge's
@@ -3459,6 +3475,17 @@ wRandomTableEnd::
 
 ASSERT HIGH(wRandomTable) == HIGH(wRandomTableEnd - 1), "the whole CMWC table must be within a single 256-byte block"
 
+
+SECTION "Endless Debug State", WRAM0
+; Outside every saved span, so it can never reach a save file or survive a
+; power cycle (Init clears all WRAM0). Debug 2's Endless eligibility override:
+; nonzero offers the post-Hall-of-Fame continuation without EVENT_AI_DEFEATED.
+; Declared in all three ROMs so their maps stay identical; only Debug 2 sets it.
+; Declared BEFORE ProcCaveReadyFlag on purpose: of two same-size floating
+; sections the later one is placed first, and declared after it this byte took
+; the Audio RAM silo's last free byte ($c0ff) and pushed wProcCavePreloadReady
+; out of it (measured 2026-10-28). Here, no existing address moves.
+wEndlessDebugOverride:: db
 
 SECTION "ProcCaveReadyFlag", WRAM0
 

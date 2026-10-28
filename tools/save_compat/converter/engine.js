@@ -413,6 +413,21 @@
       return null;
     },
 
+    // Schema 13 -> 14: Endless mode's depth and flags took the last two bytes of the saved pad
+    // after wroguenpctradeform. Nothing moved. Zeroed: an ordinary run with no continuation
+    // pending, so an old save can never acquire active Endless state.
+    endlessAdded: function (bytes, from, to) {
+      if (wramField(from, "wEndlessDepth")) return "this save already has Endless state";
+      var form = wramOffset(from, "wroguenpctradeform");
+      if (form < 0 || wramOffset(to, "wroguenpctradeform") !== form ||
+          wramOffset(to, "wEndlessDepth") !== form + 1 || wramOffset(to, "wEndlessFlags") !== form + 2)
+        return "Endless layout not recognised";
+      bytes[form + 1] = 0;
+      bytes[form + 2] = 0;
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
     lossRecoveryAdded: function (bytes, from, to) {
       var names = ["sLossRecovery1", "sLossRecovery2", "sLossRecovery3", "sLossRecoveryCRC", "sLossRecoveryValid"];
       for (var i = 0; i < names.length; i++) {

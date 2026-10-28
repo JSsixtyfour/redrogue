@@ -107,6 +107,14 @@
    "to": "13",
    "steps": ["runRecordsAdded"],
    "verified": "2026-10-26: all three ROMs build; schema 13 matches. Converter 22 pass/1 legacy-fixture skip; focused run-record/PC/loss-recovery PyBoy 16 pass/2 skips; make audit passes (49 source checks, zero unallowlisted bug findings). No existing address moves. Legacy active runs are unranked. BGB full starter-to-Champion choreography and real converted-save cold Continue remain pending."
+  },
+  {
+   "from": "13",
+   "to": "14",
+   "steps": [
+    "endlessAdded"
+   ],
+   "verified": "NOT YET (2026-10-28, Claude): Endless Checkpoint B step 1. wEndlessDepth/wEndlessFlags carved from the saved pad after wroguenpctradeform; nothing moved; zeroed for old saves. Real-save gate not run."
   }
  ]
 }

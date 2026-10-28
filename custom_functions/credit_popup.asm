@@ -193,6 +193,11 @@ RogueResetRunState::
 	ld [wGymsUsedMask + 1], a
 	pop af
 	ld [wCreditsEarnedThisRun], a
+	; Endless state sits just below wGameProgressFlagsEnd, outside the fill:
+	; a blackout or a declined continuation ends the whole Endless run.
+	xor a
+	ld [wEndlessDepth], a
+	ld [wEndlessFlags], a
 
 	; --- 3. re-derive the SRAM-tier caches step 2 just zeroed ---
 	farcall ApplyKeyItemTierEffects

@@ -60,7 +60,11 @@
 ; lossRecoveryAdded. Existing payload and companion addresses do not move.
 ; Schema 13: per-run clock and top five Champion times in existing saved pads.
 ; No existing field moves. Legacy runs have no known start time and stay idle.
-DEF SAVE_SCHEMA_ID EQU 13
+; Schema 14 (2026-10-28): wEndlessDepth and wEndlessFlags took the last two
+; bytes of the saved pad after wroguenpctradeform. Nothing moved; old saves get
+; both zeroed (an ordinary run, no continuation pending), migration
+; endlessAdded. Eligibility needs no conversion: EVENT_AI_DEFEATED is ZONE 0.
+DEF SAVE_SCHEMA_ID EQU 14
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; "RRSG" as raw ASCII, not through the game's text charmap.

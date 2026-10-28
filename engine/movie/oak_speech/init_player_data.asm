@@ -62,6 +62,11 @@ InitPlayerData2:
 	ld hl, wGameProgressFlags
 	ld bc, wGameProgressFlagsEnd - wGameProgressFlags
 	call FillMemory ; clear all game progress flags
+	; Saved but below wGameProgressFlagsEnd, so the fill above misses them, and
+	; a main menu that loaded a save leaves that save's values behind.
+	xor a
+	ld [wEndlessDepth], a
+	ld [wEndlessFlags], a
 	; Rogue: auto-set Pokedex and Town Map events so Daisy skips her
 	; "rival is at the lab" gate and goes straight to the fusion trigger.
 	SetEvent EVENT_GOT_POKEDEX
