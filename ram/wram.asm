@@ -2394,6 +2394,10 @@ wToggleableObjectList:: ds 16 * 2 + 1
 	ds 1
 
 wGameProgressFlags::
+; EndlessContinue (custom_functions/endless.asm) zeroes wGameProgressFlags
+; through wRogueMap at a circuit boundary, keeping only wTurnRewindUsages,
+; wFusionSecondaryForm and wFallenCount. A new NON-script field placed in this
+; span must be added to that keep list or it is wiped every circuit.
 wOaksLabCurScript:: db
 wPalletTownCurScript:: db
 wAzaleaGymCurScript:: db
@@ -3093,9 +3097,9 @@ wroguenpctradeform:: db
 ; non-Endless path behaves exactly as before; nonzero IS "Endless active".
 ; Saturates at $ff rather than wrapping.
 wEndlessDepth:: db
-; bit 0 BIT_ENDLESS_ARRIVAL_PENDING: the continuation is committed and saved in
-; the Hall of Fame but its route warp has not landed. Continue routes to
-; wRogueMap instead of the Dorm; the route's arrival clears it. Bits 1-7 unused.
+; Reserved for Endless checkpoints C-E; all bits unused and zero. (A planned
+; "arrival pending" bit was dropped: accepting the continuation does not save
+; in the Hall of Fame, so no Continue routing ever needs one.)
 wEndlessFlags:: db
 
 	; was ds 2; both bytes carved in place for wEndlessDepth/wEndlessFlags above.

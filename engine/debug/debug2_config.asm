@@ -59,6 +59,9 @@ DEF DBG2_NUM_STATUS       EQU 4
 DEF DBG2_MIN_BATTLES EQU 1
 DEF DBG2_MAX_BATTLES EQU 99
 DEF DBG2_MAX_AI      EQU 4
+; ENDLESS row: 0 OFF, 1 eligible at depth 0, n = eligible and starting at depth
+; n - 1. Single digit on screen, so depth 9 is the deepest fixture.
+DEF DBG2_MAX_ENDLESS EQU 10
 
 ; ----------------------------------------------------------------------------
 ; Entry point. Reached by farcall from PrepareNewGameDebug's Debug 2 path.
@@ -68,6 +71,7 @@ Debug2ConfigMenu::
 	ld [wItemQuantity], a ; SEED row: 0 = RANDOM, leave the RNG alone
 	ld hl, Debug2PageSet
 	call OptionsMenuEngine
+	call Debug2ApplyEndlessDepth
 	ld a, [wItemQuantity]
 	and a
 	ret z
@@ -139,7 +143,7 @@ Debug2PageSet:
 
 ; rows, box height, CANCEL Y, row table, prompt column, prompt
 Debug2Page:
-	optpage 7, 10, 13, Debug2Rows, 0, 0
+	optpage 8, 12, 15, Debug2Rows, 0, 0
 
 ; label, screen Y, value column, draw routine, cycle routine
 Debug2Rows:
@@ -152,6 +156,7 @@ Debug2Rows:
 ; callers, so the two screens cannot drift apart.
 	optrow_custom Debug2UpgradesLabel, 8,  9, OptDrawCheat,       OptCycleCheat
 	optrow_custom Debug2SeedLabel,    10, 13, Debug2DrawSeed,     Debug2CycleSeed
+	optrow_custom Debug2EndlessLabel, 12, 16, Debug2DrawEndless,  Debug2CycleEndless
 
 ; ============================================================================
 ; SEED - 0 (RANDOM) leaves the RNG as the boot left it; 1-255 reseeds it when
@@ -189,6 +194,57 @@ Debug2CycleSeed:
 	ld hl, wItemQuantity
 	call Debug2StepValue ; a plain byte, so 255 <-> 0 wraps for free
 	ld [wItemQuantity], a
+	ret
+
+; ============================================================================
+; ENDLESS - offers the post-Hall-of-Fame continuation without EVENT_AI_DEFEATED,
+; and optionally starts the run at an Endless depth. Held in
+; wEndlessDebugOverride, which is outside every saved span: it can never reach
+; a save, and Init clears it, which every route back to the title screen passes
+; through, so it cannot leak into an ordinary new game. Never sets the AI event.
+; ============================================================================
+
+Debug2DrawEndless:
+	ld a, [wEndlessDebugOverride]
+	and a
+	ld de, Debug2EndlessOffText
+	jp z, PlaceString
+	dec a
+	ld de, Debug2EndlessOnText
+	jp z, PlaceString
+	ld [hl], "D"
+	inc hl
+	ld [hl], " "
+	inc hl
+	add "0"                        ; a = the depth, 1-9
+	ld [hl], a
+	ret
+
+Debug2CycleEndless:
+	ld hl, wEndlessDebugOverride
+	call Debug2StepValue
+	cp DBG2_MAX_ENDLESS + 1
+	jr z, .wrapToBottom
+	inc a ; $ff means it stepped below 0
+	jr z, .wrapToTop
+	dec a
+	jr .store
+.wrapToBottom
+	xor a
+	jr .store
+.wrapToTop
+	ld a, DBG2_MAX_ENDLESS
+.store
+	ld [wEndlessDebugOverride], a
+	ret
+
+; After the screen closes, and after InitPlayerData has zeroed wEndlessDepth.
+Debug2ApplyEndlessDepth:
+	ld a, [wEndlessDebugOverride]
+	cp 2
+	ret c                          ; OFF or ON: an ordinary depth-0 run
+	dec a
+	ld [wEndlessDepth], a
 	ret
 
 ; ============================================================================
@@ -541,6 +597,9 @@ Debug2Door2Label:    db "DOOR 2@"
 ; is 9, and an 8-character label ran into it and lost its last letter.
 Debug2UpgradesLabel: db "UPGRADE@"
 Debug2SeedLabel:     db "SEED@"
+Debug2EndlessLabel:  db "ENDLESS@"
+Debug2EndlessOffText: db "OFF@"
+Debug2EndlessOnText:  db " ON@"
 Debug2SeedRandomText: db "RANDOM@"
 
 ; width 11, column 8. The number the old prompt used is kept alongside the name

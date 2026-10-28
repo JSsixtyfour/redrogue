@@ -77,7 +77,10 @@ GymMapByBadge:
 ; The gym-to-leader mapping is otherwise FIXED - Pewter is always Brock. The
 ; lineup decides which eight gyms you visit, not who stands in them.
 ; ------------------------------------------------------------
-GymLeaderPool:
+; The rows are a macro so custom_functions/endless.asm (EndlessSeedGymHistory)
+; expands the SAME list in its own bank instead of keeping a second copy that
+; could drift from this order.
+MACRO gym_leader_pool_rows
 	db BROCK         ; 0   PEWTER_GYM
 	db MISTY         ; 1   CERULEAN_GYM
 	db LT_SURGE      ; 2   VERMILION_GYM
@@ -94,6 +97,9 @@ GymLeaderPool:
 	db JASMINE       ; 13  OLIVINE_GYM    Johto only
 	db PRYCE         ; 14  MAHOGANY_GYM   Johto only
 	db CLAIR         ; 15  BLACKTHORN_GYM Johto only
+ENDM
+GymLeaderPool:
+	gym_leader_pool_rows
 DEF NUM_GYM_POOL_KANTO EQU 8
 DEF NUM_GYM_POOL_ALL   EQU 16
 DEF GYM_POOL_IDX_KOGA  EQU 4
@@ -672,8 +678,9 @@ MarkCurrentStageVisited::
 
 ; Private helper: pick a random unvisited stage and store its map ID in
 ; hWarpDestinationMap. Does NOT set BIT_WARP_FROM_CUR_SCRIPT or wLastMap.
-; Call this when patching the warp table on map entry.
-_PickRandomUnvisitedStage:
+; Call this when patching the warp table on map entry. Exported for
+; EndlessContinue (custom_functions/endless.asm), which farcalls it.
+_PickRandomUnvisitedStage::
 	; --- Pass 1: count how many stages are unvisited ---
 	ld hl, RogueStageMapTable
 	ld b, 0             ; b = running unvisited count

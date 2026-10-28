@@ -907,3 +907,8 @@ INCLUDE "custom_functions/rental_core.asm"
 
 SECTION "Loss Recovery", ROMX, BANK[$2A]
 INCLUDE "custom_functions/loss_recovery.asm"
+
+; Endless mode continuation. Declares its own section, pinned to $3C (roomy) so
+; first-fit does not reshuffle other banks; farcall-only. After "rogue" so gym_leader_pool_rows and the
+; gym pool constants from random_stage_selection.asm are already defined.
+INCLUDE "custom_functions/endless.asm"

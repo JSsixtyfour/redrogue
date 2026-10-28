@@ -50,34 +50,7 @@ RollLobbyNPCAppearance:
 ; tier). Effects of the challenge/prize are applied elsewhere (Phase 2 hooks),
 ; not here - this is just the roll and bookkeeping.
 PCWitchSetup::
-    ; Challenge 11's fielded legendary belongs to the gym just left. A new
-    ; lobby visit ends that trade window. Cleared here, not in the lobby
-    ; script, because "Maps 2" has no room; this runs once per lobby entry.
-    xor a
-    ld [wLegendaryBossSpecies], a
-    ; --- Permanent prize grant (prizes 7-10) ---
-    ; Arriving in the lobby with BIT_WITCH_ACCEPTED STILL SET is the success
-    ; test, and it needs no separate detection: the player accepted a challenge
-    ; on the previous visit and has walked back in alive. Blacking out warps to
-    ; SILPH_CO_DORM (never here) and RogueOnBlackout clears the flag along with
-    ; the whole ROGUE_RUN_EVENTS block, so a failed zone can never reach this.
-    ; MUST run before the res below, which is what ends the previous offer.
-    ld a, [wRogueFlagsBitfield]
-    bit BIT_WITCH_ACCEPTED, a
-    jr z, .noPrizeToGrant
-    ld a, [wWitchPrize]
-    call WitchPrizeEarnedMask ; -> a = mask, hl = the byte, carry set if valid
-    jr nc, .noPrizeToGrant    ; 0 / out of range: nothing on offer to grant
-    or [hl]
-    ld [hl], a
-    ld a, [wWitchPrize]
-    cp PRIZE_SPECIAL_BOOST
-    jr nz, .noPrizeToGrant
-    ld hl, wEarnedStatBoosts
-    set BIT_STAT_BOOST_SPECIAL, [hl]
-.noPrizeToGrant
-    ld hl, wRogueFlagsBitfield
-    res BIT_WITCH_ACCEPTED, [hl]
+    call WitchSettlePendingPrize
 
     ; Gift rooms return straight to the lobby, so they cannot host a bargain.
     ; Check finalized doors (including Debug 2), after granting the prior prize.
@@ -238,6 +211,42 @@ PCWitchSetup::
     xor a
     ld [wWitchChallenge], a
     ld [wWitchPrize], a
+    ret
+
+; The previous bargain's settlement, at the start of every lobby visit and, by
+; farcall, when an Endless continuation leaves the Hall of Fame for a route
+; without passing through the lobby (custom_functions/endless.asm). Grants the
+; prize on offer if the challenge was accepted and survived, then ends the offer.
+; Clobbers a/b/hl.
+WitchSettlePendingPrize::
+    ; Challenge 11's fielded legendary belongs to the gym just left. A new
+    ; lobby visit ends that trade window. Cleared here, not in the lobby
+    ; script, because "Maps 2" has no room; this runs once per lobby entry.
+    xor a
+    ld [wLegendaryBossSpecies], a
+    ; --- Permanent prize grant (prizes 7-10) ---
+    ; Arriving in the lobby with BIT_WITCH_ACCEPTED STILL SET is the success
+    ; test, and it needs no separate detection: the player accepted a challenge
+    ; on the previous visit and has walked back in alive. Blacking out warps to
+    ; SILPH_CO_DORM (never here) and RogueOnBlackout clears the flag along with
+    ; the whole ROGUE_RUN_EVENTS block, so a failed zone can never reach this.
+    ; MUST run before the res below, which is what ends the previous offer.
+    ld a, [wRogueFlagsBitfield]
+    bit BIT_WITCH_ACCEPTED, a
+    jr z, .noPrizeToGrant
+    ld a, [wWitchPrize]
+    call WitchPrizeEarnedMask ; -> a = mask, hl = the byte, carry set if valid
+    jr nc, .noPrizeToGrant    ; 0 / out of range: nothing on offer to grant
+    or [hl]
+    ld [hl], a
+    ld a, [wWitchPrize]
+    cp PRIZE_SPECIAL_BOOST
+    jr nz, .noPrizeToGrant
+    ld hl, wEarnedStatBoosts
+    set BIT_STAT_BOOST_SPECIAL, [hl]
+.noPrizeToGrant
+    ld hl, wRogueFlagsBitfield
+    res BIT_WITCH_ACCEPTED, [hl]
     ret
 
 ; ============================================================

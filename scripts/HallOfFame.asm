@@ -30,10 +30,22 @@ HallOfFameResetEventsAndSaveScript:
 	ldh [hJoyIgnore], a
 	call HallOfFameIsAIRetry
 	jr c, .aiRetry
-	rfarcall RunRecordsCommit
+	rfarcall RunRecordsCommit      ; publishes once: it idles the timer, so
+	                               ; later Endless circuits commit nothing
 	predef HallOfFamePC
+	; Endless mode (custom_functions/endless.asm): on an eligible clear, offer
+	; to continue. YES prepares the next circuit and sets up a script warp to
+	; its first route, with no save and no run reset; NO falls through.
+	farcall EndlessOffer
+	ld a, [wStatusFlags3]
+	bit BIT_WARP_FROM_CUR_SCRIPT, a
+	jr nz, .endless
 	xor a                          ; retry marker: normal clear
 	jr .presented
+.endless
+	pop af                         ; saved delay flags
+	ld [wLetterPrintingDelayFlags], a
+	ret
 .aiRetry
 	; Post-loss retry (CHECKPOINT_11_SPEC.md 1.6): no Hall of Fame record and no
 	; credits, since those belong to the AI victory. Archive the new Champion

@@ -243,8 +243,7 @@ DEF GYM_CHOICE_DOOR2_MASK  EQU %00111000 ; door 2's badge slot; == door 1's when
 DEF BIT_GYM_CHOICE_REVEALED EQU 6        ; the Psychic revealed the hidden door
 DEF BIT_GYM_CHOICE_LATCHED  EQU 7        ; 0 = nothing latched (new game, or a badge was just won)
 
-; wEndlessFlags (ram/wram.asm). wEndlessDepth saturates at ENDLESS_DEPTH_MAX.
-DEF BIT_ENDLESS_ARRIVAL_PENDING EQU 0 ; continuation saved in the Hall of Fame, route warp not yet landed
+; wEndlessDepth (ram/wram.asm) saturates here rather than wrapping.
 DEF ENDLESS_DEPTH_MAX EQU $ff
 
 ; wRogueFlagsBitfield bits 4-5 encode the offered mini-boss type (see MINIBOSS_* below).
