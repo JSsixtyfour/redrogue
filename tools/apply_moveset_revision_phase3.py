@@ -415,7 +415,7 @@ def find_active(rows, species, moves):
     return [r for r in rows if r["status"] == "ACTIVE" and r["species"] == species and moveset(r) == ms]
 
 
-def add_row(rows, species, moves, segments, why, species_ids):
+def add_row(rows, species, moves, segments, why, species_ids, day=TODAY):
     ms = moves.split()
     ident = species if species in species_ids else "%s#%d" % g.form_key(species)
     existing = [r for r in rows if r["species"] == species and moveset(r) == frozenset(ms)]
@@ -426,7 +426,7 @@ def add_row(rows, species, moves, segments, why, species_ids):
     row = {"id": new_id(ident, ms), "status": "ACTIVE", "kind": "species" if species in species_ids else "form",
            "species": species, "moves": ms, "segments": segments, "credit_type": "ORIGINAL", "creator": "",
            "set_name": g.FIXED_LABELS[g.LOSS_ORIGIN_ORIGINAL], "origin": True, "asm_comment": "",
-           "note": f"added {TODAY}: {why}", "source": "Red Rogue original (user-approved 2026-10-27)",
+           "note": f"added {day}: {why}", "source": f"Red Rogue original (user-approved {day})",
            "source_creator": "", "heading": "", "packet_id": ""}
     assert all(r["id"] != row["id"] for r in rows), row["id"]
     rows.append(row)
@@ -532,7 +532,84 @@ def step6(rows):
         print(f"  {k}: {v}")
 
 
-STEPS = {1: step1, 2: step2, 3: step3, 5: step5, 6: step6}
+# Step 7 (2026-10-28): fills for the forms with two or fewer active sets. Their sets
+# all sat at level 36+ (Thunderbolt/Body Slam/Earthquake are TM-gated to 36) and none
+# was Elite, so TRAINER_LATE / GYM_MID / E4_SETS fell back to random moves.
+# (form, moves, lo, hi, tier); early sets end before the form evolves.
+EN, N, H, EL = "TIER_EASY | TIER_NORMAL", "TIER_NORMAL", "TIER_HARD", "TIER_ELITE"
+FORM_FILLS = [
+    ("GROWLITHE_HISUI", "EMBER BITE SKULL_BASH RAGE", 10, 21, EN),
+    ("GROWLITHE_HISUI", "EMBER BITE LEER DIG", 22, 34, N),
+    ("ARCANINE_HISUI", "FLAMETHROWER ROCK_SLIDE TAKE_DOWN BITE", 35, 50, N),
+    ("ARCANINE_HISUI", "FIRE_BLAST ROCK_SLIDE BODY_SLAM HYPER_BEAM", 45, 100, EL),
+    ("VOLTORB_HISUI", "THUNDERSHOCK ABSORB SCREECH TACKLE", 14, 24, EN),
+    ("VOLTORB_HISUI", "THUNDERSHOCK STUN_SPORE SELFDESTRUCT MEGA_DRAIN", 22, 34, N),
+    ("ELECTRODE_HISUI", "THUNDERSHOCK MEGA_DRAIN STUN_SPORE SWIFT", 26, 40, N),
+    ("ELECTRODE_HISUI", "THUNDERBOLT MEGA_DRAIN LIGHT_SCREEN EXPLOSION", 45, 100, EL),
+    ("GRAVELER_ALOLA", "ROCK_THROW THUNDERPUNCH DEFENSE_CURL DIG", 25, 40, N),
+    ("GOLEM_ALOLA", "ROCK_THROW THUNDERPUNCH SELFDESTRUCT DIG", 35, 50, N),
+    ("GOLEM_ALOLA", "ROCK_SLIDE EARTHQUAKE BODY_SLAM EXPLOSION", 45, 100, EL),
+    ("GRIMER_ALOLA", "POUND BITE ACID DISABLE", 11, 24, EN),
+    ("GRIMER_ALOLA", "ACID BITE MINIMIZE FLAMETHROWER", 27, 40, N),
+    ("MUK_ALOLA", "SLUDGE BITE MINIMIZE FLAMETHROWER", 38, 50, N),
+    ("MUK_ALOLA", "SLUDGE BODY_SLAM FIRE_BLAST EXPLOSION", 45, 100, EL),
+    ("MEOWTH_ALOLA", "BITE FURY_SWIPES WATER_GUN GROWL", 15, 25, EN),
+    ("MEOWTH_ALOLA", "BITE PAY_DAY SCREECH BUBBLEBEAM", 22, 35, N),
+    ("PERSIAN_ALOLA", "BITE FURY_SWIPES PAY_DAY BUBBLEBEAM", 28, 40, N),
+    ("PERSIAN_ALOLA", "SLASH BODY_SLAM ROCK_SLIDE HYPER_BEAM", 45, 100, EL),
+    ("MEOWTH_GALAR", "SCRATCH ROCK_THROW BITE FURY_SWIPES", 15, 25, EN),
+    ("MEOWTH_GALAR", "ROCK_THROW BITE SCREECH DIG", 22, 35, N),
+    ("PERRSERKER", "ROCK_THROW THRASH SCREECH DIG", 28, 40, N),
+    ("PERRSERKER", "ROCK_SLIDE SLASH SWORDS_DANCE BODY_SLAM", 45, 100, EL),
+    ("PONYTA_GALAR", "CONFUSION STOMP TAIL_WHIP GROWL", 19, 28, EN),
+    ("PONYTA_GALAR", "PSYBEAM STOMP QUICK_ATTACK DOUBLE_TEAM", 26, 39, N),
+    ("SLOWPOKE_GALAR", "CONFUSION GROWL DISABLE WATER_GUN", 18, 28, EN),
+    ("SLOWPOKE_GALAR", "PSYBEAM HEADBUTT DISABLE ACID", 28, 36, N),
+    ("SLOWBRO_GALAR", "PSYBEAM SLUDGE DISABLE HEADBUTT", 37, 50, N),
+    ("SLOWBRO_GALAR", "AMNESIA PSYCHIC_M SURF REST", 45, 100, EL),
+    ("SLOWKING_GALAR", "PSYBEAM SLUDGE DISABLE WITHDRAW", 37, 50, N),
+    ("SLOWKING_GALAR", "AMNESIA PSYCHIC_M FIRE_BLAST THUNDER_WAVE", 45, 100, EL),
+    ("WEEZING_GALAR", "SLUDGE ACID SMOKESCREEN FLAMETHROWER", 35, 45, N),
+    ("WEEZING_GALAR", "SLUDGE AMNESIA FIRE_BLAST EXPLOSION", 45, 100, EL),
+    ("SANDSLASH_ALOLA", "SLASH ICE_PUNCH SWIFT DIG", 22, 35, N),
+    ("SANDSLASH_ALOLA", "SWORDS_DANCE EARTHQUAKE ROCK_SLIDE BODY_SLAM", 45, 100, EL),
+    ("NINETALES_ALOLA", "AURORA_BEAM CONFUSE_RAY QUICK_ATTACK REFLECT", 35, 50, N),
+    ("NINETALES_ALOLA", "BLIZZARD CONFUSE_RAY NIGHT_SHADE SUBSTITUTE", 45, 100, EL),
+    ("MOLTRES_GALAR", "WING_ATTACK NIGHT_SHADE FURY_ATTACK AGILITY", 35, 50, N),
+    ("MOLTRES_GALAR", "DRILL_PECK TRI_ATTACK AGILITY HYPER_BEAM", 50, 100, EL),
+    ("SANDY_SHOCKS", "THUNDERSHOCK SONICBOOM THUNDER_WAVE SWIFT", 24, 40, N),
+    ("SANDY_SHOCKS", "THUNDERBOLT EARTHQUAKE THUNDER_WAVE REFLECT", 45, 100, EL),
+    ("SYLVEON", "SWIFT FLAMETHROWER MEGA_DRAIN HEADBUTT", 35, 50, N),
+    ("SYLVEON", "SING PSYCHIC_M THUNDERBOLT ICE_BEAM", 45, 100, EL),
+    ("TAUROS_PALDEA_COMBAT", "DOUBLE_KICK HORN_ATTACK TAIL_WHIP TACKLE", 13, 26, EN),
+    ("TAUROS_PALDEA_COMBAT", "DOUBLE_KICK STOMP HEADBUTT LEER", 27, 40, N),
+    ("TAUROS_PALDEA_COMBAT", "DOUBLE_EDGE JUMP_KICK EARTHQUAKE HYPER_BEAM", 45, 100, EL),
+    ("TOEDSCOOL", "ABSORB SUPERSONIC VINE_WHIP GROWTH", 15, 25, EN),
+    ("TOEDSCOOL", "MEGA_DRAIN STUN_SPORE DIG GROWTH", 25, 35, N),
+    ("WIGLETT", "BUBBLE WATER_GUN SAND_ATTACK RAGE", 14, 25, EN),
+    ("WIGLETT", "BUBBLEBEAM SLAM SAND_ATTACK DOUBLE_TEAM", 22, 30, N),
+    ("WUGTRIO", "BUBBLEBEAM SLAM DIG SAND_ATTACK", 26, 40, N),
+    ("WUGTRIO", "SURF BLIZZARD DIG SUBSTITUTE", 36, 100, H),
+    ("WUGTRIO", "SURF ICE_BEAM ROCK_SLIDE BODY_SLAM", 45, 100, EL),
+    # Three-set forms with the same two holes (no Normal at their fielded levels, no Elite).
+    ("RAICHU_ALOLA", "THUNDERBOLT PSYBEAM QUICK_ATTACK DOUBLE_TEAM", 35, 50, N),
+    ("RAICHU_ALOLA", "THUNDERBOLT PSYCHIC_M THUNDER_WAVE BODY_SLAM", 45, 100, EL),
+    ("RAPIDASH_GALAR", "PSYBEAM STOMP TAKE_DOWN AGILITY", 40, 50, N),
+    ("RAPIDASH_GALAR", "PSYCHIC_M BODY_SLAM AGILITY RECOVER", 45, 100, EL),
+]
+
+
+def step7(rows):
+    species_ids = g.parse_species_constants(g.POKEMON_CONSTANTS)
+    c = Counter()
+    for species, moves, lo, hi, tier in FORM_FILLS:
+        why = "thin-form fill (early sets before evolution, Elite for E4)"
+        c[add_row(rows, species, moves, [(lo, hi, tier)], why, species_ids, day="2026-10-28")] += 1
+    for k, v in sorted(c.items()):
+        print(f"  {k}: {v}")
+
+
+STEPS = {1: step1, 2: step2, 3: step3, 5: step5, 6: step6, 7: step7}
 
 
 def main():

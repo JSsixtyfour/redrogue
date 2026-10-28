@@ -518,10 +518,12 @@ WarpGreatball_Evos:
 WarpGreatball_End:
 
 WarpUltraball:
-; Mr. Rime has no implemented evolution path, so remains a direct pick.
-	rarity_mon MR_RIME
+; Direct form picks, equal weight to each ordinary species entry.
+	rarity_mon MR_MIME, 1 ; Galarian Mr. Mime
 WarpUltraball_Evos:
 ; Evolution-only form references. Commented entries are NOT direct picks.
+; from Galarian Mr. Mime (level 42).
+	rarity_mon MR_RIME
 ; from Scyther/Rhydon/Electabuzz/Magmar, all Kanto ULTRABALL tier.
 	rarity_mon KLEAVOR
 	rarity_mon RHYPERIOR

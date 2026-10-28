@@ -109,7 +109,10 @@ class LegendaryBossSwapSmokeTest(HarnessTestCase):
                                  "the trade byte must name the fielded ace")
                 form = (h.read8("wEnemyMon1CatchRate",
                                 offset=(count - 1) * stride) >> 5) & 0b11
-                self.assertEqual(form, 0, "a swapped ace must carry no form")
+                # Armored Mewtwo (form 1) is Giovanni's alone (2026-10-27); every
+                # other swapped ace, Sabrina's Mewtwo included, carries no form.
+                self.assertEqual(form, 1 if leader == "GIOVANNI" else 0,
+                                 "only Giovanni's ace is armored")
                 self._assert_boss_moves(ace, count - 1, stride)
 
     def test_no_swap_for_number_twins_or_without_the_challenge(self):
@@ -263,3 +266,58 @@ class LegendaryBossVeryEasySmokeTest(HarnessTestCase):
                 self.assertTrue(got, f"{legend} has no moves")
                 self.assertTrue(set(got) <= legal,
                                 f"{legend}'s moves {got} are not all from its learnset")
+
+
+class LegendaryTradeFormSmokeTest(HarnessTestCase):
+    """Giovanni's post-battle trade hands over Armored Mewtwo (MEWTWO form 1),
+    armor kept; Sabrina's Mewtwo trades plain (user decision 2026-10-27).
+
+    Runs the real per-leader entry and stops it at RogueDoInGameTradeDialogue's
+    entry, reading the offer's wroguenpctradeform there: the byte
+    InGameTrade_DoTrade turns into the received mon's wSpawnForm."""
+
+    def _offer_form(self, entry):
+        h = self.harness
+        regs, mem = h.pyboy.register_file, h.pyboy.memory
+        ram = parse_rgbds_constants(REPO_ROOT / "constants/ram_constants.asm")
+        species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
+        h.write8("wRogueFlagsBitfield",
+                 h.read8("wRogueFlagsBitfield") | (1 << ram["BIT_WITCH_ACCEPTED"]))
+        h.write8("wWitchChallenge", ram["CHALLENGE_LEGENDARY_BOSS"])
+        h.write8("wLegendaryBossSpecies", species["MEWTWO"])
+        for i, sp in enumerate([species["PIDGEY"], species["MEW"], 0xFF]):
+            h.write8("wPartySpecies", sp, offset=i)  # MEW: the masterball mon to give
+        h.write8("wroguenpctradeform", 0xAA)          # must be overwritten
+        seen = []
+        hook_bank, hook_addr = h.symbols.get("RogueDoInGameTradeDialogue")
+        h.pyboy.hook_register(hook_bank, hook_addr,
+                              lambda _ctx: seen.append(h.read8("wroguenpctradeform")), None)
+        try:
+            # jr @ return stub, IE masked: the offer runs to the dialogue's
+            # entry without needing a frame (reference_pyboy_direct_stub_executor).
+            stub = h.address("wStringBuffer") + 16
+            mem[stub], mem[stub + 1] = 0x18, 0xFE
+            mem[0xFFFF] = 0
+            bank, addr = h.symbols.get(entry)
+            h.write8("hLoadedROMBank", bank)
+            mem[0x2000] = bank
+            sp = (regs.SP - 2) & 0xFFFF
+            mem[sp], mem[sp + 1] = stub & 0xFF, stub >> 8
+            regs.SP = sp
+            regs.PC = addr
+            for _ in range(20):
+                h.pyboy.tick()
+                if seen:
+                    break
+        finally:
+            h.pyboy.hook_deregister(hook_bank, hook_addr)
+        self.assertTrue(seen, f"{entry} never reached the trade dialogue")
+        return seen[0]
+
+    def test_giovanni_trades_armored_mewtwo(self):
+        self.harness.boot_fight2(seed=1)
+        self.assertEqual(self._offer_form("OfferLegendaryTradeGiovanni"), 1)
+
+    def test_sabrina_trades_plain_mewtwo(self):
+        self.harness.boot_fight2(seed=1)
+        self.assertEqual(self._offer_form("OfferLegendaryTradeSabrina"), 0)

@@ -132,6 +132,7 @@ INCLUDE "data/pokemon/forms/avulpix.asm"
 INCLUDE "data/pokemon/forms/garticuno.asm"
 INCLUDE "data/pokemon/forms/gfarfetchd.asm"
 INCLUDE "data/pokemon/forms/gmoltres.asm"
+INCLUDE "data/pokemon/forms/gmrmime.asm"
 INCLUDE "data/pokemon/forms/gponyta.asm"
 INCLUDE "data/pokemon/forms/grapidash.asm"
 INCLUDE "data/pokemon/forms/gslowbro.asm"
@@ -143,6 +144,7 @@ INCLUDE "data/pokemon/forms/harcanine.asm"
 INCLUDE "data/pokemon/forms/helectrode.asm"
 INCLUDE "data/pokemon/forms/hgrowlithe.asm"
 INCLUDE "data/pokemon/forms/hvoltorb.asm"
+INCLUDE "data/pokemon/forms/armoredmewtwo.asm"
 
 	db 0 ; terminator
 

@@ -117,23 +117,30 @@ class ExplicitRarityFormsTest(unittest.TestCase):
         self.assertEqual(len(ordinary), 253)
         self.assertEqual(ordinary.count(SPECIES['SWINUB']), 2)
         self.assertEqual(len(set(ordinary)), 252)
-        self.assertEqual(len(direct_forms), 23)
-        self.assertEqual(len(set(direct_forms)), 23)
+        self.assertEqual(len(direct_forms), 24)
+        self.assertEqual(len(set(direct_forms)), 24)
         # All active form records occur either in direct lists or commented
         # evolution references, never silently through a substitution rule.
         references = {(SPECIES[sp], int(form)) for sp, form in
                       re.findall(r'^; rarity_mon (\w+),\s*(\d+)', source, re.M)}
-        records = self.rom_bytes('FormOverrides', 48 * 41)
+        records = self.rom_bytes('FormOverrides', 50 * 41)
         active = {(records[i], records[i+1]) for i in range(0, len(records), 41)}
+        # Forms no pool ever rolls: Armored Mewtwo is Giovanni's Challenge 11
+        # ace and its trade only (legendary_boss_helpers.asm).
+        never_rolled = {(SPECIES['MEWTWO'], 1)}
         self.assertFalse(set(direct_forms) & references)
-        self.assertEqual(set(direct_forms) | references, active)
-        self.assertNotIn((SPECIES['MR_MIME'], 1), active)
+        self.assertFalse((set(direct_forms) | references) & never_rolled)
+        self.assertEqual(set(direct_forms) | references | never_rolled, active)
+        self.assertIn((SPECIES['MR_MIME'], 1), active)  # Galarian Mr. Mime restored 2026-10-27
 
     def test_evolution_keeps_explicit_identity(self):
         cases = [
             ('FARFETCHD',0,50,'FARFETCHD',0),
             ('FARFETCHD',1,10,'FARFETCHD',1),
             ('FARFETCHD',1,50,'SIRFETCHD',0),
+            ('MR_MIME',0,60,'MR_MIME',0),   # only Galarian Mr. Mime evolves
+            ('MR_MIME',1,41,'MR_MIME',1),
+            ('MR_MIME',1,42,'MR_RIME',0),
             ('PRIMEAPE',0,50,'ANNIHILAPE',0),
             ('JIGGLYPUFF',1,50,'JIGGLYPUFF',1),
             ('MAGNETON',1,50,'MAGNETON',1),

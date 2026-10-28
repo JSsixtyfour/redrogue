@@ -200,6 +200,9 @@ DEF LEARNDEX_RECORD_SIZE  EQU 64 ; bytes copied per LearndexLoadRecord /
 DEF FORM_MASK      EQU %01100000 ; MON_CATCH_RATE bits 5-6
 DEF FORM_SHIFT     EQU 5
 DEF NUM_FORM_SLOTS EQU 3         ; non-zero form indexes per base species
+; MEWTWO's form index for Armored Mewtwo (data/pokemon/forms/armoredmewtwo.asm):
+; Giovanni's Challenge 11 ace and its trade only.
+DEF ARMORED_MEWTWO_FORM EQU 1
 
 ; Forms are explicit rarity-pool entries. No form-substitution odds.
 

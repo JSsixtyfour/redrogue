@@ -22,7 +22,12 @@ STANDING = ("VAPOREON", "BULBASAUR", "CLEFAIRY", "JIGGLYPUFF", "MACHOKE", "MEOWT
             "NIDORAN_M", "ODDISH", "PIDGEOT", "POLIWRATH", "SANDSHREW", "SEEL2")
 ONE_POSE = ("JOLTEON", "FLAREON", "WIGGLYTUFF")
 BATCH = WALKING + STANDING + ONE_POSE
-SHAPE = {**{n: (16, 96) for n in WALKING}, **{n: (16, 48) for n in STANDING}, **{n: (16, 16) for n in ONE_POSE}}
+# Batch members later replaced by full walking sheets. They keep their place in
+# BATCH (the id order above), but are tested as walking sheets.
+UPGRADED_TO_WALKING = ("MR_MIME",)  # 2026-10-27
+SHAPE = {**{n: (16, 96) for n in WALKING + UPGRADED_TO_WALKING},
+         **{n: (16, 48) for n in STANDING if n not in UPGRADED_TO_WALKING},
+         **{n: (16, 16) for n in ONE_POSE}}
 SHEET_BYTES = 384
 
 
@@ -62,13 +67,15 @@ class BatchTwoSourceTest(unittest.TestCase):
     def test_only_walking_sheets_resolve_for_followers_and_bosses(self) -> None:
         source = (ROOT / "custom_functions" / "procedural_cave_gen.asm").read_text(encoding="utf-8")
         table = source.split("\n.speciesSprites\n", 1)[1].split(".speciesSpritesEnd", 1)[0]
-        for name in WALKING:
+        for name in WALKING + UPGRADED_TO_WALKING:
             if name == "MEW":
                 # The 16x96 asset is a party pose sheet, not follower art.
                 self.assertNotRegex(table, r"\b(?:MEW|SPRITE_MEW)\b")
                 continue
             self.assertIn(f"db {name}, SPRITE_{name}", table)
         for name in STANDING + ONE_POSE:
+            if name in UPGRADED_TO_WALKING:
+                continue
             self.assertNotIn(f"SPRITE_{name}", table, f"{name} has no walk frames")
 
 

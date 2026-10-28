@@ -81,6 +81,8 @@ FormEvosMovesPointers::
 	dw GfarfetchdFormEvosMoves
 	db MOLTRES, 1
 	dw GmoltresFormEvosMoves
+	db MR_MIME, 1
+	dw GmrmimeFormEvosMoves
 	db PONYTA, 1
 	dw GponytaFormEvosMoves
 	db RAPIDASH, 1
@@ -103,6 +105,8 @@ FormEvosMovesPointers::
 	dw HgrowlitheFormEvosMoves
 	db VOLTORB, 1
 	dw HvoltorbFormEvosMoves
+	db MEWTWO, 1
+	dw ArmoredmewtwoFormEvosMoves
 	db 0 ; terminator
 
 	INCLUDE "data/pokemon/form_evos_moves/ameowth.asm"
@@ -142,6 +146,7 @@ FormEvosMovesPointers::
 	INCLUDE "data/pokemon/form_evos_moves/garticuno.asm"
 	INCLUDE "data/pokemon/form_evos_moves/gfarfetchd.asm"
 	INCLUDE "data/pokemon/form_evos_moves/gmoltres.asm"
+	INCLUDE "data/pokemon/form_evos_moves/gmrmime.asm"
 	INCLUDE "data/pokemon/form_evos_moves/gponyta.asm"
 	INCLUDE "data/pokemon/form_evos_moves/grapidash.asm"
 	INCLUDE "data/pokemon/form_evos_moves/gslowbro.asm"
@@ -153,3 +158,4 @@ FormEvosMovesPointers::
 	INCLUDE "data/pokemon/form_evos_moves/helectrode.asm"
 	INCLUDE "data/pokemon/form_evos_moves/hgrowlithe.asm"
 	INCLUDE "data/pokemon/form_evos_moves/hvoltorb.asm"
+	INCLUDE "data/pokemon/form_evos_moves/armoredmewtwo.asm"

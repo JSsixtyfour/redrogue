@@ -708,6 +708,8 @@ GMeowthPicFront::     INCBIN "gfx/pokemon/front/gmeowth.lz"
 GMeowthPicBack::      INCBIN "gfx/pokemon/back/gmeowthb.lz"
 GMoltresPicFront::    INCBIN "gfx/pokemon/front/gmoltres.lz"
 GMoltresPicBack::     INCBIN "gfx/pokemon/back/gmoltresb.lz"
+GMrMimePicFront::     INCBIN "gfx/pokemon/front/gmrmime.lz"
+GMrMimePicBack::      INCBIN "gfx/pokemon/back/gmrmimeb.lz"
 GPonytaPicFront::     INCBIN "gfx/pokemon/front/gponyta.lz"
 GPonytaPicBack::      INCBIN "gfx/pokemon/back/gponytab.lz"
 GRapidashPicFront::   INCBIN "gfx/pokemon/front/grapidash.lz"
@@ -761,6 +763,8 @@ UmbreonPicFront::       INCBIN "gfx/pokemon/front/umbreon.lz"
 UmbreonPicBack::        INCBIN "gfx/pokemon/back/umbreonb.lz"
 PerrserkerPicFront::    INCBIN "gfx/pokemon/front/perrserker.lz"
 PerrserkerPicBack::     INCBIN "gfx/pokemon/back/perrserkerb.lz"
+ArmoredMewtwoPicFront:: INCBIN "gfx/pokemon/front/armoredmewtwo.lz"
+ArmoredMewtwoPicBack::  INCBIN "gfx/pokemon/back/armoredmewtwob.lz"
 
 
 SECTION "Pics 16", ROMX ; pinned to $25 in layout.link

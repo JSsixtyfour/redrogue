@@ -55,7 +55,7 @@ class FormPalettesTest(unittest.TestCase):
 
     def test_form_palettes(self) -> None:
         records = self.form_records()
-        self.assertEqual(len(records), 48)  # Galarian Mr. Mime also removed 2026-10-15
+        self.assertEqual(len(records), 50)  # Galarian Mr. Mime restored, Armored Mewtwo added 2026-10-27
         for species, form, palette in records:
             self.assertTrue(1 <= form <= 3, (species, form))
             self.assertTrue(PAL_MEWMON <= palette <= PAL_GRAYMON, (species, form, palette))

@@ -107,7 +107,9 @@ GetLegendaryPoolForClass::
 ; If the bargain is accepted, the challenge is Legendary Boss and this
 ; trainer's class has a pool, rolls one species from the pool into
 ; wCurPartySpecies and records it in wLegendaryBossSpecies, which the
-; post-battle trade reads (wGymLeaderNo is zeroed by then).
+; post-battle trade reads (wGymLeaderNo is zeroed by then). Also writes the
+; ace's wSpawnForm: 0, except Giovanni's Mewtwo, which is Armored Mewtwo. The
+; trade gives that same Mewtwo armored (OfferLegendaryTradeGiovanni).
 ; Output: carry SET if the ace was swapped
 ; Clobbers: a, b, c, d, e, hl
 RollLegendaryBossAce::
@@ -129,6 +131,18 @@ RollLegendaryBossAce::
 	ld a, [hl]
 	ld [wCurPartySpecies], a
 	ld [wLegendaryBossSpecies], a
+	ld b, a
+	ld a, [wTrainerClass]
+	cp GIOVANNI
+	ld a, 0                      ; `ld`, not `xor`: the cp's flags reach the jr
+	jr nz, .setForm
+	ld a, b
+	cp MEWTWO
+	ld a, 0
+	jr nz, .setForm
+	ld a, ARMORED_MEWTWO_FORM
+.setForm
+	ld [wSpawnForm], a
 	scf
 	ret
 .no
@@ -190,8 +204,9 @@ LegendaryLeaderTradeSetup::
 	ld [wroguenpctradegive], a
 
 	pop bc                       ; restore input species (b = MEW or MEWTWO)
-	xor a                        ; MEW/MEWTWO come formless; also clears any
-	ld [wroguenpctradeform], a   ; form a previous TRADE_FOR_RANDOM offer left
+	xor a                        ; formless here (OfferLegendaryTradeCommon arms
+	ld [wroguenpctradeform], a   ; Giovanni's Mewtwo after); also clears any
+	                             ; form a previous TRADE_FOR_RANDOM offer left
     ld a, b
     ld [wroguenpctradeget], a
     ld [wNamedObjectIndex], a   ; place pokemon id in spot for GetMonName
@@ -457,31 +472,35 @@ IsLegendaryTradeReady::
 ; Per-leader entry points. Each names its own "already offered" event, the
 ; one thing that differs between leaders; the species is whatever the battle
 ; actually fielded (wLegendaryBossSpecies). Gym scripts farcall these.
+; legendary_trade_entry <event>, <species this leader fields armored, 0 = none>
 MACRO legendary_trade_entry
 	ld hl, wEventFlags + (\1) / 8
 	ld e, 1 << ((\1) % 8)
+	ld d, \2
 	jr OfferLegendaryTradeCommon
 ENDM
 
 OfferLegendaryTradeErika::
-	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_GYM5
+	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_GYM5, 0
 OfferLegendaryTradeSabrina::
-	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_GYM6
+	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_GYM6, 0 ; her Mewtwo is plain
 OfferLegendaryTradeBlaine::
-	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_GYM7
+	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_GYM7, 0
 OfferLegendaryTradeGiovanni::
-	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_GYM8
+	; Armored Mewtwo, as RollLegendaryBossAce fielded it.
+	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_GYM8, MEWTWO
 OfferLegendaryTradeFalkner::
-	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_FALKNER
+	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_FALKNER, 0
 OfferLegendaryTradeMorty::
-	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_MORTY
+	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_MORTY, 0
 OfferLegendaryTradePryce::
-	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_PRYCE
+	legendary_trade_entry EVENT_OFFERED_LEGENDARY_TRADE_PRYCE, 0
 
 ; OfferLegendaryTradeCommon
 ; Input: hl = the leader's EVENT_OFFERED_LEGENDARY_TRADE_* byte in wEventFlags,
 ;        e = that event's bit mask (a runtime CheckEvent/SetEvent, since the
-;        macros only take a constant)
+;        macros only take a constant),
+;        d = the species this leader fields armored (0 = none)
 OfferLegendaryTradeCommon:
 	ld a, [hl]
 	and e
@@ -492,7 +511,15 @@ OfferLegendaryTradeCommon:
 	jr nc, .popRet
 	ld a, [wLegendaryBossSpecies]
 	ld b, a
-	call LegendaryLeaderTradeSetup
+	call LegendaryLeaderTradeSetup ; offers it formless
+	pop de
+	push de                      ; d = this leader's armored species
+	ld a, [wLegendaryBossSpecies]
+	cp d
+	jr nz, .formless
+	ld a, ARMORED_MEWTWO_FORM
+	ld [wroguenpctradeform], a
+.formless
 	ld a, TRADE_FOR_RANDOM
 	ld [wWhichTrade], a          ; InGameTrade_DoTrade indexes wCompletedInGameTradeFlags by
 	                             ; wWhichTrade; TRADE_FOR_RANDOM is FLAG_RESET every lobby entry

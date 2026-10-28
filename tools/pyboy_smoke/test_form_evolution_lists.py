@@ -103,6 +103,13 @@ class FormEvolutionListStaticTest(unittest.TestCase):
                  re.finditer(r'^\s*rarity_mon\s+([A-Z_0-9]+)\s*,\s*(\d+)', rarity, re.M)
                  if int(m.group(2)) >= 1}
         reach |= {(target, int(n)) for _stone, target, n in seed.table_rows('EvoStoneForms', 3)}
+        # a legendary trade that hands over an armored species (Giovanni's
+        # Armored Mewtwo, legendary_boss_helpers.asm)
+        trades = (REPO_ROOT / 'custom_functions/legendary_boss_helpers.asm').read_text(encoding='utf-8')
+        armored = re.search(r'^DEF ARMORED_MEWTWO_FORM EQU (\d+)', (
+            REPO_ROOT / 'constants/pokemon_data_constants.asm').read_text(encoding='utf-8'), re.M)
+        reach |= {(m.group(1), int(armored.group(1))) for m in re.finditer(
+            r'^\s*legendary_trade_entry\s+\w+\s*,\s*([A-Z_0-9]+)', trades, re.M) if m.group(1) != '0'}
         # the other stone-set forms are `evo_item_form` entries in the base lists
         base_text = (REPO_ROOT / 'data/pokemon/evos_moves.asm').read_text(encoding='utf-8')
         reach |= {(m.group(2), int(m.group(1))) for m in re.finditer(

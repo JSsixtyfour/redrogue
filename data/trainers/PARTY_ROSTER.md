@@ -394,12 +394,12 @@ off-type ace the way Persian is for Giovanni.
 
 **Band 3: rounds 5-6**
 - Aces: Lapras, Cloyster, Jynx, Piloswine (johto), Mamoswine (warp), Weavile (warp), Glaceon (warp), Mr Rime (warp)
-- Fodder: Seel, Shellder, Jynx, Lapras, Swinub (johto), Sneasel (johto), Alolan Vulpix (warp), Alolan Sandshrew (warp), Mr Rime (warp)
+- Fodder: Seel, Shellder, Jynx, Lapras, Swinub (johto), Sneasel (johto), Alolan Vulpix (warp), Alolan Sandshrew (warp), Mr Rime (warp), Galarian Mr Mime (warp)
 - Off-type: Psyduck, Poliwag, Slowpoke, Tentacool, Krabby, Wooper (johto), Marill (johto), Galarian Slowpoke (warp), Teddiursa (johto), Phanpy (johto), Hitmontop (johto), Girafarig (johto)
 
 **Band 4: rounds 7-8**
 - Aces: Lapras, Cloyster, Articuno, Mamoswine (warp), Jynx
-- Fodder: Seel, Shellder, Jynx, Lapras, Swinub (johto), Sneasel (johto), Alolan Vulpix (warp), Alolan Sandshrew (warp), Mr Rime (warp)
+- Fodder: Seel, Shellder, Jynx, Lapras, Swinub (johto), Sneasel (johto), Alolan Vulpix (warp), Alolan Sandshrew (warp), Mr Rime (warp), Galarian Mr Mime (warp)
 - Off-type: Psyduck, Poliwag, Slowpoke, Tentacool, Krabby, Snorlax, Wooper (johto), Marill (johto), Quagsire (johto), Galarian Slowpoke (warp), Teddiursa (johto), Phanpy (johto), Hitmontop (johto), Girafarig (johto)
 
 ### Clair (DRAGON)
@@ -557,15 +557,15 @@ Themed on the type, the same brief Sabrina's pool follows. Band 1 has no ace; ba
 
 **Band 2: rounds 3-4**
 - Aces: Kadabra, Hypno
-- Fodder: Psyduck, Poliwag, Slowpoke, Drowzee, Venonat, Clefairy, Porygon, Natu (johto), Girafarig (johto), Misdreavus (johto), Galarian Slowpoke (warp), Abra, Mr Mime, Jynx, Mr Rime (warp)
+- Fodder: Psyduck, Poliwag, Slowpoke, Drowzee, Venonat, Clefairy, Porygon, Natu (johto), Girafarig (johto), Misdreavus (johto), Galarian Slowpoke (warp), Abra, Mr Mime, Jynx, Galarian Mr Mime (warp)
 
 **Band 3: rounds 5-6**
 - Aces: Alakazam, Hypno
-- Fodder: Psyduck, Slowpoke, Drowzee, Venonat, Clefairy, Porygon, Natu (johto), Girafarig (johto), Misdreavus (johto), Galarian Slowpoke (warp), Abra, Mr Mime, Jynx, Mr Rime (warp)
+- Fodder: Psyduck, Slowpoke, Drowzee, Venonat, Clefairy, Porygon, Natu (johto), Girafarig (johto), Misdreavus (johto), Galarian Slowpoke (warp), Abra, Mr Mime, Jynx, Galarian Mr Mime (warp)
 
 **Band 4: rounds 7-9**
 - Aces: Alakazam, Slowbro
-- Fodder: Psyduck, Slowpoke, Drowzee, Venonat, Clefairy, Porygon, Natu (johto), Girafarig (johto), Misdreavus (johto), Galarian Slowpoke (warp), Abra, Mr Mime, Jynx, Mr Rime (warp), Exeggcute, Staryu
+- Fodder: Psyduck, Slowpoke, Drowzee, Venonat, Clefairy, Porygon, Natu (johto), Girafarig (johto), Misdreavus (johto), Galarian Slowpoke (warp), Abra, Mr Mime, Jynx, Galarian Mr Mime (warp), Exeggcute, Staryu
 
 ### Burglar (The Burglar)
 
@@ -752,7 +752,7 @@ Aces: the two signature aces the old records pinned (variant A and C), now one i
 
 **Band 1: every tier**
 - Aces: Lapras, Cloyster
-- Fodder: Dewgong, Cloyster, Slowbro, Jynx, Lapras, Articuno, Exeggutor, Wigglytuff, Starmie, Omastar, Poliwrath, Swinub (johto), Piloswine (johto), Sneasel (johto), Slowking (johto), Mamoswine (warp), Mr Rime (warp), Weavile (warp), Alolan Ninetales (warp), Alolan Sandshrew (warp), Alolan Sandslash (warp), Glaceon (warp), Alolan Vulpix (warp)
+- Fodder: Dewgong, Cloyster, Slowbro, Jynx, Lapras, Articuno, Exeggutor, Wigglytuff, Starmie, Omastar, Poliwrath, Swinub (johto), Piloswine (johto), Sneasel (johto), Slowking (johto), Mamoswine (warp), Mr Rime (warp), Weavile (warp), Galarian Mr Mime (warp), Alolan Ninetales (warp), Alolan Sandshrew (warp), Alolan Sandslash (warp), Glaceon (warp), Alolan Vulpix (warp)
 
 ### Bruno (FIGHTING)
 
@@ -802,7 +802,7 @@ Aces: the two signature aces the old records pinned (variant A and C), now one i
 
 **Band 1: every tier**
 - Aces: Xatu (johto), Espeon (johto)
-- Fodder: Exeggutor, Slowbro, Jynx, Alakazam, Clefable, Electabuzz, Flareon, Chansey, Hypno, Abra, Kadabra, Drowzee, Mr Mime, Slowpoke, Starmie, Natu (johto), Xatu (johto), Slowking (johto), Girafarig (johto), Mantine (johto), Espeon (warp), Mr Rime (warp), Galarian Articuno (warp), Scream Tail (warp), Galarian Ponyta (warp), Alolan Raichu (warp), Galarian Rapidash (warp), Galarian Slowbro (warp), Galarian Slowking (warp), Galarian Slowpoke (warp)
+- Fodder: Exeggutor, Slowbro, Jynx, Alakazam, Clefable, Electabuzz, Flareon, Chansey, Hypno, Abra, Kadabra, Drowzee, Mr Mime, Slowpoke, Starmie, Natu (johto), Xatu (johto), Slowking (johto), Girafarig (johto), Mantine (johto), Espeon (warp), Mr Rime (warp), Galarian Articuno (warp), Scream Tail (warp), Galarian Mr Mime (warp), Galarian Ponyta (warp), Alolan Raichu (warp), Galarian Rapidash (warp), Galarian Slowbro (warp), Galarian Slowking (warp), Galarian Slowpoke (warp)
 
 ### Karen (DARK)
 

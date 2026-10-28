@@ -221,8 +221,7 @@ MeowthSprite:: ; standing poses only, repeated as the walk frames
 	INCBIN "gfx/sprites/meowth.2bpp"
 	INCBIN "gfx/sprites/meowth.2bpp"
 	ASSERT @ - MeowthSprite == 24 tiles
-MrMimeSprite:: ; standing poses only, repeated as the walk frames
-	INCBIN "gfx/sprites/mr_mime.2bpp"
+MrMimeSprite:: ; full walking sheet (2026-10-27); also Galarian Mr. Mime and Mr. Rime
 	INCBIN "gfx/sprites/mr_mime.2bpp"
 	ASSERT @ - MrMimeSprite == 24 tiles
 NidoranMSprite:: ; standing poses only, repeated as the walk frames

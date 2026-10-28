@@ -301,12 +301,24 @@ FollowerResolveActiveSpecies:
 FollowerResolveLeadPicture:
 	call FollowerResolveActiveSpecies
 	jr nc, .reject
-	; Regional/special forms and fusions retain the neutral category fallback
-	; until they have dedicated overworld sheets of their own. Ghost, type, and
-	; shiny instance flags do not change the species silhouette.
+	; Fusions and special forms retain the neutral category fallback. Regional
+	; forms pass their form index, which resolves only for forms listed in the
+	; lookup's .formSprites. Ghost, type, and shiny instance flags do not change
+	; the species silhouette.
 	ld a, d
 	and FORM_MASK | %00001010 ; regional form bits, fusion bit, special-form bit
 	ld d, a
+	and %00001010             ; fusion bit, special-form bit
+	jr z, .formIndex
+	ld d, $ff                 ; never a form index: always falls back
+	jr .lookup
+.formIndex
+	ld a, d                   ; only the form bits remain
+	ASSERT FORM_SHIFT == 5
+	swap a
+	rrca                      ; bits 5-6 -> 0-1: the lookup's form index
+	ld d, a
+.lookup
 	farcall PCGetDedicatedPokemonSprite
 	ret c
 	farcall PCGetPokemonSpriteCategory

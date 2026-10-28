@@ -209,7 +209,7 @@ FORM_FILES = {
     "GRIMER_ALOLA": "agrimer", "GROWLITHE_HISUI": "hgrowlithe",
     "LEAFEON": "leafeon", "MAROWAK_ALOLA": "amarowak",
     "MEOWTH_ALOLA": "ameowth", "MEOWTH_GALAR": "gmeowth",
-    "MOLTRES_GALAR": "gmoltres", "MR_MIME_GALAR": None,
+    "MOLTRES_GALAR": "gmoltres", "MR_MIME_GALAR": "gmrmime",
     "MUK_ALOLA": "amuk", "NINETALES_ALOLA": "aninetales",
     "PERRSERKER": "perrserker", "PERSIAN_ALOLA": "apersian",
     "PONYTA_GALAR": "gponyta", "RAICHU_ALOLA": "araichu",

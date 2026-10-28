@@ -788,8 +788,10 @@ PCGetBossOWSprite::
 
 ; ============================================================
 ; PCGetDedicatedPokemonSprite
-; INPUT:  E = valid base species; D = 0 for base appearance, nonzero to force
-;         the existing category fallback (regional/special form or fusion)
+; INPUT:  E = valid base species; D = 0 for base appearance, 1..NUM_FORM_SLOTS
+;         for a form index (wRoguePokemonForm1's encoding), anything else
+;         (fusion/special form) to force the existing category fallback.
+;         A form resolves only through .formSprites; every other form falls back.
 ; OUTPUT: carry set and E = dedicated SPRITE_* picture ID when supported;
 ;         carry clear and E unchanged otherwise
 ; CLOBBERS: a, b, hl
@@ -798,7 +800,22 @@ PCGetBossOWSprite::
 PCGetDedicatedPokemonSprite::
 	ld a, d
 	and a
-	jr nz, .fallback
+	jr z, .baseAppearance
+	ld hl, .formSprites
+	ld b, (.formSpritesEnd - .formSprites) / 3
+.formScan
+	ld a, [hli]
+	cp e
+	ld a, [hli]                  ; flags still from cp e
+	jr nz, .formNext
+	cp d
+	jr z, .found
+.formNext
+	inc hl
+	dec b
+	jr nz, .formScan
+	jr .fallback
+.baseAppearance
 	ld a, e
 	ld hl, .speciesSprites
 	ld b, (.speciesSpritesEnd - .speciesSprites) / 2
@@ -829,6 +846,8 @@ PCGetDedicatedPokemonSprite::
 	db ZAPDOS, SPRITE_ZAPDOS
 	db MOLTRES, SPRITE_MOLTRES
 	db MEWTWO, SPRITE_MEWTWO
+	db MR_MIME, SPRITE_MR_MIME   ; full walking sheet since 2026-10-27
+	db MR_RIME, SPRITE_MR_MIME   ; family share
 	; Yellow Legacy batch 2: full walking sheets only. The standing-only and
 	; one-pose sheets (VAPOREON ... WIGGLYTUFF) have no walk frames, so they are
 	; room dolls and never resolve here for a follower or a boss.
@@ -846,6 +865,12 @@ PCGetDedicatedPokemonSprite::
 	db PORYGON2, SPRITE_PORYGON
 	db PORYGON_Z, SPRITE_PORYGON
 .speciesSpritesEnd
+
+; Forms that share an overworld sheet: db species, form index, SPRITE_*.
+.formSprites
+	db MR_MIME, 1, SPRITE_MR_MIME  ; Galarian Mr. Mime
+	db MEWTWO, 1, SPRITE_MEWTWO    ; Armored Mewtwo (follower only; never a boss)
+.formSpritesEnd
 
 ; ============================================================
 ; PCGetPokemonSpriteCategory

@@ -603,7 +603,7 @@ PartyGenBuildSlot:
 	call nc, PartyGenTypeDemandKeepsForm ; pool draws only
 
 ; --- Challenge 11: the ace may become a legendary ---
-; After the form, because the swap zeroes wSpawnForm, and before AddPartyMon,
+; After the form, because the swap rewrites wSpawnForm, and before AddPartyMon,
 ; which is the creation the species must be final for.
 	call PartyGenLegendaryBossAce
 
@@ -628,7 +628,8 @@ PartyGenBuildSlot:
 ; trainer class in LegendaryBossTable) and writes the species itself, because
 ; only the flags survive the farcall back.
 ;
-; A swapped ace takes no form, and its slot source is overwritten with the
+; A swapped ace takes the form RollLegendaryBossAce writes to wSpawnForm (none,
+; except Giovanni's Armored Mewtwo), and its slot source is overwritten with the
 ; boss marker, whatever the mix row assigned: PartyGenApplyMoveset gives it a
 ; TIER_LEGENDARY_BOSS set, else a corpus TIER_ELITE | TIER_HARD one. The swap runs
 ; after the pool draw, so the uber filter in PartyGenPoolCandidateOk never sees
@@ -641,10 +642,8 @@ PartyGenLegendaryBossAce:
 	ld a, [wPartyGenSlot]
 	cp b
 	ret nz                         ; not the ace
-	farcall RollLegendaryBossAce   ; WRAM in, carry out
+	farcall RollLegendaryBossAce   ; WRAM in (and wSpawnForm out), carry out
 	ret nc
-	xor a
-	ld [wSpawnForm], a
 	ld a, [wPartyGenSlot]
 	ld c, a
 	ld b, 0
@@ -1910,7 +1909,32 @@ PartyGenApplySetMovesetMask:
 	add hl, bc
 	ld a, [hl]
 	and FORM_MASK
-	jp nz, .formLookup             ; a form never reads its base species' sets
+	jr z, .baseSets
+	; A form never reads its base species' sets, except through .formSetAliases.
+	ld c, a                        ; c = form bits
+	ld a, [wPartyGenCandidates + 4]
+	ld b, a                        ; b = species
+	ld hl, .formSetAliases
+.aliasScan
+	ld a, [hli]
+	and a
+	jr z, .noAlias
+	cp b
+	ld a, [hli]                    ; (keeps the flags)
+	jr nz, .aliasNext
+	cp c
+	jr z, .alias
+.aliasNext
+	inc hl
+	jr .aliasScan
+.alias
+	ld a, [hl]
+	ld [wPartyGenCandidates + 4], a ; read that species' sets instead
+	jr .baseSets
+.noAlias
+	ld a, c
+	jp .formLookup
+.baseSets
 	ld a, [wPartyGenCandidates + 4]
 	ld c, a
 	ld b, 0
@@ -2007,6 +2031,15 @@ PartyGenApplySetMovesetMask:
 .noMatch:
 	xor a
 	ret
+
+; Forms that draw another species' curated sets instead of MovesetFormIndex's.
+; db species, form bits (MON_CATCH_RATE layout), species whose sets it uses
+.formSetAliases
+	db MEWTWO, ARMORED_MEWTWO_FORM << FORM_SHIFT, MEWTWO ; graphic only
+	; Only graphic-only forms belong here. A form with its own stats or moves
+	; gets its own catalog rows (Galarian Mr. Mime's MR_RIME alias was removed
+	; 2026-10-28 for its own MR_MIME_GALAR sets; see ADDING_POKEMON.md).
+	db 0
 
 ; Form index nonzero (a = form bits, still masked): scan MovesetFormIndex
 ; (data/trainers/movesets.asm) for (species, form). A hit copies the entry's
