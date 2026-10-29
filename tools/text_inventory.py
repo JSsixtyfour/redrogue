@@ -363,7 +363,7 @@ def main():
     def ai_cell(r):
         if r["ai"]:
             return r["ai"]
-        return "none logged" if r["logs_cover"] != "none" else "predates logs"
+        return f"none in {r['logs_cover']} logs" if r["logs_cover"] != "none" else "predates logs"
 
     ai_rows = [r for r in rows if r["ai"]]
     clean = sum(1 for r in rows if not r["ai"] and r["logs_cover"] != "none")
@@ -390,10 +390,10 @@ def main():
         "listed row plus a blank `your_text` column for replacements.",
         "",
         "**AI tags are records, not guesses.** `Claude`/`Codex` means a logged edit by that tool "
-        "added the label (`created label`) or one of its lines (`lines`). `none logged` means the "
-        "logs cover that date and show no AI edit to it: probably yours, though text an AI wrote "
-        "through a generator script is invisible. `predates logs` means no record exists either "
-        "way.",
+        "added the label (`created label`) or one of its lines (`lines`). `none in X logs` means "
+        "the named tool's logs cover that date and show no edit to it by that tool. Only "
+        "`none in Claude+Codex logs` rules out both, and even then text an AI wrote through a "
+        "generator script is invisible. `predates logs` means no record exists either way.",
         "",
     ]
     for title, pred in (("Placeholders", lambda r: r["placeholder"]),

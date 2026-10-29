@@ -150,7 +150,12 @@ def autoplay_findings(name: str, worktree: Path, night: Path) -> dict[str, objec
             continue
         kept.mkdir(exist_ok=True)
         for file in (worktree / ARTIFACTS).glob(f"autoplay_seed{seed}[._]*"):
-            shutil.copy(file, kept / file.name)
+            if file.is_dir():
+                # Save checks retain complete packages, including nested cold
+                # boot states. A seed can have several finding rows.
+                shutil.copytree(file, kept / file.name, dirs_exist_ok=True)
+            else:
+                shutil.copy(file, kept / file.name)
         replay = f"python3 tools/pyboy_smoke/autoplay.py --seed {seed}{REPLAY_FLAGS[name]}"
         for kind, what in problems:
             findings.append({"seed": seed, "kind": kind, "what": what, "map": row["map"], "replay": replay})

@@ -1,6 +1,7 @@
 """Nightly regression bookkeeping (nightly.py): what counts as worse than last
 night. Source-only: synthetic reports, no emulator."""
 import tempfile
+import json
 import unittest
 from pathlib import Path
 
@@ -46,6 +47,46 @@ class QuickModeTest(unittest.TestCase):
         for name, flags in nightly.QUICK.items():
             for flag in flags:
                 self.assertIn(flag, nightly.SUITES[name][0], (name, flag))
+
+
+class ArtifactRetentionTest(unittest.TestCase):
+    def test_failed_seed_keeps_nested_save_packages_and_repeated_findings(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            worktree, night = root / "worktree", root / "night"
+            artifacts = worktree / nightly.ARTIFACTS
+            artifacts.mkdir(parents=True)
+            night.mkdir()
+            package = artifacts / "autoplay_seed7_save-123" / "cold_boot"
+            package.mkdir(parents=True)
+            (package / "initial.state").write_bytes(b"retained state")
+            (artifacts / "autoplay_seed7.json").write_text('{"seed":7}')
+            (artifacts / "autoplay_seed70.json").write_text("unrelated")
+            row = {"seed": 7, "outcome": "stalled", "detail": "no progress",
+                   "map": "PROCEDURAL_FACILITY", "anomalies": [],
+                   "save_findings": [{"check": "round_trip"}]}
+            (night / "newgame_autoplay_summary.json").write_text(
+                json.dumps({"runs": [row, row]}))
+            result = nightly.autoplay_findings("newgame", worktree, night)
+            kept = night / "newgame_seeds"
+            self.assertEqual((kept / "autoplay_seed7_save-123" / "cold_boot" /
+                              "initial.state").read_bytes(), b"retained state")
+            self.assertEqual((kept / "autoplay_seed7.json").read_text(), '{"seed":7}')
+            self.assertFalse((kept / "autoplay_seed70.json").exists())
+            self.assertEqual(len(result["findings"]), 4)
+            self.assertEqual(result["findings"][0]["kind"], "stalled")
+            self.assertEqual(result["findings"][1]["kind"], "save round_trip")
+            self.assertTrue((package / "initial.state").exists())
+
+    def test_clean_seed_does_not_copy_unneeded_package(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            (root / "lobby_autoplay_summary.json").write_text(json.dumps({
+                "runs": [{"seed": 7, "outcome": "champion", "detail": "",
+                          "map": "HALL_OF_FAME", "anomalies": []}]}))
+            result = nightly.autoplay_findings("lobby", root / "absent", root)
+            self.assertEqual(result["findings"], [])
+            self.assertFalse((root / "lobby_seeds").exists())
 
 
 if __name__ == "__main__":
