@@ -536,16 +536,7 @@ DEF ENDLESS_FLEX_SLOTS EQU 2
 DEF ROSTER_CLASS_MASTER EQU 1 ; GetRandMon's inverted b: 4 Poke, 3 Great, 2 Ultra
 DEF ROSTER_CLASS_ULTRA  EQU 2
 EndlessRosterClass::
-	ld a, [wEndlessDepth]
-	and a
-	ret z
-	call GetRunProgress
-	ASSERT ROUND_BATTLES == 8
-	srl a
-	srl a
-	srl a                         ; a = global round
-	sub LAST_ROUND
-	ret c                         ; cannot happen at depth >= 1; stay safe
+	call EndlessRoundsSoFar
 	ret z
 	ld d, a                       ; d = s, Endless rounds so far (1+)
 	ld a, [wEnemyPartyCount]      ; slot being rolled
@@ -572,6 +563,61 @@ EndlessRosterClass::
 	ret nc
 	ld e, ROSTER_CLASS_MASTER
 	ret
+
+; ============================================================
+; EndlessRoundsSoFar  (private)
+; Out: a = s = progress / ROUND_BATTLES - LAST_ROUND, the Endless rounds so far
+;      (1 in the first Endless round); Z set and carry clear when s is 0, which
+;      covers depth 0. Clobbers a/flags.
+; ============================================================
+EndlessRoundsSoFar:
+	ld a, [wEndlessDepth]
+	and a
+	ret z
+	call GetRunProgress
+	ASSERT ROUND_BATTLES == 8
+	srl a
+	srl a
+	srl a                         ; a = global round
+	sub LAST_ROUND
+	ret nc
+	xor a                         ; cannot happen at depth >= 1; stay safe
+	ret
+
+; ============================================================
+; EndlessUberStep  -- farcalled wherever a Master boss or trainer ace has just
+; been rolled (ENDLESS_MODE_CHECKPOINT_E.md section 3): one more cascade step on
+; a two-class Master | Uber table. Uber's base width is ENDLESS_UBER_BASE and
+; the bonus is ENDLESS_UBER_STEP x s (EndlessRoundsSoFar), saturating, so it
+; grows with the run and never fires at depth 0.
+; Out: carry SET = this Master becomes an Uber. Clobbers everything.
+; ============================================================
+EndlessUberStep::
+	call EndlessRoundsSoFar
+	ret z                         ; carry clear: stays Master
+	ld b, a                       ; b = s
+	xor a
+.bonus
+	add ENDLESS_UBER_STEP
+	jr c, .saturate
+	dec b
+	jr nz, .bonus
+	jr .haveBonus
+.saturate
+	ld a, $ff
+.haveBonus
+	ld b, a
+	call Random
+	ld hl, EndlessUberWidths
+	call RollSpreadClass          ; c = 1 Master, 2 Uber
+	ld a, 1
+	cp c                          ; carry when c = 2
+	ret
+
+; RollSpreadClass table, read in this bank: one band below the top (Master),
+; Uber is the fall-through with ENDLESS_UBER_BASE of 256 before the bonus.
+EndlessUberWidths:
+	db 1, 256 - ENDLESS_UBER_BASE, 0
 
 ; ============================================================
 ; LegendaryBossTable

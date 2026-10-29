@@ -22,7 +22,8 @@
 ;         b  = bonus (0-255)
 ;         hl = table: db n, then the n cumulative widths of every class below
 ;              the top one (pokeball, pokeball+great, ...), then db 0. The top
-;              class has no entry; it is the fall-through. n is 2 or 3.
+;              class has no entry; it is the fall-through. n is 1 to 3
+;              (1: EndlessUberWidths, Master | Uber).
 ; OUTPUT: c  = class, 1-based
 ; Clobbers a, b, d, e, hl.
 RollSpreadClass::

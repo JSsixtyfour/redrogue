@@ -2270,13 +2270,12 @@ PFPickForestHideout:
 ;   PCGetBossOWSprite → returns in A. farcall CLOBBERS A with the restored
 ;                       bank number → NOT farcall-safe. Use the bank-7
 ;                       wrapper PFStoreBossOWSpriteToSRAM (writes SRAM itself).
-;   PCRollMonClassFar → bump in and class out both in E, since b/c cannot
-;                       cross a farcall. Replaced a same-bank duplicate.
+;   PCRollBossClassFar → class out in E, since b/c cannot cross a farcall.
+;                       Replaced a same-bank duplicate.
 ; ============================================================
 PFRollBoss:
     farcall PCGetBossLevel           ; sets wCurEnemyLevel (mirrors cave's order)
-    ld e, WILD_BOSS_RARITY_BUMP      ; boss rarity bump, matches cave's PCRollBoss
-    farcall PCRollMonClassFar        ; e = rarity class 1-4
+    farcall PCRollBossClassFar       ; e = class 1-4 or BOSS_CLASS_UBER, matches cave's PCRollBoss
     farcall Random_Boss_Selection_Far ; -> d = species (d survives farcall)
     ; Random_Pokemon_Selection routes through GetKeyItemPower (RARE SCOPE), which
     ; selects SRAM bank 1 and then DISABLES SRAM on return without restoring bank

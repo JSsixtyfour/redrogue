@@ -1984,10 +1984,11 @@ def play(
     # The screen checks' code rules (autoplay_screen.py); a ~70 s walk only after a rebuild.
     # Optional: without it those rules are skipped. /mnt/c reads can fail
     # transiently under load (ENODATA, seen 2026-10-20), which must not end a run.
+    inventory_error = None
     try:
         coverage_inventory.code_labels(ROM)
-    except OSError:
-        pass
+    except OSError as error:
+        inventory_error = f'{type(error).__name__}: {error}'
     harness = RedRogueHarness(ROOT, ARTIFACTS, ram_path=ram_path, rom=ROM, cgb_mode=cgb_mode)
     if ram_path is not None:
         ram_path.unlink()
@@ -2014,7 +2015,8 @@ def play(
                               snapshot=None if reel is None else lambda kind, info: reel.offer(
                                   kind, harness.pyboy.frame_count, info, harness.save_state))
         # After the agent's and the checks' own hooks, which keep their addresses.
-        hits, skipped = harness.track_coverage(coverage_hooks()) if coverage else (set(), [])
+        coverage_targets = coverage_hooks() if coverage else {}
+        hits, skipped = harness.track_coverage(coverage_targets) if coverage else (set(), [])
         error = None
         try:
             agent.run(runs=runs, stages=stages, max_frames=max_frames)
@@ -2037,6 +2039,8 @@ def play(
         data["menus"] = agent.menu_stats
         data["checks"] = agent.checks.summary()
         data["screen_checks"] = agent.checks.screen.summary()
+        data['coverage_inventory_error'] = inventory_error
+        data['hook_errors'] = list(harness.hook_errors)
         data["player"] = player
         data["hardware_mode"] = harness.hardware_mode
         data["cgb_wram_wait_frames"] = agent.cgb_wram_wait_frames
@@ -2078,7 +2082,10 @@ def play(
             heartbeat=heartbeat, coverage=coverage, cgb_mode=cgb_mode, **options)
         hits |= set(data["branches"].pop("coverage_hits", ()))
     if coverage:
-        data["coverage"] = {"hit": sorted(hits), "skipped": skipped}
+        data["coverage"] = {"hit": sorted(hits), "skipped": skipped, 'requested': len(coverage_targets)}
+    from detector_health import collect
+    data['detector_configuration'] = {'save_checks': save_checks, 'branches': bool(branches), 'coverage': coverage}
+    data['detector_ledger'] = collect(data, data['detector_configuration'])
     data["wall_seconds"] = round(time.monotonic() - started, 1)
     return data
 

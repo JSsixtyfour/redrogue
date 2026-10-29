@@ -48,8 +48,18 @@ Random_Wild_Selection_Far::
 ; Ditto. Shared by all four wild-area boss rollers (cave, forest, facility,
 ; cemetery). Same contract: e = class in, d = species and e = form out.
 ; Rerolls the same class up to BOSS_REROLL_BUDGET - 1 times, then accepts.
+; BOSS_CLASS_UBER (Endless, PCRollBossClass) draws an Uber the player does not
+; own, the same family-wide gate (user answer Q2); with none left it stays Master.
 DEF BOSS_REROLL_BUDGET EQU 8
 Random_Boss_Selection_Far::
+	ld a, e
+	cp BOSS_CLASS_UBER
+	jr nz, .ordinary
+	ld e, 1                        ; unowned only
+	call RogueDrawUber             ; carry: d = species, e = form
+	ret c
+	ld e, RARITY_TIER_MASTERBALL + 1
+.ordinary
 	ld a, BOSS_REROLL_BUDGET
 .loop
 	push af                        ; retry budget

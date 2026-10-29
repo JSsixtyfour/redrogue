@@ -868,6 +868,98 @@ RogueSpeciesAtIndex::             ; a = entry index, hl = pair list
 	ret
 
 ; ---------------------------------------------------------------------------
+; RogueDrawUber  (ENDLESS_MODE_CHECKPOINT_E.md section 3)
+; INPUT:  e = 0: any Uber; nonzero: only species the player does not own
+;         (AllSpeciesCheck, the bosses' family-wide gate)
+; OUTPUT: carry SET   = d = species, e = form, uniform over every allowed entry
+;                       of the active groups' Uber tiers
+;         carry CLEAR = nothing allowed
+; CLOBBERS: everything. Farcall-safe: only d, e and flags carry results.
+;
+; Uber tiers have base count 0 (every entry sits in the _Evos tail), so the
+; ordinary roller can never reach them; this reads the WHOLE list instead. Every
+; Uber species is single-stage. Must stay in the tables' bank: RogueGetTierEntry
+; returns a plain pointer into them.
+; ---------------------------------------------------------------------------
+RogueDrawUber::
+	ld d, $ff                    ; count pass: no index reaches $ff
+	call .walk                   ; a = allowed entries, carry clear
+	and a
+	ret z
+	ld c, a
+	call Rangerandom             ; a = 0 .. count-1; preserves bc/de/hl
+	ld d, a
+	; fallthrough: the same walk stops on entry d (nothing it reads changed)
+
+; In: d = index to stop on, e = filter. Out: carry SET with d/e = that entry,
+; or carry CLEAR with a = the number of allowed entries.
+.walk
+	call RogueGetActiveGroupMask ; a = mask; bc/de/hl preserved
+	ld b, a                      ; b = groups left, bit 0 = the next one
+	ld c, 0                      ; c = allowed entries passed so far
+	xor a                        ; a = group id
+.group
+	srl b
+	jr nc, .nextGroup            ; group not active
+	push af
+	push bc
+	ld b, RARITY_TIER_UBER
+	call RogueGetTierEntry       ; hl = list, c = total; de preserved
+	ld a, c
+	pop bc
+	and a
+	jr z, .groupDone
+.entry
+	push af                      ; entries left in this list
+	call .allowed
+	jr nc, .skip
+	ld a, c
+	cp d
+	jr z, .hit
+	inc c
+.skip
+	inc hl
+	inc hl
+	pop af
+	dec a
+	jr nz, .entry
+.groupDone
+	pop af                       ; group id
+.nextGroup
+	inc a
+	cp NUM_SPECIES_GROUPS
+	jr c, .group
+	ld a, c
+	and a                        ; carry clear: index d not reached
+	ret
+.hit
+	pop af                       ; entries left
+	pop af                       ; group id
+	ld d, [hl]
+	inc hl
+	ld e, [hl]
+	scf
+	ret
+
+; hl -> entry, e = filter. Out: carry SET if allowed. Preserves bc/de/hl.
+.allowed
+	ld a, e
+	and a
+	scf
+	ret z                        ; no filter
+	push bc
+	push de
+	push hl
+	ld d, [hl]
+	call AllSpeciesCheck         ; c = 1 if owned
+	ld a, c
+	pop hl
+	pop de
+	pop bc
+	cp 1                         ; carry when not owned
+	ret
+
+; ---------------------------------------------------------------------------
 ; RogueClassifySpecies
 ; INPUT:  a = species
 ; OUTPUT: b = tier id, c = group id, carry CLEAR on success

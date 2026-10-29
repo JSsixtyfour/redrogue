@@ -129,6 +129,10 @@ class RollSpreadClassTest(unittest.TestCase):
     def test_item_table(self) -> None:
         self.check_table("ItemClassWidths", [52, 129, 205])
 
+    def test_endless_uber_table(self) -> None:
+        # Master | Uber: one band, Uber the fall-through at ENDLESS_UBER_BASE = 1
+        self.check_table("EndlessUberWidths", [255])
+
     def test_stage_reward_table(self) -> None:
         self.check_table("StageRewardClassWidths", [128, 230, 255])
 

@@ -54,4 +54,11 @@ DEF ENDLESS_FIRST_ROUND EQU ENDLESS_CIRCUIT_SPAN / ROUND_BATTLES
 	ASSERT ENDLESS_FIRST_ROUND == LAST_ROUND_BATTLECOUNT / ROUND_BATTLES + 1
 ; Rounds ENDLESS_FIRST_ROUND .. 255 / ROUND_BATTLES: one level-bonus row each.
 DEF NUM_ENDLESS_LEVEL_ROWS EQU 255 / ROUND_BATTLES + 1 - ENDLESS_FIRST_ROUND
+; Uber step (EndlessUberStep, ENDLESS_MODE_CHECKPOINT_E.md section 3): after a
+; Master roll at depth >= 1, Uber's width out of 256 is BASE + STEP x (Endless
+; rounds so far). STEP 4 is the user's pick (Q1): ~0.5% of bosses in Endless
+; round 9, ~4% by 16, ~14% once progress saturates.
+DEF ENDLESS_UBER_BASE EQU 1
+DEF ENDLESS_UBER_STEP EQU 4
+	ASSERT ENDLESS_UBER_BASE >= 1 && ENDLESS_UBER_BASE <= 255
 	ASSERT LAST_ROUND_BATTLECOUNT < 256, "wBattleCount is one byte"

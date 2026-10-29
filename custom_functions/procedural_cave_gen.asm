@@ -667,8 +667,7 @@ PCRollExitLadder:
 ; ============================================================
 PCRollBoss:
 	call PCGetBossLevel             ; sets wCurEnemyLevel (before species pick)
-	ld b, WILD_BOSS_RARITY_BUMP     ; boss rarity bump (notably rarer than wild)
-	call PCRollMonClass             ; c = rarity class, biased by wBattleCount
+	call PCRollBossClass            ; c = rarity class, biased by run progress; Uber in Endless
 	ld e, c                         ; the class can only cross a farcall in e
 	farcall Random_Boss_Selection_Far ; → d = species (never Ditto)
 	; Random_Pokemon_Selection routes through GetKeyItemPower for the RARE SCOPE
@@ -1548,9 +1547,10 @@ PCRollMonClass::
 	; round = clamp(wBattleCount, 0, 89) / 10  → 0-8
 	call GetRunProgress
 	cp LAST_ROUND_BATTLECOUNT + 1
-	jr c, .noClamp
+	jr c, PCRollMonClassAtProgress
 	ld a, LAST_ROUND_BATTLECOUNT
-.noClamp
+; a = progress (unclamped from PCRollBossClass in Endless), b = bump.
+PCRollMonClassAtProgress:
 	ld d, 0
 .divLoop
 	cp ROUND_BATTLES
@@ -1579,21 +1579,41 @@ PCWildClassWidths:
 	db 3, 205, 205 + 38, 205 + 38 + 10, 0
 
 ; ============================================================
-; PCRollMonClassFar
-; Farcall-safe face of PCRollMonClass, for callers in another bank.
-; INPUT:  e = extra rarity bump (0 = wild baseline, higher = rarer)
-; OUTPUT: e = class 1-4.  Clobbers a, bc, d, hl.
+; PCRollBossClass / PCRollBossClassFar
+; The one class roll every wild-area boss uses (cave, cemetery and its ghost
+; reroll, facility, forest): PCRollMonClass with WILD_BOSS_RARITY_BUMP.
+; Endless (depth >= 1) changes two things, both bosses only
+; (ENDLESS_MODE_CHECKPOINT_E.md section 3, user answers Q1 and step 3):
+;   - the round is NOT clamped at LAST_ROUND, so the bonus keeps climbing and
+;     saturates at 255 by round 20;
+;   - a Master roll gets EndlessUberStep, which may turn it into BOSS_CLASS_UBER.
+; Depth 0 is exactly the old roll.
+; OUTPUT: c (PCRollBossClass) / e (Far) = class 1-4, or BOSS_CLASS_UBER.
+; Clobbers a, bc, d, hl (and e for the plain entry).
 ;
-; Bankswitch takes the target bank in b and then overwrites bc with its own
-; return address before jumping, so NEITHER the bump (b) nor the class (c) can
-; cross a farcall. procedural_cemetery_gen.asm used to `ld b, 60` and farcall
-; PCRollMonClass directly, which handed the callee b = BANK(PCRollMonClass) = 5
-; as its rarity bump instead of 60.
+; The Far face returns in e: Bankswitch overwrites bc on the way back, so a
+; class in c cannot cross a farcall (procedural_cemetery_gen.asm once handed
+; PCRollMonClass its own bank number as the bump that way).
 ; ============================================================
-PCRollMonClassFar::
-	ld b, e
-	call PCRollMonClass
+PCRollBossClassFar::
+	call PCRollBossClass
 	ld e, c
+	ret
+
+PCRollBossClass:
+	ld b, WILD_BOSS_RARITY_BUMP
+	ld a, [wEndlessDepth]
+	and a
+	jp z, PCRollMonClass
+	call GetRunProgress           ; unclamped; preserves b
+	call PCRollMonClassAtProgress ; c = class 1-4
+	ld a, c
+	cp RARITY_TIER_MASTERBALL + 1 ; class ids are 1-based
+	ret nz
+	farcall EndlessUberStep       ; carry = Uber; bc does not survive
+	ld c, RARITY_TIER_MASTERBALL + 1
+	ret nc
+	ld c, BOSS_CLASS_UBER
 	ret
 
 ; ============================================================

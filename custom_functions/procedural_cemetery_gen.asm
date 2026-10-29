@@ -208,8 +208,7 @@ PCemGenerateMaps::
 ; ============================================================
 PCemRollBoss:
 	farcall PCGetBossLevel            ; sets wCurEnemyLevel before the species pick
-	ld e, WILD_BOSS_RARITY_BUMP       ; boss rarity bump (matches PCRollBoss)
-	farcall PCRollMonClassFar         ; e = class 1-4 (b and c cannot cross a farcall)
+	farcall PCRollBossClassFar        ; e = class 1-4 or BOSS_CLASS_UBER (c cannot cross a farcall)
 	farcall Random_Boss_Selection_Far ; d = species
 	ld a, d
 	ld [wRoguePokemon1], a
@@ -1412,8 +1411,7 @@ PCemAvoidGhostBoss:
 	dec a
 	ld [wBuffer + wCemGhostRetry], a
 	jr z, .fallback
-	ld e, WILD_BOSS_RARITY_BUMP  ; same boss rarity bump PCRollBoss uses
-	farcall PCRollMonClassFar    ; e = class 1-4 (b and c cannot cross a farcall)
+	farcall PCRollBossClassFar   ; the same boss roll PCRollBoss uses
 	farcall Random_Boss_Selection_Far ; -> d = species
 .storeReroll
 	ld a, d

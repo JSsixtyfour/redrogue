@@ -195,6 +195,7 @@ class CGBStackCopyWindowTest(unittest.TestCase):
                 raise KeyError(label)
 
         checks = object.__new__(autoplay_checks.GameChecks)
+        checks.detector_health = {}
         checks.h = FakeHarness()
         checks.stack_top = 0xDFFF
         checks.stack_armed = True

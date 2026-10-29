@@ -470,7 +470,7 @@ function ConvertAsm {
 	$entryNames = @()
 	for ($i = 0; $i -lt $src.Count; $i++) {
 		$code = ($src[$i] -replace ';.*$', '').TrimEnd()
-		if ($code -notmatch '^([A-Za-z_]\w*)::$') { continue }
+		if ($code -notmatch '^([A-Za-z_]\w*)::?$') { continue }
 		$name = $Matches[1]
 		for ($j = $i + 1; $j -lt $src.Count; $j++) {
 			$next = ($src[$j] -replace ';.*$', '').Trim()
@@ -480,7 +480,7 @@ function ConvertAsm {
 		}
 	}
 	if ($entryNames.Count -ne 1) {
-		Fail "I need exactly one song label (ending in ::) followed by 'channel_count', and found $($entryNames.Count). Start from Template.asm."
+		Fail "I need exactly one song label (ending in : or ::) followed by 'channel_count', and found $($entryNames.Count). Start from Template.asm."
 	}
 	$entry = $entryNames[0]
 
@@ -520,7 +520,10 @@ function ConvertAsm {
 	$text.Add("; kit-engine: $EngineName")
 	foreach ($l in $src) {
 		if ($l -match '^\s*;\s*kit-engine:') { continue }
-		$text.Add($rx.Replace($l, { param($m) $map[$m.Groups[1].Value] }))
+		$renamed = $rx.Replace($l, { param($m) $map[$m.Groups[1].Value] })
+		# The Music table row points at the entry label from another section: export it.
+		if ($renamed -match ('^' + [regex]::Escape($Label) + ':(\s*;.*)?$')) { $renamed = "${Label}::" + $Matches[1] }
+		$text.Add($renamed)
 	}
 	while ($text[$text.Count - 1] -match '^\s*$') { $text.RemoveAt($text.Count - 1) }
 	return (($text -join "`n") + "`n")

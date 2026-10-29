@@ -92,6 +92,8 @@ class ScreenChecks:
         self.record = record
         self.seen: dict[str, dict[str, int]] = {}  # record mode: kind -> verdict -> count
         self.calls: dict[str, int] = {}  # pointers checked per kind
+        self.code_rule_observations = 0
+        self.unchecked_calls = {}
         self.palette_reload = 0
         self.palette_checked: set[tuple[int, int]] = set()
         self.palette_checked_maps: set[int] = set()
@@ -149,6 +151,9 @@ class ScreenChecks:
     def summary(self) -> dict[str, object]:
         """Visible BG palette checks performed during an autoplay run."""
         return {"enabled": self.h.hardware_mode == "CGB", **self.palette_counts,
+                "pointer_calls": {kind: count - self.unchecked_calls.get(kind, 0) for kind, count in self.calls.items()},
+                "unchecked_calls": dict(self.unchecked_calls), "code_rules_available": self.code_checks,
+                "code_rule_observations": self.code_rule_observations,
                 "maps_checked": sorted(self.palette_checked_maps),
                 "map_loads_checked": len(self.palette_checked),
                 "skip_reasons": dict(sorted(self.palette_skip_reasons.items()))}
@@ -300,6 +305,7 @@ class ScreenChecks:
 
     def check_source(self, kind: str, bank: int, source: int) -> None:
         """A ROM source (graphics, a copy, a string) must not lie inside code."""
+        self.code_rule_observations = getattr(self, 'code_rule_observations', 0) + 1
         if source >= ROM_END:
             self._note(kind, "ok", "")
             return
@@ -330,6 +336,7 @@ class ScreenChecks:
         if self.code_checks:
             self.check_source("text_pointer", self._bank_for(address), address)
         else:
+            self.unchecked_calls['text_pointer'] = self.unchecked_calls.get('text_pointer', 0) + 1
             self._note("text_pointer", "ok", "")  # counted, unchecked: no code labels cached
 
     def _on_place_string(self, _context) -> None:
@@ -352,6 +359,7 @@ class ScreenChecks:
     def check_enemy_pic(self, species: int, form: int, bank: int, address: int) -> None:
         expected = self.front_pics.get((species, form))
         if expected is None:
+            self.unchecked_calls['enemy_pic'] = self.unchecked_calls.get('enemy_pic', 0) + 1
             self._note("enemy_pic", "ok", "")  # a species or form without its own record
         elif expected != (bank, address):
             shown = self.h.symbols.nearest(bank, address)

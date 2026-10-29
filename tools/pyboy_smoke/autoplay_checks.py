@@ -25,6 +25,7 @@ reach; run_autoplay.py's per-seed wall-clock timeout covers that (`hung`).
 from __future__ import annotations
 
 import io
+from detector_health import observed_check, CORE
 from pathlib import Path
 
 import autoplay_screen
@@ -65,6 +66,7 @@ MOVE_LENGTH, MOVE_PP = 6, 5  # data/moves/moves.asm, constants/battle_constants.
 class GameChecks:
     def __init__(self, agent, root: Path):
         self.agent = agent
+        self.detector_health = {}
         self.h = agent.h
         # The parser leaves `const_value - 1` unresolved: NUM_POKEMON_INDEXES is
         # the last species constant and NUM_ATTACKS is STRUGGLE, the last move.
@@ -121,6 +123,7 @@ class GameChecks:
         (autoplay_branch.py). The overworld SP baseline and the lowest SP
         carry over: every branch must poll at the same depth as the others."""
         self.anomalies = []
+        self.detector_health = {}
         self.counts = {}
         self._seen = set()
         self.first_anomaly_state = None
@@ -147,7 +150,13 @@ class GameChecks:
     def summary(self) -> dict[str, object]:
         return {
             "anomaly_counts": self.counts,
+            "detector_health": {name: {"enabled": True,
+                "status": "error" if self.detector_health.get(name, {}).get("errors") else
+                          "observed" if self.detector_health.get(name, {}).get("returned") else "unreached",
+                **self.detector_health.get(name, {"attempted": 0, "returned": 0, "errors": 0})}
+                for name in CORE},
             "crash": self.crash,
+            "crash_vector_hook": {'enabled': True, 'available': True, 'status': 'armed'},
             "overworld_sp": {f"${sp:04X}": n for sp, n in sorted(self.overworld_sp.items())},
             "lowest_sp_seen": f"${self.lowest_sp:04X}",
             "stack_bytes_free_at_lowest": self.lowest_sp - (self.stack_top - STACK_SIZE),
@@ -196,6 +205,7 @@ class GameChecks:
                    and (sp - source_start) % 2 == 0
                    for r_bank, start, end, source_start, source_end in self.sp_copy_windows)
 
+    @observed_check
     def after_step(self) -> None:
         """Between agent steps: the CPU must be in ROM (or HRAM's OAM DMA
         routine) with SP inside the stack, bar the known map/palette copies
@@ -226,6 +236,7 @@ class GameChecks:
         memory = self.h.pyboy.memory
         return memory[address & 0xFFFF] | memory[(address + 1) & 0xFFFF] << 8
 
+    @observed_check
     def _on_overworld_poll(self, _context) -> None:
         sp = self.h.pyboy.register_file.SP
         if self.overworld_sp and sp not in self.overworld_sp:
@@ -251,6 +262,7 @@ class GameChecks:
         self.world_pending = True
         self.battle_party_checked = False
 
+    @observed_check
     def check_world(self) -> None:
         self.check_party()
         self.check_items()
@@ -311,6 +323,7 @@ class GameChecks:
                 self.anomaly(check, f"slot {slot + 1} "
                              f"({self.agent.species_names.get(listed[slot], listed[slot])}): {problem}")
 
+    @observed_check
     def check_party(self) -> None:
         self._check_party_list("party", "wPartyCount", "wPartySpecies", "wPartyMon1",
                                minimum=0, check_pp=True)
@@ -320,6 +333,7 @@ class GameChecks:
             if TEXT_TERMINATOR not in nicks[slot * NAME_LENGTH:(slot + 1) * NAME_LENGTH]:
                 self.anomaly("party", f"slot {slot + 1} nickname not terminated")
 
+    @observed_check
     def check_items(self) -> None:
         for label, used, slots in self.pockets:
             counts = self.h.read_bytes(label, slots)
@@ -333,6 +347,7 @@ class GameChecks:
         if any(byte >> 4 > 9 or byte & 0xF > 9 for byte in money):
             self.anomaly("money", f"not BCD: {bytes(money).hex()}")
 
+    @observed_check
     def check_key_items(self) -> None:
         """sKeyItemsBitfield (SRAM): item N owns bits 2N (owned) and 2N+1
         (active); at most KEY_ITEM_MAX_ACTIVE active, each of them owned, and
@@ -349,6 +364,7 @@ class GameChecks:
             if tiers >> bit & 3 > KEY_ITEM_MAX_TIER:
                 self.anomaly("key_items", f"{name} at tier {tiers >> bit & 3}")
 
+    @observed_check
     def check_map(self) -> None:
         current = self.h.read8("hCurMap")
         if current >= self.num_maps:
@@ -368,6 +384,7 @@ class GameChecks:
             if dest >= self.num_maps and dest not in SPECIAL_WARP_MAPS:
                 self.anomaly("warps", f"warp {index} leads to map ${dest:02X}")
 
+    @observed_check
     def _on_battle_menu(self, _context) -> None:
         for label, side in (("wBattleMonMoves", "player"), ("wEnemyMonMoves", "enemy")):
             moves = self.h.read_bytes(label, NUM_MOVES)

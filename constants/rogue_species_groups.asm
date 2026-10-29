@@ -62,3 +62,8 @@ DEF NUM_SELECTABLE_CLASSES EQU 4
 ; (StageRewardClassWidths). Only rogue_pokemon_randomized_batch passes it; the
 ; bridge gift room passes 0 and stays capped at ultraball.
 DEF REWARD_CLASS_STAGE EQU NUM_SELECTABLE_CLASSES + 1
+
+; Endless wild-area bosses only (PCRollBossClass): the class after masterball.
+; Random_Boss_Selection_Far answers it with RogueDrawUber BEFORE anything can
+; reach Random_Pokemon_Selection, where the same number means REWARD_CLASS_STAGE.
+DEF BOSS_CLASS_UBER EQU RARITY_TIER_UBER + 1

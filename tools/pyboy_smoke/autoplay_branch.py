@@ -241,6 +241,8 @@ class BranchDriver:
             "map": self.map_name(h.read8("hCurMap")),
             "anomalies": self.checks.anomalies,
             "crash": self.checks.crash,
+            "detector_health": self.checks.summary()['detector_health'],
+            "hook_errors": list(h.hook_errors),
             "maps_entered": [e["map"] for e in self.events if e["kind"] == "enter_map"],
             "last_inputs": inputs[-BRANCH_INPUT_LOG:],
         }
@@ -274,6 +276,7 @@ def run_snapshots(seed: int, snapshots: list[Snapshot], *, branches: int, frames
     harness = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS, rom=autoplay.ROM,
                               cgb_mode=cgb_mode)
     findings = []
+    detector_records = []
     totals: dict[str, dict[str, int]] = {}
     longest_quiet = {"frames": 0}
     try:
@@ -289,6 +292,8 @@ def run_snapshots(seed: int, snapshots: list[Snapshot], *, branches: int, frames
                         "map": snapshot.info.get("map"), "position": None,
                     }) + "\n", encoding="utf-8")
                 result = driver.run(snapshot.state, key, frames)
+                detector_records.append({name: result[name] for name in
+                                         ('key', 'outcome', 'detector_health', 'hook_errors')})
                 total = totals.setdefault(snapshot.kind, {"branches": 0, "frames": 0, "findings": 0})
                 total["branches"] += 1
                 total["frames"] += result["frames"]
@@ -312,6 +317,7 @@ def run_snapshots(seed: int, snapshots: list[Snapshot], *, branches: int, frames
         "frames_per_branch": frames,
         "hardware_mode": harness.hardware_mode,
         "totals": totals,
+        "detector_records": detector_records,
         "longest_quiet": longest_quiet,
         "findings": findings,
         **({"coverage_hits": sorted(hits)} if coverage else {}),

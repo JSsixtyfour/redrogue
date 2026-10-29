@@ -6155,8 +6155,7 @@ PFacRestoreSRAMBank:
 ; ============================================================
 PFacRollBoss:
     farcall PCGetBossLevel           ; sets wCurEnemyLevel
-    ld e, WILD_BOSS_RARITY_BUMP      ; boss rarity bump (matches cave/forest)
-    farcall PCRollMonClassFar        ; e = rarity class 1-4
+    farcall PCRollBossClassFar       ; e = class 1-4 or BOSS_CLASS_UBER (matches cave/forest)
     farcall Random_Boss_Selection_Far ; -> d = species, e = form
     call PFacRestoreSRAMBank
     ld a, d

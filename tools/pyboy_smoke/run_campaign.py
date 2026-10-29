@@ -239,6 +239,13 @@ def validate_retained_evidence(result):
     summary = Path(result["summary"]) if result.get("summary") else None
     if summary is None or not summary.is_file() or digest(summary) != result.get("summary_sha256"):
         return "completed case summary missing or changed"
+    try:
+        from detector_health import assess
+        health = assess(result['case'], normalize_summary(result['case'], json.loads(summary.read_text())))
+        if any(row['status'] in ('error', 'incomplete') for row in health):
+            return 'retained detector requirements failed'
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+        return f'invalid retained detector evidence: {error}'
     return None
 
 
@@ -301,6 +308,9 @@ def validate_config(config):
         raise ValueError("campaign has no cases")
     ids = set()
     for case in cases:
+        from detector_health import validate_requirements, validate_schema
+        validate_requirements(case.get('required_detectors', {}))
+        validate_schema(case.get('required_detector_schema'))
         name = case["id"]
         if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}", name) or name in ids:
             raise ValueError(f"unsafe or duplicate case id: {name}")
@@ -420,7 +430,18 @@ def execute_case(case, directory, budget):
         exposure = {}
         missing = {key: {"required": value, "achieved": None, "status": "unknown"}
                    for key, value in case.get("required_exposure", {}).items()}
+    health = []
+    if summary is not None:
+        try:
+            from detector_health import assess
+            health = assess(case, summary)
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+            detail, summary = f'invalid detector evidence: {error}', None
     verdict = classify(code, summary, execution)
+    if any(row['status'] == 'error' for row in health):
+        verdict = 'harness_error'
+    elif any(row['status'] == 'incomplete' for row in health) and verdict == 'no_issue_detected':
+        verdict = 'incomplete'
     if missing and verdict == "no_issue_detected":
         verdict = "incomplete"
     peak_rss = None
@@ -430,6 +451,7 @@ def execute_case(case, directory, budget):
             peak_rss = int(lines[-1])
     result = {"schema_version": 1, "case": case, "execution": execution,
               "verdict": verdict, "exit": code, "achieved_exposure": exposure, "missing_exposure": missing,
+              "detector_health": health,
               "worker_tree_peak_rss_kib": peak_rss,
               "seconds": round(time.monotonic() - started, 3), "detail": detail,
               "attempt": str(attempt), "command": command,
@@ -438,6 +460,7 @@ def execute_case(case, directory, budget):
               "summary_sha256": digest(summaries[0]) if len(summaries) == 1 else None,
               "evidence_dependencies": dependencies,
               "expected_control_matched": control_matches(case, summary, execution, code, missing)
+                  and not any(row['status'] in ('error', 'incomplete') for row in health)
                   if case.get("expected_verdict") == "contract_violation" else None,
               "artifact_bytes": sum(p.stat().st_size for p in attempt.rglob("*") if p.is_file())}
     atomic_json(directory / "result.json", result)
