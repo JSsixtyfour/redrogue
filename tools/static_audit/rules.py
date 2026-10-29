@@ -302,6 +302,16 @@ def rule_b2(p: Program):
         while not ok and j < len(items) and n < 30:
             x = items[j]
             if x.kind == "label" and x.is_global:
+                # An immediately adjacent, same-section fixed-bank trampoline
+                # can consume HL by fallthrough (Conversion's CallBankF).
+                # Limit this exception to the exact two-instruction shape;
+                # other labels, intervening instructions and wrong banks fail.
+                tail = items[j + 1:j + 3]
+                ok = (reg == "hl" and n == 0 and x.section == it.section
+                      and tramp.get(x.label) == tb and len(tail) == 2
+                      and all(row.kind == "instr" for row in tail)
+                      and tail[0].op == "ld" and tail[0].args[0].lower() == "b"
+                      and tail[1].op == "jp" and jump_target(tail[1]) == "Bankswitch")
                 break
             if x.kind == "instr":
                 n += 1

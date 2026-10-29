@@ -154,6 +154,35 @@ class Rules(unittest.TestCase):
             	ret
             """, [("A", "ROMX", 2), ("B", "ROMX", 3), ("H", "ROM0", 0)], "Bad", "Good")
 
+    def test_b2_adjacent_fallthrough_requires_matching_minimal_trampoline(self):
+        source = '''
+            SECTION "A", ROMX
+            Probe::
+                ld hl, Target
+                {intervening}
+            Trampoline::
+                ld b, BANK({bank_target})
+                jp Bankswitch
+            SECTION "B", ROMX
+            Target::
+                ret
+            SECTION "H", ROM0
+            Bankswitch::
+                ret
+        '''
+        sections = [("A", "ROMX", 4), ("B", "ROMX", 15), ("H", "ROM0", 0)]
+        for intervening, bank_target, flagged in (
+            ("", "Target", False),
+            ("", "Probe", True),
+            ("ld a, [hl]", "Target", True),
+            ("ret", "Target", True),
+            ('SECTION "Other", ROMX', "Target", True),
+        ):
+            with self.subTest(intervening=intervening, bank_target=bank_target):
+                found = run_case(source.format(intervening=intervening, bank_target=bank_target),
+                                 sections + [("Other", "ROMX", 4)], ["B2"])
+                self.assertEqual(any(row["label"] == "Probe" for row in found), flagged, found)
+
     def test_b3_home_to_romx(self):
         self.check("B3", """
             SECTION "H", ROM0
