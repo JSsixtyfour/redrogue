@@ -5,6 +5,12 @@
 _RedRoguePlayCry::
 ; a = species (internal id), b = pitch offset, c = length offset (0, 0 for a plain cry).
 ; The offsets are the Red move-sound table's pitch/tempo modifier bytes (only GROWL today).
+; An id outside 1-NUM_POKEMON_INDEXES plays nothing, as pokecrystal's GetCryIndex does,
+; instead of reading past the table (the old engine's CryData lookup had no such guard).
+	and a
+	ret z
+	cp NUM_POKEMON_INDEXES + 1
+	ret nc
 	dec a ; PokemonCries is in internal species order
 	ld e, a
 	ld d, 0

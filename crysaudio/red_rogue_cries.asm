@@ -266,4 +266,4 @@ PokemonCries::
 	mon_cry CRY_VOLTORB,        80,  336 ; Electivire (Red Rogue cry, converted)
 	mon_cry CRY_CHARMANDER,    160,  208 ; Magmortar (Red Rogue cry, converted)
 	mon_cry CRY_WEEPINBELL,    144,  352 ; Porygon-Z (Red Rogue cry, converted)
-	assert_table_length 253
+	assert_table_length NUM_POKEMON_INDEXES ; one row per internal species id: a new species needs a cry

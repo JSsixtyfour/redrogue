@@ -963,6 +963,31 @@ Opt60FPSHook:
 	predef SetCPUSpeed
 	ret
 
+; The Crystal audio engine applies the AUDIO mode's left/right masks when a channel starts
+; (GetLRTracks), so a change would otherwise wait for the next song. pokecrystal's
+; Options_Sound calls RestartMapMusic for this; this menu also runs on the title screen, so
+; restart whatever song is playing instead. A cry or SFX holds channels 5-8 and leaves the
+; music channels' song id alone. Measured 2026-10-28: a restarted song's NR51 matches the
+; pre-port engine in all four modes.
+OptAudioHook:
+; (crysaudio/audio_constants.asm is only included by the audio files, so the struct
+; offsets come from the WRAM labels.)
+	ld hl, wChannel1Flags1
+	ld de, wChannel2 - wChannel1
+	ld b, 4 ; music channels 1-4
+.findPlaying
+	bit 0, [hl] ; SOUND_CHANNEL_ON
+	jr nz, .restart
+	add hl, de
+	dec b
+	jr nz, .findPlaying
+	ret ; no song playing
+.restart
+	ld de, wChannel1MusicID - wChannel1Flags1
+	add hl, de
+	ld a, [hl]
+	jp PlayMusic
+
 ; ============================================================================
 ; Page sets and pages
 ;
@@ -1009,7 +1034,7 @@ OptionsRows:
 	optrow Opt60FPSLabel,        5, 16, wOptions2, 1 << BIT_60_FPS,            Opt60FPSOrder,       OptOnOffValues,       2, Opt60FPSHook
 	optrow OptBattleSpeedLabel,  6, 16, wOptions3, BATTLE_SPEED_MASK,          OptBattleSpeedOrder, OptBattleSpeedValues, 3, 0
 	optrow OptTextSpeedLabel,    7, 12, wOptions,  TEXT_DELAY_MASK,            OptTextSpeedOrder,   OptTextSpeedValues,   4, 0
-	optrow OptAudioLabel,        8, 10, wOptions2, SOUND_MASK2,                OptAudioOrder,       OptAudioValues,       4, 0
+	optrow OptAudioLabel,        8, 10, wOptions2, SOUND_MASK2,                OptAudioOrder,       OptAudioValues,       4, OptAudioHook
 	optrow OptDifficultyLabel,   9, 13, wOptions2, DIFFICULTY_MASK,            OptDifficultyOrder,  OptDifficultyValues,  5, 0
 	optrow OptBattleStyleLabel, 10, 14, wOptions,  1 << BIT_BATTLE_SHIFT,      OptBattleStyleOrder, OptBattleStyleValues, 2, 0
 	optrow OptIronmanLabel,     11, 16, wOptions3, 1 << BIT_IRONMAN,           OptIronmanOrder,     OptOnOffValues,       2, 0
