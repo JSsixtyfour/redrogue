@@ -112,7 +112,7 @@ AIResolveTier::
 	jr .store
 .noOverride
 ; round = min(wBattleCount / 10, AI_MAX_ROUND), by repeated subtraction.
-	ld a, [wBattleCount]
+	call GetRunProgress
 	ld b, 0
 .divideByTen
 	cp ROUND_BATTLES

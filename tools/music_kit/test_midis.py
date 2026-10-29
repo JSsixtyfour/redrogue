@@ -123,12 +123,45 @@ def daw_like(out):
     smf.write(os.path.join(out, "fl_like.mid"), [f1, f2, f3, f4])
 
 
+def kitswitch(path):
+    """kitswitch.mid: Ch4 alternates drum 1 (MIDI 0, kit 0) and drum 15 (MIDI 14,
+    kit 1) inside the looped section. Bars 1, 2 and 4 are identical, so pokemid
+    stores the repeated bar as a sound_call subroutine, the shape that breaks
+    if a subroutine is entered or left on the wrong drum kit. Tempo 120: a bar
+    is 2 s, the loop is 4 bars.  KITSWITCH_HITS drum hits per pass."""
+    t0 = smf.Track()
+    t0.tempo(0, 120)
+    ch4 = smf.Track("Ch4")
+    ch4.text(0, "begin")
+    for bar in range(4):
+        for beat in range(4):
+            ch4.note(bar * BAR + beat * Q, Q // 4, 0 if (beat % 2 == 0) != (bar == 2) else 14, 100)
+    ch4.text(4 * BAR, "end")
+    smf.write(path, [t0, ch4])
+
+
+KITSWITCH_HITS = 16
+
+
+def wave5(path):
+    """wave5.mid: Ch3 named "Ch3 Wave 6" (kit v1 clamped waves above 4)."""
+    t0 = smf.Track()
+    t0.tempo(0, 120)
+    ch3 = smf.Track("Ch3 Wave 6")
+    ch3.text(0, "begin")
+    ch3.note(0, Q, 57, 100)
+    ch3.text(2 * Q, "end")
+    smf.write(path, [t0, ch3])
+
+
 def write_all(out):
     os.makedirs(out, exist_ok=True)
     drumtest(os.path.join(out, "drumtest.mid"))
     pitchtest(os.path.join(out, "pitchtest.mid"))
     template(os.path.join(out, "Template.mid"))
     daw_like(out)
+    kitswitch(os.path.join(out, "kitswitch.mid"))
+    wave5(os.path.join(out, "wave5.mid"))
 
 
 def main():

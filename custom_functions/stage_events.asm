@@ -246,6 +246,8 @@ StageEventLimitTrainerSight::
 	cp SPRITE_JESSIE
 	jr z, .adjacent
 	cp SPRITE_JAMES
+	jr z, .adjacent
+	cp SPRITE_OFFICER_JENNY
 	ret nz
 .adjacent
 	ld a, 16
@@ -258,7 +260,7 @@ StageEventLimitTrainerSight::
 ; farcalling it for three instructions.
 ; Clobbers a/b.
 StageEventRoundTier:
-	ld a, [wBattleCount]
+	call GetRunProgress
 	cp LAST_ROUND_BATTLECOUNT + 1
 	jr c, .noClamp
 	ld a, LAST_ROUND_BATTLECOUNT

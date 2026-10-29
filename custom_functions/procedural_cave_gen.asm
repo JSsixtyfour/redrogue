@@ -1355,7 +1355,7 @@ PCFinalizeCave::
 
 	; Fresh entry only (slow path): set the wild-battle budget for this visit.
 	; cap = min(WILD_BUDGET_MAX, WILD_BUDGET_BASE + wBattleCount/WILD_BUDGET_DIVISOR).
-	ld a, [wBattleCount]
+	call GetRunProgress
 	ld b, 0
 .budgetDivLoop
 	cp WILD_BUDGET_DIVISOR
@@ -1496,7 +1496,7 @@ PCFinalizeCaveFast:
 ; (which caps reward pokemon at 50 - boss should be notably stronger).
 ; ============================================================
 PCGetBossLevel::
-	ld a, [wBattleCount]
+	call GetRunProgress
 	cp LAST_ROUND_BATTLECOUNT + 1
 	jr c, .noClamp
 	ld a, LAST_ROUND_BATTLECOUNT
@@ -1518,7 +1518,8 @@ PCGetBossLevel::
 ; The LEVELS setting applies to wild areas too (2026-10-09): without it the boss
 ; stayed at full level while the easier settings' players ran lower, so on VERY
 ; EASY it sat ~7 levels over the starter, the hardest fight of its round.
-	farcall RogueApplyDifficulty ; preserves bc/de/hl
+; Endless growth first, through the same wild-area funnel.
+	farcall RogueApplyWildLevelModifiers ; preserves bc/de/hl
 	ret
 
 ; Entrance table for randomized entrance experiment.
@@ -1545,7 +1546,7 @@ INCLUDE "data/balance/wild_boss_levels.asm"
 ; ============================================================
 PCRollMonClass::
 	; round = clamp(wBattleCount, 0, 89) / 10  → 0-8
-	ld a, [wBattleCount]
+	call GetRunProgress
 	cp LAST_ROUND_BATTLECOUNT + 1
 	jr c, .noClamp
 	ld a, LAST_ROUND_BATTLECOUNT
@@ -1603,7 +1604,7 @@ PCRollMonClassFar::
 ; in engine/battle/wild_encounters.asm.
 ; ============================================================
 PCGetWildLevel:
-	ld a, [wBattleCount]
+	call GetRunProgress
 	cp LAST_ROUND_BATTLECOUNT + 1
 	jr c, .noClamp
 	ld a, LAST_ROUND_BATTLECOUNT
@@ -1627,7 +1628,7 @@ PCGetWildLevel:
 	pop bc              ; b = base level
 	add a, b            ; base + rand(3)
 	ld [wCurEnemyLevel], a
-	farcall RogueApplyDifficulty ; the LEVELS setting, as on the boss above
+	farcall RogueApplyWildLevelModifiers ; Endless growth + LEVELS, as on the boss above
 	ret
 
 INCLUDE "data/balance/wild_levels.asm"

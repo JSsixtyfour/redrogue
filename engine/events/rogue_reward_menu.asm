@@ -348,7 +348,7 @@ GetRewardMonLevel::
 	jr z, .lobbyCaller
 
 .stageCaller
-	ld a, [wBattleCount]
+	call GetRunProgress
 	cp LAST_ROUND_BATTLECOUNT + 1
 	jr c, .noClampRoundStage
 	ld a, LAST_ROUND_BATTLECOUNT
@@ -362,19 +362,7 @@ GetRewardMonLevel::
 	jr .getRoundIndexStage
 
 .lobbyCaller
-	ld a, [wBattleCount]
-	cp LAST_ROUND_BATTLECOUNT + 1
-	jr c, .noClampRound
-	ld a, LAST_ROUND_BATTLECOUNT                ; clamp to round 9's settings, same as GetRandRoster
-.noClampRound
-	ld b, 0                 ; b = round index (0-8)
-.getRoundIndex
-	cp ROUND_BATTLES
-	jr c, .gotRoundIndex
-	sub ROUND_BATTLES
-	inc b
-	jr .getRoundIndex
-.gotRoundIndex
+	call GetRunRoundStep    ; b = round index (0-8), a = step, same split as GetRandRoster
 	; a = remainder within the round (0-9): 0-4 means a gym was just cleared
 	; (or no battles yet) and a route is next; 5-9 means a route was just
 	; cleared and the gym is next.
@@ -413,11 +401,22 @@ GetRewardMonLevel::
 	jr nc, .atLeastFive
 	ld a, REWARD_LEVEL_FLOOR ; round 1 gives 3-6, too low next to the starter
 .atLeastFive
+	; Endless lifts the cap (user, 2026-10-29: rewards keep growing to 100);
+	; the bonus below and its 100 clamp bound the level instead.
+	ld b, a
+	ld a, [wEndlessDepth]
+	and a
+	ld a, b
+	jr nz, .levelOk
 	cp REWARD_LEVEL_CAP + 1
 	jr c, .levelOk
 	ld a, REWARD_LEVEL_CAP
 .levelOk
 	ld [wCurEnemyLevel], a
+	; Endless: the round's level bonus, so rewards (and both daycares' growth
+	; targets) keep pace with the trainers. No-op at depth 0.
+	farcall EndlessRewardLevelBonus
+	ld a, [wCurEnemyLevel]          ; callers read the level from a too
 	ret
 .flatStart
 	ld a, STARTER_LEVEL

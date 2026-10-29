@@ -89,6 +89,17 @@ GetRandMon:
 	jr c, .noRarityBump    ; already masterball (b=1), can't go rarer
 	dec b
 .noRarityBump
+	; Endless: rarity keeps climbing past the last authored row (the slot floors
+	; in EndlessRosterClass). Nothing at depth 0.
+	ld a, [wEndlessDepth]
+	and a
+	jr z, .noEndlessClass
+	push de
+	ld e, b
+	farcall EndlessRosterClass    ; e = class, raised; keeps d
+	ld b, e
+	pop de
+.noEndlessClass
     ; b is INVERTED here relative to every other caller (4=pokeball .. 1=
     ; masterball), so map it onto the shared tier ids: tier = 4 - b.
     push de                       ; the roller uses de; callers expect it preserved
@@ -134,19 +145,7 @@ GetRandRoster:
 	push bc
 	push de
     push hl
-    ld a, [wBattleCount]	; load how many battles the player has won
-    cp LAST_ROUND_BATTLECOUNT + 1
-    jr c, .noClampRound
-    ld a, LAST_ROUND_BATTLECOUNT                ; clamp to round 9's settings (Victory Road/Elite Four)
-.noClampRound
-    ld b, 0                 ; b = round index (0-8)
-.getRoundIndex
-    cp ROUND_BATTLES
-    jr c, .gotRoundIndex
-    sub ROUND_BATTLES
-    inc b
-    jr .getRoundIndex
-.gotRoundIndex
+    call GetRunRoundStep    ; b = round index (0-8, held at 8 in Endless)
     ; a = step within the round (constants/round_constants.asm).
     ; A Money Match fights as route step MONEY_MATCH_STEP of this round,
     ; whatever the count's own step is; the PokeManiac (a subroom resident on
@@ -402,12 +401,32 @@ RosterSpeciesAlreadyUsed:
 
 INCLUDE "data/balance/trainer_levels.asm"
 
-; Applies all active trainer-level modifiers after a base level is written.
+; Applies all active trainer-level modifiers after a base level is written, in
+; this order: Endless growth, the witch's +10%, the LEVELS setting, then the
+; 1..100 clamp (inside RogueApplyDifficulty). Endless goes first so both
+; percentages scale the whole level, as they do in the original circuit.
 ; No register arguments. Clobbers a and the Divide/Multiply HRAM scratch;
 ; preserves bc, de, and hl for callers that are walking trainer data.
 RogueApplyTrainerLevelModifiers::
+	call RogueApplyEndlessLevelBonus
 	call RogueApplyWitchLevelBonus
-	call RogueApplyDifficulty
+	jp RogueApplyDifficulty
+
+; The wild-area version: no witch level bonus there (never was), the same
+; Endless growth and LEVELS setting. Same register contract.
+RogueApplyWildLevelModifiers::
+	call RogueApplyEndlessLevelBonus
+	jp RogueApplyDifficulty
+
+; wCurEnemyLevel += the Endless level bonus for the run's progress
+; (EndlessLevelBonus, custom_functions/endless.asm; 0 in the original circuit).
+; Preserves bc/de/hl.
+RogueApplyEndlessLevelBonus:
+	push bc
+	push hl
+	farcall EndlessLevelBonus      ; keeps de
+	pop hl
+	pop bc
 	ret
 
 ; Challenge 5 (INCREASED_LEVELS): add ~10% of level, minimum +1.
@@ -448,13 +467,16 @@ RogueApplyWitchLevelBonus::
 	ret
 
 ; Adjusts wCurEnemyLevel by the player's LEVELS setting (wOptions2 bits 0-2):
-; level +/- level*|pct|//100 with pct = DifficultyLevelPct[setting] (signed).
+; level +/- level*|pct|//100 with pct = DifficultyLevelPct[setting] (signed),
+; then clamps it to 1..MAX_LEVEL on every path. The 0% baseline used to return
+; unclamped, which was safe only while no base reached 100; Endless growth and
+; the witch bonus (saturating at 255) can now push one past it.
 ; No register arguments.  Clobbers a and the Multiply/Divide HRAM scratch.
 RogueApplyDifficulty::
 	ld a, [wOptions2]
 	and DIFFICULTY_MASK
 	cp NUM_AI_DIFFICULTY_ROWS
-	ret nc                       ; corrupt option byte: leave the level untouched
+	jr nc, .cap                  ; corrupt option byte: leave the level, still capped
 	push bc
 	push de
 	push hl
@@ -515,17 +537,24 @@ RogueApplyDifficulty::
 	pop hl
 	pop de
 	pop bc
+.cap
+	ld a, [wCurEnemyLevel]
+	cp MAX_LEVEL + 1
+	ret c
+	ld a, MAX_LEVEL
+	ld [wCurEnemyLevel], a
 	ret
 
-; RogueApplyDifficulty for a level that is not in wCurEnemyLevel, for callers in
-; another bank. INPUT/OUTPUT: e = level (e survives a farcall both ways; a does
-; not). wCurEnemyLevel is saved and restored around the call.
+; RogueApplyWildLevelModifiers for a level that is not in wCurEnemyLevel, for
+; callers in another bank (the Facility's fake-ball wilds). INPUT/OUTPUT: e =
+; level (e survives a farcall both ways; a does not). wCurEnemyLevel is saved
+; and restored around the call.
 RogueApplyDifficultyE::
 	ld a, [wCurEnemyLevel]
 	push af
 	ld a, e
 	ld [wCurEnemyLevel], a
-	call RogueApplyDifficulty
+	call RogueApplyWildLevelModifiers
 	ld a, [wCurEnemyLevel]
 	ld e, a
 	pop af
@@ -906,7 +935,15 @@ PreventARegOverflow:
 InitGymBattle::
     ld a, d
 	ld [wCurOpponent], a
-	ld a, [wBattleCount]
+	; Run progress, not the circuit-local count: an Endless leader fields its
+	; strongest (round 8) teams, levelled up by the funnel, never round 1's.
+	; Clamped like every other round reader: past round 8 there are no teams,
+	; and the unclamped divide used to index past them.
+	call GetRunProgress
+	cp LAST_ROUND_BATTLECOUNT + 1
+	jr c, .roundInRange
+	ld a, LAST_ROUND_BATTLECOUNT
+.roundInRange
     ldh [hDividend], a          ; place battle count in dividend
     ld   a, ROUND_BATTLES
     ldh [hDivisor], a           ; leader is fought at count = round * ROUND_BATTLES

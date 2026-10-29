@@ -35,10 +35,23 @@ DEF NUM_E4_BATTLES       EQU 4
 ; Round-indexed tables have NUM_ROGUE_ROUNDS + 1 rows (the last is Victory
 ; Road / Elite Four); readers clamp the count to this before dividing.
 DEF LAST_ROUND_BATTLECOUNT EQU (NUM_ROGUE_ROUNDS + 1) * ROUND_BATTLES - 1
+DEF LAST_ROUND EQU LAST_ROUND_BATTLECOUNT / ROUND_BATTLES ; the last row's index
 ; The Elite Four are fought at counts E4_FIRST_BATTLECOUNT .. +NUM_E4_BATTLES-1;
 ; CHAMPION_BATTLECOUNT is the count once all four are beaten.
 DEF E4_FIRST_BATTLECOUNT EQU NUM_ROGUE_ROUNDS * ROUND_BATTLES + 1 + VICTORY_ROAD_BATTLES
 DEF CHAMPION_BATTLECOUNT EQU E4_FIRST_BATTLECOUNT + NUM_E4_BATTLES
 
 	ASSERT CHAMPION_BATTLECOUNT < 256, "wBattleCount is one byte"
+
+; Endless mode: run progress advances this much per completed circuit
+; (GetRunProgress, home/run_progress.asm). A multiple of ROUND_BATTLES, so the
+; step within a round reads the same from progress as from the raw count.
+DEF ENDLESS_CIRCUIT_SPAN EQU LAST_ROUND_BATTLECOUNT + 1
+	ASSERT ENDLESS_CIRCUIT_SPAN % ROUND_BATTLES == 0
+; The first round past the authored tables (rows 0-8, LAST_ROUND_BATTLECOUNT):
+; Endless circuit 1's first route is progress 1 + ENDLESS_CIRCUIT_SPAN.
+DEF ENDLESS_FIRST_ROUND EQU ENDLESS_CIRCUIT_SPAN / ROUND_BATTLES
+	ASSERT ENDLESS_FIRST_ROUND == LAST_ROUND_BATTLECOUNT / ROUND_BATTLES + 1
+; Rounds ENDLESS_FIRST_ROUND .. 255 / ROUND_BATTLES: one level-bonus row each.
+DEF NUM_ENDLESS_LEVEL_ROWS EQU 255 / ROUND_BATTLES + 1 - ENDLESS_FIRST_ROUND
 	ASSERT LAST_ROUND_BATTLECOUNT < 256, "wBattleCount is one byte"

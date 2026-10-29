@@ -44,6 +44,9 @@ def case_parser(case):
 
 def normalize_summary(case, summary):
     if case.get("scenario") == "sram":
+        matched_requested = case_parser(case).parse_args(case.get("args", [])).matched_controls
+        if matched_requested or summary.get("comparison_mode"):
+            return normalize_matched_sram(case, summary)
         expected = summary["expected_fills"]
         records = summary["records"]
         if not isinstance(expected, list) or not isinstance(records, list) or not expected:
@@ -68,6 +71,72 @@ def normalize_summary(case, summary):
                                            and row["fill"] != "zero" for row in actual) if compared else 0})
         return {"runs": rows}
     return summary
+
+
+def normalize_matched_sram(case, summary):
+    from sram_fuzz import MATCHED_MODE, evaluate_matched_pair
+    from run_autoplay import parse_seeds
+    args = case_parser(case).parse_args(case.get("args", []))
+    if not args.matched_controls or summary.get("schema_version") != 2 or summary.get("comparison_mode") != MATCHED_MODE:
+        raise ValueError("matched-control schema/configuration mismatch")
+    seeds = parse_seeds(args.seeds)
+    fills = ["ff"] + [f"random{k}" for k in range(1, args.fills + 1)]
+    wanted_pairs = {(seed, fill) for seed in seeds for fill in fills}
+    pairs, results = summary["expected_comparisons"], summary["initialization_comparisons"]
+    tasks, records = summary["expected_fills"], summary["records"]
+    if any(not isinstance(value, list) for value in (pairs, results, tasks, records)) or summary["seeds"] != seeds:
+        raise ValueError("invalid matched-control lists/seeds")
+    if any(type(seed) is not int for seed in summary["seeds"]) or any(type(row["seed"]) is not int for row in pairs + results):
+        raise ValueError("invalid matched comparison seed type")
+    if any(type(row["seed"]) is not int or type(row["repetition"]) is not int for row in tasks + records):
+        raise ValueError("invalid seed/repetition type")
+    key = lambda row: (row["seed"], row["fill"])
+    identity = lambda row: (row["seed"], row["fill"], row["repetition"])
+    if len(pairs) != len(wanted_pairs) or {key(pair) for pair in pairs} != wanted_pairs:
+        raise ValueError("configured matched comparisons missing or duplicated")
+    wanted_roles = {(seed, "zero", repetition): "baseline" for seed in seeds for repetition in (0, 1)}
+    for pair in pairs:
+        if pair["control_fill"] != f"control_{pair['fill']}":
+            raise ValueError("unexpected control identity")
+        for name, role in ((pair["fill"], "candidate"), (pair["control_fill"], "matched_control")):
+            for repetition in (0, 1):
+                wanted_roles[(pair["seed"], name, repetition)] = role
+    if len(tasks) != len(wanted_roles) or {identity(task) for task in tasks} != set(wanted_roles):
+        raise ValueError("expected matched fill set does not match configuration")
+    if any(task["role"] != wanted_roles[identity(task)] for task in tasks):
+        raise ValueError("invalid expected matched roles")
+    expected = {identity(task): task for task in tasks}
+    if len({identity(row) for row in records}) != len(records):
+        raise ValueError("duplicated matched worker record")
+    for row in records:
+        task = expected.get(identity(row))
+        if task is None or any(row[field] != task[field] for field in ("role", "directory", "input_sha256")):
+            raise ValueError("worker record differs from expected matched task")
+    if len({key(row) for row in results}) != len(results) or any(key(row) not in wanted_pairs for row in results):
+        raise ValueError("unexpected or duplicated initialization comparison")
+    for row in results:
+        if row["status"] not in ("equivalent", "divergent", "incomplete", "invalid_evidence", "confounded", "unstable"):
+            raise ValueError("unknown matched comparison status")
+        if row["status"] in ("equivalent", "divergent"):
+            pair = next(pair for pair in pairs if key(pair) == key(row))
+            recomputed = evaluate_matched_pair(pair, records)
+            if recomputed["status"] != row["status"] or recomputed.get("event_index") != row.get("event_index"):
+                raise ValueError("matched comparison disagrees with retained evidence")
+    rows = []
+    for seed in seeds:
+        actual = [row for row in records if row["seed"] == seed]
+        compared = [row for row in results if row["seed"] == seed]
+        complete = (len(actual) == sum(task["seed"] == seed for task in tasks)
+                    and all(row["execution"] == "completed" for row in actual)
+                    and len(compared) == len(fills) and summary.get("comparison_errors") == []
+                    and all(row["status"] in ("equivalent", "divergent") for row in compared))
+        findings = [row for row in compared if row["status"] == "divergent"]
+        findings += [row for row in summary.get("divergences", []) if row["seed"] == seed and row not in findings]
+        findings += [finding for row in actual for finding in row.get("anomalies", [])]
+        rows.append({"seed": seed, "outcome": "error" if any(row["execution"] == "error" for row in actual)
+                     else "completed" if complete else "unreached", "anomalies": findings,
+                     "sram_fills": sum(row["status"] == "equivalent" for row in compared) if complete else 0})
+    return {"runs": rows}
 
 
 def achieved_exposure(summary):

@@ -138,8 +138,9 @@ music_kit: pokered.gbc
 	python3 tools/music_kit/make_music_kit.py
 
 # Import the composer's finished song: make import_music MID=song.mid NAME=SongName
+# (or ASM=song.asm for a native Crystal-format song)
 import_music: pokered.gbc pokeblue.gbc pokeblue_debug.gbc
-	python3 tools/music_kit/import_music.py '$(MID)' '$(NAME)'
+	python3 tools/music_kit/import_music.py '$(or $(MID),$(ASM))' '$(NAME)'
 
 integration: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_integration.py

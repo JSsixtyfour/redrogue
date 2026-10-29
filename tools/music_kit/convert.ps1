@@ -22,7 +22,8 @@ param(
 	[switch]$NoBuild,
 	[switch]$NoLaunch,
 	[switch]$SelfTest,
-	[string]$Pokemid
+	[string]$Pokemid,
+	[string]$EngineId
 )
 
 $ErrorActionPreference = 'Stop'
@@ -171,6 +172,10 @@ function Test-Midi([byte[]]$d) {
 $kit = $null
 $kitJson = Join-Path $Engine 'kit.json'
 if (Test-Path -LiteralPath $kitJson) { $kit = Get-Content -LiteralPath $kitJson -Raw | ConvertFrom-Json }
+# Which engine this kit was built for (kit.json when shipped, -EngineId from the dev importer).
+$EngineName = if ($kit -and $kit.engine) { [string]$kit.engine } elseif ($EngineId) { $EngineId } else { 'unknown' }
+$SchemaName = if ($kit -and $kit.kitSchema) { [string]$kit.kitSchema } else { 'dev' }
+Say "Kit schema $SchemaName, engine: $EngineName" 'DarkGray'
 
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
 if (Test-Path -LiteralPath $ErrLog) { Remove-Item -LiteralPath $ErrLog -Force }
@@ -368,6 +373,7 @@ function ConvertMidi {
 	$present = @($order | Where-Object { $blocks.Contains($_) })
 	$text = New-Object System.Collections.Generic.List[string]
 	$text.Add("; Converted from $([IO.Path]::GetFileName($Mid)) by the Red Rogue music test kit (pokemid v0.9, Crystal engine).")
+	$text.Add("; kit-engine: $EngineName")
 	$text.Add("${Label}::")
 	$text.Add("`tchannel_count $($present.Count)")
 	foreach ($ch in $present) { $text.Add("`tchannel $($ch.Substring(2)), ${Label}_${ch}") }
@@ -383,13 +389,113 @@ function ConvertMidi {
 	return $songText
 }
 
+# Native mode: a hand-written (or Crystal Tracker) .asm song in the engine's own
+# format. No MIDI steps. Validate, then rename only the global labels the file
+# defines, as whole words, so two songs never collide. Plain-English failures.
+function ConvertAsm {
+	if (-not (Test-Path -LiteralPath $Mid -PathType Leaf)) { Fail "Can't find the file: $Mid" }
+	if ($Label -notmatch '^Music_[A-Za-z0-9]+$') { Fail "Bad -Label '$Label' (expected Music_SomeName)." }
+	Say "Converting: $([IO.Path]::GetFileName($Mid)) (native song file)" 'Cyan'
+
+	# The macro list comes from the engine files, never hardcoded: staged src in
+	# the kit, the repo's crysaudio/ in a dev checkout.
+	$macroFile = Join-Path $Src 'crysaudio\macros.asm'
+	if (-not (Test-Path -LiteralPath $macroFile)) { $macroFile = Join-Path (Split-Path (Split-Path $Engine)) 'crysaudio\macros.asm' }
+	if (-not (Test-Path -LiteralPath $macroFile)) { Fail 'Can''t find the engine''s macro list. Ask the dev team for a fresh kit.' }
+	$macros = @{}
+	foreach ($l in (Get-Content -LiteralPath $macroFile)) {
+		if ($l -match '^\s*MACRO\s+(\w+)') { $macros[$Matches[1].ToLower()] = 1 }
+		elseif ($l -match '^\s*DEF\s+(\w+)\s+EQUS') { $macros[$Matches[1].ToLower()] = 1 }
+	}
+
+	$raw = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $Mid).ProviderPath)
+	$src = @($raw -split "`r?`n")
+	$globals = [ordered]@{}   # every global label the file defines
+	$locals = @{}
+	$cmds = New-Object System.Collections.Generic.List[object]   # @{ n; cmd; args }
+	for ($i = 0; $i -lt $src.Count; $i++) {
+		$code = ($src[$i] -replace ';.*$', '').TrimEnd()
+		$n = $i + 1
+		if ($code -eq '') { continue }
+		if ($code -match '^([A-Za-z_]\w*)(::?)$') {
+			$globals[$Matches[1]] = 1
+			continue
+		}
+		if ($code -match '^\.(\w+)(::?)?$') { $locals[$Matches[1]] = 1; continue }
+		if ($code -match '^\s+([A-Za-z_]\w*)\s*(.*)$') {
+			$cmds.Add(@{ n = $n; cmd = $Matches[1]; args = $Matches[2].Trim() })
+			continue
+		}
+		Fail "Line ${n}: I can't read '$($src[$i].Trim())'. Commands must be indented, labels start in the first column and end in ::"
+	}
+
+	# (a) exactly one entry label, followed by channel_count
+	$entryNames = @()
+	for ($i = 0; $i -lt $src.Count; $i++) {
+		$code = ($src[$i] -replace ';.*$', '').TrimEnd()
+		if ($code -notmatch '^([A-Za-z_]\w*)::$') { continue }
+		$name = $Matches[1]
+		for ($j = $i + 1; $j -lt $src.Count; $j++) {
+			$next = ($src[$j] -replace ';.*$', '').Trim()
+			if ($next -eq '') { continue }
+			if ($next -match '^channel_count\b') { $entryNames += $name }
+			break
+		}
+	}
+	if ($entryNames.Count -ne 1) {
+		Fail "I need exactly one song label (ending in ::) followed by 'channel_count', and found $($entryNames.Count). Start from Template.asm."
+	}
+	$entry = $entryNames[0]
+
+	foreach ($c in $cmds) {
+		$name = $c.cmd.ToLower()
+		# (e) dependencies the kit does not carry
+		if ($name -eq 'load_wave') { Fail "Line $($c.n): load_wave needs a wave table that isn't in the kit. Use note_type's third number (waves 0-14) instead." }
+		if ($name -in @('include', 'incbin')) { Fail "Line $($c.n): $($c.cmd) isn't allowed: the kit only takes one self-contained file." }
+		# (d) must be an engine command
+		if (-not $macros.ContainsKey($name)) { Fail "Line $($c.n): '$($c.cmd)' isn't a command the music engine knows." }
+		$ops = @($c.args -split '\s*,\s*' | Where-Object { $_ -ne '' })
+		if ($name -eq 'channel') {
+			# (b)
+			if ($ops.Count -ne 2) { Fail "Line $($c.n): 'channel' needs a number and a label." }
+			if (-not $globals.Contains($ops[1])) { Fail "Line $($c.n): channel $($ops[0]) points at '$($ops[1])', which isn't defined in this file." }
+		} elseif ($name -in @('sound_call', 'sound_jump', 'sound_loop', 'sound_jump_if')) {
+			# (c)
+			if ($ops.Count -lt 1) { Fail "Line $($c.n): $($c.cmd) needs a target label." }
+			$target = $ops[$ops.Count - 1]
+			if ($target -match '^\.(\w+)$') {
+				if (-not $locals.ContainsKey($Matches[1])) { Fail "Line $($c.n): $($c.cmd) points at '$target', which isn't defined in this file." }
+			} elseif (-not $globals.Contains($target)) {
+				Fail "Line $($c.n): $($c.cmd) points at '$target', which isn't defined in this file. Songs are stored in one piece, so every call, jump and loop must stay inside the file."
+			}
+		}
+	}
+
+	# Rename: entry -> $Label; <entry>_X -> ${Label}_X; anything else -> ${Label}_name.
+	$map = @{}
+	foreach ($g in $globals.Keys) {
+		$map[$g] = if ($g -eq $entry) { $Label } elseif ($g.StartsWith($entry + '_')) { $Label + $g.Substring($entry.Length) } else { "${Label}_$g" }
+	}
+	$alt = (@($globals.Keys) | Sort-Object { $_.Length } -Descending | ForEach-Object { [regex]::Escape($_) }) -join '|'
+	$rx = New-Object System.Text.RegularExpressions.Regex ("(?<![\w.])(" + $alt + ")(?!\w)")
+	$text = New-Object System.Collections.Generic.List[string]
+	$text.Add("; Converted from $([IO.Path]::GetFileName($Mid)) by the Red Rogue music test kit (native song file).")
+	$text.Add("; kit-engine: $EngineName")
+	foreach ($l in $src) {
+		if ($l -match '^\s*;\s*kit-engine:') { continue }
+		$text.Add($rx.Replace($l, { param($m) $map[$m.Groups[1].Value] }))
+	}
+	while ($text[$text.Count - 1] -match '^\s*$') { $text.RemoveAt($text.Count - 1) }
+	return (($text -join "`n") + "`n")
+}
+
 if ($SelfTest) {
 	# Rebuild the untouched game: proves the kit's tools, objects and flags
 	# still produce the real ROM. make_music_kit.py byte-compares it.
 	$songText = $null
 	Say 'Self-test: building the game with its original title music.' 'Cyan'
 } else {
-	$songText = ConvertMidi
+	$songText = if ($Mid -and [IO.Path]::GetExtension($Mid) -ieq '.asm') { ConvertAsm } else { ConvertMidi }
 	if ($NoBuild) {
 		if (-not $OutAsm) { Fail '-NoBuild needs -OutAsm.' }
 		[IO.File]::WriteAllText($OutAsm, $songText)

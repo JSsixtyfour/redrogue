@@ -133,7 +133,7 @@ ENDC
 	bit BIT_ROGUE_GYM_NEXT, [hl]
 	ret nz
 	; gate: never on the first route
-	ld a, [wBattleCount]
+	call GetRunProgress
 	cp MINIBOSS_FIRST_BATTLECOUNT
 	ret c
 	; e: bit 0 miniboss needed, bit 1 wild needed, bit 2 mandatory,

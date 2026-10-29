@@ -2351,7 +2351,7 @@ PFPreloadForest::
     ; Set the forest's wild-battle budget for this run: WILD_BUDGET_BASE +
     ; wBattleCount/WILD_BUDGET_DIVISOR, capped at WILD_BUDGET_MAX (identical formula
     ; to cave's PCPreloadCave).
-    ld a, [wBattleCount]
+    call GetRunProgress
     ld b, 0
 .budgetDivLoop
     cp WILD_BUDGET_DIVISOR

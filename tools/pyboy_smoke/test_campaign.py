@@ -58,10 +58,13 @@ class CampaignTest(unittest.TestCase):
             directory = Path(tmp)
             image = directory / "input.sram"
             image.write_bytes(bytes(32768))
+            (directory / "pokeblue_debug.gbc").write_bytes(b"synthetic worker ROM identity")
+            (directory / "pokeblue_debug.sym").write_bytes(b"synthetic worker symbol identity")
             task = {"seed": 1, "fill": "zero", "repetition": 0, "directory": str(directory),
                     "input_sha256": campaign.digest(image)}
             results = queue.Queue()
             with patch.object(sram_fuzz.autoplay, "ARTIFACTS", directory), \
+                    patch.object(sram_fuzz.autoplay, "ROOT", directory), \
                     patch.object(sram_fuzz.autoplay, "play", side_effect=RuntimeError("injected boot failure")):
                 sram_fuzz.fill_worker(0, {"tasks": [task], "play": {}}, results)
             record = json.loads((directory / "record.json").read_text())

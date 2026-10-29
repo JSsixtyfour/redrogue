@@ -154,7 +154,7 @@ PCemGenerateMaps::
 
 	; set wild battle budget for the entire cemetery run
 	; min(WILD_BUDGET_MAX, WILD_BUDGET_BASE + wBattleCount/WILD_BUDGET_DIVISOR)
-	ld a, [wBattleCount]
+	call GetRunProgress
 	ld b, 0
 .cemBudgetDiv
 	cp WILD_BUDGET_DIVISOR

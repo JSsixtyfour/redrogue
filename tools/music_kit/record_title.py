@@ -1,7 +1,8 @@
 """Record title-screen audio out of a music-kit test ROM with PyBoy.
 
     python3 tools/music_kit/record_title.py drums <test.gbc> <test.map> <out_dir>
-    python3 tools/music_kit/record_title.py wav   <test.gbc> <test.map> <seconds> <out.wav>
+    python3 tools/music_kit/record_title.py wav   <test.gbc> <test.map> <seconds> <out.wav> [--stereo]
+    python3 tools/music_kit/record_title.py kitswitch <test.gbc> <test.map>
     python3 tools/music_kit/record_title.py pitch <test.gbc> <test.map>
 
 We hook HOME PlayMusic and start the clock when it's called with the
@@ -11,6 +12,10 @@ is anchored to the engine, not guessed from audio.
 drums: the ROM must be a kit build of test_midis.py's drumtest.mid (drum k
   one bar after drum k-1). Each slice starts at its first audible sample and
   ends after 60 ms of silence.
+kitswitch: the ROM must be a kit build of test_midis.py's kitswitch.mid; counts
+  the drum hits over two loop passes and compares the passes (proves the
+  drum kit is back at kit 0 at every loop and subroutine boundary).
+wav: mono (L+R) by default; --stereo writes the 2-channel recording.
 pitch: the ROM must be a kit build of pitchtest.mid; prints the measured
   frequency of each test note against what its MIDI number means.
 
@@ -68,8 +73,9 @@ def music_id(rom, syms, label):
     sys.exit("%s is not in the Music table" % label)
 
 
-def record(rom, mapfile, seconds, label="Music_KitPreview"):
-    """Return mono int16 samples (L+R) starting at the PlayMusic for `label`."""
+def record(rom, mapfile, seconds, label="Music_KitPreview", stereo=False):
+    """Return int16 samples starting at the PlayMusic for `label`: mono (L+R), or
+    an (n, 2) left/right array with stereo=True."""
     syms = map_symbols(mapfile)
     song = music_id(rom, syms, label)
     pm_bank, pm_addr = syms["PlayMusic"]
@@ -101,13 +107,14 @@ def record(rom, mapfile, seconds, label="Music_KitPreview"):
         got += len(buf)
     pyboy.stop(save=False)
     audio = np.concatenate(chunks).astype(np.int16)
-    return audio[:, 0] + audio[:, 1]
+    return audio if stereo else audio[:, 0] + audio[:, 1]
 
 
 def write_wav(path, mono):
-    pcm = np.clip(mono.astype(np.int32) * 128, -32768, 32767).astype("<i2")
+    # mono is L+R (two int8 channels summed); stereo keeps each side, so it scales by 256.
+    pcm = np.clip(mono.astype(np.int32) * (128 if mono.ndim == 1 else 256), -32768, 32767).astype("<i2")
     with wave.open(path, "wb") as w:
-        w.setnchannels(1)
+        w.setnchannels(1 if mono.ndim == 1 else 2)
         w.setsampwidth(2)
         w.setframerate(RATE)
         w.writeframes(pcm.tobytes())
@@ -156,6 +163,9 @@ def measure_hz(seg):
         lag += 1
     a, b, c = ac[lag - 1], ac[lag], ac[lag + 1]
     shift = 0.5 * (a - c) / (a - 2 * b + c) if (a - 2 * b + c) else 0.0
+    if not np.isfinite(shift) or abs(shift) >= 1 or lag + shift <= 0:
+        print("measure_hz: no usable autocorrelation peak (lag %d, shift %r)" % (lag, shift))
+        return None
     return RATE / (lag + shift)
 
 
@@ -175,6 +185,28 @@ def cmd_pitch(rom, mapfile):
         print("%5s  %4d  %11.2f  %11.2f  %+7.0f cents" % (ch, note, exp, hz or 0, cents))
 
 
+def cmd_kitswitch(rom, mapfile):
+    """kitswitch.mid: two loop passes must give 2 * KITSWITCH_HITS hits, and
+    pass 2 must sound like pass 1 hit for hit. A subroutine entered or left on
+    the wrong drum kit would drop or change hits."""
+    from test_midis import KITSWITCH_HITS
+    pass_s = 8.0  # 4 bars at 120 BPM
+    mono = record(rom, mapfile, 2 * pass_s - 0.2)  # the loop is 8.01 s: stop before pass 3's first hit
+    spans = sounding_spans(mono)
+    want = 2 * KITSWITCH_HITS
+    print("hit  start_s  length_s")
+    for k, (s, e) in enumerate(spans):
+        print("%3d  %7.3f  %8.3f" % (k, s / RATE, (e - s) / RATE))
+    if len(spans) != want:
+        sys.exit("kitswitch: expected %d hits over two passes, heard %d" % (want, len(spans)))
+    for k in range(KITSWITCH_HITS):
+        a, b = spans[k], spans[k + KITSWITCH_HITS]
+        la, lb = (a[1] - a[0]) / RATE, (b[1] - b[0]) / RATE
+        if abs(la - lb) > 0.06:
+            sys.exit("kitswitch: hit %d is %.3f s in pass 1 but %.3f s in pass 2" % (k, la, lb))
+    print("kitswitch: %d hits per pass, passes agree" % KITSWITCH_HITS)
+
+
 def main():
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     cmd = sys.argv[1]
@@ -182,7 +214,9 @@ def main():
         cmd_drums(*sys.argv[2:5])
     elif cmd == "wav":
         rom, mapfile, seconds, out = sys.argv[2:6]
-        write_wav(out, record(rom, mapfile, float(seconds)))
+        write_wav(out, record(rom, mapfile, float(seconds), stereo="--stereo" in sys.argv[6:]))
+    elif cmd == "kitswitch":
+        cmd_kitswitch(*sys.argv[2:4])
     elif cmd == "pitch":
         cmd_pitch(*sys.argv[2:4])
     else:

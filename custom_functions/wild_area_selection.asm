@@ -48,7 +48,7 @@ IF STAGE_EVENT_CHANCE < 256
 	ret nc                        ; no event on this wild area
 ENDC
 	lb bc, 1, STAGE_EVENT_MAX_ROLLABLE ; b = first type, c = number of types
-	ld a, [wBattleCount]
+	call GetRunProgress
 	cp 2 * ROUND_BATTLES           ; round 3 is the first eligible round
 	jr nc, .rollType
 	ASSERT STAGE_EVENT_JESSIE_JAMES == 1 && STAGE_EVENT_PSYCHIC == 2

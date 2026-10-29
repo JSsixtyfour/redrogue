@@ -17,6 +17,7 @@ the first mGBA download.
 """
 
 import datetime
+import hashlib
 import json
 import os
 import re
@@ -41,6 +42,9 @@ KIT_NAME = "RedRogueMusicTester"
 KIT = os.path.join(OUT, KIT_NAME)
 ENGINE = os.path.join(KIT, "_engine")
 WORK = os.path.join(OUT, "work")
+ENGINE_ID = "crysaudio pokered-crysaudio 9753183a"
+# Engine files whose exact bytes decide how a song sounds (kit.json "engineHashes").
+ENGINE_HASH_FILES = ("crysaudio/macros.asm", "crysaudio/wave_samples.asm", "crysaudio/drumkits.asm", "crysaudio/engine.asm")
 
 RGBDS_VERSION = open(os.path.join(REPO, ".rgbds-version")).read().strip()
 MGBA_VERSION = "0.10.5"
@@ -107,7 +111,10 @@ def find_file(root, name):
 
 def make_flags():
     """Exact pokered.gbc commands, as make would run them after audio.asm changed."""
-    text = run(["make", "-n", "-W", "audio.asm", "pokered.gbc"], cwd=REPO)
+    # A fresh top-level make: when called from `make import_music` the inherited
+    # MAKEFLAGS/MAKELEVEL make the dependency-file rules misbehave under -n.
+    env = {k: v for k, v in os.environ.items() if k not in ("MAKEFLAGS", "MAKELEVEL", "MFLAGS", "MAKEOVERRIDES")}
+    text = run(["make", "-n", "-W", "audio.asm", "pokered.gbc"], cwd=REPO, env=env)
     asm = link = fix = None
     for line in text.splitlines():
         words = shlex.split(line) if re.match(r"^(rgbasm|rgblink|rgbfix) ", line) else []
@@ -139,6 +146,15 @@ def make_flags():
 
 
 # ------------------------------------------------------------------ staging
+
+def sha256_file(path):
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+def engine_hashes():
+    return {rel: sha256_file(os.path.join(REPO, rel)) for rel in ENGINE_HASH_FILES}
+
 
 def stage(flags, prebuilt):
     shutil.rmtree(KIT, ignore_errors=True)
@@ -200,6 +216,56 @@ def convert(mid=None, *extra):
     return p.stdout
 
 
+def check_kit_boundaries(text):
+    """Ch4 drum kit invariant: at every label, call, loop, jump and return the
+    channel is on kit 0 (noise on, kit 0). Tracks toggle_noise lines."""
+    kit = None  # None = noise off, else the kit number
+    in_ch4 = False
+    for n, line in enumerate(text.splitlines(), 1):
+        code = line.split(";")[0].rstrip()
+        if re.match(r"^\S", code):
+            in_ch4 = code.endswith("_Ch4::")
+            kit = None
+            continue
+        if not in_ch4:
+            continue
+        m = re.match(r"^\s*toggle_noise(?:\s+(\d+))?$", code)
+        if m:
+            kit = int(m.group(1)) if m.group(1) is not None else None
+            continue
+        boundary = re.match(r"^\s*(sound_call|sound_loop|sound_jump|sound_ret)\b", code) or re.match(r"^\.\w+:", code)
+        if boundary and kit != 0:
+            sys.exit("kitswitch: Ch4 line %d (%s) is reached with the drum kit at %r, not 0:\n%s" % (n, code.strip(), kit, text))
+
+
+# (name, text, substring the plain-English failure must contain)
+NATIVE_REJECTIONS = [
+    ("two_entries", "A::\n\tchannel_count 1\n\tchannel 1, A_Ch1\nB::\n\tchannel_count 1\n\tchannel 1, A_Ch1\nA_Ch1::\n\tsound_ret\n",
+     "exactly one song label"),
+    ("missing_channel_target", "A::\n\tchannel_count 1\n\tchannel 1, Nowhere\n", "isn't defined in this file"),
+    ("outside_call", "A::\n\tchannel_count 1\n\tchannel 1, A_Ch1\nA_Ch1::\n\tsound_call Elsewhere\n\tsound_ret\n",
+     "must stay inside the file"),
+    ("unknown_command", "A::\n\tchannel_count 1\n\tchannel 1, A_Ch1\nA_Ch1::\n\tdb $12\n\tsound_ret\n", "isn't a command"),
+    ("load_wave", "A::\n\tchannel_count 1\n\tchannel 1, A_Ch1\nA_Ch1::\n\tload_wave Foo\n\tsound_ret\n", "load_wave"),
+    ("include", "A::\n\tchannel_count 1\n\tchannel 1, A_Ch1\nA_Ch1::\n\tINCLUDE \"x.asm\"\n", "isn't allowed"),
+]
+
+
+def check_native_rejections(out):
+    """Each bad native song must fail with its plain-English reason."""
+    for name, text, reason in NATIVE_REJECTIONS:
+        log("check: native %s is rejected" % name)
+        path = os.path.join(WORK, name + ".asm")
+        with open(path, "w", newline="\n") as f:
+            f.write(text)
+        cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+               winpath(os.path.join(ENGINE, "convert.ps1")), winpath(path), "-NoBuild", "-NoLaunch",
+               "-OutAsm", winpath(os.path.join(out, name + ".out.asm"))]
+        p = subprocess.run(cmd, text=True, capture_output=True)
+        if p.returncode == 0 or reason not in p.stdout:
+            sys.exit("native %s: expected a failure mentioning %r, got exit %d:\n%s%s" % (name, reason, p.returncode, p.stdout, p.stderr))
+
+
 def main():
     os.chdir(REPO)
     git = run(["git", "rev-parse", "--short", "HEAD"]).strip()
@@ -223,7 +289,8 @@ def main():
     stage(flags, prebuilt)
     kit = {
         "kitDate": date, "buildHash": git, "rgbds": RGBDS_VERSION, "pokemid": "0.9", "mgba": MGBA_VERSION,
-        "kitSchema": 2, "engine": "crysaudio pokered-crysaudio 9753183a",
+        "kitSchema": 2, "engine": ENGINE_ID,
+        "engineHashes": engine_hashes(), "romSha256": sha256_file(os.path.join(REPO, "pokered.gbc")),
         "importBudget": budget, "songIdRoom": id_room, "romSpace": space,
         "flags": flags,
     }
@@ -266,6 +333,36 @@ def main():
         for want in wants:
             if want not in text.replace("Music_KitPreview_", ""):
                 sys.exit("%s: expected %r in the converted song, got:\n%s" % (mid, want, text))
+        if mid == "musescore_like.mid" and ("channel_count 3" not in text or "Music_KitPreview_Ch3" in text):
+            sys.exit("%s has no Ch3, so the header should list 3 channels and no Ch3:\n%s" % (mid, text))
+
+    # 3c. Native Crystal .asm input: the shipped template must build.
+    log("check: Template.asm builds")
+    print(convert(os.path.join(KIT, "Template.asm")), end="")
+    check_native_rejections(out)
+
+    # 3d. The kit switch: a Ch4 that alternates kit-0 and kit-1 drums, with a
+    #     repeated bar stored as a subroutine. Static: the kit is 0 at every
+    #     boundary. Runtime: two loop passes give every hit, the same each time.
+    log("check: kitswitch.mid keeps the drum kit at every boundary")
+    asm = os.path.join(out, "kitswitch.asm")
+    convert(os.path.join(WORK, "kitswitch.mid"), "-NoBuild", "-OutAsm", winpath(asm))
+    text = open(asm).read()
+    check_kit_boundaries(text)
+    for want in ("toggle_noise 1", "toggle_noise 0", "sound_call"):
+        if want not in text:
+            sys.exit("kitswitch.mid: expected %r in the converted song, got:\n%s" % (want, text))
+    print(convert(os.path.join(WORK, "kitswitch.mid")), end="")
+    record_title.cmd_kitswitch(os.path.join(out, "test.gbc"), os.path.join(out, "test.map"))
+
+    # 3e. Waves above 4 reach the song, and the converter says so.
+    log("check: wave5.mid keeps wave 6")
+    asm = os.path.join(out, "wave5.asm")
+    said = convert(os.path.join(WORK, "wave5.mid"), "-NoBuild", "-OutAsm", winpath(asm))
+    if "note_type 12, 1, 6" not in open(asm).read():
+        sys.exit("wave5.mid: wave 6 was not kept:\n" + open(asm).read())
+    if "Ch3 uses wave 6" not in said:
+        sys.exit("wave5.mid: the converter didn't mention the new wave:\n" + said)
 
     # Leave the kit clean: no generated preview sources, empty output.
     for name in ("kit_audio.asm", "kit_music_pointers.asm", "kit_song.asm"):

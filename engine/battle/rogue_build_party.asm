@@ -3027,24 +3027,11 @@ PartyGenApplyExplicitMoves:
 ;
 ; OUTPUT: b = round index 0-8, a = step within the round 0-9
 ;
-; The clamp and the repeated subtraction are GetRandRoster's own, copied rather
-; than re-derived: the two have to agree about which battle is which, and
-; `Divide` would answer the same question at ten times the cost.
+; GetRunRoundStep is GetRandRoster's own split, shared rather than copied: the
+; two have to agree about which battle is which, Endless included.
 ; ===========================================================================
 RogueBattleRound:
-	ld a, [wBattleCount]
-	cp LAST_ROUND_BATTLECOUNT + 1
-	jr c, .noClamp
-	ld a, LAST_ROUND_BATTLECOUNT                       ; clamp to round 9 (Victory Road / Elite Four)
-.noClamp
-	ld b, 0
-.roundLoop
-	cp ROUND_BATTLES
-	jr c, .gotStep
-	sub ROUND_BATTLES
-	inc b
-	jr .roundLoop
-.gotStep
+	call GetRunRoundStep            ; b = round (held at 8 in Endless), a = step
 ; A Money Match fights as route step MONEY_MATCH_STEP of this round (Phase M),
 ; the PokeManiac as FINAL_ROUTE_STEP: the same override GetRandRoster applies.
 ; Touches only a and the flags, which leave as callers always got them: carry

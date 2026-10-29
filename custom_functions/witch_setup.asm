@@ -85,6 +85,15 @@ PCWitchSetup::
     CheckEvent EVENT_VICTORY_ROAD_CLEARED
     jp nz, .hideWitch         ; jp, not jr: .hideWitch is at the far end of the routine
 .showWitch
+    ; Every prize already earned (reachable in Endless): only Challenge 11,
+    ; whose reward is a mon rather than a prize bit, is left to offer
+    ; (ENDLESS_MODE_CHECKPOINT_A.md Q3). If it is not offerable either, no
+    ; witch: the old bounded reroll would have offered an owned prize.
+    call WitchAllPrizesEarned
+    jr nz, .prizesLeft
+    call IsLegendaryBossOfferable
+    jp nc, .hideWitch
+.prizesLeft
     ; Present on LOBBY_WITCH_CHANCE of visits, or LOBBY_WITCH_LEGENDARY_CHANCE
     ; when Challenge 11 is offerable; always in the debug modes.
     ; Absent -> .hideWitch, which also zeroes the challenge and prize so
@@ -103,6 +112,8 @@ PCWitchSetup::
     ; requirement inside the gate is the intended limiter.
     call IsLegendaryBossOfferable
     jr nc, .rollChallenge
+    call WitchAllPrizesEarned
+    jr z, .setLegendaryBoss   ; nothing else left to offer
     call Random
     cp LEGENDARY_BOSS_PRIORITY_CHANCE
     jr c, .setLegendaryBoss
@@ -120,7 +131,7 @@ PCWitchSetup::
     cp CHALLENGE_GAMBLERS_PARADISE
     jr nz, .notEarlyGamblerGate
     ld b, a                   ; stash challenge id across both checks below
-    ld a, [wBattleCount]
+    call GetRunProgress
     cp GAMBLERS_PARADISE_MIN_BATTLES
     jr c, .rollChallenge      ; wBattleCount < threshold - reroll
     ; Never during the finale: accepting it calls PatchLobbyExitToGameCorner,

@@ -652,6 +652,24 @@ class GameData:
     wild_paths: dict[str, dict[str, list[int]]]
     bridge_gifts: dict[str, list[str]] = field(default_factory=dict)
     eevee_branches: list[str] = field(default_factory=list)
+    endless_rows: tuple[int, ...] = ()
+
+
+ENDLESS_LEVELS = "data/balance/endless_levels.asm"
+
+
+def load_endless_rows() -> tuple[int, ...]:
+    """EndlessLevelRows (data/balance/endless_levels.asm): the cumulative Endless
+    level bonus per global round from ENDLESS_FIRST_ROUND."""
+    text = (ROOT / ENDLESS_LEVELS).read_text()
+    body = text[text.index("EndlessLevelRows:"):]
+    rows: list[int] = []
+    for line in body.splitlines()[1:]:
+        line = line.split(";")[0].strip()
+        if not line.startswith("db "):
+            break
+        rows += [int(v) for v in line[3:].split(",")]
+    return tuple(rows)
 
 
 def load_all() -> GameData:
@@ -675,6 +693,7 @@ def load_all() -> GameData:
         wild_paths=load_wild_paths(),
         bridge_gifts=load_bridge_gifts(),
         eevee_branches=load_eevee_branches(),
+        endless_rows=load_endless_rows(),
     )
     _validate(data)
     return data

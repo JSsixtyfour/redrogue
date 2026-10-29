@@ -150,7 +150,7 @@ WitchComputeTurnLimit:
 ; Clobbers b.
 ; ============================================================
 WitchZoneRound:
-	ld a, [wBattleCount]
+	call GetRunProgress
 	and a
 	jr z, .gotCount ; 0 only before Oak's Lab; treat as round 0
 	dec a

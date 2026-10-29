@@ -115,6 +115,14 @@ class Config:
     # takes a Pokemon when one of the room's 3 offers is a Pokemon. 0 = never
     # (items/moves/effects instead), which drops bridges out of the level curve.
     bridge_take_mon: float = 1.0
+    # Endless mode (ENDLESS_MODE_CHECKPOINT_D.md): circuits played past the first
+    # Champion, and the per-round level rows (EndlessLevelRows, rounds
+    # ENDLESS_FIRST_ROUND..31). None = read data/balance/endless_levels.asm.
+    endless_depth: int = 0
+    endless_rows: tuple[int, ...] | None = None
+    # Runtime, set by Simulator.p() for the battle being built: the Endless
+    # level bonus RogueApplyTrainerLevelModifiers adds before the difficulty %.
+    level_bonus: int = 0
 
 
 # The 2026-10-09 Phase 0 PROPOSAL, kept for tools/balance/feedback_curves.py's
@@ -133,13 +141,16 @@ PROPOSED_TIERS = {
 # ROM mirrors: levels
 # =============================================================================
 
-def apply_difficulty(level: int, difficulty: str) -> int:
-    """RogueApplyDifficulty (func_enc_gen.asm): level +/- level*|pct|//100, floor 1,
-    cap 100. A named setting reads DIFFICULTY_LEVEL_PCT; "pct:N" is a what-if."""
+def apply_difficulty(level: int, difficulty: str, bonus: int = 0) -> int:
+    """The level funnel (func_enc_gen.asm): the Endless bonus (EndlessLevelBonus,
+    saturating at 255), then RogueApplyDifficulty's level +/- level*|pct|//100,
+    floor 1, then the 1..100 clamp it applies on every path. A named setting reads
+    DIFFICULTY_LEVEL_PCT; "pct:N" is a what-if."""
+    level = min(level + bonus, 255)
     p = int(difficulty[4:]) if difficulty.startswith("pct:") else DIFFICULTY_LEVEL_PCT[difficulty]
     delta = level * abs(p) // 100
     if p < 0:
-        return max(1, level - delta)
+        return min(max(1, level - delta), MAX_LEVEL)
     return min(level + delta, MAX_LEVEL)
 
 
@@ -279,15 +290,18 @@ class Battle:
 
 
 def round_of(g: GameData, count: int) -> int:
-    """Round index 0-8: count / ROUND_BATTLES, clamped (constants/round_constants.asm)."""
+    """Round index 0-8: count / ROUND_BATTLES with the ROUND clamped to the last
+    authored row (constants/round_constants.asm). count is run progress
+    (GetRunProgress), which passes LAST_ROUND_BATTLECOUNT in Endless."""
     k = g.knobs
-    return min(count, k["LAST_ROUND_BATTLECOUNT"]) // k["ROUND_BATTLES"]
+    return min(count // k["ROUND_BATTLES"], k["LAST_ROUND_BATTLECOUNT"] // k["ROUND_BATTLES"])
 
 
 def step_of(g: GameData, count: int) -> int:
-    """Step within the round: 1..ROUTE_BATTLES stage, then gym trainers, 0 = leader."""
-    k = g.knobs
-    return min(count, k["LAST_ROUND_BATTLECOUNT"]) % k["ROUND_BATTLES"]
+    """Step within the round: 1..ROUTE_BATTLES stage, then gym trainers, 0 = leader.
+    Never clamped: clamping the count first pinned every Endless trainer to the
+    last step (the final gym trainer). Identical below LAST_ROUND_BATTLECOUNT."""
+    return count % g.knobs["ROUND_BATTLES"]
 
 
 def roster_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Battle:
@@ -312,7 +326,7 @@ def roster_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> B
                 skip = False
                 continue
             sp = get_rand_mon(g, cfg, 4 - class_slot, rng)
-            lv = apply_difficulty(base + (rng.randrange(block.level_range) if block.level_range else 0), cfg.difficulty)
+            lv = apply_difficulty(base + (rng.randrange(block.level_range) if block.level_range else 0), cfg.difficulty, cfg.level_bonus)
             mons.append((scale_trainer_evolution(g, cfg, sp, lv, rng), lv))
     kind = (("gym_final" if final else "gym_trainer") if gym else ("route_final" if final else "route"))
     return Battle(kind, count, mons, True, g.knobs["MONEY_BASE_TRAINER"])
@@ -368,7 +382,7 @@ def spec_battle(g: GameData, cfg: Config, kind: str, count: int, n: int, base: i
     pinned ace is not evolved, except the rival starter placeholder."""
     mons: list[tuple[str, int]] = []
     for slot in range(n):
-        lv = apply_difficulty(max(1, min(base + slot * step, MAX_LEVEL)), cfg.difficulty)
+        lv = apply_difficulty(max(1, min(base + slot * step, MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
         if slot == n - 1 and ace == "RIVAL_STARTER_PLACEHOLDER":
             sp = rival_starter_evolve(g, rival_starter, lv, cfg, rng)
         elif slot == n - 1 and ace:
@@ -398,13 +412,13 @@ def leader_battle(g: GameData, cfg: Config, leader: parse.LeaderRecord, rnd: int
     allow_uber = rnd >= 7 and "ALLOW_UBER" in leader.late_flags
     # PartyGenPreRollAce: the ace is drawn first (party still empty) and the
     # other slots dedupe against it; it is still fielded in the last slot.
-    ace_lv = apply_difficulty(max(1, min(base + (n - 1) * step, MAX_LEVEL)), cfg.difficulty)
+    ace_lv = apply_difficulty(max(1, min(base + (n - 1) * step, MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
     # A round's own AceR<rnd> list wins over the band's (banded_round_spec).
     ace_pool = f"{pre}AceR{rnd}" if f"{pre}AceR{rnd}" in g.pools else f"{pre}Ace{band}"
     ace = draw_pool(g, cfg, ace_pool, ace_lv, [], allow_uber, rng, keep=True)
     mons: list[tuple[str, int]] = []
     for slot in range(n):
-        lv = apply_difficulty(max(1, min(base + slot * step, MAX_LEVEL)), cfg.difficulty)
+        lv = apply_difficulty(max(1, min(base + slot * step, MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
         used = [m for m, _ in mons] + [ace]
         if slot == n - 1:
             sp = ace
@@ -441,7 +455,7 @@ def miniboss_battle(g: GameData, cfg: Config, who: str, count: int, rival_starte
     off_slot = min(var, n - 2) if off and n >= 2 else None
 
     def level(slot: int) -> int:
-        return apply_difficulty(max(1, min(base + slot * step, MAX_LEVEL)), cfg.difficulty)
+        return apply_difficulty(max(1, min(base + slot * step, MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
 
     no_rival = rival_starter if who == "RIVAL" else None
     if who == "RIVAL":
@@ -470,7 +484,7 @@ def e4_battle(g: GameData, cfg: Config, member: parse.E4Record, count: int, rng:
     tier = min(max(count - k["E4_FIRST_BATTLECOUNT"], 0), k["NUM_E4_BATTLES"] - 1) + 1
     base, step = k["E4_BASE_LEVEL"] + tier, k["E4_LEVEL_STEP"]
     pre = f"POOL_BAND_{member.name}_"
-    ace_lv = apply_difficulty(max(1, min(base + 5 * step, MAX_LEVEL)), cfg.difficulty)
+    ace_lv = apply_difficulty(max(1, min(base + 5 * step, MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
     ace = draw_pool(g, cfg, f"{pre}Ace1", ace_lv, [], False, rng, keep=True)
     b = spec_battle(g, cfg, "e4", count, 6, base, step, f"{pre}Fod1", ace, False,
                     g.money[class_name(member.name)], rng)
@@ -498,7 +512,7 @@ def stage_event_battle(g: GameData, cfg: Config, count: int, rng: random.Random,
     ace_pool = f"{pre}Ace{band}" if f"{pre}Ace{band}" in g.pools else None
     ace = None
     if ace_pool:
-        ace_lv = apply_difficulty(max(1, min(base + (n - 1) * step, MAX_LEVEL)), cfg.difficulty)
+        ace_lv = apply_difficulty(max(1, min(base + (n - 1) * step, MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
         ace = draw_pool(g, cfg, ace_pool, ace_lv, [], False, rng, keep=True)
     b = spec_battle(g, cfg, "stage_event", count, n, base, step, f"{pre}Fod{band}", ace, False,
                     g.money[cls], rng)
@@ -509,7 +523,7 @@ def stage_event_battle(g: GameData, cfg: Config, count: int, rng: random.Random,
 def wild_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Battle:
     """PCRollWildEncounter: PCGetWildLevel (+ the LEVELS setting since 2026-10-09) + class roll."""
     idx = round_of(g, count)
-    lv = apply_difficulty(g.tables.wild[idx] + rng.randrange(3), cfg.difficulty)
+    lv = apply_difficulty(g.tables.wild[idx] + rng.randrange(3), cfg.difficulty, cfg.level_bonus)
     sp = select_from_tier_evolved(g, cfg, pc_roll_mon_class(idx, 0, rng), lv, rng)
     return Battle("wild", count, [(sp, lv)], False)
 
@@ -524,7 +538,7 @@ def facility_fake_balls(g: GameData, cfg: Config, count: int, rng: random.Random
     table plus 0-2). A full clear touches them all, since they look like the
     real balls; they sit outside the encounter budget. The LEVELS setting applies
     at generation (RogueApplyDifficultyE), as on every wild-area mon."""
-    lv = apply_difficulty(g.tables.wild[round_of(g, count)] + rng.randrange(3), cfg.difficulty)
+    lv = apply_difficulty(g.tables.wild[round_of(g, count)] + rng.randrange(3), cfg.difficulty, cfg.level_bonus)
     sp = "VOLTORB" if count < 6 * g.knobs["ROUND_BATTLES"] else "ELECTRODE"
     return [Battle("facility_voltorb", count, [(sp, lv)], False) for _ in range(FACILITY_FAKE_BALLS)]
 
@@ -532,7 +546,7 @@ def facility_fake_balls(g: GameData, cfg: Config, count: int, rng: random.Random
 def wild_boss_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Battle:
     """PCRollBoss: PCGetBossLevel (+ the LEVELS setting) + a class roll bumped by WILD_BOSS_RARITY_BUMP."""
     idx = round_of(g, count)
-    lv = apply_difficulty(g.tables.wild_boss[idx], cfg.difficulty)
+    lv = apply_difficulty(g.tables.wild_boss[idx], cfg.difficulty, cfg.level_bonus)
     cls = pc_roll_mon_class(idx, g.knobs["WILD_BOSS_RARITY_BUMP"], rng, g.knobs["WILD_CLASS_ROUND_STEP"])
     sp = select_from_tier_evolved(g, cfg, cls, lv, rng)
     return Battle("wild_boss", count, [(sp, lv)], False)
@@ -676,12 +690,13 @@ def level_from_exp(curve: tuple[int, int, int, int, int], exp: int) -> int:
     return lv
 
 
-def reward_level(g: GameData, count: int) -> int:
+def reward_level(g: GameData, count: int, endless: bool = False) -> int:
     """GetRewardMonLevel, stage caller: the gym block of the current round,
-    min + range/2, clamped to [REWARD_LEVEL_FLOOR, REWARD_LEVEL_CAP]."""
+    min + range/2, clamped to [REWARD_LEVEL_FLOOR, REWARD_LEVEL_CAP]. Endless
+    (depth >= 1) lifts the cap; the bonus and the 100 clamp bound it."""
     block = g.tables.gym[round_of(g, count)]
-    lv = block.min_level + (block.level_range >> 1)
-    return max(g.knobs["REWARD_LEVEL_FLOOR"], min(lv, g.knobs["REWARD_LEVEL_CAP"]))
+    lv = max(g.knobs["REWARD_LEVEL_FLOOR"], block.min_level + (block.level_range >> 1))
+    return lv if endless else min(lv, g.knobs["REWARD_LEVEL_CAP"])
 
 
 # =============================================================================
@@ -758,6 +773,22 @@ class Simulator:
         self.count = 0
         self.ko_turn = 0
         self.bridge_count = 0
+        self.depth = 0            # Endless circuits completed beyond the first
+        self.rows = cfg.endless_rows if cfg.endless_rows is not None else g.endless_rows
+
+    def p(self, count: int | None = None) -> int:
+        """GetRunProgress for the battle about to be built, and arm its Endless
+        level bonus (EndlessLevelBonus: nothing at depth 0)."""
+        k = self.g.knobs
+        count = self.count if count is None else count
+        span = k["LAST_ROUND_BATTLECOUNT"] + 1
+        prog = min(255, count + span * self.depth)
+        self.cfg.level_bonus = 0
+        if self.depth:
+            row = prog // k["ROUND_BATTLES"] - span // k["ROUND_BATTLES"]
+            if 0 <= row < len(self.rows):
+                self.cfg.level_bonus = self.rows[row]
+        return prog
 
     # --- bookkeeping ---
     def _penalize(self, m: "Member", exp: int) -> int:
@@ -814,6 +845,13 @@ class Simulator:
             sp = roll_reward_mon(self.g, self.cfg, level, self.rng)
             self.members.append(Member(level, len(self.run.battles), growth=self.g.species[sp].growth, species=sp))
 
+    def join_reward(self, rnd: int) -> None:
+        """A stage or gift reward of round rnd: GetRewardMonLevel at the round's
+        lobby (its own clamp; no cap in Endless), plus the Endless bonus,
+        capped at 100."""
+        prog = self.p(self.g.knobs["ROUND_BATTLES"] * (rnd - 1) + 1)
+        self.join(min(MAX_LEVEL, reward_level(self.g, prog, bool(self.depth)) + self.cfg.level_bonus))
+
     def bridge_visit(self, rnd: int) -> None:
         """A gym-next lobby visit's gift roll (BridgeRollAndAssign / BridgeShouldOccur):
         one gift before gym 2 or 3, one before gym 5 or 6 (badges 1-2 and 4-5; a
@@ -839,7 +877,7 @@ class Simulator:
         offers = rng.sample(lists[room], min(3, len(lists[room])))
         if any(o in ("MON", "MON_EVOLVE") for o in offers) and rng.random() < self.cfg.bridge_take_mon:
             self.run.bridges.append((badges, "mon"))
-            self.join(reward_level(self.g, k["ROUND_BATTLES"] * (rnd - 1) + 1))
+            self.join_reward(rnd)
         else:
             self.run.bridges.append((badges, "other"))
 
@@ -856,9 +894,9 @@ class Simulator:
         n = self.g.knobs["ROUTE_BATTLES"]
         for rem in range(1, n + 1):
             if rem == n and miniboss:
-                self.fight(miniboss_battle(self.g, self.cfg, miniboss, self.count, self.rival_starter, self.rng))
+                self.fight(miniboss_battle(self.g, self.cfg, miniboss, self.p(), self.rival_starter, self.rng))
             else:
-                self.fight(roster_battle(self.g, self.cfg, self.count, self.rng))
+                self.fight(roster_battle(self.g, self.cfg, self.p(), self.rng))
 
     def wild_area(self, stage_event: bool, wtype: str) -> None:
         """TryDoWildEncounter: each encounter-rolling step fires when a random
@@ -867,23 +905,22 @@ class Simulator:
         steps only in the forest)."""
         g, cfg, rng = self.g, self.cfg, self.rng
         k = g.knobs
-        budget = min(k["WILD_BUDGET_MAX"], k["WILD_BUDGET_BASE"] + self.count // k["WILD_BUDGET_DIVISOR"])
+        budget = min(k["WILD_BUDGET_MAX"], k["WILD_BUDGET_BASE"] + self.p() // k["WILD_BUDGET_DIVISOR"])
         rolls = cfg.wild_steps if cfg.wild_steps is not None else rng.choice(g.wild_paths[wtype][cfg.wild_path])
         encounters = sum(1 for _ in range(rolls) if rng.randrange(256) < k["WILD_AREA_ENCOUNTER_RATE"])
         for _ in range(min(budget, encounters)):
-            self.fight(wild_battle(g, cfg, self.count, rng))
+            self.fight(wild_battle(g, cfg, self.p(), rng))
         if wtype == "facility" and cfg.wild_path == "full":
-            for bt in facility_fake_balls(g, cfg, self.count, rng):
+            for bt in facility_fake_balls(g, cfg, self.p(), rng):
                 self.fight(bt)
         if stage_event and rng.random() < cfg.fight_stage_event:
-            self.fight(stage_event_battle(g, cfg, self.count, rng))
-        boss = wild_boss_battle(g, cfg, self.count, rng)
+            self.fight(stage_event_battle(g, cfg, self.p(), rng))
+        boss = wild_boss_battle(g, cfg, self.p(), rng)
         self.fight(boss)
         self.count += k["WILD_AREA_EXIT_BATTLES"]
 
     def simulate(self) -> Run:
-        g, cfg, rng, k = self.g, self.cfg, self.rng, self.g.knobs
-        c = g.constants
+        g, cfg, rng = self.g, self.cfg, self.rng
         leaders = [r for r in g.leaders if r.name in KANTO_LEADERS] if cfg.groups == ("KANTO",) else list(g.leaders)
         lineup = rng.sample(leaders, 8)
 
@@ -891,28 +928,62 @@ class Simulator:
         self.fight(Battle("oak_rival", 0, [(self.rival_starter, apply_difficulty(cfg.rival_level, cfg.difficulty))],
                           True, g.money["RIVAL1"]))
 
+        self.types_left = list(parse.WILD_AREA_TYPES)   # WildAreaPickType: no repeats until all four are offered
+        self.wtype = None
+        self.circuit(lineup)
+
+        # Endless (EndlessContinue, custom_functions/endless.asm): the count goes
+        # back to 1 with the team kept; the next lineup excludes this run's gyms
+        # (wGymsUsedMask seeded at the first continuation) and the pool recycles
+        # when fewer than eight are left (RogueRollGymLineup). Per-circuit quotas
+        # (mini-boss, wild area, gifts) restart; the wild-type cycle is kept.
+        used = {r.name for r in lineup}
+        for depth in range(1, cfg.endless_depth + 1):
+            self.depth = depth
+            self.count = 1
+            self.bridge_count = 0
+            fresh = [r for r in leaders if r.name not in used]
+            if len(fresh) < 8:
+                fresh, used = list(leaders), set()
+            lineup = rng.sample(fresh, 8)
+            used |= {r.name for r in lineup}
+            self.circuit(lineup)
+
+        self.run.total_money = self.money
+        self.run.spendable_money = self.money - self.dead_money
+        return self.run
+
+    def circuit(self, lineup) -> None:
+        """One eight-gym circuit through the Champion. Every builder reads run
+        progress (self.p(), GetRunProgress); the Elite Four tier and the
+        Champion stay on the circuit-local count, as in the ROM."""
+        g, cfg, rng, k = self.g, self.cfg, self.rng, self.g.knobs
+        c = g.constants
+        tag = f"E{self.depth} " if self.depth else ""
         mb_done = wa_done = since_special = 0   # completed encounters (the ROM counts completions)
-        types_left = list(parse.WILD_AREA_TYPES)   # WildAreaPickType: no repeats until all four are offered
-        wtype = None
         for rnd in range(1, k["NUM_ROGUE_ROUNDS"] + 1):
             self.cur_round = rnd
             badges = rnd - 1
+            # InitGymBattle: progress / ROUND_BATTLES, clamped to the last
+            # authored leader teams (round 8) past the original circuit.
+            leader_rnd = rnd if not self.depth else k["NUM_ROGUE_ROUNDS"]
             if rnd in cfg.skip_rounds:
                 # Back-to-back gyms: the previous leader -> Reward Room -> this gym.
                 self.run.stages.append("skipped")
                 self.run.offers.append("skipped")
                 self.count += k["ROUTE_BATTLES"]
                 for _ in range(cfg.reward_joins):
-                    self.join(reward_level(g, k["ROUND_BATTLES"] * (rnd - 1) + 1))
+                    self.join_reward(rnd)
                 self.bridge_visit(rnd)   # never fires on a pair's lobby; kept for symmetry
                 for _ in range(k["GYM_TRAINER_BATTLES"]):
-                    self.fight(roster_battle(g, cfg, self.count, rng))
-                leader = leader_battle(g, cfg, lineup[rnd - 1], rnd, rng)
-                self.checkpoint(rnd, lineup[rnd - 1].name, leader.mons[-1][1])
+                    self.fight(roster_battle(g, cfg, self.p(), rng))
+                self.p()
+                leader = leader_battle(g, cfg, lineup[rnd - 1], leader_rnd, rng)
+                self.checkpoint(rnd, tag + lineup[rnd - 1].name, leader.mons[-1][1])
                 self.fight(leader)
                 continue
             kind = None
-            if self.count >= c["MINIBOSS_FIRST_BATTLECOUNT"]:
+            if self.p() >= c["MINIBOSS_FIRST_BATTLECOUNT"]:
                 e, since_special = special_encounter_policy(
                     badges, mb_done, wa_done, since_special, rng, cfg.skip_rounds, rnd)
                 mandatory = bool(e & SPECIAL_MANDATORY)
@@ -929,17 +1000,17 @@ class Simulator:
                     else:
                         kind = "miniboss_forced" if mandatory else "miniboss"
                 if kind and kind.startswith("wild"):
-                    if not types_left:
-                        types_left = list(parse.WILD_AREA_TYPES)   # cycle mask reset, count kept
-                    wtype = types_left.pop(rng.randrange(len(types_left)))
+                    if not self.types_left:
+                        self.types_left = list(parse.WILD_AREA_TYPES)   # cycle mask reset, count kept
+                    self.wtype = self.types_left.pop(rng.randrange(len(self.types_left)))
 
             self.run.offers.append(kind or "none")
             stage_event = kind is not None and kind.startswith("wild") and \
                 rng.randrange(256) < k["STAGE_EVENT_CHANCE"]
             if kind == "wild_forced" or (kind == "wild" and rng.random() < cfg.take_wild):
                 self.run.stages.append("wild")
-                self.run.wild_types.append(wtype)
-                self.wild_area(stage_event, wtype)
+                self.run.wild_types.append(self.wtype)
+                self.wild_area(stage_event, self.wtype)
                 wa_done = min(wa_done + 1, 3)          # completion count, bits 3-4 of wWildAreaState
             elif kind == "miniboss_forced" or (kind == "miniboss" and rng.random() < cfg.take_miniboss):
                 self.run.stages.append("miniboss")
@@ -951,37 +1022,38 @@ class Simulator:
                 self.run.stages.append("route")
                 self.route(None)
             for _ in range(cfg.reward_joins):
-                self.join(reward_level(g, k["ROUND_BATTLES"] * (rnd - 1) + 1))
+                self.join_reward(rnd)
             self.bridge_visit(rnd)      # the gym-next lobby
 
             for _ in range(k["GYM_TRAINER_BATTLES"]):
-                self.fight(roster_battle(g, cfg, self.count, rng))
-            leader = leader_battle(g, cfg, lineup[rnd - 1], rnd, rng)
-            self.checkpoint(rnd, lineup[rnd - 1].name, leader.mons[-1][1])
+                self.fight(roster_battle(g, cfg, self.p(), rng))
+            self.p()
+            leader = leader_battle(g, cfg, lineup[rnd - 1], leader_rnd, rng)
+            self.checkpoint(rnd, tag + lineup[rnd - 1].name, leader.mons[-1][1])
             self.fight(leader)
 
         # Victory Road: roster trainers, then the static rival mini-boss.
         self.cur_round = 9
         self.run.stages.append("victory_road")
         for _ in range(k["VICTORY_ROAD_BATTLES"] - 1):
-            self.fight(roster_battle(g, cfg, self.count, rng))
-        self.fight(miniboss_battle(g, cfg, "RIVAL", self.count, self.rival_starter, rng, "victory_road"))
+            self.fight(roster_battle(g, cfg, self.p(), rng))
+        self.fight(miniboss_battle(g, cfg, "RIVAL", self.p(), self.rival_starter, rng, "victory_road"))
 
         e4 = [r for r in g.e4 if r.name in KANTO_E4]
         rng.shuffle(e4)
+        self.p()
         first = e4_battle(g, cfg, e4[0], self.count, rng)
-        self.checkpoint(9, "Elite Four", first.mons[-1][1])
+        self.checkpoint(9, tag + "Elite Four", first.mons[-1][1])
         self.fight(first)
         for member in e4[1:]:
+            self.p()
             self.fight(e4_battle(g, cfg, member, self.count, rng))
+        self.p()
         champ = spec_battle(g, cfg, "champion", self.count, 6, k["CHAMPION_BASE_LEVEL"], k["CHAMPION_LEVEL_STEP"], "POOL_BAND_Rival3_Fod1",
                             "RIVAL_STARTER_PLACEHOLDER", False, g.money["RIVAL3"], rng, self.rival_starter)
         self.final_count = self.count
-        self.checkpoint(10, "Champion", champ.mons[-1][1])
+        self.checkpoint(10, tag + "Champion", champ.mons[-1][1])
         self.fight(champ)
-        self.run.total_money = self.money
-        self.run.spendable_money = self.money - self.dead_money
-        return self.run
 
 
 # =============================================================================
@@ -1260,6 +1332,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--wild-path", choices=("full", "beeline"), default="full")
     ap.add_argument("--amulet-coin", type=int, default=0, choices=(0, 1, 2, 3))
     ap.add_argument("--groups", default="KANTO", help="comma list: KANTO,JOHTO,WARP")
+    ap.add_argument("--endless", type=int, default=0, metavar="DEPTH",
+                    help="Endless circuits played past the first Champion")
     ap.add_argument("--set", action="append", default=[], metavar="KNOB=VALUE")
     ap.add_argument("--selfcheck", action="store_true")
     ap.add_argument("--trace", action="store_true", help="print one run's battles (seed --seed)")
@@ -1299,6 +1373,7 @@ def main(argv: list[str] | None = None) -> int:
         policy=args.policy,
         amulet_coin=args.amulet_coin,
         starter=args.starter,
+        endless_depth=args.endless,
     )
     if args.trace:
         sim = Simulator(g, cfg, args.seed * 100003)

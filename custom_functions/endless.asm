@@ -455,6 +455,125 @@ LegendarySpeciesOwned:
 	ret
 
 ; ============================================================
+; EndlessLevelBonus  -- farcalled from the level funnels (func_enc_gen.asm,
+; RogueApplyTrainerLevelModifiers / RogueApplyWildLevelModifiers), before the
+; witch bonus and the LEVELS setting.
+;
+; Past the original circuit every round-indexed table already sits on its last
+; authored row (Victory Road / Elite Four), so content SHAPE stays at its
+; maximum; LEVELS keep growing by one curve-derived bonus per round, the same
+; for every category, so route < final route < gym < leader < Elite Four, and
+; boss over the party, hold exactly as they stand at the end of the original
+; circuit. The rows are solved by tools/balance/model.py (--endless), never
+; hand-tuned: ENDLESS_MODE_CHECKPOINT_D.md section 3.3.
+;
+; wCurEnemyLevel += EndlessLevelRows[progress / ROUND_BATTLES - ENDLESS_FIRST_ROUND],
+; saturating at 255 (the funnel's RogueApplyDifficulty clamps to 100). Nothing
+; at depth 0, so the original circuit cannot change.
+; Clobbers a/bc/hl; keeps de.
+; ============================================================
+EndlessLevelBonus::
+	ld a, [wEndlessDepth]
+	and a
+	ret z
+	call GetRunProgress
+	ASSERT ROUND_BATTLES == 8
+	srl a
+	srl a
+	srl a                         ; a = global round
+	sub ENDLESS_FIRST_ROUND
+	ret c                         ; cannot happen at depth >= 1; stay safe
+	ld c, a
+	ld b, 0
+	ld hl, EndlessLevelRows
+	add hl, bc
+	ld a, [wCurEnemyLevel]
+	add [hl]
+	jr nc, .store
+	ld a, $ff
+.store
+	ld [wCurEnemyLevel], a
+	ret
+
+INCLUDE "data/balance/endless_levels.asm"
+
+; ============================================================
+; EndlessRewardLevelBonus  -- farcalled from GetRewardMonLevel
+; (rogue_reward_menu.asm) after its REWARD_LEVEL_CAP clamp. The cap holds the
+; original circuit's last rewards at 50; past it, the same per-round bonus the
+; trainers get goes on top (what tools/balance/model.py join_reward solves
+; against), then 1..100. Nothing at depth 0.
+; Clobbers a/bc/hl; keeps de.
+; ============================================================
+EndlessRewardLevelBonus::
+	call EndlessLevelBonus
+	ld a, [wCurEnemyLevel]
+	cp MAX_LEVEL + 1
+	ret c
+	ld a, MAX_LEVEL
+	ld [wCurEnemyLevel], a
+	ret
+
+; ============================================================
+; EndlessRosterClass  -- farcalled from GetRandMon (func_enc_gen.asm) for every
+; rarity-class roster mon at depth >= 1 (ENDLESS_MODE_CHECKPOINT_D.md 3.4, user
+; answer Q1: "4 master and then 2 ultra or masters").
+;
+; Every Endless roster reads the last authored row (6 mons, 2 of them Master),
+; and the loop rolls the commonest class first, so wEnemyPartyCount is the slot
+; in that order. With s = progress / ROUND_BATTLES - LAST_ROUND (1 in the first
+; Endless round), each slot gets a class floor:
+;   slots ENDLESS_FLEX_SLOTS..5   Master once slot + s >= PARTY_LENGTH: one more
+;                                 slot a round, all four by s = 4
+;   slots 0..ENDLESS_FLEX_SLOTS-1 at least Ultra; once all four above are
+;                                 Master (from the round after), each rolls
+;                                 Ultra or Master, 50/50
+; A floor never lowers the class the row (or the witch's bump) already gave.
+; In: e = class, GetRandMon's inverted encoding (4 Poke .. 1 Master).
+; Out: e = class, raised to the floor. Clobbers a/d/flags.
+; ============================================================
+DEF ENDLESS_FLEX_SLOTS EQU 2
+DEF ROSTER_CLASS_MASTER EQU 1 ; GetRandMon's inverted b: 4 Poke, 3 Great, 2 Ultra
+DEF ROSTER_CLASS_ULTRA  EQU 2
+EndlessRosterClass::
+	ld a, [wEndlessDepth]
+	and a
+	ret z
+	call GetRunProgress
+	ASSERT ROUND_BATTLES == 8
+	srl a
+	srl a
+	srl a                         ; a = global round
+	sub LAST_ROUND
+	ret c                         ; cannot happen at depth >= 1; stay safe
+	ret z
+	ld d, a                       ; d = s, Endless rounds so far (1+)
+	ld a, [wEnemyPartyCount]      ; slot being rolled
+	cp ENDLESS_FLEX_SLOTS
+	jr c, .flexSlot
+	add d
+	cp PARTY_LENGTH
+	ret c                         ; this slot's turn has not come yet
+	ld e, ROSTER_CLASS_MASTER
+	ret
+.flexSlot
+	ld a, e
+	cp ROSTER_CLASS_ULTRA + 1
+	jr c, .atLeastUltra
+	ld e, ROSTER_CLASS_ULTRA
+.atLeastUltra
+	; The last fixed slot (ENDLESS_FLEX_SLOTS) turns Master at
+	; s = PARTY_LENGTH - ENDLESS_FLEX_SLOTS; the coin flips start one round on.
+	ld a, d
+	cp PARTY_LENGTH - ENDLESS_FLEX_SLOTS + 1
+	ret c
+	call Random
+	rrca
+	ret nc
+	ld e, ROSTER_CLASS_MASTER
+	ret
+
+; ============================================================
 ; LegendaryBossTable
 ; Challenge 11's leaders and the legendaries each can field, keyed on TRAINER
 ; CLASS. Never key this on wGymLeaderNo: Kanto and Johto share 1-8 (Morty and

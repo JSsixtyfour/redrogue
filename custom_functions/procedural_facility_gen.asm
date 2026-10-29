@@ -6224,7 +6224,7 @@ PFacPreload::
 
     ; Wild-battle budget: WILD_BUDGET_BASE + wBattleCount/WILD_BUDGET_DIVISOR,
     ; capped at WILD_BUDGET_MAX (cave formula).
-    ld a, [wBattleCount]
+    call GetRunProgress
     ld b, 0
 .budgetDivLoop
     cp WILD_BUDGET_DIVISOR

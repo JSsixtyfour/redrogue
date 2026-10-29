@@ -38,7 +38,7 @@ Random_Wild_Selection_Far::
 	ld a, e
 	cp RARITY_TIER_MASTERBALL + 1 ; class ids are 1-based
 	jr nz, Random_Pokemon_Selection_Any_Far
-	ld a, [wBattleCount]
+	call GetRunProgress
 	cp (WILD_MASTER_MIN_ROUND - 1) * ROUND_BATTLES
 	jr nc, Random_Pokemon_Selection_Any_Far
 	dec e                         ; masterball -> ultraball

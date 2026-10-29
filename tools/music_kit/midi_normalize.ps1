@@ -110,10 +110,10 @@ function New-MetaBytes([int]$kind, [byte[]]$data) {
 }
 
 # Timbre the track's name asks for, as the text event that selects it, or $null.
-# Ch1/Ch2: "Square 12.5|25|50|75" or "Duty 0-3". Ch3: "Wave 0-4".
+# Ch1/Ch2: "Square 12.5|25|50|75" or "Duty 0-3". Ch3: "Wave 0-14".
 function Get-NameTimbre([string]$ch, [string]$name) {
 	if ($ch -eq 'Ch3') {
-		if ($name -match '(?i)wave\s*[:=]?\s*([0-4])(?!\d)') { return "note_type 1, $($Matches[1])" }
+		if ($name -match '(?i)wave\s*[:=]?\s*(1[0-4]|[0-9])(?!\d)') { return "note_type 1, $($Matches[1])" }
 		return $null
 	}
 	if ($name -match '(?i)(?:square|pulse)\s*[:=]?\s*(12\.5|12|25|50|75)(?!\d)') {

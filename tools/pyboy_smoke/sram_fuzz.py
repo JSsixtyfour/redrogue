@@ -45,6 +45,7 @@ SRAM_SIZE = 4 * SRAM_BANK_SIZE
 SRAM_START = 0xA000
 MAX_BISECT_RUNS = 64
 BISECT_MARGIN_FRAMES = 600  # replay this far past the first divergence
+MATCHED_MODE = "matched_startup_controls_v1"
 
 
 TEXT_TERMINATOR = 0x50  # "@"
@@ -93,6 +94,213 @@ def comparison_kind(baseline, candidate):
     if not baseline.get("startup_path") or not candidate.get("startup_path"):
         return "unverified_startup"
     return "different_startup_paths" if baseline["startup_path"] != candidate["startup_path"] else "same_startup_path"
+
+
+def header_range(rom):
+    symbols = SymbolTable(autoplay.ROOT / f"{rom}.sym")
+    bank, address = symbols.get("sSaveHeader")
+    end_bank, end = symbols.get("sSaveHeaderEnd")
+    if bank != end_bank or end - address != 8:
+        raise ValueError("matched header policy requires the reviewed eight-byte save header")
+    return {"label": "sSaveHeader", "offset": bank * SRAM_BANK_SIZE + address - SRAM_START, "length": 8}
+
+
+def matched_header_image(candidate, copied_range):
+    offset, length = copied_range["offset"], copied_range["length"]
+    if (copied_range.get("label") != "sSaveHeader" or type(offset) is not int or type(length) is not int or len(candidate) != SRAM_SIZE
+            or length != 8 or not 0 <= offset <= SRAM_SIZE - length):
+        raise ValueError("invalid matched-control input/range")
+    control = bytearray(SRAM_SIZE)
+    control[offset:offset + length] = candidate[offset:offset + length]
+    return bytes(control)
+
+
+def matched_tasks(attempt, seeds, fills, rom):
+    """Two raw zero baselines, then two candidates and two controls per fill."""
+    from run_campaign import atomic_json, digest
+    tasks, pairs = [], []
+    copied_range = header_range(rom)
+
+    def add(seed, name, role, repetition, image, target=None):
+        directory = attempt / f"seed-{seed}" / f"{name}-{repetition}"
+        directory.mkdir(parents=True)
+        (directory / "input.sram").write_bytes(image)
+        task = {"seed": seed, "fill": name, "role": role, "repetition": repetition,
+                "directory": str(directory.resolve()), "input_sha256": digest(directory / "input.sram")}
+        if target:
+            task.update(target_fill=target, copied_range=copied_range)
+        atomic_json(directory / "record.json", {**task, "execution": "scheduled", "equivalent": None})
+        tasks.append(task)
+
+    for seed in seeds:
+        for repetition in range(2):
+            add(seed, "zero", "baseline", repetition, fill_bytes("zero", seed))
+        for name in fills:
+            image = fill_bytes(name, seed)
+            control_name = f"control_{name}"
+            pairs.append({"seed": seed, "fill": name, "control_fill": control_name, "copied_range": copied_range})
+            for repetition in range(2):
+                add(seed, name, "candidate", repetition, image)
+                add(seed, control_name, "matched_control", repetition,
+                    matched_header_image(image, copied_range), target=name)
+    return tasks, pairs
+
+
+def load_fill_evidence(record):
+    from run_campaign import digest
+    directory = Path(record["directory"])
+    for name, field in (("input.sram", "input_sha256"), ("report.json", "report_sha256"), ("trace.json", "trace_sha256")):
+        if digest(directory / name) != record[field]:
+            raise ValueError(f"missing or changed {name}")
+    data = json.loads((directory / "trace.json").read_text())
+    if (not isinstance(data, list) or not data or not isinstance(data[-1], list) or len(data[-1]) != 3
+            or data[-1][0] != "end" or data[-1][1] not in ("completed", "blackout", "champion")
+            or not isinstance(data[-1][2], str) or any(
+                not isinstance(row, list) or len(row) != 3 or type(row[0]) is not int or row[0] < 0
+                or not isinstance(row[1], str) or not isinstance(row[2], str) for row in data[:-1])):
+        raise ValueError("invalid trace schema")
+    report = json.loads((directory / "report.json").read_text())
+    if (not isinstance(report, dict) or type(report["seed"]) is not int or report["seed"] != record["seed"]
+            or not isinstance(report["anomalies"], list) or report["outcome"] != record["outcome"]
+            or report["hardware_mode"] != record["hardware_mode"] or report["build_identity"] != record["build_identity"]
+            or report["anomalies"] != record["anomalies"]
+            or [event["kind"] for event in report["startup"]["events"]] != record["startup_path"]
+            or any(report["startup"].get(key) != value for key, value in record["comparison_boundary"].items())
+            or json.loads(json.dumps(trace(report))) != data):
+        raise ValueError("report, trace and worker metadata do not agree")
+    return (directory / "input.sram").read_bytes(), data
+
+
+def boundary_key(record):
+    boundary = record["comparison_boundary"]
+    state = boundary["comparison_state"]
+    if (not record["startup_path"] or "initialization_entered" not in record["startup_path"]
+            or "gameplay_ready" not in record["startup_path"] or
+            any(type(boundary[key]) is not int or boundary[key] < 0
+                for key in ("comparison_frame", "comparison_cycle", "comparison_ly")) or
+            boundary["comparison_ly"] > 153 or
+            boundary["rng_boundary"] not in ("OakSpeech", "SelectAndPatchLobbyExit") or
+            not isinstance(state, dict) or "key1" not in state or len(state["rng"]) != 12 or len(state["joy"]) != 3 or
+            any(type(value) is not int or not 0 <= value <= 255 for value in state["rng"] + state["joy"])):
+        raise ValueError("startup boundary evidence unavailable or malformed")
+    build = record["build_identity"]
+    if set(build) != {"gbc", "sym"} or any(not isinstance(value, str) or len(value) != 64 or
+            any(char not in "0123456789abcdef" for char in value) for value in build.values()):
+        raise ValueError("invalid build identity")
+    mode = record["hardware_mode"]
+    if mode not in ("DMG", "CGB") or (mode == "DMG" and state["key1"] is not None) or (
+            mode == "CGB" and (type(state["key1"]) is not int or not 0 <= state["key1"] <= 255)):
+        raise ValueError("hardware/speed evidence unavailable")
+    return json.dumps({"path": record["startup_path"], "boundary": boundary, "build": build, "mode": mode}, sort_keys=True)
+
+
+def evaluate_matched_pair(pair, records):
+    """Fail closed on missing, unstable, incomparable or changed evidence."""
+    result = {**pair, "status": "incomplete", "evidence": []}
+    names = (pair["fill"], pair["control_fill"])
+    selected = [row for row in records if row["seed"] == pair["seed"] and row["fill"] in names]
+    result["evidence"] = [row["directory"] for row in selected]
+    if len(selected) != 4 or any(row["execution"] != "completed" for row in selected):
+        result["detail"] = "requires two completed candidate and two completed control runs"
+        return result
+    try:
+        groups = []
+        inputs = []
+        for name, role in zip(names, ("candidate", "matched_control")):
+            group = sorted([row for row in selected if row["fill"] == name], key=lambda row: row["repetition"])
+            if [row["repetition"] for row in group] != [0, 1] or any(row["role"] != role for row in group):
+                raise ValueError("invalid pair roles/repetitions")
+            loaded = [load_fill_evidence(row) for row in group]
+            if loaded[0][0] != loaded[1][0]:
+                raise ValueError("repeated input SRAM differs")
+            inputs.append(loaded[0][0])
+            groups.append([trace for _, trace in loaded])
+        controls = [row for row in selected if row["role"] == "matched_control"]
+        if any(row["target_fill"] != pair["fill"] or row["copied_range"] != pair["copied_range"] for row in controls):
+            raise ValueError("matched-control provenance differs")
+        if inputs[1] != matched_header_image(inputs[0], controls[0]["copied_range"]):
+            raise ValueError("control is not zero SRAM with the declared matching header")
+        keys = [boundary_key(row) for row in selected]
+        if any(key != keys[0] for key in keys):
+            result.update(status="confounded", detail="startup path, phase, seed context or build differs")
+            return result
+        if any(row.get("anomalies") for row in selected):
+            result.update(status="incomplete", detail="game/detector findings prevent clean equivalence")
+            return result
+        if any(first_divergence(group[0], group[1]) is not None for group in groups):
+            result.update(status="unstable", detail="identical repeated inputs do not reproduce")
+            return result
+        index = first_divergence(groups[1][0], groups[0][0])
+        result.update(status="equivalent" if index is None else "divergent", event_index=index,
+                      control_event=groups[1][0][index] if index is not None and index < len(groups[1][0]) else None,
+                      candidate_event=groups[0][0][index] if index is not None and index < len(groups[0][0]) else None)
+    except (OSError, ValueError, KeyError, TypeError, IndexError) as error:
+        result.update(status="invalid_evidence", detail=str(error))
+    return result
+
+
+def finish_matched(summary, path, bisect=False):
+    """Keep raw startup coverage separate from verified matched equivalence."""
+    from run_campaign import atomic_json
+    records = summary["records"]
+    errors = []
+    identity = lambda row: (row["seed"], row["fill"], row["repetition"])
+    if (len(records) != len(summary["expected_fills"]) or
+            len({identity(row) for row in records}) != len(records) or
+            {identity(row) for row in records} != {identity(row) for row in summary["expected_fills"]}):
+        errors.append("missing, duplicated or unexpected worker records")
+    if any(row["execution"] != "completed" for row in records):
+        errors.append("incomplete worker execution")
+    if len({json.dumps(row.get("build_identity"), sort_keys=True) for row in records}) != 1:
+        errors.append("build identity changed between fills")
+    baselines = {}
+    for seed in summary["seeds"]:
+        group = sorted([row for row in records if row["seed"] == seed and row["fill"] == "zero"],
+                       key=lambda row: row["repetition"])
+        try:
+            if len(group) != 2 or any(row["execution"] != "completed" or row.get("anomalies") for row in group):
+                raise ValueError("requires two healthy zero baselines")
+            loaded = [load_fill_evidence(row) for row in group]
+            if (any(image != bytes(SRAM_SIZE) for image, _ in loaded) or
+                    boundary_key(group[0]) != boundary_key(group[1]) or loaded[0][1] != loaded[1][1]):
+                raise ValueError("zero baselines are not reproducible")
+            baselines[seed] = (group[0], loaded[0][1])
+        except (OSError, ValueError, KeyError, TypeError, IndexError) as error:
+            errors.append(f"seed {seed} baseline: {error}")
+    results = [evaluate_matched_pair(pair, records) for pair in summary["expected_comparisons"]]
+    raw = []
+    for pair in summary["expected_comparisons"]:
+        if pair["seed"] not in baselines:
+            continue
+        reference, baseline = baselines[pair["seed"]]
+        candidate = next((row for row in records if row["seed"] == pair["seed"] and row["fill"] == pair["fill"]
+                          and row["repetition"] == 0), None)
+        try:
+            if candidate is None or candidate["execution"] != "completed":
+                raise ValueError("candidate not completed")
+            _, trace_data = load_fill_evidence(candidate)
+            raw.append({"seed": pair["seed"], "fill": pair["fill"], "event_index": first_divergence(baseline, trace_data),
+                        "comparison_kind": comparison_kind(reference, candidate), "initialization_evidence": False})
+        except (OSError, ValueError, KeyError, TypeError, IndexError) as error:
+            raw.append({"seed": pair["seed"], "fill": pair["fill"], "detail": str(error),
+                        "initialization_evidence": False})
+    summary.update(initialization_comparisons=results, startup_comparisons=raw, comparison_errors=errors,
+                   divergences=[row for row in results if row["status"] == "divergent"])
+    if bisect:
+        for result in results:
+            if result["status"] != "equivalent":
+                result["bisect_skipped"] = "legacy bisection does not preserve matched startup controls"
+    for row in records:
+        result = next((result for result in results if result["seed"] == row["seed"] and
+                       row["fill"] in (result["fill"], result["control_fill"])), None)
+        row["equivalent"] = (result["status"] == "equivalent" if result and result["status"] in ("equivalent", "divergent")
+                             else True if row["fill"] == "zero" and row["seed"] in baselines else None)
+        atomic_json(Path(row["directory"]) / "record.json", row)
+    atomic_json(path, summary)
+    for result in results:
+        print(f"matched seed {result['seed']} {result['fill']}: {result['status']}", flush=True)
+    incomplete = errors or any(row["status"] not in ("equivalent", "divergent") for row in results)
+    return 2 if incomplete else 1 if summary["divergences"] else 0
 
 
 def play_trace(seed: int, sram: bytes, options: dict[str, object]) -> list[tuple]:
@@ -162,16 +370,21 @@ def fill_worker(task_id, options, results):
         rom = options["play"].get("rom", autoplay.DEBUG_ROM)
         record["build_identity"] = {ext: digest(autoplay.ROOT / f"{rom}.{ext}") for ext in ("gbc", "sym")}
         data = autoplay.play(task["seed"], sram=(directory / "input.sram").read_bytes(), **options["play"])
+        if data["build_identity"] != record["build_identity"]:
+            raise ValueError("loaded ROM/sym identity differs from pre-launch build")
         atomic_json(directory / "report.json", data)
+        record["report_sha256"] = digest(directory / "report.json")
         startup = data.get("startup") or {}
         record["startup_path"] = [event["kind"] for event in startup.get("events", [])]
         record["comparison_boundary"] = {key: startup.get(key) for key in
-                                          ("rng_boundary", "comparison_frame", "comparison_cycle", "comparison_ly")}
+                                          ("rng_boundary", "comparison_frame", "comparison_cycle", "comparison_ly", "comparison_state")}
         record["anomalies"] = data.get("anomalies", [])
         record["outcome"] = data["outcome"]
+        record["hardware_mode"] = data["hardware_mode"]
         record["execution"] = "completed" if data["outcome"] in ("completed", "blackout", "champion") else "incomplete"
         if record["execution"] == "completed":
             atomic_json(directory / "trace.json", trace(data))
+            record["trace_sha256"] = digest(directory / "trace.json")
     except BaseException:
         record.update(execution="error", detail=traceback.format_exc(limit=5))
     atomic_json(directory / "record.json", record)
@@ -197,6 +410,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--stages", type=int, default=6)
     parser.add_argument("--max-frames", type=int, default=400_000)
     parser.add_argument("--bisect", action="store_true", help="narrow each divergence down to SRAM bytes")
+    parser.add_argument("--matched-controls", action="store_true",
+                        help="opt in to repeated candidates and zero controls with matching save headers")
     parser.add_argument("--jobs", type=int, default=4)
     parser.add_argument("--rom", choices=("pokered", "pokeblue", "pokeblue_debug"), default="pokeblue_debug")
     parser.add_argument("--cgb", action="store_true")
@@ -216,36 +431,51 @@ def main(argv: list[str] | None = None) -> int:
                "max_frames": args.max_frames, "discard_test_sram": True,
                "rom": args.rom, "cgb_mode": args.cgb}
     seeds = parse_seeds(args.seeds)
+    if not seeds or len(seeds) != len(set(seeds)):
+        parser.error("seeds must be nonempty and unique")
     fills = ["zero", "zero", "ff"] + [f"random{k}" for k in range(1, args.fills + 1)]
     import coverage_inventory
-    coverage_inventory.code_labels()  # once, before the workers (autoplay_screen.py)
+    coverage_inventory.code_labels(args.rom)  # warm the actual build once before forking
     from run_autoplay import run_all
     from run_campaign import atomic_json, digest
     attempt = autoplay.ARTIFACTS / f"sram_attempt-{time.time_ns()}"
     tasks = []
-    for seed in seeds:
-        for index, name in enumerate(fills):
-            directory = attempt / f"seed-{seed}" / f"{index:02d}-{name}"
-            directory.mkdir(parents=True)
-            (directory / "input.sram").write_bytes(fill_bytes(name, seed))
-            task = {"seed": seed, "fill": name, "repetition": index, "directory": str(directory.resolve()),
-                    "input_sha256": digest(directory / "input.sram")}
-            atomic_json(directory / "record.json", {**task, "execution": "scheduled", "equivalent": None})
-            tasks.append(task)
+    pairs = []
+    if args.matched_controls:
+        tasks, pairs = matched_tasks(attempt, seeds, fills[2:], args.rom)
+    else:
+        for seed in seeds:
+            for index, name in enumerate(fills):
+                directory = attempt / f"seed-{seed}" / f"{index:02d}-{name}"
+                directory.mkdir(parents=True)
+                (directory / "input.sram").write_bytes(fill_bytes(name, seed))
+                task = {"seed": seed, "fill": name, "repetition": index, "directory": str(directory.resolve()),
+                        "input_sha256": digest(directory / "input.sram")}
+                atomic_json(directory / "record.json", {**task, "execution": "scheduled", "equivalent": None})
+                tasks.append(task)
     records = []
     path = autoplay.ARTIFACTS / "sram_fuzz_summary.json"
     summary = {"options": options, "fills": fills[2:], "seeds": seeds, "divergences": [],
                "expected_fills": tasks, "records": records, "comparison": "post-consent seeded boundary; relative frames"}
+    if args.matched_controls:
+        summary.update(schema_version=2, comparison_mode=MATCHED_MODE, expected_comparisons=pairs,
+                       initialization_comparisons=[], startup_comparisons=[])
     atomic_json(path, summary)
     traces: dict[tuple[int, str], list[list[tuple]]] = {}
     for record in run_all(list(range(len(tasks))), {"tasks": tasks, "play": options}, max(1, args.jobs), args.timeout,
                           worker=fill_worker, timeout_row=fill_timeout):
         records.append(record)
         if record["execution"] == "completed":
-            result = json.loads((Path(record["directory"]) / "trace.json").read_text())
-            traces.setdefault((record["seed"], record["fill"]), []).append(result)
+            try:
+                result = json.loads((Path(record["directory"]) / "trace.json").read_text())
+                traces.setdefault((record["seed"], record["fill"]), []).append(result)
+            except (OSError, ValueError) as error:
+                record.update(execution="error", detail=f"invalid retained trace: {error}")
+                atomic_json(Path(record["directory"]) / "record.json", record)
         atomic_json(path, summary)
 
+    if args.matched_controls:
+        return finish_matched(summary, path, args.bisect)
     if any(record["execution"] != "completed" for record in records):
         print(f"incomplete SRAM fills; preserved {len(records)} individual results -> {path}")
         return 2

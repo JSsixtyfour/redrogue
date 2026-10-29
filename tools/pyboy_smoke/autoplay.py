@@ -1857,6 +1857,19 @@ def grant_kit(harness: RedRogueHarness, kit: list[list[object]]) -> None:
     harness.write_sram_bytes("sKeyItemTiers", tiers)
 
 
+def observe_startup_seed(harness: RedRogueHarness) -> None:
+    """Read-only evidence at the existing program/RNG seed boundary."""
+    harness.startup_comparison_frame = harness.pyboy.frame_count
+    harness.startup_comparison_cycle = harness.cycle_count()
+    harness.startup_comparison_ly = harness.pyboy.memory[0xff44]
+    harness.startup_comparison_state = {
+        "rng": harness.read_bytes("wRandomTable", 10) +
+               [harness.read8("hRandomAdd"), harness.read8("hRandomSub")],
+        "joy": [harness.read8(name) for name in ("hJoyHeld", "hJoyPressed", "hJoyIgnore")],
+        "key1": harness.pyboy.memory[0xff4d] if harness.hardware_mode == "CGB" else None,
+    }
+
+
 def boot(harness: RedRogueHarness, seed: int, battle_count: int = 1,
          difficulty: str | None = None, ironman: bool = False, profile: Profile | None = None) -> None:
     """Debug 2 boot to the lobby, with the RNG seeded just before the lobby
@@ -1868,9 +1881,7 @@ def boot(harness: RedRogueHarness, seed: int, battle_count: int = 1,
         if not seeded["done"]:
             seeded["done"] = True
             harness.seed_rng([seed >> 24, seed >> 16, seed >> 8, seed])
-            harness.startup_comparison_frame = harness.pyboy.frame_count
-            harness.startup_comparison_cycle = harness.cycle_count()
-            harness.startup_comparison_ly = harness.pyboy.memory[0xff44]
+            observe_startup_seed(harness)
 
     harness.register_hook("SelectAndPatchLobbyExit", seed_once)
     harness.boot_to_lobby(battle_count=battle_count)
@@ -1890,9 +1901,7 @@ def boot_new_game(harness: RedRogueHarness, seed: int, difficulty: str | None = 
         if not seeded["done"]:
             seeded["done"] = True
             harness.seed_rng([seed >> 24, seed >> 16, seed >> 8, seed])
-            harness.startup_comparison_frame = harness.pyboy.frame_count
-            harness.startup_comparison_cycle = harness.cycle_count()
-            harness.startup_comparison_ly = harness.pyboy.memory[0xff44]
+            observe_startup_seed(harness)
 
     harness.register_hook("OakSpeech", seed_once)
     if difficulty is not None or ironman or profile is not None:
@@ -2012,11 +2021,13 @@ def play(
             error = traceback.format_exc()
         report = agent.report
         data = report.to_json()
+        data["build_identity"] = {"gbc": harness.rom_sha256, "sym": harness.sym_sha256}
         if discard_test_sram:
             data["startup"] = {"policy": "discard_disposable_test_sram",
                                "comparison_frame": getattr(harness, "startup_comparison_frame", None),
                                "comparison_cycle": getattr(harness, "startup_comparison_cycle", None),
                                "comparison_ly": getattr(harness, "startup_comparison_ly", None),
+                               "comparison_state": getattr(harness, "startup_comparison_state", None),
                                "rng_boundary": "OakSpeech" if new_game else "SelectAndPatchLobbyExit",
                                "events": harness.disposable_sram_consent["events"]}
         if error:
