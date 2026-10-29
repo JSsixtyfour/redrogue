@@ -49,24 +49,9 @@ VBlank::
 	ldh [hFrameCounter], a
 
 .skipDec
-	call FadeOutAudio
-
-; There is a single music engine now (AUDIO_1), so this no longer dispatches
-; on [wAudioROMBank] to pick which AudioN_UpdateMusic to call - it's always
-; Audio1_UpdateMusic (see engine_1.asm / home/audio.asm's UpdateMusic6Times).
-; Music_DoLowHealthAlarm used to run only on this branch's old ".audio2" path
-; (i.e. only while AUDIO_2 happened to be the active UpdateMusic bank), which
-; the single engine has no equivalent of; it must run unconditionally every
-; VBlank now, same as pokeyellow's VBlank, or the alarm tone would never play.
-	ld a, BANK(Music_DoLowHealthAlarm)
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
-	call Music_DoLowHealthAlarm
-
-	ld a, BANK(Audio1_UpdateMusic)
-	ldh [hLoadedROMBank], a
-	ld [rROMB], a
-	call Audio1_UpdateMusic
+; The Crystal audio engine is the single owner of music, SFX, fades and the
+; low-HP alarm (_UpdateSound calls PlayDanger), so this is its only tick.
+	call UpdateSound
 
 	farcall TrackPlayTime ; keep track of time played
 

@@ -24,12 +24,11 @@ AnimateHealingMachine:
 	ld de, PokeCenterOAMData
 	call CopyHealingMachineOAM
 	ld a, 4
-	ld [wAudioFadeOutControl], a
-	ld a, SFX_STOP_ALL_MUSIC
-	ld [wNewSoundID], a
-	call PlaySound
+	ld [wMusicFade], a
+	xor a
+	ld [wMusicFadeID], a
 .waitLoop
-	ld a, [wAudioFadeOutControl]
+	ld a, [wMusicFade]
 	and a ; is fade-out finished?
 	jr nz, .waitLoop ; if not, check again
 	ld a, [wPartyCount]
@@ -42,25 +41,14 @@ AnimateHealingMachine:
 	call PlaySound
 	ld c, 30
 	call DelayFrames
-	ld a, [wAudioROMBank]
-	cp BANK("Audio Engine 3")
-	ld [wAudioSavedROMBank], a
-	jr nz, .next
-	ld a, SFX_STOP_ALL_MUSIC
-	ld [wNewSoundID], a
-	call PlaySound
-	ld a, BANK(Music_PkmnHealed)
-	ld [wAudioROMBank], a
-.next
 	ld a, MUSIC_PKMN_HEALED
-	ld [wNewSoundID], a
-	call PlaySound
+	call PlayMusic
 	ld d, $28
 	call FlashSprite8Times
 .waitLoop2
-	ld a, [wChannelSoundIDs]
-	cp MUSIC_PKMN_HEALED ; is the healed music still playing?
-	jr z, .waitLoop2 ; if so, check gain
+	ld a, [wChannel1MusicID]
+	and a ; is the healed music still playing?
+	jr nz, .waitLoop2 ; if so, check again
 	ld c, 32
 	call DelayFrames
 	pop af

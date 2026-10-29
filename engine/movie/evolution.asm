@@ -8,9 +8,7 @@ EvolveMon:
 	push af
 	xor a
 	ld [wLowHealthAlarm], a
-	ld [wChannelSoundIDs + CHAN5], a
 	dec a ; SFX_STOP_ALL_MUSIC
-	ld [wNewSoundID], a
 	call PlaySound
 	ld a, $1
 	ldh [hAutoBGTransferEnabled], a
@@ -51,7 +49,7 @@ EvolveMon:
 	ld a, [wEvoOldSpecies]
 	call PlayCry
 	call WaitForSoundToFinish
-	ld c, BANK(Music_SafariZone)
+	ld c, 0
 	ld a, MUSIC_SAFARI_ZONE
 	call PlayMusic
 	ld c, 80
@@ -80,7 +78,6 @@ EvolveMon:
 .done
 	ld [wWholeScreenPaletteMonSpecies], a
 	ld a, SFX_STOP_ALL_MUSIC
-	ld [wNewSoundID], a
 	call PlaySound
 	ld a, [wWholeScreenPaletteMonSpecies]
 	call PlayCry

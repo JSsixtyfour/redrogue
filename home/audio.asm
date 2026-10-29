@@ -32,26 +32,26 @@ PlayDefaultMusicCommon::
 
 .next
 	ld b, a
-	ld a, d
-	and a ; should current music be faded out first?
-	ld a, BANK(Music_BikeRiding)
-	jr nz, .next2
+;	ld a, d
+;	and a ; should current music be faded out first?
+;	ld a, 0 ; BANK(Music_BikeRiding)
+;	jr nz, .next2
 
 ; Only change the audio ROM bank if the current music isn't going to be faded
 ; out before the default music begins.
-	ld [wAudioROMBank], a
+;	ld [wAudioROMBank], a
 
-.next2
+;.next2
 ; [wAudioSavedROMBank] will be copied to [wAudioROMBank] after fading out the
 ; current music (if the current music is faded out).
-	ld [wAudioSavedROMBank], a
+;	ld [wAudioSavedROMBank], a
 	jr .next3
 
 .walking
 	ld a, [wMapMusicSoundID]
 	ld b, a
-	call CompareMapMusicBankWithCurrentBank
-	jr c, .next4
+;	call CompareMapMusicBankWithCurrentBank
+;	jr c, .next4
 
 .next3
 	ld a, [wLastMusicSoundID]
@@ -60,70 +60,30 @@ PlayDefaultMusicCommon::
 
 .next4
 	ld a, c
-	ld [wAudioFadeOutControl], a
+	ld [wMusicFade], a
 	ld a, b
 	ld [wLastMusicSoundID], a
-	ld [wNewSoundID], a
-	jp PlaySound
+	ld [wMusicFadeID], a
 
-UpdateMusic6Times::
-; This is called when entering a map, before fading out the current music and
-; playing the default music (i.e. the map's music or biking/surfing music).
-; There is a single music engine now (AUDIO_1); the old per-bank dispatch
-; (which bank is [wAudioROMBank] pointing at?) is gone. Audio1_UpdateMusic
-; reads note data out of whichever bank actually holds it via GetNextMusicByte
-; below, which bank-switches per byte.
-	ld c, 6
-.loop
-	push bc ; Bankswitch (inside farcall) clobbers bc, so the loop counter must survive it
-	farcall Audio1_UpdateMusic
-	pop bc
-	dec c
-	jr nz, .loop
-	ret
-
-CompareMapMusicBankWithCurrentBank::
-; Compares the map music's audio ROM bank with the current audio ROM bank
-; and updates the audio ROM bank variables.
-; Returns whether the banks are different in carry.
-	ld a, [wMapMusicROMBank]
-	ld e, a
-	ld a, [wAudioROMBank]
-	cp e
-	jr nz, .differentBanks
-	ld [wAudioSavedROMBank], a
+; if no fade, play immediately
+	ld a, [wMusicFade]
 	and a
-	ret
-.differentBanks
-	ld a, c ; this is a fade-out counter value and it's always non-zero
-	and a
-	ld a, e
-	jr nz, .next
-; If the fade-counter is non-zero, we don't change the audio ROM bank because
-; it's needed to keep playing the music as it fades out. The FadeOutAudio
-; routine will take care of copying [wAudioSavedROMBank] to [wAudioROMBank]
-; when the music has faded out.
-	ld [wAudioROMBank], a
-.next
-	ld [wAudioSavedROMBank], a
-	scf
-	ret
-
-PlayMusic::
-	ld b, a
-	ld [wNewSoundID], a
-	xor a
-	ld [wAudioFadeOutControl], a
-	ld a, c
-	ld [wAudioROMBank], a
-	ld [wAudioSavedROMBank], a
+	jr nz, .next5
 	ld a, b
+	call PlayMusic
+.next5
 
-; plays music specified by a. If value is $ff, music is stopped
+	ret
+
+;UpdateMusic6Times::
+;CompareMapMusicBankWithCurrentBank:
+;	ret
+
+; plays music or SFX specified by a. If value is $ff, music is stopped
 PlaySound::
-; If a channel 4/5/6 SFX was flagged as playing under zero-delay text
-; (home/print_text.asm PrintLetterDelay), let it finish before starting a new
-; sound instead of cutting it off before the player ever saw its letter.
+; If an SFX was flagged as playing under zero-delay text (home/print_text.asm
+; PrintLetterDelay), let it finish before starting a new sound instead of cutting
+; it off before the player ever saw its letter. Kept from the pre-Crystal engine.
 	push af
 	ldh a, [hSFXPlayingDuringText]
 	bit 2, a
@@ -131,135 +91,344 @@ PlaySound::
 	ldh [hSFXPlayingDuringText], a
 	call nz, WaitForSoundToFinish
 	pop af
+	push de
+	cp $ff
+	jr nz, .notff
+	xor a
+	call PlayMusic
+	pop de
+	ret
+.notff
+	ld e, a
+	xor a
+	ld d, a
+	call PlaySFX
+	pop de
+	ret
+
+;InitSound::
+;	push hl
+;	push de
+;	push bc
+;	push af
+;
+;	ldh a, [hLoadedROMBank]
+;	push af
+;	ld a, BANK(_InitSound)
+;	ldh [hLoadedROMBank], a
+;	ld [rROMB], a
+;
+;	call _InitSound
+;
+;	pop af
+;	ldh [hLoadedROMBank], a
+;	ld [rROMB], a
+;
+;	pop af
+;	pop bc
+;	pop de
+;	pop hl
+;	ret
+
+UpdateSound::
+;	push hl
+;	push de
+;	push bc
+;	push af
+
+	ldh a, [hLoadedROMBank]
+	push af
+	ld a, BANK(_UpdateSound)
+	ldh [hLoadedROMBank], a
+	ld [rROMB], a
+
+	call _UpdateSound
+
+	pop af
+	ldh [hLoadedROMBank], a
+	ld [rROMB], a
+
+;	pop af
+;	pop bc
+;	pop de
+;	pop hl
+	ret
+
+_LoadMusicByte::
+; [wCurMusicByte] = [a:de]
+	ldh [hLoadedROMBank], a
+	ld [rROMB], a
+
+	ld a, [de]
+	ld [wCurMusicByte], a
+	ld a, BANK(LoadMusicByte)
+
+	ldh [hLoadedROMBank], a
+	ld [rROMB], a
+	ret
+
+PlayMusic::
+	ld e, a
+	xor a
+	ld d, a
+; Play music de.
+
 	push hl
 	push de
 	push bc
-	ld b, a
-	ld a, [wNewSoundID]
+	push af
+
+	ldh a, [hLoadedROMBank]
+	push af
+	ld a, BANK(_PlayMusic) ; aka BANK(_InitSound)
+	ldh [hLoadedROMBank], a
+	ld [rROMB], a
+
+	ld a, e
 	and a
-	jr z, .next
-	xor a
-	ld [wChannelSoundIDs + CHAN5], a
-	ld [wChannelSoundIDs + CHAN6], a
-	ld [wChannelSoundIDs + CHAN7], a
-	ld [wChannelSoundIDs + CHAN8], a
-.next
-	ld a, [wAudioFadeOutControl]
-	and a ; has a fade-out length been specified?
-	jr z, .noFadeOut
-	ld a, [wNewSoundID]
-	and a ; is the new sound ID 0?
-	jr z, .done ; if so, do nothing
-	xor a
-	ld [wNewSoundID], a
-	ld a, [wLastMusicSoundID]
-	cp $ff ; has the music been stopped?
-	jr nz, .fadeOut ; if not, fade out the current music
-; If it has been stopped, start playing the new music immediately.
-	xor a
-	ld [wAudioFadeOutControl], a
-.noFadeOut
-	xor a
-	ld [wNewSoundID], a
-; The 4-way bank dispatch (which of Audio1/2/3/4_PlaySound to call, based on
-; [wAudioROMBank]) moved into DetermineAudioFunction below, since it's now
-; needed in two places (here, and Audio1_note's drum_note / the
-; unknownmusic0xef command inside engine_1.asm's note-command interpreter -
-; both need to play an SFX in whichever bank is currently active).
-	call DetermineAudioFunction
-	jr .done
+	jr z, .nomusic
 
-.fadeOut
-	ld a, b
-	ld [wLastMusicSoundID], a
-	ld a, [wAudioFadeOutControl]
-	ld [wAudioFadeOutCounterReloadValue], a
-	ld [wAudioFadeOutCounter], a
-	ld a, b
-	ld [wAudioFadeOutControl], a
+	call _PlayMusic
+	jr .end
 
-.done
+.nomusic
+	call _InitSound
+
+.end
+	pop af
+	ldh [hLoadedROMBank], a
+	ld [rROMB], a
+	pop af
 	pop bc
 	pop de
 	pop hl
 	ret
 
-GetNextMusicByte::
-; Reads the next music command byte for the currently-active bank
-; ([wAudioROMBank]), then restores the caller's bank. Mandatory in HOME (not
-; ROMX): it bank-switches to wAudioROMBank and keeps running, so the code
-; itself must stay mapped through the switch - this is the documented
-; HOME->ROMX bank-switch landmine (see WRAM_BIBLE.md and
-; project_bank_switch_from_romx). Called by Audio1_GetNextMusicByte, once per
-; command byte, from the single copy of the note-command interpreter in
-; engine_1.asm (AUDIO_1) - this is how that one copy reads note data that
-; physically lives in AUDIO_2/3/4.
-	ldh a, [hLoadedROMBank]
-	push af
-	ld a, [wAudioROMBank]
-	call SetCurBank
-	ld d, $0
-	ld a, c
-	add a
-	ld e, a
-	ld hl, wChannelCommandPointers
-	add hl, de
-	ld a, [hli]
-	ld e, a
-	ld a, [hld]
-	ld d, a
-	ld a, [de]
-	inc de
-	ld [hl], e
-	inc hl
-	ld [hl], d
-	ld e, a
-	pop af
-	call SetCurBank
-	ld a, e
+;PlayMusic2::
+;	ld e, a
+;	xor a
+;	ld d, a
+; Stop playing music, then play music de.
+;
+;	push hl
+;	push de
+;	push bc
+;	push af
+;
+;	ldh a, [hLoadedROMBank]
+;	push af
+;	ld a, BANK(_PlayMusic)
+;	ldh [hLoadedROMBank], a
+;	ld [rROMB], a
+;
+;	push de
+;	ld de, MUSIC_NONE
+;	call _PlayMusic
+;	call DelayFrame
+;	pop de
+;	call _PlayMusic
+;
+;	pop af
+;	ldh [hLoadedROMBank], a
+;	ld [rROMB], a
+;
+;	pop af
+;	pop bc
+;	pop de
+;	pop hl
+;	ret
+
+PlayCry::
+; Play monster a's cry.
+	push bc
+	ld bc, 0
+	call PlayCryWithOffsets
+	pop bc
 	ret
 
-DetermineAudioFunction::
-; Bank-switches to [wAudioROMBank] and calls that bank's PlaySound (b holds
-; the sound ID), then restores the caller's bank. Mandatory in HOME for the
-; same bank-switch-and-keep-running reason as GetNextMusicByte above; it also
-; centralizes the 4-way dispatch that used to be duplicated inline in both
-; UpdateMusic6Times and PlaySound.
+PlayCryWithOffsets::
+; Play monster a's cry with Red-style pitch/length offsets b/c (Growl's move sound).
+; The table lookup and offset math live with the engine (crysaudio/red_rogue_play_cry.asm).
+	push hl
+	push de
+	push bc
+	push af
+
+	ld e, a
 	ldh a, [hLoadedROMBank]
 	push af
-	ld a, [wAudioROMBank]
-	call SetCurBank
-	cp BANK(Audio1_PlaySound)
-	jr nz, .checkForAudio2
-; audio 1
-	ld a, b
-	call Audio1_PlaySound
-	jr .done
+	ld a, BANK(_RedRoguePlayCry)
+	ldh [hLoadedROMBank], a
+	ld [rROMB], a
 
-.checkForAudio2
-	cp BANK(Audio2_PlaySound)
-	jr nz, .checkForAudio3
-; audio 2
-	ld a, b
-	call Audio2_PlaySound
-	jr .done
+	ld a, e
+	call _RedRoguePlayCry
 
-.checkForAudio3
-	cp BANK(Audio3_PlaySound)
-	jr nz, .audio4
-; audio 3
-	ld a, b
-	call Audio3_PlaySound
-	jr .done
+	pop af
+	ldh [hLoadedROMBank], a
+	ld [rROMB], a
 
-.audio4
-; invalid banks default to audio 4; vanilla hits this with Missingno, whose
-; sprite dimensions overflow into wAudioROMBank (see pokeyellow's
-; DetermineAudioFunction, same comment)
+	call WaitForSoundToFinish
+
+	pop af
+	pop bc
+	pop de
+	pop hl
+	ret
+
+PlayBattleSound::
+	push hl
+	push de
+	push bc
+	push af
+
+	push af
+	ld a, c
+	ld [wCryPitch], a
 	ld a, b
-	call Audio4_PlaySound
+	ld [wCryPitch + 1], a
+	ld a, e
+	ld [wCryLength], a
+	ld a, d
+	ld [wCryLength + 1], a
+	pop af
+
+	ld e, a
+	xor a
+	ld d, a
+
+	ldh a, [hLoadedROMBank]
+	push af
+
+	ld a, BANK(_PlayBattleSound)
+	ldh [hLoadedROMBank], a
+	ld [rROMB], a
+
+	ld a, e
+	ld [wCurSFX], a
+	call _PlayBattleSound
+
+	pop af
+	ldh [hLoadedROMBank], a
+	ld [rROMB], a
+
+	pop af
+	pop bc
+	pop de
+	pop hl
+	ret
+
+PlaySFX::
+; Play sound effect de.
+; Sound effects are ordered by priority (highest to lowest)
+
+	push hl
+	push de
+	push bc
+	push af
+
+	; Is something already playing?
+;	call CheckSFX
+;	jr nc, .play
+
+	; Does it have priority?
+;	ld a, [wCurSFX]
+;	cp e
+;	jr c, .done
+
+.play
+	ldh a, [hLoadedROMBank]
+	push af
+	ld a, BANK(_PlaySFX)
+	ldh [hLoadedROMBank], a
+	ld [rROMB], a
+
+	ld a, e
+	ld [wCurSFX], a
+	call _PlaySFX
+
+	pop af
+	ldh [hLoadedROMBank], a
+	ld [rROMB], a
 
 .done
 	pop af
-	call SetCurBank
+	pop bc
+	pop de
+	pop hl
+	ret
+
+PlaySoundWaitForCurrent::
+WaitPlaySFX::
+	push af
+	call WaitForSoundToFinish
+	pop af
+	jp PlaySound
+
+; Wait for sound to finish playing
+WaitForSoundToFinish::
+WaitSFX::
+	ld a, [wLowHealthAlarm]
+	and a
+	ret nz
+	ld a, [wSFXDontWait]
+	and a
+	ret nz
+	; BATTLE SPEED 4X: in battle, don't hold the game for a cry or hit sound
+	; to finish (the next sound may cut its tail). 1X and 2X still wait.
+	; Kept from the pre-Crystal WaitForSoundToFinish (home/delay.asm).
+	ldh a, [hIsInBattle]
+	and a
+	jr z, .waitForSfx
+	ld a, [wOptions3]
+	and BATTLE_SPEED_MASK
+	cp BATTLE_SPEED_X4
+	ret z
+.waitForSfx
+
+; infinite loop until sfx is done playing
+
+	push hl
+
+.wait
+	ld hl, wChannel5Flags1
+	bit 0, [hl]
+	jr nz, .wait
+	ld hl, wChannel6Flags1
+	bit 0, [hl]
+	jr nz, .wait
+	ld hl, wChannel7Flags1
+	bit 0, [hl]
+	jr nz, .wait
+	ld hl, wChannel8Flags1
+	bit 0, [hl]
+	jr nz, .wait
+
+	pop hl
+	ret
+
+WaitForSongToFinish::
+.loop
+	call IsSongPlaying
+	jr c, .loop
+	ret
+
+IsSongPlaying::
+; Return carry if any song channels are active.
+	ld a, [wChannel1Flags1]
+	bit 0, a
+	jr nz, .playing
+	ld a, [wChannel2Flags1]
+	bit 0, a
+	jr nz, .playing
+	ld a, [wChannel3Flags1]
+	bit 0, a
+	jr nz, .playing
+	ld a, [wChannel4Flags1]
+	bit 0, a
+	jr nz, .playing
+	and a
+	ret
+.playing
+	scf
 	ret

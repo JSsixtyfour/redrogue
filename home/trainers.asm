@@ -481,25 +481,18 @@ PlayTrainerMusic::
 	and a
 	ret nz
 	xor a
-	ld [wAudioFadeOutControl], a
+	ld [wMusicFade], a
 	ld a, SFX_STOP_ALL_MUSIC
 	call PlaySound
-	ld a, BANK(Music_MeetEvilTrainer)
-	ld [wAudioROMBank], a
-	ld [wAudioSavedROMBank], a
 	ld a, [wEngagedTrainerClass]
     cp OPP_RIVAL_MINIBOSS
 	jr z, .miniBossRival ; the mini-boss rival has no overworld script to play its
 	                     ; entry music (unlike RIVAL1/2/3, which are always
 	                     ; scripted encounters - see Route22.asm), so play it
-	                     ; here on engage instead. Uses the real PlayMusic entry
-	                     ; point (bank in c, id in a - see home/audio.asm), the
-	                     ; same one Route22 itself calls for this same music; a
-	                     ; prior hand-rolled duplicate of PlayMusic's internals
-	                     ; here mishandled the audio bank/fade state and hung
-	                     ; the battle transition.
+	                     ; here on engage instead, through PlayMusic like every
+	                     ; other trainer theme.
 	cp OPP_JESSIE_JAMES
-	jr z, .jessieJames   ; own theme, in AUDIO_4; the ambush plays it too
+	jr z, .jessieJames   ; own theme; the Wild Area ambush plays it too
 	ld b, a
 	ld hl, EvilTrainerList
 .evilTrainerListLoop
@@ -523,21 +516,12 @@ PlayTrainerMusic::
 .maleTrainer
 	ld a, MUSIC_MEET_MALE_TRAINER
 .PlaySound
-	ld [wNewSoundID], a
-	jp PlaySound
+	jp PlayMusic
 .jessieJames
-	ld a, BANK(Music_MeetJessieJames)
-	ld b, MUSIC_MEET_JESSIE_JAMES
-	jr .playInBank
+	ld a, MUSIC_MEET_JESSIE_JAMES
+	jr .PlaySound
 .miniBossRival
-	ld a, BANK(Music_MeetRival)
-	ld b, MUSIC_MEET_RIVAL
-; Songs outside the Music_MeetEvilTrainer bank set both audio bank bytes the
-; way PlayMusic does, then share the normal play.
-.playInBank
-	ld [wAudioROMBank], a
-	ld [wAudioSavedROMBank], a
-	ld a, b
+	ld a, MUSIC_MEET_RIVAL
 	jr .PlaySound
 
 INCLUDE "data/trainers/encounter_types.asm"

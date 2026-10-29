@@ -143,7 +143,9 @@ LoadBGMapAttributes::
 ; audibly stutters on every screen transition without this.
 	push hl
 	push bc
-	farcall Audio1_UpdateMusic
+	push de
+	call UpdateSound ; Crystal audio: the missed VBlank tick (interrupts are off)
+	pop de
 	pop bc
 	pop hl
 	ret

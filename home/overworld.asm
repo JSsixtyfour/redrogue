@@ -279,9 +279,9 @@ OverworldLoopLessDelay::
 ; CollisionCheckOnLand/CollisionCheckOnWater - that played it even when a real
 ; warp was about to fire.
 .stuckLand
-	ld a, [wChannelSoundIDs + CHAN5]
-	cp SFX_COLLISION ; check if collision sound is already playing
-	jr z, .stuckLandSkipSound
+	ld hl, wChannel5Flags1 ; Crystal engine: skip while an SFX holds channel 5
+	bit 0, [hl]
+	jr nz, .stuckLandSkipSound
 	ld a, SFX_COLLISION
 	call PlaySound ; play collision sound (if it's not already playing)
 .stuckLandSkipSound
@@ -291,9 +291,9 @@ OverworldLoopLessDelay::
 	call CollisionCheckOnWater
 	jr nc, .noCollision
 ; genuinely stuck on water
-	ld a, [wChannelSoundIDs + CHAN5]
-	cp SFX_COLLISION
-	jr z, .stuckSurfSkipSound
+	ld hl, wChannel5Flags1 ; Crystal engine: skip while an SFX holds channel 5
+	bit 0, [hl]
+	jr nz, .stuckSurfSkipSound
 	ld a, SFX_COLLISION
 	call PlaySound
 .stuckSurfSkipSound
@@ -909,12 +909,12 @@ HandleBlackOut::
 	jp SpecialEnterMap
 
 StopMusic::
-	ld [wAudioFadeOutControl], a
-	ld a, SFX_STOP_ALL_MUSIC
-	ld [wNewSoundID], a
-	call PlaySound
+; a = fade length. The Crystal engine fades to music id 0 (silence).
+	ld [wMusicFade], a
+	xor a
+	ld [wMusicFadeID], a
 .wait
-	ld a, [wAudioFadeOutControl]
+	ld a, [wMusicFade]
 	and a
 	jr nz, .wait
 	jp StopAllSounds
@@ -2514,7 +2514,7 @@ OverrideFinaleFacilityMusic:
 .silph
 	ld a, MUSIC_SILPH_CO
 	ld [wMapMusicSoundID], a
-	ld a, BANK(Music_SilphCo)
+	ld a, 0
 	ld [wMapMusicROMBank], a
 	ret
 
@@ -2591,7 +2591,6 @@ LoadMapData::
 	ld a, [wStatusFlags7]
 	bit BIT_NO_MAP_MUSIC, a
 	jr nz, .restoreRomBank
-	call UpdateMusic6Times
 	call PlayDefaultMusicFadeOutCurrent
 .restoreRomBank
 	pop af

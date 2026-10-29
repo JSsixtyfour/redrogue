@@ -1,76 +1,103 @@
 SECTION "Audio RAM", WRAM0
 
-wSoundID:: db
+; Crystal audio engine state (pokered-crysaudio 9753183a, ram/wram.asm "Audio RAM").
+; Field order is the donor's; its four unused `ds` pads (1 + 1 + 5 + 1 B) are removed
+; (CRYSTAL_AUDIO_PHASE0_CHECKPOINT_2026-10-28.md 5a/5e). No engine code walks a pointer
+; across them, and the MusicEE jump-condition index is masked to the four music channels.
+; Channels 5-8 live in "Audio SFX Channels" below: unsaved, unlike the donor (5b).
 
-; bit 7: whether sound has been muted
-; all bits: whether the effective is active
-; Store 1 to activate effect (any value in the range [1, 127] works).
-; All audio is muted and music is paused. Sfx continues playing until it
-; ends normally.
-; Store 0 to resume music.
-wMuteAudioAndPauseMusic:: db
+; nonzero if playing
+wMusicPlaying:: db
 
-wDisableChannelOutputWhenSfxEnds:: db
+wAudio::
+wChannel1:: channel_struct wChannel1
+wChannel2:: channel_struct wChannel2
+wChannel3:: channel_struct wChannel3
+wChannel4:: channel_struct wChannel4
 
-wStereoPanning:: db
+wCurTrackDuty:: db
+wCurTrackVolumeEnvelope:: db
+wCurTrackFrequency:: dw
+wUnusedBCDNumber:: db ; BCD value, dummied out
+wCurNoteDuration:: db ; used in MusicE0 and LoadNote
 
-wSavedVolume:: db
+wCurMusicByte:: db
+wCurChannel:: db
+wVolume::
+; corresponds to rAUDVOL
+; Channel control / ON-OFF / Volume (R/W)
+;   bit 7 - Vin->SO2 ON/OFF
+;   bit 6-4 - SO2 output level (volume) (# 0-7)
+;   bit 3 - Vin->SO1 ON/OFF
+;   bit 2-0 - SO1 output level (volume) (# 0-7)
+	db
+wSoundOutput::
+; corresponds to rAUDTERM
+; bit 4-7: ch1-4 so2 on/off
+; bit 0-3: ch1-4 so1 on/off
+	db
+wPitchSweep::
+; corresponds to rAUD1SWEEP
+; bit 7:   unused
+; bit 4-6: sweep time
+; bit 3:   sweep direction
+; but 0-2: sweep shift
+	db
 
-wChannelCommandPointers:: ds NUM_CHANNELS * 2
-wChannelReturnAddresses:: ds NUM_CHANNELS * 2
+wMusicID:: dw
+wMusicBank:: db
+wNoiseSampleAddress:: dw
+wNoiseSampleDelay:: db
+wMusicNoiseSampleSet:: db
+wSFXNoiseSampleSet:: db
 
-wChannelSoundIDs:: ds NUM_CHANNELS
+wLowHealthAlarm::
+; bit 7: on/off
+; bit 4: pitch
+; bit 0-3: counter
+	db
 
-wChannelFlags1:: ds NUM_CHANNELS
-wChannelFlags2:: ds NUM_CHANNELS
+wMusicFade::
+; fades volume over x frames
+; bit 7: fade in/out
+; bit 0-5: number of frames for each volume level
+; $00 = none (default)
+	db
+wMusicFadeCount:: db
+wMusicFadeID:: dw
 
-wChannelDutyCycles:: ds NUM_CHANNELS
-wChannelDutyCyclePatterns:: ds NUM_CHANNELS
+wCryPitch:: dw
+wCryLength:: dw
 
-; reloaded at the beginning of a note. counts down until the vibrato begins.
-wChannelVibratoDelayCounters:: ds NUM_CHANNELS
-wChannelVibratoExtents:: ds NUM_CHANNELS
-; high nybble is rate (counter reload value) and low nybble is counter.
-; time between applications of vibrato.
-wChannelVibratoRates:: ds NUM_CHANNELS
-wChannelFrequencyLowBytes:: ds NUM_CHANNELS
-; delay of the beginning of the vibrato from the start of the note
-wChannelVibratoDelayCounterReloadValues:: ds NUM_CHANNELS
+wLastVolume:: db
+wUnusedMusicF9Flag:: db
 
-wChannelPitchSlideLengthModifiers:: ds NUM_CHANNELS
-wChannelPitchSlideFrequencySteps:: ds NUM_CHANNELS
-wChannelPitchSlideFrequencyStepsFractionalPart:: ds NUM_CHANNELS
-wChannelPitchSlideCurrentFrequencyFractionalPart:: ds NUM_CHANNELS
-wChannelPitchSlideCurrentFrequencyHighBytes:: ds NUM_CHANNELS
-wChannelPitchSlideCurrentFrequencyLowBytes:: ds NUM_CHANNELS
-wChannelPitchSlideTargetFrequencyHighBytes:: ds NUM_CHANNELS
-wChannelPitchSlideTargetFrequencyLowBytes:: ds NUM_CHANNELS
+wSFXPriority::
+; if nonzero, turn off music when playing sfx
+	db
 
-; Note delays are stored as 16-bit fixed-point numbers where the integer part
-; is 8 bits and the fractional part is 8 bits.
-wChannelNoteDelayCounters:: ds NUM_CHANNELS
-wChannelLoopCounters:: ds NUM_CHANNELS
-wChannelNoteSpeeds:: ds NUM_CHANNELS
-wChannelNoteDelayCountersFractionalPart:: ds NUM_CHANNELS
+wChannel1JumpCondition:: db
+wChannel2JumpCondition:: db
+wChannel3JumpCondition:: db
+wChannel4JumpCondition:: db
 
-wChannelOctaves:: ds NUM_CHANNELS
-; also includes fade for hardware channels that support it
-wChannelVolumes:: ds NUM_CHANNELS
+wStereoPanningMask:: db
 
-wMusicWaveInstrument:: db
-wSfxWaveInstrument:: db
-wMusicTempo:: dw
-wSfxTempo:: dw
-wSfxHeaderPointer:: dw
+wCryTracks::
+; plays only in left or right track depending on what side the monster is on
+; both tracks active outside of battle
+	db
 
-wNewSoundID:: db
+wSFXDuration:: db
+wCurSFX::
+; id of sfx currently playing
+	db
 
-wAudioROMBank:: db
-wAudioSavedROMBank:: db
+wSFXDontWait:: ds 1
 
-wFrequencyModifier:: db
-wTempoModifier:: db
+wAudioEnd::
 
+	; Red Rogue tenants of this pinned silo (unchanged from before the port; WRAM_BIBLE §D4).
 	; Pocket-list builder scratch, relocated OUT of the enemy/wild UNION (bottom of
 	; this file) so it can never overlap wGrassRate. Free WRAM0 tail padding
 	; (WRAM_BIBLE §D4). 3 named bytes + ds 10 = 13 bytes total, so all following
@@ -1726,7 +1753,7 @@ wBaseCoordY:: db
 
 ; low health alarm counter/enable
 ; high bit = enable, others = timer to cycle frequencies
-wLowHealthAlarm:: db
+wLowHealthAlarmOrig:: db ; unused since the Crystal audio port (engine keeps wLowHealthAlarm)
 
 ; counts how many tiles of the current frame block have been drawn
 wFBTileCounter:: db
@@ -2300,9 +2327,9 @@ wFollowerSpawnState:: db
 ; step seam twice; the first call queues a two-tile command and the second
 ; clears this latch without queuing another command.
 wFollowerLedgeLatch:: db
-	ds 128 - 19
+	ds 28 - 19 ; was 128 - 19: 100 B moved out of saved Main Data for the Crystal audio port
 wFollowerDataEnd::
-ASSERT wFollowerDataEnd - wFollowerDataStart == 128
+ASSERT wFollowerDataEnd - wFollowerDataStart == 28
 
 ; number of signs in the current map (up to MAX_BG_EVENTS)
 wNumSigns:: db
@@ -3456,7 +3483,7 @@ wBoxMonNicksEnd::
 wBoxDataEnd::
 
 
-SECTION "Random State", WRAM0
+SECTION "Random State", WRAM0, ALIGN[4] ; 10 B, must not cross a page
 
 ; Patrik Rak's 8-bit CMWC PRNG state - see engine/math/random.asm.
 ;   wRandomIndex  lag index. 1..8 while running; 0 is Init's fresh state, which
@@ -3507,7 +3534,7 @@ SECTION "Enemy Move Origins", WRAM0
 wEnemyMoveOrigins:: ds PARTY_LENGTH
 
 
-SECTION "Ball Rarity Cache", WRAM0
+SECTION "Ball Rarity Cache", WRAM0, ALIGN[4] ; 16 B, must not cross a page
 
 ; Per sprite slot (0-15): the CGB OBJ palette (0 = standard, 1 Great, 2 Ultra,
 ; 3 Master) PrepareOAMData ORs into that sprite's four OAM attribute bytes.
@@ -3548,3 +3575,16 @@ SECTION "Stack", WRAM0
 wStack:: db
 
 ENDSECTION
+
+
+SECTION "Audio SFX Channels", WRAM0
+
+; Crystal audio channels 5-8 (sound effects and cries). The donor kept these in saved
+; Main Data; here they are unsaved so LoadMainData, LossRecoveryRestore and the new-game
+; clear can never overwrite live channel state (CRYSTAL_AUDIO_PHASE0_CHECKPOINT_2026-10-28.md 5b).
+; _InitSound clears 5-6 and 7-8 as two contiguous pairs, so they stay in this order.
+wChannel5:: channel_struct wChannel5
+wChannel6:: channel_struct wChannel6
+wChannel7:: channel_struct wChannel7
+wChannel8:: channel_struct wChannel8
+ASSERT wChannel7 - wChannel5 == 2 * (wChannel6 - wChannel5), "channels 5-8 must stay contiguous pairs"

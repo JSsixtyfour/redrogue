@@ -62,9 +62,13 @@ class BranchDriverTest(HarnessTestCase):
         self.assertIn("broken hook", result["detail"])
 
     def test_no_input_poll_is_frozen(self) -> None:
-        # Park the CPU on a `jr @` in ROM0: interrupts still run, Joypad never.
+        # Park the CPU on a `jr @` in ROM0: interrupts still run, Joypad never. HOME has
+        # none since the Crystal audio port (the last was in the old audio code), so plant
+        # one in the unused ROM0 tail; this overrides emulator ROM only, as test_laundry_scope does.
         memory = self.harness.pyboy.memory
-        loop = next(a for a in range(0x100, 0x3FFF) if memory[a] == 0x18 and memory[a + 1] == 0xFE)
+        loop = 0x3FF0
+        memory[0, loop] = 0x18
+        memory[0, loop + 1] = 0xFE
         self.harness.pyboy.register_file.PC = loop
         state = io.BytesIO()
         self.harness.save_state(state)

@@ -64,7 +64,12 @@
 ; bytes of the saved pad after wroguenpctradeform. Nothing moved; old saves get
 ; both zeroed (an ordinary run, no continuation pending), migration
 ; endlessAdded. Eligibility needs no conversion: EVENT_AI_DEFEATED is ZONE 0.
-DEF SAVE_SCHEMA_ID EQU 14
+; Schema 15 (2026-10-28, Crystal audio port): the follower block in the main data
+; block keeps its 19 live bytes but drops 100 unused padding bytes (ds 128 - 19 ->
+; ds 28 - 19), so every saved main-data field after wFollowerDataEnd moves down 100
+; bytes. Meanings are unchanged; migration followerPadTrimmed copies them by label.
+; The loss-recovery record is repacked to match and cleared on conversion.
+DEF SAVE_SCHEMA_ID EQU 15
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; "RRSG" as raw ASCII, not through the game's text charmap.

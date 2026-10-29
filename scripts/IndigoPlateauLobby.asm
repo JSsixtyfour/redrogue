@@ -37,8 +37,6 @@ IndigoPlateauLobby_Script:
 	jr z, .lobbyMusicDone
 	ld a, MUSIC_INDIGO_PLATEAU
 	ld [wMapMusicSoundID], a
-	ld a, BANK(Music_IndigoPlateau)
-	ld [wMapMusicROMBank], a
 .lobbyMusicDone
 	; Place the exit door as soon as the selection exists; the setups below take
 	; several frames. The map-loaded path re-applies it (a no-op by then).

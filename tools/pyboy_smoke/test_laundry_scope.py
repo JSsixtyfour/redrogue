@@ -146,22 +146,20 @@ class LaundryScopeSmokeTest(HarnessTestCase):
                 self.assertEqual(lo | (hi << 8), want_addr)
                 self.assertEqual(self.harness.read8("wTrainerPicBank"), want_bank)
 
-    def test_move_swap_restores_audio_state_before_resuming_music(self):
+    def test_move_swap_sfx_plays_and_finishes_before_returning(self):
+        # Crystal audio: SFX IDs are global, so the old pause-music/bank dance is
+        # gone. The contract left is: SFX_SWAP really starts on channels 5-8, and
+        # the routine returns only once they are idle, even with the low-HP alarm
+        # on (WaitForSoundToFinish returns at once in that case).
         import io
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
         baseline = io.BytesIO()
         h.save_state(baseline)
-        bank, wait_address = h.symbols.get("PlayMoveSwapSound.waitSfx")
-        # The helper's final EI/RET precedes its local wait routine. Capture
-        # before EI, so ordinary subsequent VBlanks cannot alter the evidence.
-        seam = wait_address - 2
-        rom = h.rom_path.read_bytes()
-        offset = bank * 0x4000 + seam - 0x4000
-        self.assertEqual(rom[offset:offset + 2], bytes((0xFB, 0xC9)))
-        fields = ("wAudioROMBank", "wAudioSavedROMBank",
-                  "wMuteAudioAndPauseMusic", "wAudioFadeOutControl")
+        wait_bank, wait_address = h.symbols.get("PlayMoveSwapSound.waitSfx")
+        done_bank, done_address = h.symbols.get("PlayMoveSwapSound.done")
+        flags = [f"wChannel{n}Flags1" for n in range(5, 9)]
         # boot_fight2 may stop inside VBlank with IME cleared. Enter through
         # a test-only EI trampoline, matching the normal text caller context.
         # This overrides emulator ROM only; no on-disk ROM bytes are changed.
@@ -177,22 +175,23 @@ class LaundryScopeSmokeTest(HarnessTestCase):
             with self.subTest(alarm=alarm):
                 h.load_state(baseline)
                 h.write8("wLowHealthAlarm", alarm)
-                h.write8("wMuteAudioAndPauseMusic", 0)
-                h.write8("wAudioFadeOutControl", 0)
-                for channel in range(4, 8):
-                    h.write8("wChannelSoundIDs", 0, offset=channel)
-                expected = {name: h.read8(name) for name in fields}
+                started = []
                 captured = {}
-                def at_return(_):
-                    captured.update({name: h.read8(name) for name in fields})
+                def at_wait(_):
+                    if not started:
+                        started.append([h.read8(name) & 1 for name in flags])
+                def at_done(_):
+                    captured["channels"] = [h.read8(name) & 1 for name in flags]
                     captured["alarm"] = h.read8("wLowHealthAlarm")
-                    captured["channels"] = h.read_bytes("wChannelSoundIDs", 4, offset=4)
-                h.pyboy.hook_register(bank, seam, at_return, None)
+                h.pyboy.hook_register(wait_bank, wait_address, at_wait, None)
+                h.pyboy.hook_register(done_bank, done_address, at_done, None)
                 try:
-                    h.call_routine("AudioTestEntry", limit=600)
+                    h.call_routine("AudioTestEntry", limit=600, nested_vblank=True)
                 finally:
-                    h.pyboy.hook_deregister(bank, seam)
-                for name, value in expected.items():
-                    self.assertEqual(captured[name], value, name)
-                self.assertEqual(captured["alarm"], alarm)
-                self.assertEqual(captured["channels"], [0] * 4)
+                    h.pyboy.hook_deregister(wait_bank, wait_address)
+                    h.pyboy.hook_deregister(done_bank, done_address)
+                self.assertTrue(started and any(started[0]), "SFX_SWAP never started")
+                self.assertEqual(captured.get("channels"), [0] * 4)
+                # Bit 7 is the alarm's on switch; the low 7 bits are its running tone timer,
+                # which the engine advances every frame the alarm is on.
+                self.assertEqual(captured["alarm"] & 0x80, alarm)

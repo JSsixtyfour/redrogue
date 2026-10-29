@@ -185,6 +185,13 @@ class BlackoutFixture:
         self.assertEqual(h.read8('wBattleCount'), 0)
         self.assertEqual(h.read8('hIsInBattle'), 0)
         self.assertEqual((h.read8('wPlayerCoins'), h.read8('wPlayerCoins', 1)), (0x12, 0x34))
+        # The Dorm script raises the popup on its first pass after arrival, which can be a
+        # few frames after control returns (measured 0-10 frames since the Crystal audio
+        # port moved VBlank timing). Allow it a bounded half second.
+        for _ in range(30):
+            if popup_tally:
+                break
+            h.tick(1)
         self.assertIn(3, popup_tally, popup_tally)
         h.tick(120)
         # "EARNED" in charmap tile ids, on an on-screen window.

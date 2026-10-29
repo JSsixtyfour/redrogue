@@ -40,7 +40,7 @@ HallOfFameCredits::
 	call EnableLCD
 	ld a, SFX_STOP_ALL_MUSIC
 	call PlaySoundWaitForCurrent
-	ld c, BANK(Music_Credits)
+	ld c, 0
 	ld a, MUSIC_CREDITS
 	call PlayMusic
 	ld c, 128
@@ -337,10 +337,9 @@ Credits:
 	; Music_Credits loops now that the roll outlasts it: fade it out here, the
 	; same way HoFFadeOutScreenAndMusic does.
 	ld a, 10
-	ld [wAudioFadeOutCounterReloadValue], a
-	ld [wAudioFadeOutCounter], a
-	ld a, $ff
-	ld [wAudioFadeOutControl], a
+	ld [wMusicFade], a
+	xor a
+	ld [wMusicFadeID], a
 	ld c, 16
 	call DelayFrames
 	call FillMiddleOfScreenWithWhite

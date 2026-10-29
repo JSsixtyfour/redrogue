@@ -489,12 +489,29 @@ class RedRogueHarness:
         file_object.seek(0)
         self.pyboy.load_state(file_object)
         self._call_streak = 0
+        self._snapshot_park_registers()
 
     def tick(self, frames: int = 1, *, render: bool = False) -> None:
+        self._park_registers = None  # time moved: the machine is no longer at the park
         for _ in range(frames):
             self.pyboy.tick(render=render)
             if self._coverage_detach:
                 self._drain_coverage()
+
+    _PARK_REGISTER_NAMES = ("A", "B", "C", "D", "E", "F", "HL", "PC", "SP")
+    _park_registers = None
+
+    def _snapshot_park_registers(self) -> None:
+        """Remember the interrupted context's registers at a park (or a loaded state).
+
+        call_routine resumes the parked code with these, not with whatever the test
+        wrote into the register file as the callee's inputs. Measured 2026-10-28
+        (Crystal audio port): parks now land mid-_UpdateSound, where de is the live
+        music-data pointer; a test that set D/E for LoadEnemyFrontSprite before
+        call_routine resumed the engine on vFrontPic, ran away and left SP in $C3xx.
+        """
+        rf = self.pyboy.register_file
+        self._park_registers = {name: getattr(rf, name) for name in self._PARK_REGISTER_NAMES}
 
     def cycle_count(self) -> int:
         """Return PyBoy's current CPU-cycle counter for performance telemetry."""
@@ -1275,6 +1292,7 @@ class RedRogueHarness:
             )
         for _ in range(limit):
             if start <= self.pyboy.register_file.PC < end or self._in_vblank_callee(start, end):
+                self._snapshot_park_registers()
                 return
             self.tick(1)
         raise AssertionError(
@@ -1294,16 +1312,21 @@ class RedRogueHarness:
         A stack word only counts as the handler's return address if the byte
         three before it is a CALL opcode ($CD) inside the handler, so data on
         the stack cannot fake it.
+
+        Measured 2026-10-28 (Crystal audio port): the boundary now lands two
+        calls deep, in _UpdateSound (bank $1F) under the HOME UpdateSound shim,
+        which pushes the saved bank between the two return addresses. So the
+        scan reaches 16 words down instead of 4; the CALL-opcode guard is kept.
         """
         memory = self.pyboy.memory
         sp = self.pyboy.register_file.SP
-        for offset in range(0, 8, 2):
+        for offset in range(0, 32, 2):
             word = memory[(sp + offset) & 0xFFFF] | (memory[(sp + offset + 1) & 0xFFFF] << 8)
             if start + 3 <= word < end and memory[word - 3] == 0xCD:
                 return True
         return False
 
-    def call_routine(self, label: str, limit: int = 12000) -> None:
+    def call_routine(self, label: str, limit: int = 12000, *, nested_vblank: bool = False) -> None:
         """Call a ROM routine through the engine's bank trampoline.
 
         PRECONDITION: the CPU must already be parked somewhere safe to
@@ -1329,10 +1352,15 @@ class RedRogueHarness:
             span = 10 if "wAIPlayerKOMaxDamage" in self.symbols._symbols else 8
             for offset in range(span):
                 self.write8("wAIEnemyEstimateCache", 0, offset=offset)
-        register_names = ("A", "B", "C", "D", "E", "F", "HL", "PC", "SP")
+        register_names = self._PARK_REGISTER_NAMES
         saved_registers = {
             name: getattr(self.pyboy.register_file, name) for name in register_names
         }
+        # Resume with the park-time registers, not the callee inputs the test wrote
+        # since (see _snapshot_park_registers). Only while still at that park.
+        park = self._park_registers
+        if park and park["PC"] == saved_registers["PC"] and park["SP"] == saved_registers["SP"]:
+            saved_registers = dict(park)
         saved_bank = self.read8("hLoadedROMBank")
         # The parking boundary is usually INSIDE VBlank, after VBlank saved the
         # interrupted code's bank in wVBlankSavedROMBank. A callee that lets real
@@ -1457,9 +1485,31 @@ class RedRogueHarness:
             self.pyboy.memory[0x2000] = saved_bank
             self.write8("hLoadedROMBank", saved_bank)
             self.write8("wVBlankSavedROMBank", saved_vblank_bank)
+            restore_vblank_mask()
             for name, value in saved_registers.items():
                 setattr(self.pyboy.register_file, name, value)
             completed["value"] = True
+
+        # A callee that EIs (CopyVideoData, FOLLOWUPS #57) let a real VBlank nest
+        # inside the parked one. Measured 2026-10-28 (Crystal audio port): parks
+        # now land mid-_UpdateSound, so the nested VBlank re-entered the audio
+        # engine halfway through its channel loop, and the resumed outer pass ran
+        # away (SP $C398, test_final_ai_battle's fusion pic). While a parked VBlank
+        # is hijacked, mask the VBlank interrupt; put IE and IF's VBlank bit back
+        # exactly before resuming, so the parked handler continues as it was.
+        saved_ie = self.pyboy.memory[0xFFFF]
+        saved_if_vblank = self.pyboy.memory[0xFF0F] & 1
+
+        def restore_vblank_mask() -> None:
+            if mask_vblank:
+                self.pyboy.memory[0xFFFF] = saved_ie
+                self.pyboy.memory[0xFF0F] = (self.pyboy.memory[0xFF0F] & ~1) | saved_if_vblank
+
+        # nested_vblank=True: the caller enters through its own EI trampoline because
+        # the callee needs real frames (test_laundry_scope's move-swap SFX).
+        mask_vblank = restore_vblank_ime and not nested_vblank
+        if mask_vblank:
+            self.pyboy.memory[0xFFFF] = saved_ie & ~1
 
         self.pyboy.hook_register(di_bank, di_address + 1, restore_after_di, None)
         self.pyboy.hook_register(enter_bank, enter_address, entered, None)
@@ -1473,6 +1523,8 @@ class RedRogueHarness:
             self.pyboy.register_file.PC = self.address("Bankswitch")
             self.wait_until(lambda: completed["value"], label, limit)
         finally:
+            if not completed["value"]:
+                restore_vblank_mask()
             self.pyboy.hook_deregister(di_bank, di_address + 1)
             self.pyboy.hook_deregister(enter_bank, enter_address)
             self.pyboy.hook_deregister(return_bank, return_address)

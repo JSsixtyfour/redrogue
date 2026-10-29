@@ -115,6 +115,12 @@
     "endlessAdded"
    ],
    "verified": "NOT YET (2026-10-28, Claude): Endless Checkpoint B step 1. wEndlessDepth/wEndlessFlags carved from the saved pad after wroguenpctradeform; nothing moved; zeroed for old saves. Real-save gate not run."
+  },
+  {
+   "from": "14",
+   "to": "15",
+   "steps": ["followerPadTrimmed"],
+   "verified": "2026-10-28 (Claude), merged onto master 135d2d61 (Endless schema 14): the 100 unused follower-pad bytes left Main Data for the Crystal audio channel structs. Schema diff 14 -> 15: one hole at old main offsets 379-478, every later floating bank-1 label -100 (incl. wEndlessDepth/Flags), fixed-org loss-recovery labels unchanged and cleared. Converter 24 pass/1 legacy skip; the step test was mutation-checked on the branch. Real-save gate on the merged build: six schema-14 saves (135d2d61) and six schema-13 saves (037d6540, through endlessAdded) convert and all continue, save and continue again; an unconverted schema-14 save is refused. BGB acceptance of the audio port by the user 2026-10-28 (on the pre-merge branch)."
   }
  ]
 }

@@ -652,11 +652,10 @@ LoadBGMapAttributes_Lite::
 	ret
     
 Func_3082:: ;added from pokeyellow - update audio so it doesn't "lag"
-	call FadeOutAudio
-	; This helper executes in ROMX with the CGB attribute loader. ShinRed's
-	; callbs switches the mapped ROM bank inline and then continues the caller,
-	; which is only safe when the caller lives in HOME. Preserve this ROMX
-	; routine with the project's bank-restoring farcall convention instead.
-	farcall Music_DoLowHealthAlarm
-	farcall Audio1_UpdateMusic
+	; UpdateSound is HOME code that restores the caller's bank, so it is safe from
+	; this ROMX helper. It also runs the engine's fades and low-HP alarm, which
+	; FadeOutAudio and Music_DoLowHealthAlarm used to do separately.
+	push de
+	call UpdateSound ; Crystal audio: the missed VBlank tick (interrupts are off)
+	pop de
 	ret

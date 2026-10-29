@@ -37,10 +37,10 @@ class PokemonCenterSourceContractTest(unittest.TestCase):
         self.assertIn("call Delay3", flow)
         self.assertIn("predef HealParty", flow)
         self.assertIn("farcall AnimateHealingMachine", flow)
-        self.assertIn("xor a\n\tld [wAudioFadeOutControl], a", flow)
-        self.assertIn("ld a, [wAudioSavedROMBank]", flow)
+        # Crystal audio: cancel the fade, then restart the map song by global ID.
+        self.assertIn("xor a\n\tld [wMusicFade], a", flow)
         self.assertIn("ld a, [wMapMusicSoundID]", flow)
-        self.assertIn("call PlaySound", flow)
+        self.assertIn("call PlayMusic", flow)
         self.assertIn("ld a, $24", flow)
         self.assertIn("ld c, a\n\tcall DelayFrames", flow)
         self.assertIn("ld hl, PokemonCenterFarewellText\n\tcall PrintText", flow)
@@ -50,7 +50,7 @@ class PokemonCenterSourceContractTest(unittest.TestCase):
     def test_healing_machine_loop_copies_then_delays_once_and_flashes_palette(self) -> None:
         source = (REPO_ROOT / "engine" / "overworld" / "healing_machine.asm").read_text()
         loop_start = source.index(".partyLoop")
-        after_loop = source.index("\tld a, [wAudioROMBank]", loop_start)
+        after_loop = source.index("\tld a, MUSIC_PKMN_HEALED", loop_start)
         loop = source[loop_start:after_loop]
         sound = loop.index("ld a, SFX_HEALING_MACHINE")
         copy_phase = loop[:sound]
@@ -70,10 +70,10 @@ class PokemonCenterSourceContractTest(unittest.TestCase):
             "hUpdateSpritesEnabled",
             "rOBP1",
             "UpdateGBCPal_OBP1",
-            "wAudioFadeOutControl",
-            "SFX_STOP_ALL_MUSIC",
-            "wAudioROMBank",
-            "Music_PkmnHealed",
+            "wMusicFade",
+            "wMusicFadeID",
+            "MUSIC_PKMN_HEALED",
+            "call PlayMusic",
             "FlashSprite8Times",
             "FollowerRefreshAfterHeal",
         ):

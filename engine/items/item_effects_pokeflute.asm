@@ -86,11 +86,10 @@ ItemUsePokeFlute_Real::
 	and $80
 	jr nz, .skipMusic
 	call WaitForSoundToFinish ; wait for sound to end
-	farcall Music_PokeFluteInBattle ; play in-battle pokeflute music
-.musicWaitLoop ; wait for music to finish playing
-	ld a, [wChannelSoundIDs + CHAN7]
-	and a ; music off?
-	jr nz, .musicWaitLoop
+	; Crystal audio: the in-battle flute is its own SFX (no channel-pointer patching)
+	ld a, SFX_POKEFLUTE_IN_BATTLE
+	call PlaySound
+	call WaitForSoundToFinish
 .skipMusic
 	ld hl, FluteWokeUpText
 	jp PrintText
@@ -151,13 +150,8 @@ PlayedFluteHadEffectText:
 ; play out-of-battle pokeflute music
 	ld a, SFX_STOP_ALL_MUSIC
 	call PlaySound
-	ld a, SFX_POKEFLUTE
-	ld c, BANK(SFX_Pokeflute)
-	call PlayMusic
-.musicWaitLoop ; wait for music to finish playing
-	ld a, [wChannelSoundIDs + CHAN3]
-	cp SFX_POKEFLUTE
-	jr z, .musicWaitLoop
-	call PlayDefaultMusic ; start playing normal music again
+	ld a, SFX_POKEFLUTE ; an SFX on channels 5-7 under the Crystal engine
+	call PlaySound
+	call PlayDefaultMusic ; waits for the flute (WaitForSoundToFinish), then map music
 .done
 	jp TextScriptEnd ; end text

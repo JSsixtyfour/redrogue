@@ -21,6 +21,13 @@ class BodyArmorTest(HarnessTestCase):
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
+        # The enemy FIGHT 2 rolls follows VBlank-time RNG, so its moves drift with engine
+        # timing (an Arbok's Wrap left the player unable to select anything). Pin it to
+        # Splash: this test is about the player's menu, not the enemy's choice.
+        for i in range(4):
+            h.write8("wEnemyMonMoves", MOVES["SPLASH"] if i == 0 else 0, offset=i)
+            h.write8("wEnemyMonPP", 30 if i == 0 else 0, offset=i)
+        h.write8("wEnemySelectedMove", MOVES["SPLASH"])  # the AI picks before the menu opens
         slot = h.read8("wPlayerMonNumber")
         h.write8("wBridgeSelectedEffectOwner1", slot + 1)
         h.write8("wBridgeSelectedEffect1", BODY_ARMOR)

@@ -311,3 +311,103 @@ class EndlessRecycleTest(HarnessTestCase):
         finally:
             h.unregister_hook("Rangerandom", count_draw)
         self.assertEqual(draws, [], "the count-only query consumed RNG")
+
+    def test_ownership_scan_is_bounded_by_the_counts(self) -> None:
+        """An empty box's list need not be terminated (a FIGHT 2 boot leaves it
+        all zeroes); bytes past the counts must never count as owned."""
+        h = self.harness
+        self.arm_legendary_bargain()
+        self.own(party=["RATTATA"])
+        h.write8("wBoxCount", 0)
+        ho_oh = self.species["HO_OH"]
+        self.write_bytes("wBoxSpecies", [0] * 21 + [ho_oh, ho_oh, 0xFF])
+        party = h.address("wPartySpecies")
+        h.pyboy.memory[party + 1] = ho_oh          # past wPartyCount = 1
+        self.assertEqual(self.roll_ace("MORTY"), ho_oh)
+
+
+class StageRecycleEndToEndTest(HarnessTestCase):
+    """A route cleared earlier in the circuit, entered again through the real
+    lobby door. Without a recycle the map is still finished; with one it plays
+    as new. One boot per test (boot_to_lobby is not reentrant)."""
+
+    TRAINERS = [f"EVENT_BEAT_UNDERGROUND_PATH_WEST_EAST_TRAINER_{i}" for i in range(4)]
+    AUTOWALK = "EVENT_AUTOWALKED_INTO_UNDERGROUND_PATH_WEST_EAST"
+
+    def enter_cleared_route(self, *, exhausted: bool) -> None:
+        h = self.harness
+        self.events = parse_rgbds_constants(REPO_ROOT / "constants/event_constants.asm")
+        h.boot_to_lobby()
+        for name in self.TRAINERS + [self.AUTOWALK]:
+            h.set_event(self.events[name])
+        if exhausted:
+            base = h.address("wVisitedStagesBitfield")
+            for i, v in enumerate([0xFF, 0xFF, 0x3F, 0x00]):  # all 22 stages
+                h.pyboy.memory[base + i] = v
+            h.call_routine("_PickRandomUnvisitedStage")
+        h.enter_stage_door1(h.TARGET_ROUTE, description="Underground Path West-East")
+
+    def offered(self) -> bool:
+        return self.harness.event_is_set(self.events["EVENT_ROGUE_POKEMON_OFFERED"])
+
+    def test_control_a_cleared_route_without_a_recycle_is_already_finished(self) -> None:
+        h = self.harness
+        self.enter_cleared_route(exhausted=False)
+        h.wait_until(self.offered, "the finished route's reward offer", 600)
+        for name in self.TRAINERS:
+            self.assertTrue(h.event_is_set(self.events[name]))
+
+    def test_a_recycled_route_plays_as_new(self) -> None:
+        h = self.harness
+        self.enter_cleared_route(exhausted=True)
+        h.wait_until(lambda: h.event_is_set(self.events[self.AUTOWALK]),
+                     "the entry auto-walk replaying", 900)
+        h.tick(300)
+        self.assertFalse(self.offered(), "the reward was offered with no trainer beaten")
+        for name in self.TRAINERS:
+            self.assertFalse(h.event_is_set(self.events[name]), f"{name} still beaten")
+
+
+class LegendaryOwnershipBattleTest(HarnessTestCase):
+    """The real party builder (ReadTrainer -> PartyGenLegendaryBossAce), as
+    test_legendary_boss drives it, with the player already owning legendaries."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
+        self.classes = parse_trainer_class_indexes(REPO_ROOT / "constants/trainer_constants.asm")
+        self.ram = parse_rgbds_constants(REPO_ROOT / "constants/ram_constants.asm")
+        h = self.harness
+        h.boot_fight2(seed=1)
+        h.write8("wRogueFlagsBitfield",
+                 h.read8("wRogueFlagsBitfield") | 1 << self.ram["BIT_WITCH_ACCEPTED"])
+        h.write8("wWitchChallenge", self.ram["CHALLENGE_LEGENDARY_BOSS"])
+
+    def own_in_party(self, names) -> None:
+        """Overwrite the first party species, keeping the count."""
+        for i, name in enumerate(names):
+            self.harness.write8("wPartySpecies", self.species[name], offset=i)
+
+    def build_ace(self, leader: str) -> tuple[int, int]:
+        h = self.harness
+        h.write8("wLegendaryBossSpecies", 0)
+        h.write8("wTrainerClass", self.classes[leader])
+        h.write8("wTrainerNo", 16)                  # a gym-5-or-later team
+        h.call_routine("ReadTrainer", limit=4000)
+        count = h.read8("wEnemyPartyCount")
+        return h.read8("wEnemyPartySpecies", offset=count - 1), h.read8("wLegendaryBossSpecies")
+
+    def test_built_teams_never_field_an_owned_legendary(self) -> None:
+        legendaries = {self.species[s] for row in legendary_pools().values() for s in row}
+        self.own_in_party(["MEWTWO", "MEW", "CELEBI"])
+        for _ in range(3):
+            ace, traded = self.build_ace("SABRINA")
+            self.assertEqual(ace, self.species["LUGIA"])
+            self.assertEqual(traded, ace)
+        self.own_in_party(["MEW", "CELEBI"])
+        ace, traded = self.build_ace("ERIKA")      # whole pool owned
+        self.assertNotIn(ace, legendaries)
+        self.assertEqual(traded, 0, "a trade was armed with nothing to give")
+        self.own_in_party(["RATTATA"])
+        ace, traded = self.build_ace("MORTY")       # FIGHT 2's real, unterminated box
+        self.assertEqual(ace, self.species["HO_OH"])

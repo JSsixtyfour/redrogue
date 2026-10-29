@@ -1,12 +1,25 @@
 ; Direct blackout only. No ordinary manual-save or archival-ending protection.
 ; All external edges are farcalls; local pointers/table reads stay in bank 2A.
 DEF LOSS_RECOVERY_FORMAT EQU 1
-DEF LOSS_RECOVERY_BODY EQU 1500
+; Body = name + Main Data up to wGameProgressFlags + the tail after it + gyms + credits,
+; packed densely across the three SRAM spans; the slack sits at the end of span 3.
+; Label differences are link-time values, so the split is literal and the ASSERTs pin it.
+DEF LOSS_MAIN_HEAD EQU 596 ; 696 before the Crystal audio port took 100 B of follower pad
+DEF LOSS_MAIN_TAIL EQU 790
+DEF LOSS_RECOVERY_BODY EQU NAME_LENGTH + LOSS_MAIN_HEAD + LOSS_MAIN_TAIL + 2 + 1
+DEF LOSS_SPAN1_MAIN EQU 512 - 27 ; span 1: 16 B header + name + this much Main Data
+DEF LOSS_SPAN2_MAIN EQU LOSS_MAIN_HEAD - LOSS_SPAN1_MAIN
+DEF LOSS_SPAN2_TAIL EQU 497 - LOSS_SPAN2_MAIN
+DEF LOSS_SPAN3_TAIL EQU LOSS_MAIN_TAIL - LOSS_SPAN2_TAIL
+DEF LOSS_SPAN3_USED EQU LOSS_SPAN3_TAIL + 2 + 1
+ASSERT LOSS_SPAN2_MAIN > 0 && LOSS_SPAN3_TAIL > 0
+ASSERT LOSS_SPAN3_USED <= 507, "loss-recovery record no longer fits its SRAM spans"
+ASSERT NAME_LENGTH == 11
+ASSERT wGameProgressFlags - wMainDataStart == LOSS_MAIN_HEAD
+ASSERT wMainDataEnd - wGameProgressFlagsEnd == LOSS_MAIN_TAIL
+
 DEF LOSS_RECOVERY_VALID EQU $a5
 DEF LOSS_RECOVERY_DEBUG EQU (1 << BIT_DEBUG_MODE) | (1 << BIT_DEBUG2_MODE)
-ASSERT NAME_LENGTH == 11
-ASSERT wGameProgressFlags - wMainDataStart == 696
-ASSERT wMainDataEnd - wGameProgressFlagsEnd == 790
 
 MACRO loss_copy
 	ld a, \1
@@ -98,13 +111,18 @@ LossRecoveryPrepare::
 	ld [wLossRecoveryHeader + 15], a
 	loss_copy 1, wLossRecoveryHeader, sLossRecovery1, 16
 	loss_copy 1, wPlayerName, sLossRecovery1 + 16, 11
-	loss_copy 1, wMainDataStart, sLossRecovery1 + 27, 485
-	loss_copy 3, wMainDataStart + 485, sLossRecovery2, 211
-	loss_copy 3, wGameProgressFlagsEnd, sLossRecovery2 + 211, 286
-	loss_copy 3, wGameProgressFlagsEnd + 286, sLossRecovery3, 504
-	loss_copy 3, wGymsUsedMask, sLossRecovery3 + 504, 2
+	loss_copy 1, wMainDataStart, sLossRecovery1 + 27, LOSS_SPAN1_MAIN
+	loss_copy 3, wMainDataStart + LOSS_SPAN1_MAIN, sLossRecovery2, LOSS_SPAN2_MAIN
+	loss_copy 3, wGameProgressFlagsEnd, sLossRecovery2 + LOSS_SPAN2_MAIN, LOSS_SPAN2_TAIL
+	loss_copy 3, wGameProgressFlagsEnd + LOSS_SPAN2_TAIL, sLossRecovery3, LOSS_SPAN3_TAIL
+	loss_copy 3, wGymsUsedMask, sLossRecovery3 + LOSS_SPAN3_TAIL, 2
 	ld a, [wCreditsEarnedThisRun]
-	ld [sLossRecovery3 + 506], a
+	ld [sLossRecovery3 + LOSS_SPAN3_TAIL + 2], a
+	; zero the unused tail of span 3 so the CRC never covers stale bytes
+	ld hl, sLossRecovery3 + LOSS_SPAN3_USED
+	ld bc, 507 - LOSS_SPAN3_USED
+	xor a
+	call FillMemory
 	call LossRecoveryChecksum
 	loss_copy 3, wLossRecoveryCRC, sLossRecoveryCRC, 4
 .publish
@@ -220,16 +238,16 @@ LossRecoveryBoot::
 LossRecoveryRestore::
 	call LossRecoveryOpen
 	loss_copy 1, sLossRecovery1 + 16, wPlayerName, 11
-	loss_copy 1, sLossRecovery1 + 27, wMainDataStart, 485
-	loss_copy 3, sLossRecovery2, wMainDataStart + 485, 211
-	loss_copy 3, sLossRecovery2 + 211, wGameProgressFlagsEnd, 286
-	loss_copy 3, sLossRecovery3, wGameProgressFlagsEnd + 286, 504
+	loss_copy 1, sLossRecovery1 + 27, wMainDataStart, LOSS_SPAN1_MAIN
+	loss_copy 3, sLossRecovery2, wMainDataStart + LOSS_SPAN1_MAIN, LOSS_SPAN2_MAIN
+	loss_copy 3, sLossRecovery2 + LOSS_SPAN2_MAIN, wGameProgressFlagsEnd, LOSS_SPAN2_TAIL
+	loss_copy 3, sLossRecovery3, wGameProgressFlagsEnd + LOSS_SPAN2_TAIL, LOSS_SPAN3_TAIL
 	ld hl, wGameProgressFlags
 	ld bc, wGameProgressFlagsEnd - wGameProgressFlags
 	xor a
 	call FillMemory
-	loss_copy 3, sLossRecovery3 + 504, wGymsUsedMask, 2
-	ld a, [sLossRecovery3 + 506]
+	loss_copy 3, sLossRecovery3 + LOSS_SPAN3_TAIL, wGymsUsedMask, 2
+	ld a, [sLossRecovery3 + LOSS_SPAN3_TAIL + 2]
 	ld [wCreditsEarnedThisRun], a
 	loss_copy 1, wStolenSaveSnapshot, sStolenRecord, sStolenRecordEnd - sStolenRecord
 	call LossRecoveryClose

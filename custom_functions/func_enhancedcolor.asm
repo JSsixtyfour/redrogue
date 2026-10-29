@@ -2241,7 +2241,9 @@ DecrementAllColorsGBC_improved:
 	call nz, DelayFrame	;Delay a frame in 60 fps mode to get the timing down right for any fades
 	pop af
 	jr nz, .return
-	callfar Audio1_UpdateMusic	
+	push de
+	call UpdateSound ; Crystal audio: the missed VBlank tick (interrupts are off)
+	pop de
 .return
 	ld a, 1
 	and a
@@ -2387,7 +2389,9 @@ IncrementAllColorsGBC_improved:
 	call nz, DelayFrame	;Delay a frame in 60 fps mode to get the timing down right for any fades
 	pop af
 	jr nz, .return
-	callfar Audio1_UpdateMusic	
+	push de
+	call UpdateSound ; Crystal audio: the missed VBlank tick (interrupts are off)
+	pop de
 .return
 	ld a, 1
 	and a

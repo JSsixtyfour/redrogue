@@ -422,30 +422,36 @@ LegendaryPoolUnowned::
 	ret
 
 ; a = species -> carry SET if it is in the party or the current box, the
-; $ff-terminated lists AllSpeciesCheck reads. Preserves bc/de/hl.
+; lists AllSpeciesCheck reads. Preserves bc/de/hl.
 LegendarySpeciesOwned:
 	push hl
 	push bc
 	ld b, a
-	ld hl, wPartySpecies
+	ld hl, wPartyCount
 	call .scan
 	jr c, .done
-	ld hl, wBoxSpecies
+	ld hl, wBoxCount
 	call .scan
 .done
 	pop bc
 	pop hl
 	ret
+; hl -> a count byte and the species list after it. Bounded by the COUNT, not
+; the $ff terminator: a debug boot (FIGHT 2) leaves an empty box's list
+; unterminated, and a terminator scan ran on into unrelated WRAM and found a
+; Ho-Oh byte there (measured 2026-10-28).
 .scan
 	ld a, [hli]
-	cp $ff
-	jr z, .notFound
-	cp b
-	jr nz, .scan
-	scf
-	ret
-.notFound
+	ld c, a
+.next
+	ld a, c
 	and a
+	ret z                         ; `and a` cleared carry: not found
+	dec c
+	ld a, [hli]
+	cp b
+	jr nz, .next
+	scf
 	ret
 
 ; ============================================================

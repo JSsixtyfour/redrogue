@@ -24,6 +24,12 @@ class TransformAgainstTransformedTest(HarnessTestCase):
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
+        # The enemy FIGHT 2 rolls follows VBlank-time RNG, so its moves drift with engine
+        # timing (an Arbok's Wrap kept the player from ever acting). Pin it to Splash.
+        for i in range(4):
+            h.write8("wEnemyMonMoves", MOVES["SPLASH"] if i == 0 else 0, offset=i)
+            h.write8("wEnemyMonPP", 30 if i == 0 else 0, offset=i)
+        h.write8("wEnemySelectedMove", MOVES["SPLASH"])  # the AI picks before the menu opens
         h.write8("wBattleMonMoves", MOVES["TRANSFORM"])
         h.write8("wBattleMonPP", 10)
         for slot in range(1, 4):

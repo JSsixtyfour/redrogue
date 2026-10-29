@@ -1018,7 +1018,6 @@ ItemUseMedicine:
 .notFullHP ; if the pokemon's current HP doesn't equal its max HP
 	xor a
 	ld [wLowHealthAlarm], a ;disable low health alarm
-	ld [wChannelSoundIDs + CHAN5], a
 	push hl
 	push de
 	ld bc, MON_MAXHP - (MON_HP + 1)

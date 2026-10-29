@@ -509,7 +509,7 @@ INCLUDE "data/pokemon/form_evos_moves.asm"
 
 SECTION "Pokemon Data 1", ROMX    ; marcelnote - new, moved from Battle Engine 7
 
-INCLUDE "data/pokemon/cries.asm" ; CryData is accessed with GetCryData which always Bankswitch
+; data/pokemon/cries.asm retired: cries are crysaudio/red_rogue_cries.asm (PokemonCries), in audio.asm
 
 
 SECTION "Battle Core", ROMX

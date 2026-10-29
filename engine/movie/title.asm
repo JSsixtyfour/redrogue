@@ -21,9 +21,6 @@ PrepareTitleScreen::
 	ld [hli], a
 	ASSERT wStatusFlags7 + 1 == wElite4Flags
 	ld [hl], a
-	ld a, BANK(Music_TitleScreen)
-	ld [wAudioROMBank], a
-	ld [wAudioSavedROMBank], a
 
 DisplayTitleScreen:
 	call GBPalWhiteOut
@@ -220,8 +217,7 @@ ENDC
 	call Delay3
 	call WaitForSoundToFinish
 	ld a, MUSIC_TITLE_SCREEN
-	ld [wNewSoundID], a
-	call PlaySound
+	call PlayMusic
 	xor a
 	ld [wUnusedFlag], a
 

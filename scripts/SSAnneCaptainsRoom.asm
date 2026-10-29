@@ -55,23 +55,9 @@ SSAnneCaptainsRoomCaptainText:
 SSAnneCaptainsRoomRubCaptainsBackText:
 	text_far _SSAnneCaptainsRoomRubCaptainsBackText
 	text_asm
-	ld a, [wAudioROMBank]
-	cp BANK("Audio Engine 3")
-	ld [wAudioSavedROMBank], a
-	jr nz, .not_audio_engine_3
-	ld a, SFX_STOP_ALL_MUSIC
-	ld [wNewSoundID], a
-	call PlaySound
-	ld a, BANK(Music_PkmnHealed)
-	ld [wAudioROMBank], a
-.not_audio_engine_3
 	ld a, MUSIC_PKMN_HEALED
-	ld [wNewSoundID], a
-	call PlaySound
-.loop
-	ld a, [wChannelSoundIDs]
-	cp MUSIC_PKMN_HEALED
-	jr z, .loop
+	call PlayMusic
+	call WaitForSongToFinish
 	call PlayDefaultMusic
 	SetEvent EVENT_RUBBED_CAPTAINS_BACK
 	ld hl, wStatusFlags3

@@ -140,9 +140,12 @@ HandlePokedexSideMenu:
 
 ; play pokemon cry
 .choseCry
+	ld a, 1 ; play without waiting, as before (Crystal audio: WaitSFX checks this)
+	ld [wSFXDontWait], a
 	ld a, [wPokedexNum]
-	call GetCryData
-	call PlaySound
+	call PlayCry
+	xor a
+	ld [wSFXDontWait], a
 	jr .handleMenuInput
 
 .choseMove

@@ -30,11 +30,9 @@ ROM0
 ROMX $1
 	"bank1"
 ROMX $2
-	"Sound Effect Headers 1"
-	"Music Headers 1"
-	"Sound Effects 1"
-	"Audio Engine 1"
-	"Music 1"
+	; Crystal audio port: song data only (any bank works; the engine reads songs
+	; through the bank+address music table). CRYSTAL_AUDIO_PHASE0_CHECKPOINT section 8.
+	"Songs 1"
 ROMX $3
 	"bank3"
 ROMX $4
@@ -67,12 +65,7 @@ ROMX $7
 	; added here without re-measuring first.
 	"Pics 9"
 ROMX $8
-	"Sound Effect Headers 2"
-	"Music Headers 2"
-	"Sound Effects 2"
-	"Low Health Alarm (Audio Engine 2)"
-	"Audio Engine 2"
-	"Music 2"
+	"Songs 2" ; Crystal audio port, song data
 ROMX $9
 	"Pics 1"
 	"Battle Engine 3"
@@ -203,11 +196,21 @@ ROMX $1D
 ROMX $1E
 	"bank1E"
 ROMX $1F
+	; Crystal audio port core. "Audio Engine" holds engine.asm, the music/SFX/cry
+	; pointer tables, PokemonCries and _RedRoguePlayCry: they reach each other with
+	; plain calls and reads, so they must share this bank. The rest are pinned
+	; here too so the layout cannot drift between Red, Blue and Debug.
+	"Audio Engine"
+	"Sound Effect Headers 1"
+	"Sound Effect Headers 2"
 	"Sound Effect Headers 3"
-	"Music Headers 3"
+	"Sound Effects 1"
+	"Sound Effects 2"
 	"Sound Effects 3"
-	"Audio Engine 3"
-	"Music 3"
+	"Cries"
+	"Music Routines"
+	"Alt Music Routines"
+	"Pokedex Rating SFX Routines"
 ROMX $20
 	"Text 1"
 	; LZ pics (2026-10-07): species pairs moved out of full pic banks; see
@@ -357,17 +360,7 @@ ROMX $32
 	; "Pokédex Text 2" (sharing this bank) ate the slack it depended on. Do not
 	; re-add "Pics 6" here.
 ROMX $33
-	; AUDIO_4 - new bank added by the Shin/Yellow-style audio-engine import
-	; (SHIN_IMPORT_PLAN.md Phase 1.1). All of AUDIO_4's pieces must land in
-	; the same physical bank (its PlaySound/SFX headers/engine code address
-	; each other bank-relatively, same as AUDIO_1/2/3 do in their own banks),
-	; so - per this file's own $2E rule above - it is pinned explicitly rather
-	; than left floating. $2F-$3F was entirely unallocated before this.
-	"Sound Effect Headers 4"
-	"Music Headers 4"
-	"Sound Effects 4"
-	"Audio Engine 4"
-	"Music 4"
+	"Songs 3" ; Crystal audio port, song data (was the AUDIO_4 bank)
 	; Species Groups Phase 2 batch 3 onward. "Pics 6" (in $32) overflowed its
 	; bank once 33 species' worth of pics landed there; this bank had ~11 KB
 	; free after AUDIO_4, plenty of room. Pin further "Pics N" here until this

@@ -205,7 +205,7 @@ PlayAnimation:
 	push hl
 	push de
 	call GetMoveSound
-	call PlaySound
+	call nc, PlayBattleSound
 	pop de
 	pop hl
 .skipPlayingSound
@@ -593,7 +593,7 @@ PlaySubanimation:
 	cp NO_MOVE - 1
 	jr z, .skipPlayingSound
 	call GetMoveSound
-	call PlaySound
+	call nc, PlayBattleSound
 .skipPlayingSound
 	ld hl, wShadowOAM
 	ld a, l
@@ -2315,25 +2315,35 @@ GetMoveSound:
 .next
 	ld a, [wEnemyMonSpecies]
 .Continue
-	push hl
-	call GetCryData
+; A cry move plays the user's cry here, offset by the table's pitch/tempo bytes as
+; the old engine did (the donor dropped the offsets), without waiting. Returns carry.
+	push af
+	ld a, 1
+	ld [wSFXDontWait], a
+	ld a, [hli]
 	ld b, a
-	pop hl
-	ld a, [wFrequencyModifier]
-	add [hl]
-	ld [wFrequencyModifier], a
-	inc hl
-	ld a, [wTempoModifier]
-	add [hl]
-	ld [wTempoModifier], a
-	jr .done
+	ld c, [hl]
+	pop af
+	call PlayCryWithOffsets
+	xor a
+	ld [wSFXDontWait], a
+	scf
+	ret
 .NotCryMove
+; Returns no carry, a = SFX id, bc = pitch and de = length for PlayBattleSound
+; (the old wFrequencyModifier byte, and the wTempoModifier byte + $80).
+	push bc
 	ld a, [hli]
-	ld [wFrequencyModifier], a
+	ld c, a
+	ld b, 0
 	ld a, [hli]
-	ld [wTempoModifier], a
-.done
-	ld a, b
+	add $80
+	ld e, a
+	ld a, 0
+	adc 0
+	ld d, a
+	pop af ; a = the SFX id that was in b
+	and a
 	ret
 
 IsCryMove:
@@ -2761,20 +2771,16 @@ PlayApplyingAttackSound:
 	and $7f
 	ret z
 	cp 10
-	ld a, $20
-	ld b, $30
-	ld c, SFX_DAMAGE
+	ld bc, $20
+	ld de, $30 + $80
+	ld a, SFX_DAMAGE
 	jr z, .playSound
-	ld a, $e0
-	ld b, $ff
-	ld c, SFX_SUPER_EFFECTIVE
+	ld bc, $e0
+	ld de, $ff + $80
+	ld a, SFX_SUPER_EFFECTIVE
 	jr nc, .playSound
-	ld a, $50
-	ld b, $1
-	ld c, SFX_NOT_VERY_EFFECTIVE
+	ld bc, $50
+	ld de, $1 + $80
+	ld a, SFX_NOT_VERY_EFFECTIVE
 .playSound
-	ld [wFrequencyModifier], a
-	ld a, b
-	ld [wTempoModifier], a
-	ld a, c
-	jp PlaySound
+	jp PlayBattleSound

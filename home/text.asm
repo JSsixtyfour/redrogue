@@ -526,21 +526,19 @@ TextCommand_SOUND::
 	jr z, .pokemonCry
 	cp TX_SOUND_CRY_PORYGON
 	jr z, .pokemonCry
-	cp TX_SOUND_GET_KEY_ITEM
-	jr nz, .notKeyItem
-; Badge / key-item fanfare. Sound IDs are bank-relative, and SFX_GET_KEY_ITEM
-; has no AUDIO_2 entry, so while the battle audio bank is loaded its ID lands on
-; unrelated data. Hand off to the bank-8 helper, which plays the real fanfare
-; in-bank without repointing wAudioROMBank. See audio/poke_flute.asm.
-	ld a, [wAudioROMBank]
-	cp BANK(Audio2_PlaySound)
-	jr nz, .notKeyItem
-	push de ; de = text destination; farcall and the helper both clobber it
-	rfarcall Music_GetKeyItemInBattle
-	pop de
-	jr .soundDone
-.notKeyItem
+; Sound IDs are global under the Crystal audio engine, so every fanfare plays
+; correctly in battle too. The one vanilla behavior that came from the old
+; bank-relative IDs is kept on purpose: sound_level_up IS sound_get_item_1, and
+; in battle that ID used to land on SFX_LEVEL_UP.
+	cp TX_SOUND_GET_ITEM_1
+	jr nz, .notLevelUp
+	ldh a, [hIsInBattle]
+	and a
+	ld a, SFX_LEVEL_UP
+	jr nz, .playSfx
+.notLevelUp
 	ld a, [hl]
+.playSfx
 	call PlaySound
 	; Level-up uses this command while the battle audio bank is loaded. At 2X,
 	; let its jingle continue under the stats display instead of blocking until it
@@ -571,7 +569,7 @@ TextCommand_SOUND::
 	jp NextTextCommand
 
 TextCommandSounds::
-	db TX_SOUND_GET_ITEM_1,           SFX_GET_ITEM_1 ; actually plays SFX_LEVEL_UP when the battle music engine is loaded
+	db TX_SOUND_GET_ITEM_1,           SFX_GET_ITEM_1 ; SFX_LEVEL_UP in battle (TextCommand_SOUND)
 	db TX_SOUND_CAUGHT_MON,           SFX_CAUGHT_MON
 	db TX_SOUND_POKEDEX_RATING,       SFX_POKEDEX_RATING ; unused
 	db TX_SOUND_GET_ITEM_1_DUPLICATE, SFX_GET_ITEM_1 ; unused

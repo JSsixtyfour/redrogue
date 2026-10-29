@@ -129,7 +129,7 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertRegex(
             self.wram,
             r"(?s)wFollowerCommandBuffer:: ds 16\s+.*?wFollowerSpawnState:: db\s+"
-            r".*?wFollowerLedgeLatch:: db\s+ds 128 - 19",
+            r".*?wFollowerLedgeLatch:: db\s+ds 28 - 19",
         )
         warp = self.overworld.split("WarpFound2::", 1)[1].split(
             "ContinueCheckWarpsNoCollisionLoop::", 1

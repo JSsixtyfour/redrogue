@@ -283,7 +283,7 @@ CableClub_DoBattleOrTradeAgain:
 	predef HealParty
 	jp ReturnToCableClubRoom
 .trading
-	ld c, BANK(Music_GameCorner)
+	ld c, 0
 	ld a, MUSIC_GAME_CORNER
 	call PlayMusic
 	jr CallCurrentTradeCenterFunction
@@ -864,12 +864,9 @@ TradeCenter_Trade:
 	ld a, [hl]
 	ld [wTradedEnemyMonSpecies], a
 	ld a, 10
-	ld [wAudioFadeOutControl], a
-	ld a, BANK(Music_SafariZone)
-	ld [wAudioSavedROMBank], a
+	ld [wMusicFade], a
 	ld a, MUSIC_SAFARI_ZONE
-	ld [wNewSoundID], a
-	call PlaySound
+	ld [wMusicFadeID], a
 	ld c, 100
 	call DelayFrames
 	call ClearScreen
@@ -962,12 +959,10 @@ CableClub_Run:
 	ld [wLinkState], a
 	ldh [hJoy5], a
 	ld a, 10
-	ld [wAudioFadeOutControl], a
-	ld a, BANK(Music_Celadon)
-	ld [wAudioSavedROMBank], a
+	ld [wMusicFade], a
 	ld a, MUSIC_CELADON
-	ld [wNewSoundID], a
-	jp PlaySound
+	ld [wMusicFadeID], a
+	ret
 
 EmptyFunc:
 	ret

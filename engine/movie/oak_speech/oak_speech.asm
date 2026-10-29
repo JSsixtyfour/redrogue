@@ -53,8 +53,7 @@ OakSpeech:
 	predef SingleCPUSpeed ; preserve ShinRed's timing-sensitive intro boundary
 	ld a, SFX_STOP_ALL_MUSIC
 	call PlaySound
-	ld a, BANK(Music_Routes2)
-	ld c, a
+	ld c, 0
 	ld a, MUSIC_ROUTES2
 	call PlayMusic
 	call ClearScreen
@@ -165,19 +164,14 @@ OakSpeech:
 	lb bc, BANK(ShrinkPic2), $00
 	call IntroDisplayPicCenteredOrUpperRight
 	call ResetPlayerSpriteData
-; [code sweep 2026-09-27] same vanilla no-op as above, commented out. This
-; PlaySound takes the fade-out path (wAudioFadeOutControl = 10), which never
-; switches banks at all.
+; [code sweep 2026-09-27] same vanilla no-op as above, commented out. Under the
+; Crystal engine the fade-out is requested through wMusicFade/wMusicFadeID (0 = stop).
 ;	ldh a, [hLoadedROMBank]
 ;	push af
-	ld a, BANK(Music_PalletTown)
-	ld [wAudioROMBank], a
-	ld [wAudioSavedROMBank], a
 	ld a, 10
-	ld [wAudioFadeOutControl], a
-	ld a, SFX_STOP_ALL_MUSIC
-	ld [wNewSoundID], a
-	call PlaySound
+	ld [wMusicFade], a
+	xor a
+	ld [wMusicFadeID], a
 ;	pop af
 ; bug: switching ROM Bank should not happen outside of Home Bank
 ;	ldh [hLoadedROMBank], a

@@ -100,7 +100,7 @@ StageEventDoTheft::
 	and STAGE_EVENT_TYPE_MASK
 	cp STAGE_EVENT_JESSIE_JAMES
 	jr nz, .noAmbushTheme
-	ld c, BANK(Music_MeetJessieJames)
+	ld c, 0
 	ld a, MUSIC_MEET_JESSIE_JAMES
 	call PlayMusic
 .noAmbushTheme

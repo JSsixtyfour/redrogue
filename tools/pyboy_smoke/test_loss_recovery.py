@@ -74,7 +74,7 @@ class LossRecoveryTest(unittest.TestCase):
     def prepared(self,h):
         expected=[]
         def at_publication(_):
-            expected.append(bytes(h.read_bytes('wPlayerName',11)+h.read_bytes('wMainDataStart',696)
+            expected.append(bytes(h.read_bytes('wPlayerName',11)+h.read_bytes('wMainDataStart',h.address('wGameProgressFlags')-h.address('wMainDataStart'))
                 +h.read_bytes('wGameProgressFlagsEnd',790)+h.read_bytes('wGymsUsedMask',2)
                 +[h.read8('wCreditsEarnedThisRun')]))
         h.register_hook('LossRecoveryPrepare.publish',at_publication)
@@ -85,7 +85,9 @@ class LossRecoveryTest(unittest.TestCase):
         self.assertEqual(int.from_bytes(r[-5:-1],'little'),zlib.crc32(r[:-5]))
         # The resumed lobby changes toggles and the play timer after return.
         # Compare at the publication seam, not against later live WRAM.
-        self.assertEqual(expected,[r[16:-5]])
+        body=len(expected[0])
+        self.assertEqual(expected,[r[16:16+body]])
+        self.assertEqual(r[16+body:-5],bytes(len(r)-21-body)) # unused tail is zeroed
         return image
 
     def cold(self,image):

@@ -24,8 +24,8 @@ PrintLetterDelay::
 ; PlaySound (home/audio.asm) can let it finish before starting a new one
 ; instead of it being cut off before the player even sees the letter that
 ; triggered it.
-	ld a, [wChannelSoundIDs + CHAN5]
-	and a
+	ld a, [wChannel5Flags1] ; Crystal audio: bit 0 = channel 5 playing
+	bit 0, a
 	jr z, .checkButtons
 	ldh a, [hSFXPlayingDuringText]
 	set 2, a

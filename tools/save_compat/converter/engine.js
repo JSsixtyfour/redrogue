@@ -428,6 +428,45 @@
       return null;
     },
 
+    // Schema 14 -> 15 (2026-10-28, Crystal audio port): the follower's 128-byte reservation in the
+    // main block (wFollowerDataStart .. wFollowerDataEnd) shrank to 28 bytes. The follower uses
+    // its first 19; the 100 bytes removed are the end of the unused pad after wFollowerLedgeLatch,
+    // never written. Every byte after the hole, to the end of the bank-1 save sections (rest of
+    // the main block, sprite/party/box data, the main checksum, the Final Team Archive and the
+    // Procedural Facility state), moves down 100 unchanged, as in legacyInventoriesRemoved; the
+    // archive's own checksums travel with their data. The loss-recovery record changed layout
+    // too (its body follows Main Data) and names its schema, so it is cleared, as at 12 -> 13.
+    followerPadTrimmed: function (bytes, from, to) {
+      var latch = wramOffset(from, "wFollowerLedgeLatch"), end = wramOffset(from, "wFollowerDataEnd");
+      var was = wramField(from, "wFollowerLedgeLatch"), now = wramField(to, "wFollowerLedgeLatch");
+      if (latch < 0 || end < 0 || !was || !now || was.size - now.size !== 100 || end !== latch + was.size ||
+          wramOffset(to, "wFollowerLedgeLatch") !== latch || wramOffset(to, "wFollowerDataEnd") !== end - 100)
+        return "follower pad layout not recognised";
+      var start = end - 100;
+      var mainFrom = sramField(from, "sMainData"), mainTo = sramField(to, "sMainData");
+      if (mainFrom.size - mainTo.size !== 100) return "main save block shrank by an unexpected amount";
+      // Labels after the hole either moved down 100 (the floating bank-1 sections) or kept their
+      // address (fixed-org sections such as the loss-recovery spans), which must lie past the run.
+      var src = new Uint8Array(bytes), last = start, fixed = [];
+      for (var j = 0; j < from.sram.length; j++) {
+        var f = from.sram[j], o = offsetOf(f.bank, f.address);
+        if (f.bank !== 1 || o < start) continue;
+        var t = sramField(to, f.label), d = t ? o - offsetOf(t.bank, t.address) : -1;
+        if (!t || (d !== 100 && d !== 0) || t.size !== f.size)
+          return "save field " + f.label + " did not move as expected";
+        if (d === 100) last = Math.max(last, o + f.size);
+        else fixed.push([f.label, o]);
+      }
+      for (var q = 0; q < fixed.length; q++)
+        if (fixed[q][1] < last) return "save field " + fixed[q][0] + " sits inside the shifted data";
+      for (var n = end; n < last; n++) bytes[n - 100] = src[n];
+      for (var z = last - 100; z < last; z++) bytes[z] = 0; // past the new end of the bank-1 data: unused
+      var error = STEPS.lossRecoveryAdded(bytes, from, to);
+      if (error) return error;
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
     lossRecoveryAdded: function (bytes, from, to) {
       var names = ["sLossRecovery1", "sLossRecovery2", "sLossRecovery3", "sLossRecoveryCRC", "sLossRecoveryValid"];
       for (var i = 0; i < names.length; i++) {

@@ -9,7 +9,7 @@ INCLUDE "macros/coords.asm"
 INCLUDE "macros/vc.asm"
 INCLUDE "macros/ai_dispatch.asm"
 
-INCLUDE "macros/scripts/audio.asm"
+; Crystal audio: song/SFX macros live in crysaudio/macros.asm, included only by audio.asm.
 INCLUDE "macros/scripts/maps.asm"
 INCLUDE "macros/scripts/events.asm"
 INCLUDE "macros/scripts/text.asm"
@@ -56,7 +56,7 @@ INCLUDE "constants/forest_clearing_constants.asm"
 INCLUDE "constants/toggle_constants.asm"
 INCLUDE "constants/sprite_set_constants.asm"
 INCLUDE "constants/credits_constants.asm"
-INCLUDE "constants/audio_constants.asm"
+; Crystal audio: engine constants live in crysaudio/audio_constants.asm (audio.asm only).
 INCLUDE "constants/music_constants.asm"
 INCLUDE "constants/tileset_constants.asm"
 INCLUDE "constants/event_constants.asm"

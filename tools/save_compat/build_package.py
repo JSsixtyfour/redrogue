@@ -56,7 +56,9 @@ ENGINE_WRAM = {"wPlayerName", "wPartyCount", "wPartySpecies", "wBoxCount", "wCur
                "wRunRecordCount", "wRunRecordsFirst", "wRunRecordsLast",
                "wRunTimerState", "wRunTimerHours", "wRunTimerMinutes", "wRunTimerSeconds", "wRunTimerFrames",
                # migration endlessAdded (schema 13 -> 14)
-               "wEndlessDepth", "wEndlessFlags"}
+               "wEndlessDepth", "wEndlessFlags",
+               # migration followerPadTrimmed (schema 14 -> 15)
+               "wFollowerLedgeLatch", "wFollowerDataEnd"}
 
 # Steps whose per-migration table flag_translation() computes and attaches to the target schema.
 FLAG_STEP = "flagsRenumbered"

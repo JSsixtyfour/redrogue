@@ -21,13 +21,10 @@ DisplayPokemonCenterDialogue_::
 	predef HealParty
 	farcall AnimateHealingMachine ; do the healing machine animation
 	xor a
-	ld [wAudioFadeOutControl], a
-	ld a, [wAudioSavedROMBank]
-	ld [wAudioROMBank], a
+	ld [wMusicFade], a
 	ld a, [wMapMusicSoundID]
 	ld [wLastMusicSoundID], a
-	ld [wNewSoundID], a
-	call PlaySound
+	call PlayMusic
 	ld a, $24
 	ld [wSprite01StateData1ImageIndex], a ; make the nurse bow
 	ld c, a

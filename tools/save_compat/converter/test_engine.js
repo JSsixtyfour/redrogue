@@ -110,7 +110,8 @@ test("a skipped release still arrives through a chain of migrations", () => {
 // the distance to the next one, so labels inside unions can change size), except `allowDiffer`;
 // every bank-1 SRAM label past the main block's start must too. Returns what the caller checks
 // further.
-function checkMigration(fromId, toId, allowDiffer) {
+// clearedSram: bank-1 SRAM labels the step clears on purpose (checked by the caller instead).
+function checkMigration(fromId, toId, allowDiffer, clearedSram = []) {
   const full = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
   const from = full(fromId), to = full(toId);
   const pkg = packageTargeting(toId);
@@ -150,7 +151,7 @@ function checkMigration(fromId, toId, allowDiffer) {
   const mainAt = offsetOf(mainSum.at_bank, mainSum.at);
   for (const f of from.sram) {
     const o = offsetOf(f.bank, f.address);
-    if (f.bank !== 1 || o < start || f.label === "sMainData" || o === mainAt) continue;
+    if (f.bank !== 1 || o < start || f.label === "sMainData" || o === mainAt || clearedSram.includes(f.label)) continue;
     const t = to.sram.find((s) => s.label === f.label);
     const n = offsetOf(t.bank, t.address);
     for (let i = 0; i < f.size; i++) if (b[n + i] !== save[o + i]) assert.fail(`${f.label}+${i} changed`);
@@ -228,6 +229,15 @@ test("schema 12 to 13: run records initialize empty without moving existing fiel
   for (let i = 0; i < save.length; i++)
     if (!cleared.has(i)) assert.equal(out.bytes[i], save[i], `unrelated byte ${i}`);
   assert.equal(api.checksumStatus(out.bytes, to).main, true);
+});
+
+test("schema 14 to 15: the follower pad hole is gone, everything else moves unchanged", () => {
+  // wFollowerLedgeLatch's size includes the pad after it (110 -> 10), so only its first 10
+  // bytes are compared, and those must survive; the shifted run is checked label by label.
+  const loss = PKG.schemas["15"].sram.filter((f) => /^sLossRecovery/.test(f.label));
+  const { b, to } = checkMigration(14, 15, [], loss.map((f) => f.label));
+  for (const f of to.sram.filter((f) => /^sLossRecovery/.test(f.label)))
+    for (let i = 0; i < f.size; i++) assert.equal(b[offsetOf(f.bank, f.address) + i], 0, `${f.label}+${i}`);
 });
 
 test("schema 1 to 2: item counts keep their indices, spare slots are 0, the rest moves unchanged", () => {

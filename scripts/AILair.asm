@@ -111,7 +111,6 @@ AILairHandleMapEntry:
 	; The final arena is deliberately silent outside its battle, including
 	; after the battle returns and the map song would otherwise resume.
 	ld a, SFX_STOP_ALL_MUSIC
-	ld [wNewSoundID], a
 	call PlaySound
 	; .battleOccurred (home/overworld.asm) sets BIT_CUR_MAP_LOADED_1 after
 	; every battle. Returning from the AI battle is not an arrival.

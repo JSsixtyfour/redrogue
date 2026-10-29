@@ -100,15 +100,10 @@ RedsHouse1FMomHealScript:
 	call ReloadMapData
 	predef HealParty
 	ld a, MUSIC_PKMN_HEALED
-	ld [wNewSoundID], a
-	call PlaySound
-.next
-	ld a, [wChannelSoundIDs]
-	cp MUSIC_PKMN_HEALED
-	jr z, .next
+	call PlayMusic
+	call WaitForSongToFinish
 	ld a, [wMapMusicSoundID]
-	ld [wNewSoundID], a
-	call PlaySound
+	call PlayMusic
 	call GBFadeInFromWhite
 	ld hl, RedsHouse1FMomLookingGreatText
 	jp PrintText

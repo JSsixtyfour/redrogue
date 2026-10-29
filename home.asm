@@ -72,7 +72,7 @@ INCLUDE "data/items/marts.asm"
 INCLUDE "home/overworld_text.asm"
 INCLUDE "home/uncompress.asm"
 INCLUDE "home/reset_player_sprite.asm"
-INCLUDE "home/fade_audio.asm"
+; home/fade_audio.asm retired: the Crystal audio engine owns fades (FadeMusic).
 INCLUDE "home/text_script.asm"
 INCLUDE "home/start_menu.asm"
 INCLUDE "home/inventory.asm"

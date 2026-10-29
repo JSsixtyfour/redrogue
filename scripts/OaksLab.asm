@@ -431,7 +431,7 @@ OaksLabRivalChallengesPlayerScript:
 	call SetSpriteFacingDirectionAndDelay
 	ld a, PLAYER_DIR_UP
 	ld [wPlayerMovingDirection], a
-	ld c, BANK(Music_MeetRival)
+	ld c, 0
 	ld a, MUSIC_MEET_RIVAL
 	call PlayMusic
 	ld a, TEXT_OAKSLAB_RIVAL_ILL_TAKE_YOU_ON

@@ -18,13 +18,17 @@ class TradeRedrawTest(unittest.TestCase):
                 h.write8('wOnSGB',1)
             h.tick(60)
             def move(button):
+                before=(h.read8('wXCoord'),h.read8('wYCoord'))
                 h.tap(button,4);h.tick(30)
+                # The lobby's wandering man can stand on the path (where he is follows
+                # VBlank-time RNG, so it drifts with engine timing): give him time to step off.
+                if (h.read8('wXCoord'),h.read8('wYCoord'))==before:h.tick(60)
             for label, direction, target, predicate in (
                 ('wYCoord','up',10,lambda x,t:x<=t),
                 ('wXCoord','left',4,lambda x,t:x<=t),
                 ('wYCoord','down',11,lambda x,t:x>=t),
             ):
-                for _ in range(8):
+                for _ in range(40):
                     if predicate(h.read8(label),target):
                         break
                     move(direction)
