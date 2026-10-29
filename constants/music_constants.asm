@@ -62,6 +62,10 @@
 	const MUSIC_JOHTO_GYM_BATTLE    ; Crystal: Johto Gym Leader battle
 	const MUSIC_TCG_CLUB_MASTER_DUEL ; TCG: Club Master (club leader) duel
 	const MUSIC_TCG2_GR_LEADER_DUEL ; TCG2: Duel! GR Fortress Leader
+	const MUSIC_JOHTO_TRAINER_BATTLE ; imported: johtotrainerbattle.asm
+	const MUSIC_CHAMPION_BATTLE ; imported: championbattle.asm
+	const MUSIC_ROCKET_BATTLE ; imported: rocketbattle.asm
+	const MUSIC_SUICUNE_BATTLE ; imported: suicunebattle.asm
 DEF NUM_MUSIC_SONGS EQU const_value
 
 	const_def

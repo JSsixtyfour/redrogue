@@ -119,6 +119,8 @@ def normalize_matched_sram(case, summary):
                 wanted_roles[(pair["seed"], name, repetition)] = role
     if len(tasks) != len(wanted_roles) or {identity(task) for task in tasks} != set(wanted_roles):
         raise ValueError("expected matched fill set does not match configuration")
+    if len({Path(task['directory']).resolve() for task in tasks}) != len(tasks):
+        raise ValueError('matched physical attempts share an evidence directory')
     if any(task["role"] != wanted_roles[identity(task)] for task in tasks):
         raise ValueError("invalid expected matched roles")
     expected = {identity(task): task for task in tasks}
@@ -155,7 +157,11 @@ def normalize_matched_sram(case, summary):
         findings += [finding for row in actual for finding in row.get("anomalies", [])]
         rows.append({"seed": seed, "outcome": "error" if any(row["execution"] == "error" for row in actual)
                      else "completed" if complete else "unreached", "anomalies": findings,
-                     "sram_fills": sum(row["status"] == "equivalent" for row in compared) if complete else 0})
+                     "sram_fills": sum(row["status"] == "equivalent" for row in compared) if complete else 0,
+                     "detector_reports": [{"seed": row['seed'], 'fill': row['fill'],
+                         'repetition': row['repetition'], 'role': row['role'],
+                         'report': str(Path(row['directory']) / 'report.json')}
+                         for row in actual]})
     return {"runs": rows}
 
 
@@ -204,10 +210,11 @@ def evidence_inventory(attempt, summary):
     """
     artifacts = (attempt / "artifacts").resolve()
     for row in summary["runs"]:
-        if row.get("report"):
-            report = Path(row["report"]).resolve()
-            if not report.is_relative_to(artifacts) or not report.is_file():
-                raise ValueError("referenced report missing or outside attempt")
+        for physical in [row, *row.get('detector_reports', [])]:
+            if physical.get("report"):
+                report = Path(physical["report"]).resolve()
+                if not report.is_relative_to(artifacts) or not report.is_file():
+                    raise ValueError("referenced report missing or outside attempt")
     entries = []
     for path in sorted(artifacts.rglob("*")):
         if not path.is_file():
@@ -451,6 +458,7 @@ def execute_case(case, directory, budget):
             peak_rss = int(lines[-1])
     result = {"schema_version": 1, "case": case, "execution": execution,
               "verdict": verdict, "exit": code, "achieved_exposure": exposure, "missing_exposure": missing,
+              'evidence_valid': summary is not None,
               "detector_health": health,
               "worker_tree_peak_rss_kib": peak_rss,
               "seconds": round(time.monotonic() - started, 3), "detail": detail,
@@ -463,6 +471,8 @@ def execute_case(case, directory, budget):
                   and not any(row['status'] in ('error', 'incomplete') for row in health)
                   if case.get("expected_verdict") == "contract_violation" else None,
               "artifact_bytes": sum(p.stat().st_size for p in attempt.rglob("*") if p.is_file())}
+    from campaign_reporting import dimensions
+    result['dimensions'] = dimensions(result, summary)
     atomic_json(directory / "result.json", result)
     return result
 
@@ -594,6 +604,7 @@ def run_campaign(args, config, cases):
             if evidence_error:
                 result.setdefault("original_verdict", result["verdict"])
                 result.update(verdict="harness_error", detail=evidence_error)
+                result['evidence_valid'] = False
                 atomic_json(path, result)
         if result is None or result["execution"] != "completed":
             remaining = args.campaign_budget - (time.monotonic() - started)
@@ -604,15 +615,22 @@ def run_campaign(args, config, cases):
                 result = measured(f"case:{case['id']}", lambda: execute_case(case, directory, min(args.case_budget, remaining)))
         if measured("source_after_case", source_identity) != identity["source"] or build_identity() != identity["builds"]:
             result.update(execution="invalidated", verdict="incomplete", detail="source/build changed during case")
+            result['evidence_valid'] = False
             atomic_json(path, result)
+        from campaign_reporting import dimensions, markdown
+        recorded = None
+        if result.get('evidence_valid', False) and result.get('summary'):
+            try:
+                recorded = normalize_summary(case, json.loads(Path(result['summary']).read_text()))
+            except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+                result['evidence_valid'] = False
+                result.update(verdict='harness_error', detail=f'final report validation failed: {error}')
+        result['dimensions'] = dimensions(result, recorded)
+        atomic_json(path, result)
         results.append(result)
         atomic_json(output / "results.json", {"schema_version": 1, "cases": results})
         (output / "summary.md").write_text(
-            "# Bounded autoplay campaign\n\n"
-            + "\n".join(f"- {r['case']['id']}: {r['execution']} / {r['verdict']} ({r['seconds']}s); "
-                        f"expected {r['case'].get('expected_verdict', 'no_issue_detected')}"
-                        for r in results)
-            + "\n\nNo issue detected applies only to the recorded checks and achieved exposure.\n",
+            markdown(results),
             encoding="utf-8")
         print(f"{case['id']}: {result['execution']} / {result['verdict']}", flush=True)
         if result["execution"] in ("cancelled", "invalidated"):

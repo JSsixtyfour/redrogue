@@ -64,6 +64,38 @@ GetRandTrainer:
 GetRandMon:
 	push hl
 	push bc
+	; Endless Uber ace (ENDLESS_MODE_CHECKPOINT_E.md 3.2): c = 1 when this is the
+	; LAST mon the roster loop rolls for a final route/gym trainer (bit 1 of
+	; wRogueFlagsBitfield), i.e. d = 1 left in this class group and every later
+	; group's count (after [hl], b - 1 of them) is 0. Read here, before anything
+	; below changes b. One eligible slot per team is the "never two" rule.
+	ld c, 0
+	ld a, [wEndlessDepth]
+	and a
+	jr z, .aceKnown
+	ld a, [wRogueFlagsBitfield]
+	bit 1, a
+	jr z, .aceKnown
+	ld a, d
+	dec a
+	jr nz, .aceKnown
+	push hl
+	push bc
+.laterGroup
+	dec b
+	jr z, .isAce
+	inc hl
+	ld a, [hl]
+	and a
+	jr z, .laterGroup
+	pop bc
+	pop hl
+	jr .aceKnown
+.isAce
+	pop bc
+	pop hl
+	inc c
+.aceKnown
 	; Challenge 6 (INCREASED_RARITY_FOES): bump class by 1 tier (lower b = rarer).
 	; b=4=pokeball, b=3=greatball, b=2=ultraball, b=1=masterball. Cap at b=1.
 	ld a, [wRogueFlagsBitfield]
@@ -82,11 +114,34 @@ GetRandMon:
 	ld a, [wEndlessDepth]
 	and a
 	jr z, .noEndlessClass
+	push bc                       ; c = the ace flag; a farcall destroys bc
 	push de
 	ld e, b
-	farcall EndlessRosterClass    ; e = class, raised; keeps d
-	ld b, e
+	farcall EndlessRosterClass    ; e = class, raised; clobbers d
+	ld a, e
 	pop de
+	pop bc
+	ld b, a
+	dec c
+	jr nz, .noEndlessClass        ; not the ace
+	ld a, b
+	dec a
+	jr nz, .noEndlessClass        ; only a Master ace takes the Uber step
+	push de
+	farcall EndlessUberStep       ; carry = Uber
+	jr nc, .noUber
+	ld e, 0                       ; opponents ignore ownership (user answer Q2)
+	call RogueDrawUber            ; carry: d = species, e = form
+	jr nc, .noUber
+	ld a, e
+	ld [wSpawnForm], a
+	ld a, d
+	pop de
+	ld [wCurPartySpecies], a
+	jr .done
+.noUber
+	pop de
+	ld b, 1                       ; still Master; the farcall took b
 .noEndlessClass
     ; b is INVERTED here relative to every other caller (4=pokeball .. 1=
     ; masterball), so map it onto the shared tier ids: tier = 4 - b.

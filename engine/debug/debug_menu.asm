@@ -19,28 +19,9 @@ IF DEF(_DEBUG)
 	call ClearSprites
 	call RunDefaultPaletteCommand
 
-	; Box, option list and build date/ID, drawn from bank $3A.
-	farcall DebugMenuDrawText
-
-	ld a, TEXT_DELAY_MEDIUM
-	ld [wOptions], a
-
-	ld a, PAD_A | PAD_B | PAD_START
-	ld [wMenuWatchedKeys], a
-	xor a
-	ld [wMenuJoypadPollCount], a
-	ld a, 3
-	ld [wMaxMenuItem], a
-	ld a, 7
-	ld [wTopMenuItemY], a
-	dec a
-	ld [wTopMenuItemX], a
-	xor a
-	ldh [hCurrentMenuItem], a
-	ld [wLastMenuItem], a
-	ld [wMenuWatchMovingOutOfBounds], a
-
-	call HandleMenuInput
+	; Box, option list, menu setup and the MUSIC sound test run from bank $3A.
+	farcall DebugMenuRun
+	ldh a, [hJoy5]
 	bit B_PAD_B, a
 	jp nz, DisplayTitleScreen
 

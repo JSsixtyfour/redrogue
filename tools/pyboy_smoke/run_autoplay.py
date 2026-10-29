@@ -62,10 +62,15 @@ def run_seed(seed: int, options: dict[str, object]) -> dict[str, object]:
     cgb_mode = bool(options.get("cgb_mode", False))
     heartbeat = heartbeat_path(seed, rom=rom, cgb_mode=cgb_mode)
     heartbeat.parent.mkdir(parents=True, exist_ok=True)
-    data = autoplay.play(seed, heartbeat=heartbeat, **options)
+    from detector_health import context_reporter
+    context = context_reporter(heartbeat.with_suffix('.detectors.json'), seed)
+    context('worker_start')
+    data = autoplay.play(seed, heartbeat=heartbeat, phase_callback=context, **options)
     heartbeat.unlink(missing_ok=True)
     path = report_path(seed, rom=rom, cgb_mode=cgb_mode)
+    context('report_write')
     path.write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")
+    context('report_written', 'completed')
     finish = next((e for e in reversed(data["events"]) if e["kind"] == "finish"), {})
     return {name: data[name] for name in SUMMARY_FIELDS} | {
         "detail": data["detail"],
@@ -93,6 +98,12 @@ def hung_row(seed: int, timeout: float, options: dict[str, object] | None = None
     options = options or {}
     rom = str(options.get("rom", autoplay.DEBUG_ROM))
     cgb_mode = bool(options.get("cgb_mode", False))
+    from detector_health import failed_context
+    try:
+        failed_context(heartbeat_path(seed, rom=rom, cgb_mode=cgb_mode).with_suffix('.detectors.json'),
+                       seed, f'worker exceeded {timeout}s', 'incomplete')
+    except OSError:
+        pass  # the existing timeout report remains authoritative
     try:
         beat = json.loads(heartbeat_path(seed, rom=rom, cgb_mode=cgb_mode).read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -115,8 +126,15 @@ def _worker(seed: int, options: dict[str, object], results) -> None:
         autoplay.CGB_MODE = bool(options.get("cgb_mode", False))
         results.put((seed, run_seed(seed, options)))
     except BaseException:
+        detail = traceback.format_exc(limit=3)
+        from detector_health import failed_context
+        try:
+            failed_context(heartbeat_path(seed, rom=str(options.get('rom', autoplay.DEBUG_ROM)),
+                           cgb_mode=bool(options.get('cgb_mode', False))).with_suffix('.detectors.json'), seed, detail)
+        except OSError:
+            detail += '\nDetector context could not be persisted.'
         results.put((seed, {"seed": seed, "outcome": "error", "stages_cleared": 0, "battles_won": 0,
-                            "frames": 0, "wall_seconds": 0, "detail": traceback.format_exc(limit=3),
+                            "frames": 0, "wall_seconds": 0, "detail": detail,
                             "run_records": [], "map": None, "position": None, "anomalies": [],
                             "report": None}))
 

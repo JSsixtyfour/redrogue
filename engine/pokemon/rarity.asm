@@ -960,6 +960,46 @@ RogueDrawUber::
 	ret
 
 ; ---------------------------------------------------------------------------
+; RogueEnemyTeamHasUber  (farcall, EndlessSpecAceUber's "never two" check)
+; OUTPUT: carry SET if wCurPartySpecies (the ace about to be created) or any
+;         mon already in the enemy party classifies as RARITY_TIER_UBER. A spec
+;         may field one through BIT_PSPEC_ALLOW_UBER or a pinned species.
+; CLOBBERS: everything.
+; ---------------------------------------------------------------------------
+RogueEnemyTeamHasUber::
+	ld a, [wCurPartySpecies]
+	call .isUber
+	ret c
+	ld hl, wEnemyPartyCount
+	ld a, [hli]
+	ld c, a                      ; bounded by the count, not the $ff terminator
+.member
+	ld a, c
+	and a
+	ret z                        ; carry clear
+	dec c
+	ld a, [hli]
+	push hl
+	push bc
+	call .isUber
+	pop bc
+	pop hl
+	ret c
+	jr .member
+
+; a = species -> carry SET if it classifies as Uber. Clobbers a/bc/de/hl.
+.isUber
+	call RogueClassifySpecies    ; b = tier; carry = in no pool
+	jr c, .notUber
+	ld a, b
+	cp RARITY_TIER_UBER
+	scf
+	ret z
+.notUber
+	and a
+	ret
+
+; ---------------------------------------------------------------------------
 ; RogueClassifySpecies
 ; INPUT:  a = species
 ; OUTPUT: b = tier id, c = group id, carry CLEAR on success

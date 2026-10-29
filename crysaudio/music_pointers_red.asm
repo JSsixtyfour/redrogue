@@ -54,4 +54,8 @@ Music:
 	dba Music_JohtoGymBattle
 	dba Music_DuelTheme2
 	dba Music_GRDuelTheme2
+	dba Music_JohtoTrainerBattle
+	dba Music_ChampionBattle
+	dba Music_RocketBattle
+	dba Music_SuicuneBattle
 	assert_table_length NUM_MUSIC_SONGS

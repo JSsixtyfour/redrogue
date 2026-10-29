@@ -620,6 +620,70 @@ EndlessUberWidths:
 	db 1, 256 - ENDLESS_UBER_BASE, 0
 
 ; ============================================================
+; EndlessSpecAceUber  -- farcalled from PartyGenLegendaryBossAce (bank $39)
+; for a spec-built team's LAST slot, its ace, after the slot's species and
+; form are final and before AddPartyMon, when Challenge 11 did not swap it.
+; (ENDLESS_MODE_CHECKPOINT_E.md 3.2; user answer Q4 plus the mini-bosses.)
+;
+; At depth >= 1, for this circuit's gym leaders, Elite Four and Champion and
+; the three mini-bosses, the ace takes EndlessUberStep; on carry an Uber,
+; drawn ignoring ownership, replaces it. Never two: no roll when the drawn ace
+; or a mon already in the party is an Uber.
+; Out: carry SET = wCurPartySpecies / wSpawnForm now hold the Uber. Clobbers all.
+; ============================================================
+EndlessSpecAceUber::
+	ld a, [wEndlessDepth]
+	and a
+	ret z
+	call EndlessAceClassEligible
+	ret nc
+	farcall RogueEnemyTeamHasUber
+	ccf
+	ret nc                        ; already fields an Uber
+	call EndlessUberStep
+	ret nc
+	ld e, 0                       ; opponents ignore ownership (user answer Q2)
+	farcall RogueDrawUber         ; carry: d = species, e = form
+	ret nc
+	ld a, d
+	ld [wCurPartySpecies], a
+	ld a, e
+	ld [wSpawnForm], a
+	scf
+	ret
+
+; Carry SET if wTrainerClass is a mini-boss, or this circuit's gym leader,
+; Elite Four member or Champion (wRunGymLineup, wRunElite4, wRunChampion).
+; Clobbers a/bc/hl.
+EndlessAceClassEligible:
+	ld a, [wTrainerClass]
+	ld c, a
+	cp RIVAL_MINIBOSS
+	jr z, .yes
+	cp GIOVANNI_MINIBOSS
+	jr z, .yes
+	cp KARATE_MINIBOSS
+	jr z, .yes
+	ld hl, wRunGymLineup
+	ld b, NUM_BADGES
+	call .scan
+	ret c
+	ASSERT wRunChampion == wRunElite4 + 4
+	ld hl, wRunElite4
+	ld b, 4 + 1                   ; the Elite Four, then the Champion
+.scan
+	ld a, [hli]
+	cp c
+	jr z, .yes
+	dec b
+	jr nz, .scan
+	and a
+	ret
+.yes
+	scf
+	ret
+
+; ============================================================
 ; LegendaryBossTable
 ; Challenge 11's leaders and the legendaries each can field, keyed on TRAINER
 ; CLASS. Never key this on wGymLeaderNo: Kanto and Johto share 1-8 (Morty and

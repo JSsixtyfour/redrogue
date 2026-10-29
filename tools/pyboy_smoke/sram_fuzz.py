@@ -367,14 +367,20 @@ def fill_worker(task_id, options, results):
     record = {**task, "execution": "running", "equivalent": None}
     atomic_json(directory / "record.json", record)
     try:
+        from detector_health import context_reporter
+        context = context_reporter(directory / 'detectors.json', task['seed'])
+        context('worker_start')
         if digest(directory / "input.sram") != task["input_sha256"]:
             raise ValueError("input SRAM changed before fill execution")
         rom = options["play"].get("rom", autoplay.DEBUG_ROM)
         record["build_identity"] = {ext: digest(autoplay.ROOT / f"{rom}.{ext}") for ext in ("gbc", "sym")}
-        data = autoplay.play(task["seed"], sram=(directory / "input.sram").read_bytes(), **options["play"])
+        data = autoplay.play(task["seed"], sram=(directory / "input.sram").read_bytes(),
+                             phase_callback=context, **options["play"])
         if data["build_identity"] != record["build_identity"]:
             raise ValueError("loaded ROM/sym identity differs from pre-launch build")
+        context('report_write')
         atomic_json(directory / "report.json", data)
+        context('report_written', 'completed')
         record["report_sha256"] = digest(directory / "report.json")
         startup = data.get("startup") or {}
         record["startup_path"] = [event["kind"] for event in startup.get("events", [])]
@@ -389,6 +395,11 @@ def fill_worker(task_id, options, results):
             record["trace_sha256"] = digest(directory / "trace.json")
     except BaseException:
         record.update(execution="error", detail=traceback.format_exc(limit=5))
+        from detector_health import failed_context
+        try:
+            failed_context(directory / 'detectors.json', task['seed'], record['detail'])
+        except OSError:
+            record['detail'] += '\nDetector context could not be persisted.'
     atomic_json(directory / "record.json", record)
     results.put((task_id, record))
 
@@ -396,6 +407,12 @@ def fill_worker(task_id, options, results):
 def fill_timeout(task_id, timeout, options):
     from run_campaign import atomic_json
     task = options["tasks"][task_id]
+    from detector_health import failed_context
+    try:
+        failed_context(Path(task['directory']) / 'detectors.json', task['seed'],
+                       f'fill exceeded {timeout}s', 'incomplete')
+    except OSError:
+        pass  # the existing timeout record remains authoritative
     record = {**task, "execution": "budget_exhausted", "equivalent": None,
               "detail": f"fill exceeded {timeout}s"}
     atomic_json(Path(task["directory"]) / "record.json", record)

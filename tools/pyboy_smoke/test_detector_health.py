@@ -6,6 +6,8 @@ import tempfile
 from detector_health import assess, validate_requirements, collect
 from unittest.mock import patch
 import run_campaign as campaign
+import queue
+import run_autoplay
 from autoplay_checks import observed_check
 
 
@@ -21,6 +23,64 @@ class Probe:
 
 
 class DetectorHealthTest(unittest.TestCase):
+    def test_early_worker_failure_keeps_phase_without_normal_report(self):
+        import autoplay
+        def broken(seed, **options):
+            options['phase_callback']('detector_initialization')
+            raise RuntimeError('controlled initialization fault')
+        with tempfile.TemporaryDirectory() as temporary, \
+                patch.object(autoplay, 'ARTIFACTS', Path(temporary)), \
+                patch.object(autoplay, 'play', side_effect=broken):
+            results = queue.Queue()
+            run_autoplay._worker(7, {}, results)
+            row = results.get()[1]
+            self.assertEqual(row['outcome'], 'error')
+            self.assertIsNone(row['report'])
+            context = json.loads(next(Path(temporary).glob('*.detectors.json')).read_text())
+            self.assertEqual((context['phase'], context['status'], context['detector_acceptance']),
+                             ('detector_initialization', 'error', 'unverified'))
+
+    def test_nested_requirements_apply_to_every_repeat_without_exposure_multiplication(self):
+        from test_sram_matched import fixture, CASE
+        import sram_fuzz
+        with tempfile.TemporaryDirectory() as temporary:
+            raw = fixture(Path(temporary))
+            raw['initialization_comparisons'] = [sram_fuzz.evaluate_matched_pair(raw['expected_comparisons'][0], raw['records'])]
+            raw['comparison_errors'] = []
+            normalized = campaign.normalize_summary(CASE, raw)
+            self.assertEqual(normalized['runs'][0]['sram_fills'], 1)
+            for record in raw['records']:
+                path = Path(record['directory']) / 'report.json'
+                data = json.loads(path.read_text())
+                data['checks'] = {'detector_health': {'check_world':
+                    {'enabled': True, 'status': 'observed', 'attempted': 1, 'returned': 1, 'errors': 0}}}
+                path.write_text(json.dumps(data))
+            case = {**CASE, 'required_detectors': {'check_world': 1}}
+            self.assertEqual(len(assess(case, normalized)), 6)
+            self.assertTrue(all(row['status'] == 'requirements_met' for row in assess(case, normalized)))
+            path.write_text('{}')
+            health = assess(case, normalized)
+            self.assertEqual(sum(row['status'] == 'incomplete' for row in health), 1)
+            self.assertIn('repetition', health[-1])
+
+    def test_nested_report_cannot_escape_attempt(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / 'artifacts').mkdir()
+            report = root / 'outside.json'
+            report.write_text('{}')
+            with self.assertRaisesRegex(ValueError, 'outside attempt'):
+                campaign.evidence_inventory(root, {'runs': [{'seed': 1, 'detector_reports': [{'report': str(report)}]}]})
+
+    def test_matched_repetitions_cannot_share_a_directory(self):
+        from test_sram_matched import fixture, CASE
+        with tempfile.TemporaryDirectory() as temporary:
+            raw = fixture(Path(temporary))
+            raw['initialization_comparisons'] = []
+            raw['expected_fills'][1]['directory'] = raw['expected_fills'][0]['directory']
+            with self.assertRaisesRegex(ValueError, 'share an evidence directory'):
+                campaign.normalize_summary(CASE, raw)
+
     def test_global_ledger_keeps_disabled_skipped_and_unavailable_distinct(self):
         data = {'hardware_mode': 'DMG', 'screen_checks': {'samples': 0, 'skipped': 2,
                 'pointer_calls': {'glyph': 3}, 'code_rules_available': False}, 'hook_errors': []}

@@ -633,7 +633,8 @@ PartyGenBuildSlot:
 ; boss marker, whatever the mix row assigned: PartyGenApplyMoveset gives it a
 ; TIER_LEGENDARY_BOSS set, else a corpus TIER_ELITE | TIER_HARD one. The swap runs
 ; after the pool draw, so the uber filter in PartyGenPoolCandidateOk never sees
-; the legendary: it keeps every leader uber-free outside this challenge.
+; the legendary: it keeps every leader uber-free outside this challenge and
+; Endless (EndlessSpecAceUber, which takes the same marker when it swaps).
 ; ===========================================================================
 PartyGenLegendaryBossAce:
 	ld a, [wPartyGenNMons]
@@ -643,7 +644,13 @@ PartyGenLegendaryBossAce:
 	cp b
 	ret nz                         ; not the ace
 	farcall RollLegendaryBossAce   ; WRAM in (and wSpawnForm out), carry out
+	jr c, .swapped
+	; Endless: the ace of a leader, Elite Four member, Champion or mini-boss may
+	; become an Uber instead (custom_functions/endless.asm). Same contract, same
+	; boss moveset path.
+	farcall EndlessSpecAceUber
 	ret nc
+.swapped
 	ld a, [wPartyGenSlot]
 	ld c, a
 	ld b, 0

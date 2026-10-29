@@ -864,21 +864,25 @@ Debug2ApplyRoundState::
 	ret
 
 ; ----------------------------------------------------------------------------
-; DebugMenuDrawText - farcall'd by DebugMenu. Draws its box and option list,
-; plus the build date/ID on the bottom two rows. Lives here rather than in
-; DebugMenu's own bank $01 (2 B free in Debug) because the build strings sit
-; in $3A beside this section; moving the menu's box and strings out with them
-; frees more of $01 than the farcall costs. Clobbers all registers.
+; DebugMenuRun - farcall'd by DebugMenu. Draws the box, option list and build
+; date/ID, sets up and runs the menu, and handles the MUSIC option itself
+; (sound test, then back to the menu). Returns with the choice in
+; hCurrentMenuItem and the pressed button in hJoy5, like HandleMenuInput.
+; Lives here rather than in DebugMenu's own bank $01 (2 B free in Debug): the
+; build strings sit in $3A beside this section, and the setup moved out with
+; them pays for the MUSIC option's dispatch. Clobbers all registers.
 ; ----------------------------------------------------------------------------
-DebugMenuDrawText::
-; Four double-spaced options sit on rows 7, 9, 11 and 13, so the box needs 7
-; inner rows. It had 4, left over from vanilla's two options, which put DEBUG
-; on the bottom border and DEBUG 2 below the box.
-	hlcoord 5, 6
-	ld b, 7
+DebugMenuRun::
+.menu
+	call ClearScreen
+; Five double-spaced options sit on rows 5, 7, 9, 11 and 13, so the box needs
+; 9 inner rows (it was 7 for four options). It starts on row 4 to stay above
+; the build date/ID on the bottom two rows.
+	hlcoord 5, 4
+	ld b, 9
 	ld c, 9
 	call TextBoxBorder
-	hlcoord 7, 7
+	hlcoord 7, 5
 	ld de, DebugMenuOptions
 	call PlaceString
 	hlcoord 2, SCREEN_HEIGHT - 2
@@ -886,12 +890,160 @@ DebugMenuDrawText::
 	call PlaceString
 	hlcoord 2, SCREEN_HEIGHT - 1
 	ld de, BuildIdText
-	jp PlaceString
+	call PlaceString
+
+	ld a, TEXT_DELAY_MEDIUM
+	ld [wOptions], a
+	ld a, PAD_A | PAD_B | PAD_START
+	ld [wMenuWatchedKeys], a
+	xor a
+	ld [wMenuJoypadPollCount], a
+	ld a, 4
+	ld [wMaxMenuItem], a
+	ld a, 5
+	ld [wTopMenuItemY], a
+	ld a, 6
+	ld [wTopMenuItemX], a
+	xor a
+	ldh [hCurrentMenuItem], a
+	ld [wLastMenuItem], a
+	ld [wMenuWatchMovingOutOfBounds], a
+
+	call HandleMenuInput
+	bit B_PAD_B, a
+	ret nz
+	ldh a, [hCurrentMenuItem]
+	cp 4 ; MUSIC?
+	ret nz
+	call DebugSoundTest
+	jr .menu
 
 DebugMenuOptions:
 	db   "FIGHT"
 	next "FIGHT 2"
 	next "DEBUG"
-	next "DEBUG 2@"
+	next "DEBUG 2"
+	next "MUSIC@"
+
+; ----------------------------------------------------------------------------
+; DebugSoundTest - plays every song id in the Music table, in the real engine
+; with the real song data. LEFT/RIGHT = -1/+1, DOWN/UP = -10/+10, A = replay,
+; B = stop and back. The current id lives in wItemQuantity (scratch; nothing
+; else is running at the debug menu). Songs added after the original 47 are
+; named from DebugSongNames, starting at MUSIC_MEET_JESSIE_JAMES; ids past the
+; end of that list show "NEW SONG", so importing more songs never breaks this.
+; ----------------------------------------------------------------------------
+DebugSoundTest:
+	ld a, 1
+	ld [wItemQuantity], a
+.play
+	call ClearScreen
+	hlcoord 1, 1
+	ld de, DebugSoundTestTitle
+	call PlaceString
+	hlcoord 1, 3
+	ld de, DebugSoundTestLabel
+	call PlaceString
+	hlcoord 6, 3
+	ld de, wItemQuantity
+	lb bc, 1, 3
+	call PrintNumber
+	ld a, [wItemQuantity]
+	sub MUSIC_MEET_JESSIE_JAMES
+	ld de, DebugSoundOriginal
+	jr c, .name
+	cp (DebugSongNamesEnd - DebugSongNames) / 2
+	ld de, DebugSoundNew
+	jr nc, .name
+	add a
+	ld e, a
+	ld d, 0
+	ld hl, DebugSongNames
+	add hl, de
+	ld a, [hli]
+	ld d, [hl]
+	ld e, a
+.name
+	hlcoord 1, 5
+	call PlaceString
+	hlcoord 1, 9
+	ld de, DebugSoundHelp
+	call PlaceString
+	ld a, [wItemQuantity]
+	call PlayMusic
+.input
+	call DelayFrame
+	call JoypadLowSensitivity
+	ldh a, [hJoy5]
+	ld b, a
+	ld a, [wItemQuantity]
+	bit B_PAD_B, b
+	jr nz, .exit
+	bit B_PAD_A, b
+	jr nz, .play
+	bit B_PAD_RIGHT, b
+	jr z, .notRight
+	inc a
+	cp NUM_MUSIC_SONGS
+	jr c, .store
+	ld a, 1
+	jr .store
+.notRight
+	bit B_PAD_LEFT, b
+	jr z, .notLeft
+	dec a
+	jr nz, .store
+	ld a, NUM_MUSIC_SONGS - 1
+	jr .store
+.notLeft
+	bit B_PAD_UP, b
+	jr z, .notUp
+	add 10
+	cp NUM_MUSIC_SONGS
+	jr c, .store
+	ld a, 1
+	jr .store
+.notUp
+	bit B_PAD_DOWN, b
+	jr z, .input
+	sub 10
+	jr z, .wrapLow
+	jr nc, .store
+.wrapLow
+	ld a, NUM_MUSIC_SONGS - 1
+.store
+	ld [wItemQuantity], a
+	jr .play
+.exit
+	xor a ; song 0 stops the music
+	jp PlayMusic
+
+DebugSoundTestTitle: db "SOUND TEST@"
+DebugSoundTestLabel: db "SONG@"
+DebugSoundOriginal:  db "ORIGINAL SONG@"
+DebugSoundNew:       db "NEW SONG@"
+DebugSoundHelp:
+	db   "LEFT RIGHT: 1"
+	next "UP DOWN: 10"
+	next "A: REPLAY"
+	next "B: BACK@"
+
+; In MUSIC_* order from MUSIC_MEET_JESSIE_JAMES (constants/music_constants.asm).
+ASSERT MUSIC_JOHTO_GYM_BATTLE == MUSIC_MEET_JESSIE_JAMES + 2
+ASSERT MUSIC_TCG2_GR_LEADER_DUEL == MUSIC_MEET_JESSIE_JAMES + 4
+ASSERT MUSIC_SUICUNE_BATTLE == MUSIC_MEET_JESSIE_JAMES + 8
+DebugSongNames:
+	dw .jessieJames, .pinballBlue, .johtoGym, .tcgClub, .tcg2Gr
+	dw .johtoTrainer, .champion, .rocket, .suicune
+DebugSongNamesEnd:
+.jessieJames:  db "MEET JESSIE JAMES@"
+.pinballBlue:  db "PINBALL BLUE FIELD@"
+.johtoGym:     db "JOHTO GYM LEADER@"
+.tcgClub:      db "TCG CLUB MASTER@"
+.tcg2Gr:       db "TCG2 GR LEADER@"
+.johtoTrainer: db "JOHTO TRAINER@"
+.champion:     db "CHAMPION BATTLE@"
+.rocket:       db "ROCKET BATTLE@"
+.suicune:      db "SUICUNE BATTLE@"
 
 ENDC

@@ -8,6 +8,23 @@ CORE = ('check_world', 'check_party', 'check_items', 'check_key_items', 'check_m
 EXTRA = ('screen_pointers', 'screen_code_rules', 'cgb_palette', 'save_timer', 'branches', 'coverage', 'hook_callbacks', 'crash_vector')
 
 
+def context_reporter(path, seed):
+    """Persist last lifecycle phase even when no normal report can be written."""
+    from run_campaign import atomic_json
+    def record(phase, status='running', detail=None):
+        atomic_json(path, {'schema_version': 1, 'seed': seed, 'phase': phase,
+                          'status': status, 'detector_acceptance': 'unverified', 'detail': detail})
+    return record
+
+
+def failed_context(path, seed, detail, status='error'):
+    try:
+        phase = json.loads(path.read_text())['phase']
+    except (OSError, ValueError, KeyError, TypeError):
+        phase = 'worker_start'
+    context_reporter(path, seed)(phase, status, detail)
+
+
 def observed_check(method):
     """Count invocation returns and errors without suppressing exceptions."""
     @wraps(method)
@@ -115,7 +132,19 @@ def assess(case, summary):
     validate_requirements(required)
     validate_schema(case.get('required_detector_schema'))
     rows = []
+    physical = []
     for run in summary['runs']:
+        if 'detector_reports' in run:
+            records = run['detector_reports']
+            if not isinstance(records, list) or not records:
+                raise ValueError('nested detector reports missing')
+            identities = [(row['seed'], row['fill'], row['repetition']) for row in records]
+            if len(set(identities)) != len(identities) or any(row['seed'] != run['seed'] for row in records):
+                raise ValueError('invalid nested detector identities')
+            physical.extend(records)
+        else:
+            physical.append(run)
+    for run in physical:
         report = json.loads(Path(run['report']).read_text()) if run.get('report') else {}
         ledger = (report.get('checks') or {}).get('detector_health', {})
         global_ledger = report.get('detector_ledger')
@@ -131,6 +160,9 @@ def assess(case, summary):
                 expected = {'save_checks': options.save_checks, 'coverage': options.coverage, 'branches': bool(options.branches)}
                 if report.get('detector_configuration') != expected:
                     raise ValueError('detector configuration differs from campaign case')
+            elif case.get('scenario') == 'sram' and report.get('detector_configuration') != {
+                    'save_checks': False, 'coverage': False, 'branches': False}:
+                raise ValueError('nested SRAM detector configuration differs from scenario')
             if global_ledger != recomputed:
                 raise ValueError('detector ledger differs from recorded observations')
             ledger = {name: {'enabled': row['enabled'], 'status': row['status'],
@@ -154,6 +186,7 @@ def assess(case, summary):
             if row.get('enabled') is not True or row.get('status') != 'observed' or row.get('returned', 0) < minimum:
                 missing[name] = {'required_observations': minimum, 'observed_observations': row.get('returned'),
                                  'status': row.get('status', 'unavailable')}
-        rows.append({'seed': run['seed'], 'status': 'error' if errors else 'incomplete' if missing else
+        rows.append({'seed': run['seed'], **{key: run[key] for key in ('fill', 'repetition', 'role') if key in run},
+                     'status': 'error' if errors else 'incomplete' if missing else
                      'requirements_met' if required else 'unverified', 'errors': errors, 'missing': missing})
     return rows

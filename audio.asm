@@ -238,3 +238,19 @@ INCLUDE "crysaudio/music/RBY/pallettown.asm"
 INCLUDE "crysaudio/music/RBY/pokemontower.asm"
 INCLUDE "crysaudio/music/RBY/routes1.asm"
 INCLUDE "crysaudio/music/RBY/routes2.asm"
+
+SECTION "Song JohtoTrainerBattle", ROMX
+
+INCLUDE "crysaudio/music/imported/johtotrainerbattle.asm"
+
+SECTION "Song ChampionBattle", ROMX
+
+INCLUDE "crysaudio/music/imported/championbattle.asm"
+
+SECTION "Song RocketBattle", ROMX
+
+INCLUDE "crysaudio/music/imported/rocketbattle.asm"
+
+SECTION "Song SuicuneBattle", ROMX
+
+INCLUDE "crysaudio/music/imported/suicunebattle.asm"

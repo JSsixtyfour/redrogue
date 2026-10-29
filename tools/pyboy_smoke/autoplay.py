@@ -1948,6 +1948,7 @@ def play(
     player: str = "basic",
     ai_telemetry: bool = False,
     discard_test_sram: bool = False,
+    phase_callback=None,
 ) -> dict[str, object]:
     """Boot (Debug 2 lobby, or a real new game), play and return the report.
     A failure (see FAILURES) also writes a screenshot and state dump under
@@ -1984,11 +1985,14 @@ def play(
     # The screen checks' code rules (autoplay_screen.py); a ~70 s walk only after a rebuild.
     # Optional: without it those rules are skipped. /mnt/c reads can fail
     # transiently under load (ENODATA, seen 2026-10-20), which must not end a run.
+    phase = phase_callback or (lambda name: None)
+    phase('coverage_inventory')
     inventory_error = None
     try:
         coverage_inventory.code_labels(ROM)
     except OSError as error:
         inventory_error = f'{type(error).__name__}: {error}'
+    phase('harness_initialization')
     harness = RedRogueHarness(ROOT, ARTIFACTS, ram_path=ram_path, rom=ROM, cgb_mode=cgb_mode)
     if ram_path is not None:
         ram_path.unlink()
@@ -1997,6 +2001,7 @@ def play(
             if sram is None:
                 raise ValueError("discard consent requires an explicit disposable test SRAM image")
             harness.enable_disposable_sram_consent()
+        phase('startup')
         ironman = bool(profile and profile.ironman)
         if new_game:
             boot_new_game(harness, seed, difficulty, ironman, profile)
@@ -2007,6 +2012,7 @@ def play(
             import ai_telemetry as ai_telemetry_module
 
             telemetry = ai_telemetry_module.BattleAITelemetry(harness, ROOT)
+        phase('detector_initialization')
         agent = AutoplayAgent(harness, seed=seed, ai_telemetry=telemetry, battle_policy=battle_policy,
                               door_policy=door_policy, stall_frames=stall_frames, log=log,
                               heartbeat=heartbeat, menu_input=menu_input, menu_chaos=menu_chaos,
@@ -2017,11 +2023,13 @@ def play(
         # After the agent's and the checks' own hooks, which keep their addresses.
         coverage_targets = coverage_hooks() if coverage else {}
         hits, skipped = harness.track_coverage(coverage_targets) if coverage else (set(), [])
+        phase('gameplay_observation')
         error = None
         try:
             agent.run(runs=runs, stages=stages, max_frames=max_frames)
         except Exception:  # run() already recorded outcome "error"
             error = traceback.format_exc()
+        phase('report_collection')
         report = agent.report
         data = report.to_json()
         data["build_identity"] = {"gbc": harness.rom_sha256, "sym": harness.sym_sha256}
@@ -2067,6 +2075,7 @@ def play(
     finally:
         harness.close()
     if save_checks:
+        phase('save_observation')
         import save_reload
 
         lobbies = [s for s in reel.select(SAVE_CHECK_LOBBIES) if s.kind == "lobby"]
@@ -2076,6 +2085,7 @@ def play(
                                              "position": None}) + "\n", encoding="utf-8")
         data["save_checks"] = save_reload.run_save_checks(seed, save_snapshots, cgb_mode=cgb_mode)
     if reel is not None and branches:
+        phase('branch_observation')
         options = {} if freeze_frames is None else {"freeze_frames": freeze_frames}
         data["branches"] = autoplay_branch.run_snapshots(
             seed, reel.select(snapshots), branches=branches, frames=branch_frames,
@@ -2083,6 +2093,7 @@ def play(
         hits |= set(data["branches"].pop("coverage_hits", ()))
     if coverage:
         data["coverage"] = {"hit": sorted(hits), "skipped": skipped, 'requested': len(coverage_targets)}
+    phase('detector_ledger')
     from detector_health import collect
     data['detector_configuration'] = {'save_checks': save_checks, 'branches': bool(branches), 'coverage': coverage}
     data['detector_ledger'] = collect(data, data['detector_configuration'])
