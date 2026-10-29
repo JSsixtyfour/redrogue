@@ -13,6 +13,7 @@ from collections import Counter
 import hashlib
 import importlib.metadata
 import json
+import math
 import os
 from pathlib import Path
 import platform
@@ -26,6 +27,19 @@ import time
 
 ROOT = Path(__file__).resolve().parents[2]
 RUNNER = Path(__file__).with_name("run_autoplay.py")
+_PHASE_SINK = None
+
+
+def measured(name, operation):
+    started = time.monotonic()
+    if _PHASE_SINK is not None:
+        _PHASE_SINK({"kind": "phase", "name": name, "state": "start"})
+    try:
+        return operation()
+    finally:
+        if _PHASE_SINK is not None:
+            _PHASE_SINK({"kind": "phase", "name": name, "state": "end",
+                         "seconds": round(time.monotonic() - started, 6)})
 
 
 def case_parser(case):
@@ -229,8 +243,9 @@ def validate_retained_evidence(result):
 
 
 def validate_campaign_archive(output, manifest):
+    build_root = output / manifest.get("preparation", ".") / "build"
     for name, expected in manifest["identity"]["builds"].items():
-        path = output / "build" / name
+        path = build_root / name
         if not path.is_file() or digest(path) != expected:
             raise ValueError(f"archived build missing or changed: {name}")
     for name, expected in manifest.get("archive_hashes", {}).items():
@@ -276,7 +291,7 @@ def source_identity():
 
 def build_identity():
     return {f"{rom}.{ext}": digest(ROOT / f"{rom}.{ext}")
-            for rom in ("pokered", "pokeblue", "pokeblue_debug") for ext in ("gbc", "sym")}
+            for rom in ("pokered", "pokeblue", "pokeblue_debug") for ext in ("gbc", "sym", "map")}
 
 
 def validate_config(config):
@@ -435,14 +450,17 @@ def main(argv=None):
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--case-budget", type=float, default=300)
     parser.add_argument("--campaign-budget", type=float, default=900)
+    parser.add_argument("--storage-budget-mib", type=float, default=256)
+    parser.add_argument("--rss-budget-mib", type=float, default=1024)
     args = parser.parse_args(argv)
     if os.name != "posix":
         parser.error("run under WSL; worker process groups require POSIX")
-    if args.case_budget <= 0 or args.campaign_budget <= 0:
-        parser.error("budgets must be positive")
-    config = json.loads(args.config.read_text())
-    cases = validate_config(config)
+    budgets = (args.case_budget, args.campaign_budget, args.storage_budget_mib, args.rss_budget_mib)
+    if any(not math.isfinite(value) or value <= 0 for value in budgets):
+        parser.error("budgets must be finite and positive")
     output = args.output.resolve()
+    if not native_storage(output):
+        parser.error("campaign output must be on native Linux storage (for example /tmp); export evidence afterward")
     output.parent.mkdir(parents=True, exist_ok=True)
     import fcntl
     with (output.parent / f".{output.name}.lock").open("a") as lock:
@@ -450,45 +468,100 @@ def main(argv=None):
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             raise ValueError("another controller holds this campaign") from None
-        return run_campaign(args, config, cases)
+        from campaign_limits import supervise
+        audit = supervise(controller_entry, args)
+        output.mkdir(parents=True, exist_ok=True)
+        atomic_json(output / "supervision.json", audit)
+        atomic_json(output / "supervision_attempts" / f"{time.time_ns()}.json", audit)
+        results_path = output / "results.json"
+        try:
+            results = json.loads(results_path.read_text()) if results_path.exists() else {"schema_version": 1, "cases": []}
+        except (OSError, ValueError):
+            results = {"schema_version": 1, "cases": [], "detail": "controller results unavailable"}
+        results.update(campaign_execution=audit["execution"], campaign_verdict=audit["verdict"])
+        atomic_json(results_path, results)
+        with (output / "summary.md").open("a", encoding="utf-8") as summary:
+            summary.write(f"\nCampaign supervision: {audit['execution']} / {audit['verdict']} ({audit['seconds']}s).\n")
+        if audit["execution"] != "completed":
+            print(f"campaign: {audit['execution']} / {audit['verdict']}; phase {audit['phase_at_stop']}", flush=True)
+        return audit["exit"]
+
+
+def native_storage(path):
+    """Monitoring must not block on the filesystem that exhausted prep time."""
+    mounts = []
+    for line in Path("/proc/self/mountinfo").read_text().splitlines():
+        fields, filesystem = line.split(" - ", 1)
+        mount = Path(fields.split()[4].replace("\\040", " ").replace("\\134", "\\"))
+        if path.is_relative_to(mount):
+            mounts.append((len(str(mount)), filesystem.split()[0]))
+    return max(mounts)[1] in ("ext4", "xfs", "btrfs", "tmpfs", "overlay", "zfs")
+
+
+def controller_entry(args, notify):
+    global _PHASE_SINK
+    _PHASE_SINK = notify
+    config = measured("configuration", lambda: json.loads(args.config.read_text()))
+    cases = measured("configuration_validation", lambda: validate_config(config))
+    return run_campaign(args, config, cases)
 
 
 def run_campaign(args, config, cases):
     started = time.monotonic()
     output = args.output.resolve()
     manifest_path = output / "manifest.json"
-    identity = {"source": source_identity(), "builds": build_identity(),
+    identity = {"source": measured("source_identity", source_identity), "builds": measured("build_identity", build_identity),
                 "python": platform.python_version(), "pyboy": importlib.metadata.version("pyboy"),
                 "platform": platform.platform(), "config": config, "case_budget": args.case_budget,
-                "campaign_budget": args.campaign_budget}
+                "campaign_budget": args.campaign_budget,
+                "storage_budget_mib": getattr(args, "storage_budget_mib", 256),
+                "rss_budget_mib": getattr(args, "rss_budget_mib", 1024)}
     if manifest_path.exists():
         manifest = json.loads(manifest_path.read_text())
         if manifest["identity"] != identity:
             raise ValueError("source, build, runtime, or configuration changed; use a new campaign directory")
     else:
-        output.mkdir(parents=True, exist_ok=False)
+        output.mkdir(parents=True, exist_ok=True)
+        if any((output / case["id"] / "result.json").exists() for case in cases):
+            raise ValueError("manifest missing but case results exist; use a new campaign directory")
+        if (output / "results.json").exists() and json.loads((output / "results.json").read_text()).get("cases"):
+            raise ValueError("manifest missing but completed/partial case records remain")
+        identity_path = output / "preparation_identity.json"
+        if not identity_path.exists() and not (output / "supervision.json").exists():
+            if any(output.iterdir()):
+                raise ValueError("existing output is not an owned interrupted preparation")
+        if identity_path.exists() and json.loads(identity_path.read_text()) != identity:
+            raise ValueError("source/build/configuration changed after interrupted preparation")
+        atomic_json(identity_path, identity)
+        preparation = output / f"preparation-{time.time_ns()}"
+        preparation.mkdir()
         manifest = {"schema_version": 1, "identity": identity, "created_unix": time.time(),
+                    "preparation": preparation.name,
                     "replay": [sys.executable, str(Path(__file__).resolve()),
                                str(output / "config.json"), "--output", str(output),
-                               "--case-budget", str(args.case_budget), "--campaign-budget", str(args.campaign_budget)]}
+                               "--case-budget", str(args.case_budget), "--campaign-budget", str(args.campaign_budget),
+                               "--storage-budget-mib", str(getattr(args, "storage_budget_mib", 256)),
+                               "--rss-budget-mib", str(getattr(args, "rss_budget_mib", 1024))]}
         atomic_json(output / "config.json", config)
-        build_dir = output / "build"
+        build_dir = preparation / "build"
         build_dir.mkdir()
-        for name in identity["builds"]:
-            shutil.copyfile(ROOT / name, build_dir / name)
-        with tarfile.open(output / "source.tar.gz", "w:gz") as archive:
-            for name, sha in identity["source"]["files"].items():
-                if sha is not None:
-                    archive.add(ROOT / name, arcname=name, recursive=False)
-        (output / "source.patch").write_bytes(b"" if (ROOT / "snapshot_identity.json").exists() else
-            subprocess.check_output(["git", "diff", "HEAD", "--binary"], cwd=ROOT))
-        manifest["archive_hashes"] = {name: digest(output / name)
-                                      for name in ("source.tar.gz", "source.patch", "config.json")}
+        def archive_inputs():
+            for name in identity["builds"]:
+                shutil.copyfile(ROOT / name, build_dir / name)
+            with tarfile.open(preparation / "source.tar.gz", "w:gz") as archive:
+                for name, sha in identity["source"]["files"].items():
+                    if sha is not None:
+                        archive.add(ROOT / name, arcname=name, recursive=False)
+            (preparation / "source.patch").write_bytes(b"" if (ROOT / "snapshot_identity.json").exists() else
+                subprocess.check_output(["git", "diff", "HEAD", "--binary"], cwd=ROOT))
+        measured("archive_inputs", archive_inputs)
+        archive_names = [str(Path(preparation.name) / name) for name in ("source.tar.gz", "source.patch")] + ["config.json"]
+        manifest["archive_hashes"] = {name: digest(output / name) for name in archive_names}
         atomic_json(manifest_path, manifest)
-    validate_campaign_archive(output, manifest)
+    measured("archive_validation", lambda: validate_campaign_archive(output, manifest))
     results = []
     for case in cases:
-        if source_identity() != identity["source"] or build_identity() != identity["builds"]:
+        if measured("source_before_case", source_identity) != identity["source"] or build_identity() != identity["builds"]:
             raise ValueError("source/build changed during campaign; stopped before next case")
         directory = output / case["id"]
         path = directory / "result.json"
@@ -505,8 +578,8 @@ def run_campaign(args, config, cases):
                 result = {"case": case, "execution": "budget_exhausted", "verdict": "incomplete", "seconds": 0}
                 atomic_json(path, result)
             else:
-                result = execute_case(case, directory, min(args.case_budget, remaining))
-        if source_identity() != identity["source"] or build_identity() != identity["builds"]:
+                result = measured(f"case:{case['id']}", lambda: execute_case(case, directory, min(args.case_budget, remaining)))
+        if measured("source_after_case", source_identity) != identity["source"] or build_identity() != identity["builds"]:
             result.update(execution="invalidated", verdict="incomplete", detail="source/build changed during case")
             atomic_json(path, result)
         results.append(result)

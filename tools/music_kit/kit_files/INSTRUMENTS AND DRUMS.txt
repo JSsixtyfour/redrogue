@@ -1,0 +1,41 @@
+INSTRUMENTS AND DRUMS (quick reference)
+=======================================
+The game's sound set. The DAW Samples folder previews these; the game itself
+is the real test.
+
+CH1 and CH2: square waves. Pick the pulse width in the track name.
+    Square 12.5   thin, nasal      Duty 0
+    Square 25     hollow           Duty 1
+    Square 50     full, flute-like Duty 2
+    Square 75     sounds almost the same as 25   Duty 3
+  Volume follows note velocity in 8 steps.
+
+CH3: wave channel, 15 wave shapes (put "Wave N" in the track name).
+  Always full volume. Waves 0-4 are the classic ones.
+     0 smooth, round        1 smooth, a little flatter
+     2 hollow, flute-like   3 reedy, wobbly
+     4 bright, buzzy        5 stepped, nasal
+     6 organ-like           7 gritty, jagged
+     8 rough, brassy        9 thin and quiet
+    10 mellow, wide hump   11 bright sawtooth
+    12 soft, low           13 pure, sine-like
+    14 square (hollow)
+  (Descriptions are first impressions from the wave shapes. Tell us if one is wrong.)
+
+CH4: drums. 19 sounds on MIDI notes 0-18, or use General MIDI drums and let
+the tester map them.
+    0 snare 1      5 triangle 1    10 snare 9        15 triangle 3
+    1 snare 2      6 triangle 2    11 cymbal 1       16 muted snare 2
+    2 snare 3      7 snare 6       12 cymbal 2       17 muted snare 3
+    3 snare 4      8 snare 7       13 cymbal 3       18 muted snare 4
+    4 snare 5      9 snare 8       14 muted snare 1
+One drum at a time; a hit from the first twelve and a hit from the last
+seven can follow each other freely (the tester switches the drum bank for you).
+
+NOTE RANGES
+    Ch1, Ch2: MIDI 36-127    Ch3: MIDI 24-119    Ch4: MIDI 0-18 (or GM drums)
+
+WHAT IS A GAME CHOICE, NOT A HARDWARE LIMIT
+  Four voices and one note at a time per voice are Game Boy hardware. The
+  19-drum set, the 15 waves and the converter's note ranges are choices made
+  for this game; tell us if you need something outside them.

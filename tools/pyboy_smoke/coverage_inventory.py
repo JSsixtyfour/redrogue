@@ -24,7 +24,7 @@ from functools import lru_cache
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-ARTIFACTS = Path(__file__).resolve().parent / "artifacts"
+ARTIFACTS = Path(os.environ.get("REDROGUE_AUTOPLAY_ARTIFACTS", Path(__file__).resolve().parent / "artifacts"))
 ROM = "pokeblue_debug"
 
 

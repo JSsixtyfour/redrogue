@@ -154,6 +154,19 @@ def wave5(path):
     smf.write(path, [t0, ch3])
 
 
+def format0(path):
+    """format0.mid: one track holding everything (what some exporters write):
+    a lead on MIDI channel 1 and drums on channel 10, tempo in the same track.
+    Expect Ch1 and Ch4 only."""
+    t = smf.Track("Song")
+    t.tempo(0, 120)
+    for i, n in enumerate([72, 74, 76, 77]):
+        t.note(i * Q, Q - Q // 8, n, 100, 0)
+    for i in range(4):
+        t.note(i * Q, Q // 4, 36 if i % 2 == 0 else 38, 100, 9)
+    smf.write(path, [t], fmt=0)
+
+
 def write_all(out):
     os.makedirs(out, exist_ok=True)
     drumtest(os.path.join(out, "drumtest.mid"))
@@ -162,6 +175,7 @@ def write_all(out):
     daw_like(out)
     kitswitch(os.path.join(out, "kitswitch.mid"))
     wave5(os.path.join(out, "wave5.mid"))
+    format0(os.path.join(out, "format0.mid"))
 
 
 def main():

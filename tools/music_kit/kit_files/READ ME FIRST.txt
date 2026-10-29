@@ -16,8 +16,12 @@ QUICK START
 4. Drag the .mid onto "DROP YOUR SONG HERE.bat". A black window shows what
    happens, then the game opens. The song starts after the intro. Press Start
    to skip the intro.
-5. When a song is finished, send us the .mid file. Nothing from _engine.
-   We convert it with the same tool you used, so it sounds the same in the game.
+5. When a song is finished, send us the zip that appears in the folder
+   "SEND THESE TO US" (open ATTRIBUTION.txt inside it first and fill in your
+   name and the song title). It holds your original file, what the tester made
+   from it, and the kit version, so we can put it in the game exactly as you
+   heard it. Nothing from _engine. "KIT VERSION.txt" says which kit you have.
+   "INSTRUMENTS AND DRUMS.txt" lists every sound at a glance.
 
 
 THE FOUR TRACKS (it is a Game Boy, so there are only four voices)

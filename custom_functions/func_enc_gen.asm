@@ -27,18 +27,6 @@ DisallowWildMew:
 	
 	
 
-;CheckIfPkmnReal:
-;;set the carry if pokemon number in 'a' is found on the list of legit pokemon
-;	push hl
-;	push de
-;	push bc
-;	ld hl, ListRealPkmn
-;	ld de, $0001
-;	call IsInArray
-;	pop bc
-;	pop de
-;	pop hl
-
 ;This function loads a random trainer class (value of $01 to $2F)
 GetRandTrainer:
 .reroll

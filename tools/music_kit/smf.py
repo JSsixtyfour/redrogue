@@ -1,4 +1,4 @@
-"""Minimal Standard MIDI File (format 1) writer, no dependencies.
+"""Minimal Standard MIDI File (format 1 by default, format 0 on request) writer, no dependencies.
 
 Used by the music test kit to generate Template.mid and acceptance-test MIDIs.
 Times are in ticks at PPQ ticks per quarter note.
@@ -52,8 +52,8 @@ class Track:
         return b"MTrk" + struct.pack(">I", len(body)) + bytes(body)
 
 
-def write(path, tracks, ppq=PPQ):
+def write(path, tracks, ppq=PPQ, fmt=1):
     with open(path, "wb") as f:
-        f.write(b"MThd" + struct.pack(">IHHH", 6, 1, len(tracks), ppq))
+        f.write(b"MThd" + struct.pack(">IHHH", 6, fmt, len(tracks), ppq))
         for t in tracks:
             f.write(t.encode())

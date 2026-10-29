@@ -21,6 +21,7 @@ param(
 	[string]$OutAsm,
 	[switch]$NoBuild,
 	[switch]$NoLaunch,
+	[switch]$NoBundle,
 	[switch]$SelfTest,
 	[string]$Pokemid,
 	[string]$EngineId
@@ -52,7 +53,43 @@ function Fail([string]$plain, [string]$raw = '') {
 		New-Item -ItemType Directory -Force -Path $Out | Out-Null
 		Set-Content -LiteralPath $ErrLog -Encoding UTF8 -Value ("$plain`r`n`r`n" + $raw)
 	} catch {}
+	New-Bundle $null ("$plain`r`n`r`n" + $raw)
 	exit 1
+}
+
+# Submission bundle: everything the dev team needs, in one zip in "SEND THESE TO
+# US" next to the .bat (only in the shipped kit, only for a real song). Holds the
+# composer's original file, the converted song when there is one, a manifest of
+# the exact kit and engine used, an attribution form, and the error text when
+# the run failed. Never fatal.
+function New-Bundle([string]$converted, [string]$errorText) {
+	try {
+		if (-not $script:kit -or $NoBundle -or $SelfTest -or -not $Mid -or -not (Test-Path -LiteralPath $Mid -PathType Leaf)) { return }
+		$root = Split-Path $Engine
+		$dest = Join-Path $root 'SEND THESE TO US'
+		$base = [IO.Path]::GetFileNameWithoutExtension($Mid) -replace '[^\w\- ]', '_'
+		$stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+		$stage = Join-Path $Out ("bundle_" + [Guid]::NewGuid().ToString('N').Substring(0, 8))
+		New-Item -ItemType Directory -Force -Path $stage, $dest | Out-Null
+		Copy-Item -LiteralPath $Mid -Destination (Join-Path $stage ('original' + [IO.Path]::GetExtension($Mid)))
+		if ($converted) { [IO.File]::WriteAllText((Join-Path $stage 'converted-song.asm'), $converted) }
+		if ($errorText) { [IO.File]::WriteAllText((Join-Path $stage 'error-log.txt'), $errorText) }
+		$manifest = [ordered]@{
+			input = [IO.Path]::GetFileName($Mid); builtOk = [bool]$converted; when = (Get-Date -Format 'o')
+			kitSchema = $script:kit.kitSchema; kitDate = $script:kit.kitDate; buildHash = $script:kit.buildHash
+			engine = $script:kit.engine; engineHashes = $script:kit.engineHashes; romSha256 = $script:kit.romSha256
+			importBudget = $script:kit.importBudget
+		}
+		[IO.File]::WriteAllText((Join-Path $stage 'manifest.json'), ($manifest | ConvertTo-Json -Depth 4))
+		[IO.File]::WriteAllText((Join-Path $stage 'ATTRIBUTION.txt'),
+			"Fill this in before you send the zip. Open it in Notepad.`r`n`r`nSong title:`r`nYour name (as it should be credited):`r`nOriginal tune or source (write 'original' if it is yours):`r`nAnything we should know (where it should play, what to change):`r`n")
+		$zip = Join-Path $dest ("${base}_$stamp.zip")
+		Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -Force
+		Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue
+		Say ''
+		Say "A zip to send us is ready: $zip" 'Cyan'
+		Say '(Open ATTRIBUTION.txt inside it first and fill in your name and the song title.)' 'DarkGray'
+	} catch {}
 }
 
 # Run a native tool, capturing stdout+stderr as one string. Avoids PS 5.1's
@@ -589,6 +626,7 @@ if ($null -ne $size) {
 		Say ("Song size: {0:N0} bytes." -f $size)
 	}
 }
+New-Bundle $songText $null
 
 # ---------------------------------------------------------------- 6. play
 

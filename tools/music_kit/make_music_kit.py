@@ -209,8 +209,8 @@ def convert(mid=None, *extra):
            winpath(os.path.join(ENGINE, "convert.ps1"))]
     if mid:
         cmd.append(winpath(mid))
-    cmd += ["-NoLaunch", *extra]
-    p = subprocess.run(cmd, text=True, capture_output=True)
+    cmd += ["-NoLaunch", "-NoBundle", *extra]
+    p = subprocess.run(cmd, text=True, errors="replace", capture_output=True)
     if p.returncode != 0:
         sys.exit("convert.ps1 failed on %s:\n%s%s" % (mid or " ".join(extra), p.stdout, p.stderr))
     return p.stdout
@@ -259,9 +259,9 @@ def check_native_rejections(out):
         with open(path, "w", newline="\n") as f:
             f.write(text)
         cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-               winpath(os.path.join(ENGINE, "convert.ps1")), winpath(path), "-NoBuild", "-NoLaunch",
+               winpath(os.path.join(ENGINE, "convert.ps1")), winpath(path), "-NoBuild", "-NoLaunch", "-NoBundle",
                "-OutAsm", winpath(os.path.join(out, name + ".out.asm"))]
-        p = subprocess.run(cmd, text=True, capture_output=True)
+        p = subprocess.run(cmd, text=True, errors="replace", capture_output=True)
         if p.returncode == 0 or reason not in p.stdout:
             sys.exit("native %s: expected a failure mentioning %r, got exit %d:\n%s%s" % (name, reason, p.returncode, p.stdout, p.stderr))
 
@@ -296,6 +296,12 @@ def main():
     }
     with open(os.path.join(ENGINE, "kit.json"), "w") as f:
         json.dump(kit, f, indent=2)
+    version_lines = ["Red Rogue Music Tester", "Kit version %d (%s)" % (kit["kitSchema"], date),
+                     "Built %s from game build %s" % (date, git), "Sound engine: %s" % ENGINE_ID,
+                     "Largest song the game has room for: %d bytes" % budget, "",
+                     "If the game has been updated since this date, ask us for a fresh kit."]
+    with open(os.path.join(KIT, "KIT VERSION.txt"), "w", newline="\r\n") as f:
+        f.write("\n".join(version_lines) + "\n")
 
     shutil.rmtree(WORK, ignore_errors=True)
     os.makedirs(WORK)
@@ -363,6 +369,37 @@ def main():
         sys.exit("wave5.mid: wave 6 was not kept:\n" + open(asm).read())
     if "Ch3 uses wave 6" not in said:
         sys.exit("wave5.mid: the converter didn't mention the new wave:\n" + said)
+
+    # 3f. Inputs the composer's tools really produce: a Format 0 file, and a
+    #     path with spaces, accents and symbols.
+    log("check: format0.mid and a Unicode path convert")
+    asm = os.path.join(out, "format0.asm")
+    convert(os.path.join(WORK, "format0.mid"), "-NoBuild", "-OutAsm", winpath(asm))
+    text = open(asm).read()
+    if "channel_count 2" not in text or "Music_KitPreview_Ch1::" not in text or "Music_KitPreview_Ch4::" not in text:
+        sys.exit("format0.mid should give exactly Ch1 and Ch4:\n" + text)
+    odd = os.path.join(WORK, "Mü sic ♪ tést")
+    os.makedirs(odd, exist_ok=True)
+    shutil.copy2(os.path.join(WORK, "Template.mid"), os.path.join(odd, "sóng (1) ’s.mid"))
+    asm = os.path.join(out, "odd.asm")
+    convert(os.path.join(odd, "sóng (1) ’s.mid"), "-NoBuild", "-OutAsm", winpath(asm))
+
+    # 3g. The submission bundle (a real run, not -NoBundle): original, converted
+    #     song, manifest naming this kit's engine, attribution form.
+    log("check: submission bundle")
+    send = os.path.join(KIT, "SEND THESE TO US")
+    cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", winpath(os.path.join(ENGINE, "convert.ps1")),
+           winpath(os.path.join(KIT, "Template.mid")), "-NoLaunch"]
+    p = subprocess.run(cmd, text=True, errors="replace", capture_output=True)
+    zips = [f for f in os.listdir(send)] if os.path.isdir(send) else []
+    if p.returncode or len(zips) != 1:
+        sys.exit("bundle run failed (exit %d, zips %s):\n%s%s" % (p.returncode, zips, p.stdout, p.stderr))
+    with zipfile.ZipFile(os.path.join(send, zips[0])) as z:
+        names = sorted(z.namelist())
+        manifest = json.loads(z.read("manifest.json").decode("utf-8-sig"))
+    if names != ["ATTRIBUTION.txt", "converted-song.asm", "manifest.json", "original.mid"] or manifest.get("engine") != ENGINE_ID:
+        sys.exit("bundle contents wrong: %s %s" % (names, manifest))
+    shutil.rmtree(send)
 
     # Leave the kit clean: no generated preview sources, empty output.
     for name in ("kit_audio.asm", "kit_music_pointers.asm", "kit_song.asm"):
