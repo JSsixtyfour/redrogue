@@ -3,7 +3,7 @@
 from test_smoke import HarnessTestCase
 
 
-APPEARANCE_COUNT = 31  # data/player/appearance.asm; build-enforced by assert_table_length
+APPEARANCE_COUNT = 32  # data/player/appearance.asm; build-enforced by assert_table_length
 APPEARANCE_STRIDE = 8  # overworld sprite, front pic, back pic, name (dw each)
 SPRITE_TABLE_STRIDE = 4  # graphics ptr (2), tile count, bank
 
@@ -55,6 +55,15 @@ class AILairMirrorTableTest(HarnessTestCase):
                 )
                 self.assertEqual(sheet_row[0:2], row, "graphics pointer mismatch")
                 self.assertEqual(sheet_row[3], expected_sprite_bank, "bank mismatch")
+
+    def test_select_order_is_a_permutation_starting_at_red(self) -> None:
+        # ChoosePlayerCharacter's .find loop never terminates on a missing index.
+        h = self.harness
+        assert h is not None
+        bank, addr = h.symbols.get("PlayerAppearanceSelectOrder")
+        order = self._read_rom_bytes(bank, addr, APPEARANCE_COUNT)
+        self.assertEqual(order[0], 0)
+        self.assertEqual(sorted(order), list(range(APPEARANCE_COUNT)))
 
 
 class AILairPatchRoutineTest(HarnessTestCase):

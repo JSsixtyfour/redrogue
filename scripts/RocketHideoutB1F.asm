@@ -184,10 +184,9 @@ RocketHideoutB1FRocket5EndBattleText:
 	text_far _GiovanniMiniBossEndBattleText
 	text_asm
 	SetEvent EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_3
-	ld hl, .prompt_end2
+	ld hl, .end2
 	ret
-.prompt_end2
-	text_promptbutton
+.end2 ; _GiovanniMiniBossEndBattleText already ends in prompt
 	text_end
 
 RocketHideoutB1FRocket1BattleText:

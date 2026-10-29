@@ -180,6 +180,7 @@ AUDIT_ROMS ?= $(roms:.gbc=)
 audit: $(addsuffix .gbc,$(AUDIT_ROMS))
 	python3 tools/gen_party_roster.py --check
 	python3 tools/catalog_audit.py
+	python3 tools/audit_end_battle_text.py
 	python3 tools/static_audit/test_rules.py
 	python3 tools/static_audit/run_all.py $(foreach rom,$(AUDIT_ROMS),--rom $(rom)) $(if $(INFO),--info)
 	python3 tools/pyboy_smoke/run_smoke.py --source-only

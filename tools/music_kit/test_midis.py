@@ -167,6 +167,20 @@ def format0(path):
     smf.write(path, [t], fmt=0)
 
 
+def notation_gaps(path):
+    """notation_gaps.mid: what MuseScore-style exports write (Mewtwo test.mid, 2026-10-29):
+    every note ends 1 tick before the next, plus triplet eighths 79 ticks long (off the
+    1/48-beat grid). pokemid rejects both raw; midi_normalize must snap and close them."""
+    t0 = smf.Track()
+    t0.tempo(0, 156)
+    lead = smf.Track("Flute 1")
+    for k in range(16):
+        lead.note(k * (Q // 4), Q // 4 - 1, 72 + (k % 5), 100)
+    for k in range(6):
+        lead.note(4 * Q + k * (Q // 3), Q // 3 - 81, 67 + k, 100)
+    smf.write(path, [t0, lead])
+
+
 def write_all(out):
     os.makedirs(out, exist_ok=True)
     drumtest(os.path.join(out, "drumtest.mid"))
@@ -176,6 +190,7 @@ def write_all(out):
     kitswitch(os.path.join(out, "kitswitch.mid"))
     wave5(os.path.join(out, "wave5.mid"))
     format0(os.path.join(out, "format0.mid"))
+    notation_gaps(os.path.join(out, "notation_gaps.mid"))
 
 
 def main():

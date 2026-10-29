@@ -110,6 +110,16 @@ class FormEvolutionListStaticTest(unittest.TestCase):
             REPO_ROOT / 'constants/pokemon_data_constants.asm').read_text(encoding='utf-8'), re.M)
         reach |= {(m.group(1), int(armored.group(1))) for m in re.finditer(
             r'^\s*legendary_trade_entry\s+\w+\s*,\s*([A-Z_0-9]+)', trades, re.M) if m.group(1) != '0'}
+        # the cemetery ghost boss's fossil look: PCemRollBoss compares the boss
+        # species and stores FOSSIL_FORM (procedural_cemetery_gen.asm)
+        cemetery = (REPO_ROOT / 'custom_functions/procedural_cemetery_gen.asm').read_text(encoding='utf-8')
+        fossil = re.search(r'^DEF FOSSIL_FORM EQU (\d+)', (
+            REPO_ROOT / 'constants/pokemon_data_constants.asm').read_text(encoding='utf-8'), re.M)
+        hook = re.search(r'^\tld a, \[wRoguePokemon1\]\n((?:\t(?:cp|jr) .*\n)+)\.fossil\n'
+                         r'\tld a, FOSSIL_FORM\n', cemetery, re.M)
+        if hook:
+            reach |= {(m.group(1), int(fossil.group(1)))
+                      for m in re.finditer(r'\tcp ([A-Z_0-9]+)', hook.group(1))}
         # the other stone-set forms are `evo_item_form` entries in the base lists
         base_text = (REPO_ROOT / 'data/pokemon/evos_moves.asm').read_text(encoding='utf-8')
         reach |= {(m.group(2), int(m.group(1))) for m in re.finditer(

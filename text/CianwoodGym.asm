@@ -16,9 +16,8 @@ _CianwoodGymChuckPreBattleText::
 	para "There! Scared"
 	line "now, are you?"
 
-	para "What?"
-	line "It has nothing to"
-	cont "to do with #MON?"
+	para "What? It has"
+	line "nothing to do with"
 	cont "#MON?"
     
     para "That's true!"

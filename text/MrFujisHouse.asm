@@ -107,9 +107,11 @@ _MrFujiGift2Desc::          ; name filled in by BridgePrintGiftDesc (wNameBuffer
     text "!"
 	done
     
-_MrFujiGift3Desc::          ; need to figure a way to get its name in here
-    text "A cubone with"
-    line "doubled attack"
+_MrFujiGift3Desc::
+	text "@"
+	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
+	text " with"
+	line "doubled ATTACK"
 	done
 
 _MrFujiGift4Desc::

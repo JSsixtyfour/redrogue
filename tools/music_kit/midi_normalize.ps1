@@ -257,6 +257,50 @@ function ConvertTo-CleanMidi([byte[]]$d, [hashtable]$GmDrums) {
 		$chan[$ch] = @{ Events = $evs; EndTick = $endTick; Name = $srcName }
 	}
 
+	# ---- pokemid's rhythm grid (measured 2026-10-29, Mewtwo test.mid). pokemid places
+	# every event on a 1/48-beat grid and cannot write a rest of 1/48 beat or less, nor
+	# a length off that grid: "couldn't make rest with length 1/48 beats" for a note that
+	# ends 1-10 ticks (PPQ 480) before the next, "3/160 beats" for 79-tick triplet notes.
+	# Notation programs (MuseScore) end every note 1 tick early, so ordinary 16ths failed.
+	# Snap every event to the nearest 1/48 beat (rescaling to PPQ 480 first if the file's
+	# PPQ is not a multiple of 48), give a note that snapped to zero length one step, then
+	# let a note that ends at most one step before the next note on its track touch it.
+	# Each change is at most 1/96 or 1/48 beat, far below hearing at any tempo.
+	$ppq = [int]$midi.Ppq
+	$scale = 1.0
+	if ($ppq % 48) { $scale = 480.0 / $ppq; $ppq = 480; $midi.Ppq = 480 }
+	$unit = [int]($ppq / 48)
+	$snap = { param([double]$t) [int]([Math]::Round($t * $scale / $unit, [MidpointRounding]::AwayFromZero) * $unit) }
+	$moved = 0; $closed = 0
+	foreach ($c in $midi.Cond) { $c.Tick = & $snap $c.Tick }
+	foreach ($ch in $chan.Keys) {
+		$evs = $chan[$ch].Events
+		foreach ($e in $evs) {
+			$t = & $snap $e.Tick
+			if (($e.Bytes[0] -eq 0x90 -or $e.Bytes[0] -eq 0x80) -and [Math]::Abs($t - $e.Tick * $scale) -gt 0.001) { $moved++ }
+			$e.Tick = $t
+		}
+		$chan[$ch].EndTick = & $snap $chan[$ch].EndTick
+		$open = @{}
+		foreach ($e in ($evs | Sort-Object Tick, Order, Seq)) {
+			if ($e.Bytes[0] -eq 0x90) { $open[[int]$e.Bytes[1]] = $e }
+			elseif ($e.Bytes[0] -eq 0x80 -and $open.ContainsKey([int]$e.Bytes[1])) {
+				$on = $open[[int]$e.Bytes[1]]
+				$open.Remove([int]$e.Bytes[1])
+				if ($e.Tick -le $on.Tick) { $e.Tick = $on.Tick + $unit }
+			}
+		}
+		$ons = @($evs | Where-Object { $_.Bytes[0] -eq 0x90 } | ForEach-Object { $_.Tick } | Sort-Object)
+		foreach ($e in $evs) {
+			if ($e.Bytes[0] -ne 0x80) { continue }
+			$next = $ons | Where-Object { $_ -ge $e.Tick } | Select-Object -First 1
+			if ($null -ne $next -and $next - $e.Tick -gt 0 -and $next - $e.Tick -le $unit) { $e.Tick = $next; $closed++ }
+		}
+	}
+	if ($closed -or $moved) {
+		$notes.Add("Timing: closed $closed tiny gaps between notes and moved $moved note edges onto the 1/48-beat grid the Game Boy converter needs (your program ends each note a hair early; nothing you can hear changes).")
+	}
+
 	# ---- timbre from the track name, unless the track already sets one itself
 	foreach ($ch in 'Ch1', 'Ch2', 'Ch3') {
 		if (-not $chan.Contains($ch)) { continue }

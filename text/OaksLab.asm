@@ -131,18 +131,24 @@ _OaksLabOakNormalText::
 	done
 
 _OaksLabGift1Desc::
-	text "BULBASAUR family"
-	line "with EARTHQUAKE"
+	text "@"
+	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
+	text " with"
+	line "EARTHQUAKE"
 	done
 
 _OaksLabGift2Desc::
-	text "SQUIRTLE family"
-	line "with AMNESIA"
+	text "@"
+	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
+	text " with"
+	line "AMNESIA"
 	done
 
 _OaksLabGift3Desc::
-	text "CHARMANDER line"
-	line "with DRAGON type"
+	text "@"
+	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
+	text " with"
+	line "DRAGON type"
 	done
 
 _OaksLabGift4Desc::

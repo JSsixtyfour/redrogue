@@ -86,6 +86,9 @@ ENDM
 ;   JOLTEON     Espeon        Umbreon       -
 ;   FLAREON     Leafeon       -             -
 ;   TAUROS      P-Combat      P-Blaze       P-Aqua
+;   MEWTWO      Armored       -             -
+;   AERODACTYL  Fossil        -             -      (cemetery ghost boss only)
+;   KABUTOPS    Fossil        -             -      (cemetery ghost boss only)
 ;   (every other Group R base) its one regional variant
 ;
 ; Hisuian Sneasel, Paldean Wooper and Hisuian Qwilfish were cut 2026-10-15:
@@ -145,6 +148,8 @@ INCLUDE "data/pokemon/forms/helectrode.asm"
 INCLUDE "data/pokemon/forms/hgrowlithe.asm"
 INCLUDE "data/pokemon/forms/hvoltorb.asm"
 INCLUDE "data/pokemon/forms/armoredmewtwo.asm"
+INCLUDE "data/pokemon/forms/fossilaerodactyl.asm"
+INCLUDE "data/pokemon/forms/fossilkabutops.asm"
 
 	db 0 ; terminator
 

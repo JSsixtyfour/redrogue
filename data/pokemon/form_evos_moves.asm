@@ -107,6 +107,10 @@ FormEvosMovesPointers::
 	dw HvoltorbFormEvosMoves
 	db MEWTWO, 1
 	dw ArmoredmewtwoFormEvosMoves
+	db AERODACTYL, 1
+	dw FossilaerodactylFormEvosMoves
+	db KABUTOPS, 1
+	dw FossilkabutopsFormEvosMoves
 	db 0 ; terminator
 
 	INCLUDE "data/pokemon/form_evos_moves/ameowth.asm"
@@ -159,3 +163,5 @@ FormEvosMovesPointers::
 	INCLUDE "data/pokemon/form_evos_moves/hgrowlithe.asm"
 	INCLUDE "data/pokemon/form_evos_moves/hvoltorb.asm"
 	INCLUDE "data/pokemon/form_evos_moves/armoredmewtwo.asm"
+	INCLUDE "data/pokemon/form_evos_moves/fossilaerodactyl.asm"
+	INCLUDE "data/pokemon/form_evos_moves/fossilkabutops.asm"

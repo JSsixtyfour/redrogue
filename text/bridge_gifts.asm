@@ -1,6 +1,6 @@
 _CaptainGift8Desc::
 	text "One #MON gets"
-	line "25 more crit pts"
+	line "25% more criticals"
 	done
 
 _CaptainGift9Desc::
@@ -35,13 +35,14 @@ _WardenGift6Desc::
 
 _WardenGift7Desc::
 	text "One #MON gets"
-	line "20 flinch points"
+	line "20% flinch chance"
 	done
 
 _SchoolGift4Desc::
 	text "A level-matched"
-	line "NIDORAN male"
-	done
+	line "@"
+	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
+	text_end
 
 _SchoolGift5Desc::
 	text "STAB attacks deal"
@@ -59,8 +60,10 @@ _SchoolGift7Desc::
 	done
 
 _SchoolGift8Desc::
-	text "A special NIDORAN"
-	line "with QUICK CLAW"
+	text "@"
+	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
+	text " with"
+	line "QUICK CLAW"
 	done
 
 _OldManGift4Desc::
@@ -121,8 +124,9 @@ _MomGift7Desc::
 
 _MomGift8Desc::
 	text "A level-matched"
-	line "MR.MIME"
-	done
+	line "@"
+	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
+	text_end
 
 _MomGift9Desc::
 	text "Restore one spent"

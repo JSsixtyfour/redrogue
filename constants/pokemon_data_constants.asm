@@ -203,6 +203,9 @@ DEF NUM_FORM_SLOTS EQU 3         ; non-zero form indexes per base species
 ; MEWTWO's form index for Armored Mewtwo (data/pokemon/forms/armoredmewtwo.asm):
 ; Giovanni's Challenge 11 ace and its trade only.
 DEF ARMORED_MEWTWO_FORM EQU 1
+; AERODACTYL's and KABUTOPS's form index for their museum-fossil look
+; (data/pokemon/forms/fossil*.asm): the cemetery ghost boss only (PCemRollBoss).
+DEF FOSSIL_FORM EQU 1
 
 ; Forms are explicit rarity-pool entries. No form-substitution odds.
 

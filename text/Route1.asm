@@ -109,7 +109,7 @@ _Route1JrTrainerMEndBattleText::
 	text "Oh"
 	line "Guess I have more"
     cont "to learn."
-	done
+	prompt
 
 _Route1JrTrainerMAfterBattleText::
 	text "Where do you go"

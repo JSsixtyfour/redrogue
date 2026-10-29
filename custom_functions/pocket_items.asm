@@ -188,6 +188,37 @@ GetPocketItemCountInE::
     ld e, a
     ret
 
+; Mart-only preflight. Carry set means the requested count would exceed 99.
+; Uncategorized, TM and key items retain their existing acquisition paths.
+; Reads wCurItem/wItemQuantity; does not change counts, quantity or hMoney.
+; Clobbers a, bc, d, hl. Only carry is consumed across the farcall.
+MartPocketCapacityExceeded::
+    ld hl, RecoveryItemTable
+    call _ScanTable
+    jr c, .recovery
+    ld hl, StatItemTable
+    call _ScanTable
+    jr c, .stat
+    ld hl, ValuableItemTable
+    call _ScanTable
+    ret nc
+    ld hl, wValuableItemCounts
+    jr .count
+.recovery
+    ld hl, wRecoveryItemCounts
+    jr .count
+.stat
+    ld hl, wStatItemCounts
+.count
+    ld b, 0
+    add hl, bc
+    ld a, [wItemQuantity]
+    add [hl]
+    ret c
+    cp 100
+    ccf
+    ret
+
 ; ============================================================
 ; BuildXxxPocketList — scan count array + item table, emit entries for
 ; items with count > 0 into the display buffer.

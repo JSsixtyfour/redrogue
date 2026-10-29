@@ -388,7 +388,7 @@ _LancesRoomLanceNormalAfterBattleText::
 _GiovanniMiniBossEndBattleText::
 	text "No..."
 	line "This cannot be!"
-	done
+	prompt
     
 _BridgeByeText::
 	text "Until next time"

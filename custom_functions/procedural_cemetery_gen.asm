@@ -215,6 +215,17 @@ PCemRollBoss:
 	ld a, e                           ; increment 8f: e = the form the roll picked
 	ld [wRoguePokemonForm1], a
 	call PCemAvoidGhostBoss           ; checks native typing of the species/form pair
+	; Aerodactyl/Kabutops ghosts wear the museum fossil (FOSSIL_FORM); it rides
+	; the same persisted form bits, so the battle and the gift both get it
+	ld a, [wRoguePokemon1]
+	cp AERODACTYL
+	jr z, .fossil
+	cp KABUTOPS
+	jr nz, .notFossil
+.fossil
+	ld a, FOSSIL_FORM
+	ld [wRoguePokemonForm1], a
+.notFossil
 	; roll the ghost move -> b (0=LICK, 1=NIGHT_SHADE, 2=CONFUSE_RAY)
 	ld c, 3
 	call Rangerandom                  ; a = 0..2 (Rangerandom preserves bc)

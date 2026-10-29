@@ -75,13 +75,26 @@ class TransformAgainstTransformedTest(HarnessTestCase):
 class GiftDescriptionsFitTest(unittest.TestCase):
     def test_two_lines_that_fit_the_box(self) -> None:
         source = (REPO_ROOT / "text/bridge_gifts.asm").read_text(encoding="utf-8")
-        descriptions = re.findall(r"^(_\w+Desc)::\n((?:\t.*\n)+?)\tdone", source, re.M)
+        descriptions = re.findall(r"^(_\w+Desc)::\n((?:\t.*\n)+?)\t(?:done|text_end)", source, re.M)
         self.assertGreater(len(descriptions), 30)
         for name, body in descriptions:
-            commands = re.findall(r"^\t(\w+)", body, re.M)
-            self.assertLessEqual(commands, ["text", "line"], f"{name}: {commands}")
-            for line in re.findall(r'"([^"]*)"', body):
-                shown = line.replace("#", "POKé")  # '#' prints as POKé
+            # Rendered lines, not command shapes: `text "@"` + `text_ram
+            # wNameBuffer` + `text " with"` is still one line. The name is the
+            # resolved species (BridgePrintGiftDesc), so count it at its cap.
+            lines, opened = [], False
+            for command, arg in re.findall(r'^\t(\w+)(?:\s+"([^"]*)"|\s+\w+)?', body, re.M):
+                if command == "text_ram":
+                    lines[-1] += "X" * 10  # NAME_LENGTH - 1
+                    continue
+                if command == "text" and opened:
+                    lines[-1] += arg  # `text` after a command continues the line
+                    continue
+                self.assertIn(command, ("text", "line"), f"{name}: {command}")
+                lines.append(arg)
+                opened = True
+            self.assertLessEqual(len(lines), 2, f"{name}: {lines}")
+            for line in lines:
+                shown = line.replace("@", "").replace("#", "POKé")  # '#' prints as POKé
                 self.assertLessEqual(len(shown), GIFT_DESC_WIDTH, f"{name}: {shown!r}")
 
 

@@ -15,8 +15,10 @@ _FloraGift1Desc::
 	done
 
 _FloraGift2Desc::
-	text "A VILEPLUME line"
-	line "with SPORE"
+	text "@"
+	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
+	text " with"
+	line "SPORE"
 	done
 
 _FloraGift3Desc::

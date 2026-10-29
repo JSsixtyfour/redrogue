@@ -30,8 +30,9 @@ _MahoganyGymPrycePreBattleText::
 	done
 
 _MahoganyGymPryceReceivedBadgeText::
-	text "Ah, I am impressed"
-	line "by your prowess."
+	text "Ah, I am"
+	line "impressed by your"
+	cont "prowess."
 
 	para "With your strong"
 	line "will, I know you"
@@ -49,9 +50,9 @@ _MahoganyGymPrycePostBattleAdviceText::
 	cont "arrives."
 
 	para "You and your"
-	line "#MON will be to-"
+	line "#MON will be"
 
-	para "gether for many"
+	para "together for many"
 	line "years to come."
 
 	para "Cherish your time"

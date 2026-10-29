@@ -38,6 +38,10 @@ DEF FIRST_FEMALE_APPEARANCE EQU const_value
 	const PLAYER_APPEARANCE_JR_TRAINER_F  ; $1c
 	const PLAYER_APPEARANCE_COOLTRAINER_F ; $1d
 	const PLAYER_APPEARANCE_LASS          ; $1e
+; Later additions are APPENDED whatever their gender, so no saved value is
+; renumbered; the character-select screen orders them through
+; PlayerAppearanceSelectOrder (data/player/appearance.asm).
+	const PLAYER_APPEARANCE_OLD_MAN       ; $1f
 DEF NUM_PLAYER_APPEARANCES EQU const_value
 
 IF DEF(_RED)

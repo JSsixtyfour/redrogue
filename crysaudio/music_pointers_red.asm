@@ -58,4 +58,6 @@ Music:
 	dba Music_ChampionBattle
 	dba Music_RocketBattle
 	dba Music_SuicuneBattle
+	dba Music_LookRocket
+	dba Music_RocketTheme
 	assert_table_length NUM_MUSIC_SONGS

@@ -140,6 +140,7 @@ ROMX $14
 	; The Cemetery's possessed Channeler (custom_functions/cemetery_channeler.asm,
 	; PROCEDURAL_SUBROOMS_PLAN Phase 4). farcall-only. 2026-10-14.
 	"Cemetery Channeler"
+	"Song SuicuneBattle" ; imported song, pinned by tools/music_kit/song_placement.py
 	; Unpinned (Species Groups Phase 2): this bank overflowed by 4 bytes once
 	; batch 3/4's table growth landed elsewhere in the ROM and shifted first-fit
 	; placement. "Hidden Events 2" had no documented reason to sit specifically
@@ -158,6 +159,7 @@ ROMX $16
 	; TM/HM display names (HOME GetMachineName switches here explicitly) and,
 	; later, the bag/mart item descriptions. $16 is map data that does not grow.
 	"Item Descriptions"
+	"Song JohtoTrainerBattle" ; imported song, pinned by tools/music_kit/song_placement.py
 ROMX $17
 	"Maps 15"
 	"Starter Dex"
@@ -216,6 +218,7 @@ ROMX $20
 	; LZ pics (2026-10-07): species pairs moved out of full pic banks; see
 	; SPRITE_DECOMPRESSION_PLAN.md. Front+back stay together (one BASE_PIC_BANK).
 	"Pics 17"
+	"Song RocketBattle" ; imported song, pinned by tools/music_kit/song_placement.py
 ROMX $21
 	"Text 2"
 ROMX $22
@@ -236,6 +239,7 @@ ROMX $25
 	; LZ pics (2026-10-07): species pairs moved out of full pic banks; see
 	; SPRITE_DECOMPRESSION_PLAN.md. Front+back stay together (one BASE_PIC_BANK).
 	"Pics 16"
+	"Song LookRocket" ; imported song, pinned by tools/music_kit/song_placement.py
 ROMX $26
 	"Text 7"
 ROMX $27
@@ -350,6 +354,7 @@ ROMX $32
 	; Species Groups Phase 2 batch 5. "Pics 7" (in $33) overflowed its bank once
 	; batch 5's pics landed there; this bank had room after "Pokédex Text 2".
 	"Pics 8"
+	"Song ChampionBattle" ; imported song, pinned by tools/music_kit/song_placement.py
 	; New species pics. With BASE_PIC_BANK (step 6) a pic may live in ANY bank, so
 	; these are free to go anywhere - but they are PINNED rather than floated, per
 	; this file's own $2E rule, so a large pic blob cannot land in $30/$31 and eat

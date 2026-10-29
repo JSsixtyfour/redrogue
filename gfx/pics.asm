@@ -338,7 +338,6 @@ GiovanniPic::      INCBIN "gfx/trainers/giovanni.lz"
 RocketPic::        INCBIN "gfx/trainers/rocket.lz"
 CooltrainerMPic::  INCBIN "gfx/trainers/cooltrainerm.lz"
 CooltrainerFPic::  INCBIN "gfx/trainers/cooltrainerf.lz"
-BrunoPic::         INCBIN "gfx/trainers/bruno.lz"
 BrockPic::         INCBIN "gfx/trainers/brock.lz"
 MistyPic::         INCBIN "gfx/trainers/misty.lz"
 LtSurgePic::       INCBIN "gfx/trainers/lt.surge.lz"
@@ -348,6 +347,7 @@ BlainePic::        INCBIN "gfx/trainers/blaine.lz"
 SabrinaPic::       INCBIN "gfx/trainers/sabrina.lz"
 GentlemanPic::     INCBIN "gfx/trainers/gentleman.lz"
 ChannelerPic::     INCBIN "gfx/trainers/channeler.lz"
+OldManPic::        INCBIN "gfx/trainers/oldman.lz" ; player appearance only, no trainer class
 
 ; Yellow paired portrait uses its own bank; _LoadTrainerPic selects it by class.
 SECTION "Jessie James Portrait", ROMX, BANK[$3C] ; was $2C, too full for LZ (2026-10-07)
@@ -849,6 +849,16 @@ RhyperiorPicFront::   INCBIN "gfx/pokemon/front/rhyperior.lz"
 RhyperiorPicBack::    INCBIN "gfx/pokemon/back/rhyperiorb.lz"
 MewPicFront::         INCBIN "gfx/pokemon/front/mew.lz" ; from data/pokemon/mew.asm ("bank1" too full)
 MewPicBack::          INCBIN "gfx/pokemon/back/mewb.lz"
+
+; Cemetery ghost boss fossil forms (data/pokemon/forms/fossil*.asm).
+FossilAerodactylPicFront:: INCBIN "gfx/pokemon/front/fossilaerodactyl.lz"
+FossilAerodactylPicBack::  INCBIN "gfx/pokemon/back/fossilaerodactylb.lz"
+FossilKabutopsPicFront::   INCBIN "gfx/pokemon/front/fossilkabutops.lz"
+FossilKabutopsPicBack::    INCBIN "gfx/pokemon/back/fossilkabutopsb.lz"
+
+; Moved out of "Trainer Pics" ($13) on 2026-10-29 to make room for OldManPic,
+; which must stay there (player appearance). pic_money carries the bank.
+BrunoPic::            INCBIN "gfx/trainers/bruno.lz"
 
 
 SECTION "Player Back Pics", ROMX ; pinned to $37 in layout.link

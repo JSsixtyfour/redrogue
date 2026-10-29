@@ -24,7 +24,13 @@ param(
 	[switch]$NoBundle,
 	[switch]$SelfTest,
 	[string]$Pokemid,
-	[string]$EngineId
+	[string]$EngineId,
+	# Native mode only: a second song file that is imported into the SAME section, so
+	# this song may call or loop into its labels (Crystal's Rocket Theme reuses Look
+	# Rocket's phrases). Its labels are renamed with -PartnerLabel the way its own
+	# conversion renames them. Dev import only (import_music.py).
+	[string]$Partner,
+	[string]$PartnerLabel
 )
 
 $ErrorActionPreference = 'Stop'
@@ -486,6 +492,33 @@ function ConvertAsm {
 	}
 	$entry = $entryNames[0]
 
+	# Partner song (same section): its global and local labels count as defined here.
+	$pGlobals = [ordered]@{}
+	$pLocals = @{}
+	$pEntry = $null
+	if ($Partner) {
+		if ($PartnerLabel -notmatch '^Music_[A-Za-z0-9]+$') { Fail "Bad -PartnerLabel '$PartnerLabel' (expected Music_SomeName)." }
+		$pSrc = @([IO.File]::ReadAllText((Resolve-Path -LiteralPath $Partner).ProviderPath) -split "`r?`n")
+		$pScope = ''
+		for ($i = 0; $i -lt $pSrc.Count; $i++) {
+			$code = ($pSrc[$i] -replace ';.*$', '').TrimEnd()
+			if ($code -match '^([A-Za-z_]\w*)::?$') {
+				$pGlobals[$Matches[1]] = 1
+				$pScope = $Matches[1]
+				if (-not $pEntry) {
+					for ($j = $i + 1; $j -lt $pSrc.Count; $j++) {
+						$next = ($pSrc[$j] -replace ';.*$', '').Trim()
+						if ($next -eq '') { continue }
+						if ($next -match '^channel_count\b') { $pEntry = $pScope }
+						break
+					}
+				}
+			} elseif ($code -match '^\.(\w+)(::?)?$') { $pLocals["$pScope.$($Matches[1])"] = 1 }
+		}
+		if (-not $pEntry) { Fail "The partner file $Partner has no song label followed by 'channel_count'." }
+		foreach ($g in $pGlobals.Keys) { if ($globals.Contains($g)) { Fail "Both files define the label '$g'." } }
+	}
+
 	foreach ($c in $cmds) {
 		$name = $c.cmd.ToLower()
 		# (e) dependencies the kit does not carry
@@ -513,21 +546,26 @@ function ConvertAsm {
 				if (-not $locals.ContainsKey("$($c.scope).$($Matches[1])")) { Fail "Line $($c.n): $($c.cmd) points at '$target', which isn't defined in this file." }
 			} elseif ($target -match '^([A-Za-z_]\w*)\.(\w+)$') {
 				# Label.local: a local label under another global label of this file
-				if (-not ($globals.Contains($Matches[1]) -and $locals.ContainsKey("$($Matches[1]).$($Matches[2])"))) {
+				$key = "$($Matches[1]).$($Matches[2])"
+				if (-not (($globals.Contains($Matches[1]) -and $locals.ContainsKey($key)) -or ($pGlobals.Contains($Matches[1]) -and $pLocals.ContainsKey($key)))) {
 					Fail "Line $($c.n): $($c.cmd) points at '$target', which isn't defined in this file. Songs are stored in one piece, so every call, jump and loop must stay inside the file."
 				}
-			} elseif (-not $globals.Contains($target)) {
+			} elseif (-not ($globals.Contains($target) -or $pGlobals.Contains($target))) {
 				Fail "Line $($c.n): $($c.cmd) points at '$target', which isn't defined in this file. Songs are stored in one piece, so every call, jump and loop must stay inside the file."
 			}
 		}
 	}
 
 	# Rename: entry -> $Label; <entry>_X -> ${Label}_X; anything else -> ${Label}_name.
+	# Partner labels get the partner's own conversion names (same rule, -PartnerLabel).
 	$map = @{}
 	foreach ($g in $globals.Keys) {
 		$map[$g] = if ($g -eq $entry) { $Label } elseif ($g.StartsWith($entry + '_')) { $Label + $g.Substring($entry.Length) } else { "${Label}_$g" }
 	}
-	$alt = (@($globals.Keys) | Sort-Object { $_.Length } -Descending | ForEach-Object { [regex]::Escape($_) }) -join '|'
+	foreach ($g in $pGlobals.Keys) {
+		$map[$g] = if ($g -eq $pEntry) { $PartnerLabel } elseif ($g.StartsWith($pEntry + '_')) { $PartnerLabel + $g.Substring($pEntry.Length) } else { "${PartnerLabel}_$g" }
+	}
+	$alt = (@($globals.Keys) + @($pGlobals.Keys) | Sort-Object { $_.Length } -Descending | ForEach-Object { [regex]::Escape($_) }) -join '|'
 	$rx = New-Object System.Text.RegularExpressions.Regex ("(?<![\w.])(" + $alt + ")(?!\w)")
 	$text = New-Object System.Collections.Generic.List[string]
 	$text.Add("; Converted from $([IO.Path]::GetFileName($Mid)) by the Red Rogue music test kit (native song file).")

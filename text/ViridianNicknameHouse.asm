@@ -25,13 +25,15 @@ _ViridianNicknameHouseBaldingGuyAlreadyGotText::
 
 _OldManGift1Desc::
 	text "A level-matched"
-	line "WEEDLE"
-	done
+	line "@"
+	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
+	text_end
 
 _OldManGift2Desc::
 	text "A level-matched"
-	line "RATTATA"
-	done
+	line "@"
+	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
+	text_end
 
 _OldManGift3Desc::
 	text "The REST"

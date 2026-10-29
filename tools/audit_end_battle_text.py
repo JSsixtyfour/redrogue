@@ -45,6 +45,9 @@ ROOT = Path(__file__).resolve().parent.parent
 WIDTH = 18
 RIVAL_CLASSES = {"RIVAL1", "RIVAL2", "RIVAL3", "RIVAL_MINIBOSS"}
 NAME_LEN = 7  # <PLAYER>, <RIVAL>, wRivalName, wPlayerName
+# Local label of a mini-boss handler branch -> the class that battle really uses.
+MINIBOSS_BRANCH_CLASS = {"GiovanniMiniBoss": "GIOVANNI_MINIBOSS",
+                         "RivalMiniBoss": "RIVAL_MINIBOSS"}
 # text_ram buffers whose width is known well enough to count.
 RAM_WIDTH = {"wPlayerName": NAME_LEN, "wRivalName": NAME_LEN,
              "wNameBuffer": 10, "wStringBuffer": 10}
@@ -159,7 +162,8 @@ def body_at(idx, label, depth=0):
             if not started:
                 started = code.startswith("text_asm")
                 continue
-            if re.match(r"^(?:[A-Za-z_]\w*|\.\w+)::?$", code):
+            # local labels end the handler with or without a colon (`.Vanilla`)
+            if re.match(r"^(?:[A-Za-z_]\w*::?|\.\w+:{0,2})$", code):
                 break
             cmds.append(code)
         return "asm", cmds
@@ -188,6 +192,34 @@ def body_at(idx, label, depth=0):
             cmds.append(("ram", "?num"))
             continue
     return "text", cmds
+
+
+def handler_targets(label, cmds):
+    """Every text a `text_asm` handler can hand back: each `ld hl, X` directly
+    followed by a `ret` (conditional or not). `ld hl, Table / call Pick` is a
+    table dispatch and yields nothing, so it stays a hand check."""
+    targets = []
+    for code, nxt in zip(cmds, cmds[1:]):
+        m = re.match(r"ld hl, ([.\w]+)$", code)
+        if m and re.match(r"^ret\b", nxt):
+            t = m.group(1)
+            targets.append(label.split(".")[0] + t if t.startswith(".") else t)
+    return targets
+
+
+def wrapper_holds(idx, label):
+    """True if the wrapper at label holds the text on screen after its
+    `text_far` in place of a `prompt`: a sound command (waits for the jingle),
+    `text_promptbutton`, or a `text_asm` continuation (Rocket Hideout's
+    SetEvent + `.prompt_end`), which is left to that continuation."""
+    path, n = idx[label]
+    for raw in path.read_text(encoding="utf-8", errors="replace").splitlines()[n + 1:]:
+        code = strip(raw)
+        if re.match(r"^(?:[A-Za-z_]\w*::?|\.\w+:{0,2})$", code):
+            return False
+        if code.startswith(("sound_", "text_promptbutton", "text_asm")):
+            return True
+    return False
 
 
 def measure(cmds, prefix):
@@ -299,11 +331,29 @@ def main(argv):
     dead = dead_script_stems()
     flagged, info, ok, dead_hits = [], [], 0, []
     seen = set()
+    sources = []
     for where, label, cls in trainer_header_sources() + save_pointer_sources():
         if (label, cls) in seen:
             continue
         seen.add((label, cls))
         kind, cmds = body_at(idx, label)
+        targets = []
+        if kind == "asm" and "call PrintText" not in cmds:
+            # The gym badge and mini-boss handlers `ld hl, X / ret`: X is what
+            # prints after the name prefix, so measure it like any other body.
+            # Skipping it hid every Johto leader's Crystal-length first line
+            # ("FALKNER: …Darn! My Dad's", 2026-10-29).
+            targets = [t for t in handler_targets(label, cmds) if t in idx]
+        if targets:
+            for t in targets:
+                tkind, tcmds = body_at(idx, t)
+                # custom_functions/miniboss.asm swaps the map trainer's class for
+                # the mini-boss's, so that branch prints the mini-boss's name.
+                tcls = MINIBOSS_BRANCH_CLASS.get(t.split(".")[-1], cls)
+                sources.append((where, f"{label} -> {t}", tcls, tkind, tcmds, wrapper_holds(idx, t)))
+        else:
+            sources.append((where, label, cls, kind, cmds, False))
+    for where, label, cls, kind, cmds, jingle in sources:
         name, nlen = names.get(cls, ("?", 13)) if cls else ("?", 0)
         prefix = nlen + 2
         if kind == "asm":
@@ -320,6 +370,8 @@ def main(argv):
             info.append((where, label, name, cmds))
             continue
         problems = measure(cmds, prefix)
+        if jingle:
+            problems = [p for p in problems if "needs prompt" not in p]
         # A body must open with `text`. TextCommandProcessor reads the first
         # byte as a command, and any byte >= TX_SOUND_POKEDEX_RATING goes to
         # TextCommand_SOUND, so `line "Impossible!"` played its $4F and every

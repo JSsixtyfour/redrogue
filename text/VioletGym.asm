@@ -22,9 +22,9 @@ _VioletGymFalknerPreBattleText::
 	done
 
 _VioletGymFalknerReceivedBadgeText::
-	text "…Darn! My Dad's"
-	line "cherished bird"
-	cont "#MON…"
+	text "…Darn!"
+	line "My Dad's cherished"
+	cont "bird #MON…"
 
 	para "All right."
 	line "Take this."

@@ -166,6 +166,8 @@ AILairMirrorSpriteIDs:
 	db SPRITE_COOLTRAINER_F   ; jrTrainerF
 	db SPRITE_COOLTRAINER_F   ; coolTrainerF
 	db SPRITE_COOLTRAINER_F   ; lass
+	; Appended entries start here.
+	db SPRITE_GAMBLER         ; oldMan
 	assert_table_length NUM_PLAYER_APPEARANCES
 
 ; Called from ProcBossPatchStageSprite between LoadMapHeader and InitMapSprites.

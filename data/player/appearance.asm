@@ -66,6 +66,8 @@ PlayerAppearanceTable::
 	player_appearance CooltrainerFSprite, JrTrainerFPic,   JrTrainerFPicBack, .jrTrainerF
 	player_appearance CooltrainerFSprite, CooltrainerFPic, CooltrainerFPicBack, .coolTrainerF
 	player_appearance CooltrainerFSprite, LassPic,         GreenPicBack,  .lass
+	; Appended entries (any gender) start here; see PlayerAppearanceSelectOrder.
+	player_appearance GamblerSprite,      OldManPic,       OldManPicBack, .oldMan       ; Viridian's old man walks with the Gambler sheet
 	assert_table_length NUM_PLAYER_APPEARANCES
 
 ; Displayed under the pic on the character-select screen. The textbox there is
@@ -101,6 +103,7 @@ PlayerAppearanceTable::
 .jrTrainerF    db "JR.TRAINER♀@"
 .coolTrainerF  db "COOLTRAINER♀@"
 .lass          db "LASS@"
+.oldMan        db "OLD MAN@"
 
 ; Common entry point for all four accessors.
 ; Returns hl = &PlayerAppearanceTable[wPlayerAppearance].
@@ -217,15 +220,26 @@ ChoosePlayerCharacter::
 	jr nz, .chosen
 	ld a, SFX_TINK
 	call PlaySound
+; find the current appearance's position in the select order -> c
 	ld a, [wPlayerAppearance]
+	ld hl, PlayerAppearanceSelectOrder
+	ld c, 0
+.find
+	cp [hl]
+	jr z, .found
+	inc hl
+	inc c
+	jr .find ; every index is in the table (test_ai_lair_presentation checks it)
+.found
+	ld a, c
 	bit B_PAD_LEFT, b
 	jr nz, .previous
 ; next, wrapping past the end back to RED
 	inc a
 	cp NUM_PLAYER_APPEARANCES
-	jr c, .commit
+	jr c, .lookup
 	xor a
-	jr .commit
+	jr .lookup
 .previous
 ; previous, wrapping past RED round to the last entry
 	and a
@@ -233,7 +247,12 @@ ChoosePlayerCharacter::
 	ld a, NUM_PLAYER_APPEARANCES
 .noWrap
 	dec a
-.commit
+.lookup
+	ld hl, PlayerAppearanceSelectOrder
+	ld c, a
+	ld b, 0
+	add hl, bc
+	ld a, [hl]
 	ld [wPlayerAppearance], a
 	call .drawPic
 	call .drawName
@@ -265,3 +284,43 @@ ChoosePlayerCharacter::
 ChooseCharacterText:
 	text_far _ChooseCharacterText
 	text_end
+
+; Order the character-select screen cycles through: males, then females. The
+; PLAYER_APPEARANCE_* values are saved, so new entries are appended there and
+; slotted into place here instead. Must hold every index exactly once, RED first
+; (ChoosePlayerCharacter starts on it).
+PlayerAppearanceSelectOrder:
+	table_width 1
+	db PLAYER_APPEARANCE_RED
+	db PLAYER_APPEARANCE_BIKER
+	db PLAYER_APPEARANCE_BIRD_KEEPER
+	db PLAYER_APPEARANCE_BLACKBELT
+	db PLAYER_APPEARANCE_BUG_CATCHER
+	db PLAYER_APPEARANCE_BURGLAR
+	db PLAYER_APPEARANCE_COOLTRAINER_M
+	db PLAYER_APPEARANCE_CUE_BALL
+	db PLAYER_APPEARANCE_ENGINEER
+	db PLAYER_APPEARANCE_FISHERMAN
+	db PLAYER_APPEARANCE_GAMBLER
+	db PLAYER_APPEARANCE_GENTLEMAN
+	db PLAYER_APPEARANCE_HIKER
+	db PLAYER_APPEARANCE_JR_TRAINER_M
+	db PLAYER_APPEARANCE_JUGGLER
+	db PLAYER_APPEARANCE_OLD_MAN
+	db PLAYER_APPEARANCE_POKEMANIAC
+	db PLAYER_APPEARANCE_PSYCHIC
+	db PLAYER_APPEARANCE_ROCKER
+	db PLAYER_APPEARANCE_ROCKET
+	db PLAYER_APPEARANCE_SAILOR
+	db PLAYER_APPEARANCE_SCIENTIST
+	db PLAYER_APPEARANCE_SUPER_NERD
+	db PLAYER_APPEARANCE_SWIMMER
+	db PLAYER_APPEARANCE_TAMER
+	db PLAYER_APPEARANCE_YOUNGSTER
+	db PLAYER_APPEARANCE_GREEN
+	db PLAYER_APPEARANCE_BEAUTY
+	db PLAYER_APPEARANCE_CHANNELER
+	db PLAYER_APPEARANCE_JR_TRAINER_F
+	db PLAYER_APPEARANCE_COOLTRAINER_F
+	db PLAYER_APPEARANCE_LASS
+	assert_table_length NUM_PLAYER_APPEARANCES

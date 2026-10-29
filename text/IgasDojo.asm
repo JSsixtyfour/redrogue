@@ -21,7 +21,9 @@ _IgasDojoIgaIntroText::
 	prompt
 
 _IgaGift1Desc::
-	text "A snake with"
+	text "@"
+	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
+	text " with"
 	line "SUPER FANG"
 	done
 

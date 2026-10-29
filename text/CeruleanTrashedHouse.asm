@@ -28,8 +28,9 @@ _TrashedGift1Desc::
 
 _TrashedGift2Desc::
 	text "A level-matched"
-	line "SQUIRTLE"
-	done
+	line "@"
+	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
+	text_end
 
 _TrashedGift3Desc::
 	text "The BODY SLAM"

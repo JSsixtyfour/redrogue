@@ -19,7 +19,7 @@ from run_campaign import atomic_json, digest
 
 VERSION = 1
 CASES = ("success", "exact_funds", "cancel_quantity", "cancel_confirm", "decline", "insufficient")
-BOUNDARY_CASES = ('quantity_three', 'capacity_full', 'capacity_after_fill')
+BOUNDARY_CASES = ('quantity_three', 'capacity_full', 'capacity_after_fill', 'capacity_partial', 'capacity_exact')
 PRICE = 200  # Potion, independent fixture expectation: data/items/prices.asm.
 
 
@@ -161,7 +161,7 @@ def configure(h, seed, name):
     inject("PCClerkText1", [1], 1)
     inject("PCClerkText1Items", [potion, 0xff])
     inject("wWitchPrizesEarned", [0, 0])
-    inject("wRecoveryItemCounts", [99 if name == 'capacity_full' else 98 if name == 'capacity_after_fill' else 0], slot)
+    inject("wRecoveryItemCounts", [99 if name == 'capacity_full' else 98 if name in ('capacity_after_fill', 'capacity_partial') else 96 if name == 'capacity_exact' else 0], slot)
     digits = f"{funds:06d}"
     inject("wPlayerMoney", [int(digits[i:i + 2], 16) for i in (0, 2, 4)])
     return slot, injections, agent
@@ -229,7 +229,7 @@ def run_one(seed, name, directory, *, cgb=False, control=False):
                 act(h, data["inputs"], hold=1, after=0)
                 continue
             agent.plan["done"] = agent.plan["done"] or done
-            agent.shop_step(select_purchase=lambda stock: (0, 3 if name == 'quantity_three' else 1, stock[0]),
+            agent.shop_step(select_purchase=lambda stock: (0, 3 if name in ('quantity_three', 'capacity_partial', 'capacity_exact') else 1, stock[0]),
                             cancel_quantity=name == "cancel_quantity",
                             confirmation="cancel" if name == "cancel_confirm" else "no" if name == "decline" else "yes")
         actual_after = snapshot(h)
@@ -241,9 +241,9 @@ def run_one(seed, name, directory, *, cgb=False, control=False):
         else:
             data["execution"] = "completed"
             data["findings"] = observed_findings(data["before"], actual_after, control=control,
-                                        bought=name in ("success", "exact_funds", 'quantity_three', 'capacity_after_fill'),
-                                        quantity=3 if name == 'quantity_three' else 1,
-                                        give_attempts=1 if name == 'capacity_full' else 2 if name == 'capacity_after_fill' else None,
+                                        bought=name in ("success", "exact_funds", 'quantity_three', 'capacity_after_fill', 'capacity_exact'),
+                                        quantity=3 if name in ('quantity_three', 'capacity_partial', 'capacity_exact') else 1,
+                                        give_attempts=0 if name in ('capacity_full', 'capacity_partial') else 1 if name == 'capacity_after_fill' else None,
                                         potion_slot=slot, paid_calls=obs.paid, give_calls=obs.given)
             data["verdict"] = "contract_violation" if data["findings"] else "no_issue_detected"
         if h.hook_errors:
@@ -281,9 +281,9 @@ def replay(path, output):
         actual_after = snapshot(h)
         after = controlled_observation(actual_after, bool(data.get("detector_input_control")))
         findings = observed_findings(before, actual_after, control=bool(data.get("detector_input_control")),
-                            bought=data["scenario"] in ("success", "exact_funds", 'quantity_three', 'capacity_after_fill'),
-                            quantity=3 if data['scenario'] == 'quantity_three' else 1,
-                            give_attempts=1 if data['scenario'] == 'capacity_full' else 2 if data['scenario'] == 'capacity_after_fill' else None,
+                            bought=data["scenario"] in ("success", "exact_funds", 'quantity_three', 'capacity_after_fill', 'capacity_exact'),
+                            quantity=3 if data['scenario'] in ('quantity_three', 'capacity_partial', 'capacity_exact') else 1,
+                            give_attempts=0 if data['scenario'] in ('capacity_full', 'capacity_partial') else 1 if data['scenario'] == 'capacity_after_fill' else None,
                             potion_slot=data["potion_slot"], paid_calls=obs.paid, give_calls=obs.given)
         events = [{**event, "frame": event["frame"] - frame_offset} for event in obs.events]
         result = {"same_state": before == data["before"] and after == data["after"],

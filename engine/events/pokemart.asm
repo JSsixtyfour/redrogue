@@ -253,6 +253,8 @@ DisplayPokemartDialogue_::
 ; buy item — route through GiveItem so it lands in the correct pocket
 	call .isThereEnoughMoney
 	jr c, .notEnoughMoney
+	farcall MartPocketCapacityExceeded
+	jr c, .bagFull
 	ld a, [wCurItem]       ; GiveItem reads wCurItem (farcall clobbers b)
 	ld b, a
 	ld a, [wItemQuantity]  ; GiveItem reads wItemQuantity (farcall clobbers c)

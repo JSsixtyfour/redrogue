@@ -356,7 +356,8 @@ def main():
     # 3b. What MuseScore and FL Studio write must convert too: tracks found by
     #     order or by name, whole-song loop, timbre from the name, GM drums.
     for mid, wants in (("musescore_like.mid", ["Ch1::", "Ch2::", "Ch4::", "sound_loop 0, .loop"]),
-                       ("fl_like.mid", ["duty_cycle 2", "duty_cycle 1", "note_type 12, 1, 2", "sound_loop 0, .loop"])):
+                       ("fl_like.mid", ["duty_cycle 2", "duty_cycle 1", "note_type 12, 1, 2", "sound_loop 0, .loop"]),
+                       ("notation_gaps.mid", ["sound_loop 0, .loop"])):
         log("check: %s converts" % mid)
         asm = os.path.join(out, mid + ".asm")
         convert(os.path.join(WORK, mid), "-NoBuild", "-OutAsm", winpath(asm))
