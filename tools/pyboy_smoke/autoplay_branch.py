@@ -27,6 +27,8 @@ from __future__ import annotations
 
 import argparse
 import io
+import hashlib
+import copy
 import json
 import random
 import sys
@@ -65,6 +67,11 @@ class Snapshot:
     frame: int
     info: dict[str, object]
     state: bytes
+    identity: dict | None = None
+    state_sha256: str = field(init=False)
+
+    def __post_init__(self):
+        self.state_sha256 = hashlib.sha256(self.state).hexdigest()
 
     @property
     def name(self) -> str:
@@ -80,16 +87,33 @@ class SnapshotReel:
     kept: dict[str, list[Snapshot]] = field(default_factory=dict)
     seen: dict[str, int] = field(default_factory=dict)
     stride: dict[str, int] = field(default_factory=dict)
+    identity: dict | None = None
+    rare_limit: int = 4  # extra bounded representatives per kind, outside temporal thinning
+    reserved: dict[str, dict[str, Snapshot]] = field(default_factory=dict)
+    unreserved: dict[str, set[str]] = field(default_factory=dict)
 
     def offer(self, kind: str, frame: int, info: dict[str, object], save) -> None:
         number = self.seen[kind] = self.seen.get(kind, 0) + 1
         stride = self.stride.setdefault(kind, 1)
-        if (number - 1) % stride:
+        features = info.get('rare_features', [])
+        if not isinstance(features, list) or any(not isinstance(item, str) or not item for item in features):
+            raise ValueError('rare_features must contain nonempty feature names')
+        reserved = self.reserved.setdefault(kind, {})
+        novel = [feature for feature in dict.fromkeys(features) if feature not in reserved]
+        admitted = novel[:max(0, self.rare_limit - len(reserved))]
+        self.unreserved.setdefault(kind, set()).update(set(novel) - set(admitted))
+        temporal = not (number - 1) % stride
+        if not temporal and not admitted:
             return
         kept = self.kept.setdefault(kind, [])
         state = io.BytesIO()
         save(state)
-        kept.append(Snapshot(kind, number, frame, info, state.getvalue()))
+        snapshot = Snapshot(kind, number, frame, copy.deepcopy(info), state.getvalue(), copy.deepcopy(self.identity))
+        for feature in admitted:
+            reserved[feature] = snapshot
+        if not temporal:
+            return
+        kept.append(snapshot)
         if len(kept) >= self.limit:
             self.kept[kind] = kept[::2]
             self.stride[kind] = stride * 2
@@ -98,15 +122,20 @@ class SnapshotReel:
         """Up to per_kind snapshots of each kind, evenly spaced from the first
         to the last, so early and late game are both covered."""
         chosen = []
+        if per_kind <= 0:
+            return chosen
         for kind in SNAPSHOT_KINDS:
             kept = self.kept.get(kind, [])
+            protected = list({snapshot.name: snapshot for snapshot in self.reserved.get(kind, {}).values()}.values())
+            protected = protected[:per_kind]
             if len(kept) <= per_kind:
-                chosen.extend(kept)
+                temporal = kept
             elif per_kind == 1:
-                chosen.append(kept[len(kept) // 2])
+                temporal = [kept[len(kept) // 2]]
             else:
                 picks = sorted({round(i * (len(kept) - 1) / (per_kind - 1)) for i in range(per_kind)})
-                chosen.extend(kept[i] for i in picks)
+                temporal = [kept[i] for i in picks]
+            chosen.extend((protected + [snapshot for snapshot in temporal if snapshot.name not in {item.name for item in protected}])[:per_kind])
         return chosen
 
 
@@ -256,15 +285,58 @@ def state_path(seed: int, snapshot: Snapshot) -> Path:
     return autoplay.ARTIFACTS / f"{autoplay.stem(seed)}_{snapshot.name}.state"
 
 
-def replay_command(path: Path, key: str, frames: int) -> str:
+def replay_command(path: Path, key: str, frames: int, freeze_frames: int = FREEZE_FRAMES) -> str:
     try:
         shown = path.relative_to(Path.cwd())
     except ValueError:
         shown = path
     rom = "" if autoplay.ROM == autoplay.DEBUG_ROM else f" --rom {autoplay.ROM}"
     cgb = " --cgb" if autoplay.CGB_MODE else ""
+    freeze = f' --freeze-frames {freeze_frames}' if freeze_frames != FREEZE_FRAMES else ''
     return (f"python3 tools/pyboy_smoke/autoplay_branch.py --state {shown} "
-            f"--key {key} --frames {frames}{rom}{cgb}")
+            f"--key {key} --frames {frames}{rom}{cgb}{freeze}")
+
+
+def snapshot_identity(harness):
+    return {'rom_sha256': harness.rom_sha256, 'sym_sha256': harness.sym_sha256,
+            'hardware_mode': harness.hardware_mode}
+
+
+def retain_snapshot(snapshot, harness, path, seed):
+    from run_campaign import atomic_json
+    if snapshot.identity != snapshot_identity(harness):
+        raise ValueError('snapshot capture identity missing or incompatible')
+    if hashlib.sha256(snapshot.state).hexdigest() != snapshot.state_sha256:
+        raise ValueError('snapshot bytes changed after capture')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix('.state.tmp')
+    temporary.write_bytes(snapshot.state)
+    temporary.replace(path)
+    metadata = {'schema_version': 1, 'identity': snapshot.identity, 'state_sha256': snapshot.state_sha256,
+                'origin': {'seed': seed, 'kind': snapshot.kind, 'number': snapshot.number,
+                           'frame': snapshot.frame, 'info': snapshot.info}}
+    sidecar = path.with_suffix(path.suffix + '.json')
+    atomic_json(sidecar, metadata)
+    return {**metadata, 'state': str(path), 'metadata': str(sidecar)}
+
+
+def read_snapshot(path, harness):
+    """Legacy states without identity evidence require recapture, never guessing."""
+    sidecar = path.with_suffix(path.suffix + '.json')
+    try:
+        metadata = json.loads(sidecar.read_text())
+    except (OSError, ValueError) as error:
+        raise ValueError('snapshot identity metadata missing or malformed; recapture on the exact build') from error
+    if not isinstance(metadata, dict) or type(metadata.get('schema_version')) is not int or metadata['schema_version'] != 1:
+        raise ValueError('unsupported snapshot metadata schema')
+    if metadata.get('identity') != snapshot_identity(harness):
+        raise ValueError('snapshot ROM/SYM/hardware identity mismatch')
+    state = path.read_bytes()
+    if hashlib.sha256(state).hexdigest() != metadata.get('state_sha256'):
+        raise ValueError('snapshot state hash mismatch')
+    if not isinstance(metadata.get('origin'), dict) or not isinstance(metadata['origin'].get('info'), dict):
+        raise ValueError('snapshot provenance missing')
+    return state
 
 
 def run_snapshots(seed: int, snapshots: list[Snapshot], *, branches: int, frames: int,
@@ -277,13 +349,15 @@ def run_snapshots(seed: int, snapshots: list[Snapshot], *, branches: int, frames
                               cgb_mode=cgb_mode)
     findings = []
     detector_records = []
+    retained = []
     totals: dict[str, dict[str, int]] = {}
     longest_quiet = {"frames": 0}
     try:
         driver = BranchDriver(harness, freeze_frames=freeze_frames)
         hits = harness.track_coverage(autoplay.coverage_hooks())[0] if coverage else set()
         for snapshot in snapshots:
-            written = False
+            path = state_path(seed, snapshot)
+            retained.append(retain_snapshot(snapshot, harness, path, seed))
             for branch in range(branches):
                 key = branch_key(seed, snapshot, branch)
                 if heartbeat is not None:
@@ -303,16 +377,13 @@ def run_snapshots(seed: int, snapshots: list[Snapshot], *, branches: int, frames
                 if result["outcome"] == "ok" and not result["anomalies"]:
                     continue
                 total["findings"] += 1
-                path = state_path(seed, snapshot)
-                if not written:
-                    path.write_bytes(snapshot.state)
-                    written = True
                 findings.append({"snapshot": snapshot.name, "at": snapshot.info, **result,
-                                 "replay": replay_command(path, key, frames)})
+                                 "replay": replay_command(path, key, frames, freeze_frames)})
     finally:
         harness.close()
     return {
         "snapshots": [{"name": s.name, "frame": s.frame, **s.info} for s in snapshots],
+        'retained_snapshots': retained,
         "branches_per_snapshot": branches,
         "frames_per_branch": frames,
         "hardware_mode": harness.hardware_mode,
@@ -342,8 +413,9 @@ def main(argv: list[str] | None = None) -> int:
     harness = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS, rom=args.rom,
                               cgb_mode=args.cgb)
     try:
+        captured = read_snapshot(args.state, harness)
         driver = BranchDriver(harness, freeze_frames=args.freeze_frames)
-        result = driver.run(args.state.read_bytes(), args.key, args.frames)
+        result = driver.run(captured, args.key, args.frames)
         stem = f"autoplay_branch_{args.key.replace('/', '_')}"
         image, state = harness.write_failure_artifacts(stem)
         result["artifacts"] = {"image": str(image), "state": str(state)}

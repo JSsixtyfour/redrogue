@@ -168,7 +168,8 @@ def normalize_matched_sram(case, summary):
 def achieved_exposure(summary):
     if not isinstance(summary, dict) or not isinstance(summary.get("runs", []), list):
         raise ValueError("summary runs must be a list")
-    counts = dict(completed_runs=0, stages=0, save_round_trips=0, power_cuts=0, purchase_cases=0, sram_fills=0)
+    counts = dict(completed_runs=0, stages=0, save_round_trips=0, power_cuts=0, purchase_cases=0, sram_fills=0, corpus_states=0)
+    corpus_hashes = set()
     for row in summary.get("runs", []):
         if not isinstance(row, dict):
             raise ValueError("run must be an object")
@@ -199,6 +200,30 @@ def achieved_exposure(summary):
             counts["save_round_trips"] += sum(t.get("status") == 2 and t.get("overworld") and not t.get("skipped")
                                                 for t in checks.get("round_trips", []))
             counts["power_cuts"] += len(checks.get("power_cuts", []))
+            retained = (data.get('branches') or {}).get('retained_snapshots', [])
+            if not isinstance(retained, list):
+                raise ValueError('retained snapshots must be a list')
+            for record in retained:
+                state, metadata_path = Path(record['state']), Path(record['metadata'])
+                root = Path(row['report']).resolve().parent
+                if any(path.is_symlink() or not path.resolve().is_relative_to(root) or not path.is_file()
+                       for path in (state, metadata_path)):
+                    raise ValueError('corpus evidence missing or outside report directory')
+                if metadata_path.resolve() != state.with_suffix(state.suffix + '.json').resolve():
+                    raise ValueError('corpus metadata is not paired with state')
+                metadata = json.loads(metadata_path.read_text())
+                if (not isinstance(metadata, dict) or type(metadata.get('schema_version')) is not int or
+                        metadata['schema_version'] != 1 or not isinstance(metadata.get('origin'), dict) or
+                        not isinstance(metadata['origin'].get('info'), dict)):
+                    raise ValueError('unsupported or incomplete corpus provenance')
+                if metadata != {key: value for key, value in record.items() if key not in ('state', 'metadata')}:
+                    raise ValueError('corpus metadata differs from report')
+                expected = {'rom_sha256': data['build_identity']['gbc'], 'sym_sha256': data['build_identity']['sym'],
+                            'hardware_mode': data['hardware_mode']}
+                if metadata['identity'] != expected or digest(state) != metadata['state_sha256']:
+                    raise ValueError('corpus state/build identity mismatch')
+                corpus_hashes.add(metadata['state_sha256'])
+    counts['corpus_states'] = len(corpus_hashes)
     return counts
 
 

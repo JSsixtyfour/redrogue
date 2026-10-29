@@ -952,7 +952,7 @@ DebugSoundTest:
 	sub MUSIC_MEET_JESSIE_JAMES
 	ld de, DebugSoundOriginal
 	jr c, .name
-	cp (DebugSongNamesEnd - DebugSongNames) / 2
+	cp (DebugSongNames.end - DebugSongNames) / 2
 	ld de, DebugSoundNew
 	jr nc, .name
 	add a
@@ -980,7 +980,7 @@ DebugSoundTest:
 	bit B_PAD_B, b
 	jr nz, .exit
 	bit B_PAD_A, b
-	jr nz, .play
+	jp nz, .play
 	bit B_PAD_RIGHT, b
 	jr z, .notRight
 	inc a
@@ -1013,7 +1013,7 @@ DebugSoundTest:
 	ld a, NUM_MUSIC_SONGS - 1
 .store
 	ld [wItemQuantity], a
-	jr .play
+	jp .play
 .exit
 	xor a ; song 0 stops the music
 	jp PlayMusic
@@ -1035,7 +1035,7 @@ ASSERT MUSIC_SUICUNE_BATTLE == MUSIC_MEET_JESSIE_JAMES + 8
 DebugSongNames:
 	dw .jessieJames, .pinballBlue, .johtoGym, .tcgClub, .tcg2Gr
 	dw .johtoTrainer, .champion, .rocket, .suicune
-DebugSongNamesEnd:
+.end:
 .jessieJames:  db "MEET JESSIE JAMES@"
 .pinballBlue:  db "PINBALL BLUE FIELD@"
 .johtoGym:     db "JOHTO GYM LEADER@"

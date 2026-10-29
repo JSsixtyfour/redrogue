@@ -1994,6 +1994,8 @@ def play(
         inventory_error = f'{type(error).__name__}: {error}'
     phase('harness_initialization')
     harness = RedRogueHarness(ROOT, ARTIFACTS, ram_path=ram_path, rom=ROM, cgb_mode=cgb_mode)
+    if reel is not None:
+        reel.identity = autoplay_branch.snapshot_identity(harness)
     if ram_path is not None:
         ram_path.unlink()
     try:
@@ -2019,7 +2021,11 @@ def play(
                               profile=profile, player=player,
                               capture_active_save=new_game and save_checks,
                               snapshot=None if reel is None else lambda kind, info: reel.offer(
-                                  kind, harness.pyboy.frame_count, info, harness.save_state))
+                                  kind, harness.pyboy.frame_count,
+                                  {**info, 'startup_path': 'new_game' if new_game else 'debug2',
+                                   'rare_features': (['boundary:full_party'] if harness.read8('wPartyCount') == 6 else []) +
+                                                    (['boundary:zero_money'] if harness.read_bytes('wPlayerMoney', 3) == [0, 0, 0] else []),
+                                   'injected_fields_at_capture': []}, harness.save_state))
         # After the agent's and the checks' own hooks, which keep their addresses.
         coverage_targets = coverage_hooks() if coverage else {}
         hits, skipped = harness.track_coverage(coverage_targets) if coverage else (set(), [])
@@ -2097,6 +2103,10 @@ def play(
     from detector_health import collect
     data['detector_configuration'] = {'save_checks': save_checks, 'branches': bool(branches), 'coverage': coverage}
     data['detector_ledger'] = collect(data, data['detector_configuration'])
+    if reel is not None:
+        data['snapshot_retention'] = {'offered': reel.seen,
+            'reserved_features': {kind: list(features) for kind, features in reel.reserved.items()},
+            'unreserved_features': {kind: sorted(features) for kind, features in reel.unreserved.items()}}
     data["wall_seconds"] = round(time.monotonic() - started, 1)
     return data
 

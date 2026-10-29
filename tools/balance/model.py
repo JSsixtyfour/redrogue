@@ -543,11 +543,34 @@ def facility_fake_balls(g: GameData, cfg: Config, count: int, rng: random.Random
     return [Battle("facility_voltorb", count, [(sp, lv)], False) for _ in range(FACILITY_FAKE_BALLS)]
 
 
-def wild_boss_battle(g: GameData, cfg: Config, count: int, rng: random.Random) -> Battle:
-    """PCRollBoss: PCGetBossLevel (+ the LEVELS setting) + a class roll bumped by WILD_BOSS_RARITY_BUMP."""
+def endless_uber_step(g: GameData, count: int, rng: random.Random) -> bool:
+    """EndlessUberStep (custom_functions/endless.asm): after a Master roll, a
+    Master | Uber RollSpreadClass with Uber's base width ENDLESS_UBER_BASE and
+    bonus ENDLESS_UBER_STEP x s, s = Endless rounds so far. True = Uber."""
+    k = g.knobs
+    s = count // k["ROUND_BATTLES"] - k["LAST_ROUND_BATTLECOUNT"] // k["ROUND_BATTLES"]
+    if s <= 0:
+        return False
+    bonus = min(255, k["ENDLESS_UBER_STEP"] * s)
+    return spread_class(rng.randrange(256), bonus, [256 - k["ENDLESS_UBER_BASE"]]) == 2
+
+
+def wild_boss_battle(g: GameData, cfg: Config, count: int, rng: random.Random,
+                     endless: bool = False) -> Battle:
+    """PCRollBoss: PCGetBossLevel (+ the LEVELS setting) + PCRollBossClass, a class
+    roll bumped by WILD_BOSS_RARITY_BUMP. In Endless (depth >= 1) the round is NOT
+    clamped and a Master roll may become an Uber, drawn from the active groups'
+    whole Uber tiers (Random_Boss_Selection_Far / RogueDrawUber; the ROM's
+    unowned-only filter is not modelled, like every ownership re-roll here).
+    Depth 0 consumes exactly the RNG it always did."""
     idx = round_of(g, count)
     lv = apply_difficulty(g.tables.wild_boss[idx], cfg.difficulty, cfg.level_bonus)
-    cls = pc_roll_mon_class(idx, g.knobs["WILD_BOSS_RARITY_BUMP"], rng, g.knobs["WILD_CLASS_ROUND_STEP"])
+    bonus_round = count // g.knobs["ROUND_BATTLES"] if endless else idx
+    cls = pc_roll_mon_class(bonus_round, g.knobs["WILD_BOSS_RARITY_BUMP"], rng, g.knobs["WILD_CLASS_ROUND_STEP"])
+    if endless and cls == 4 and endless_uber_step(g, count, rng):
+        ubers = [s for grp in cfg.groups for s in g.rarity[grp][parse.TIER_UBER].all]
+        if ubers:
+            return Battle("wild_boss", count, [(rng.choice(ubers), lv)], False)
     sp = select_from_tier_evolved(g, cfg, cls, lv, rng)
     return Battle("wild_boss", count, [(sp, lv)], False)
 
@@ -915,7 +938,7 @@ class Simulator:
                 self.fight(bt)
         if stage_event and rng.random() < cfg.fight_stage_event:
             self.fight(stage_event_battle(g, cfg, self.p(), rng))
-        boss = wild_boss_battle(g, cfg, self.p(), rng)
+        boss = wild_boss_battle(g, cfg, self.p(), rng, endless=self.depth > 0)
         self.fight(boss)
         self.count += k["WILD_AREA_EXIT_BATTLES"]
 

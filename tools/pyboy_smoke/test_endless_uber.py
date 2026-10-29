@@ -22,6 +22,60 @@ LAST_ROUND = 8
 CARRY = 0x10
 
 
+class EndlessUberModelTest(unittest.TestCase):
+    """tools/balance/model.py mirrors PCRollBossClass (no ROM needed)."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        import random
+        import sys
+        sys.path.insert(0, str(REPO_ROOT / "tools" / "balance"))
+        import model
+        import parse
+        cls.model, cls.parse, cls.random = model, parse, random
+        cls.g = parse.load_all()
+
+    class Rolls:
+        """randrange(256) yields fixed rolls in order; anything else is real."""
+
+        def __init__(self, rolls):
+            self.rolls = list(rolls)
+
+        def randrange(self, n):
+            return self.rolls.pop(0)
+
+    def test_uber_share_is_base_plus_step_per_endless_round(self) -> None:
+        k = self.g.knobs
+        for round_ in (9, 16, 31):
+            s = round_ - k["LAST_ROUND_BATTLECOUNT"] // k["ROUND_BATTLES"]
+            hits = sum(self.model.endless_uber_step(self.g, round_ * 8 + 1, self.Rolls([r]))
+                       for r in range(256))
+            self.assertEqual(hits, k["ENDLESS_UBER_BASE"] + k["ENDLESS_UBER_STEP"] * s, round_)
+        self.assertFalse(self.model.endless_uber_step(self.g, 8 * 8 + 1, self.Rolls([255])))
+
+    def test_depth_0_boss_rng_is_unchanged(self) -> None:
+        cfg = self.model.Config()
+        for count in (1, 40, 71):
+            a, b = self.random.Random(count), self.random.Random(count)
+            got = self.model.wild_boss_battle(self.g, cfg, count, a)
+            idx = self.model.round_of(self.g, count)
+            k = self.g.knobs
+            lv = self.model.apply_difficulty(self.g.tables.wild_boss[idx], cfg.difficulty, cfg.level_bonus)
+            cls = self.model.pc_roll_mon_class(idx, k["WILD_BOSS_RARITY_BUMP"], b, k["WILD_CLASS_ROUND_STEP"])
+            want = self.model.select_from_tier_evolved(self.g, cfg, cls, lv, b)
+            self.assertEqual(got.mons, [(want, lv)], count)
+
+    def test_endless_bosses_reach_ubers_and_uncapped_master(self) -> None:
+        cfg = self.model.Config(groups=("KANTO",))
+        rng = self.random.Random(7)
+        mons = [self.model.wild_boss_battle(self.g, cfg, 20 * 8 + 1, rng, endless=True).mons[0][0]
+                for _ in range(3000)]
+        ubers = sum(m in ("MEW", "MEWTWO") for m in mons) / len(mons)
+        # round 20: P(Master) ~38% unclamped x (1 + 4 * 12) / 256 = ~7.3%
+        self.assertGreater(ubers, 0.05)
+        self.assertLess(ubers, 0.10)
+
+
 class EndlessUberTest(HarnessTestCase):
     def setUp(self) -> None:
         super().setUp()
@@ -263,6 +317,13 @@ class EndlessUberTest(HarnessTestCase):
         self.assertIn(species, self.ids("MEW", "MEWTWO", "LUGIA", "HO_OH", "CELEBI"))
         self.assertIn(move, {moves["LICK"], moves["NIGHT_SHADE"], moves["CONFUSE_RAY"]})
         self.assertEqual(ready >> 4 & 3, 0, "Uber form 0 in the form bits")
+
+        # A reload rebuilds the boss from SRAM alone (PCemRestoreBossSpecies).
+        h.write8("wRoguePokemon1", self.species["RATTATA"])
+        h.write8("wRoguePokemonForm1", 2)
+        h.call_routine("PCemRestoreBossSpecies")
+        self.assertEqual(h.read8("wRoguePokemon1"), species, "reload keeps the Uber")
+        self.assertEqual(h.read8("wRoguePokemonForm1"), 0)
 
         enemy = h.address("wEnemyMon")
         h.pyboy.memory[enemy] = species
