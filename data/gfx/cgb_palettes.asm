@@ -357,10 +357,11 @@ ENDC
 	; PAL_25 / PAL_FOREST_SPRING - procedural forest variant 0 on the
 	; non-enhanced CGB path. Paired with the SuperPalettes row of the same
 	; index (data/sgb/sgb_palettes.asm) - see the PAL_0F/PAL_CAVE_COLD note
-	; above; always edit them together. maps/springtrees2.pal day row.
+	; above; always edit them together. Was maps/springtrees2.pal's day row;
+	; retuned with the SGB row 2026-10-29.
 	RGB 28, 31, 26
-	RGB 25, 14, 14
-	RGB 27, 16, 16
+	RGB 24, 24, 12
+	RGB 27, 11, 18
 	RGB  6,  0,  0
 
 	; PAL_BILLS_PC
@@ -370,10 +371,10 @@ ENDC
 	RGB  3,  3,  3
 
 	; PAL_27 / PAL_FOREST_FALL - procedural forest variant 1, paired the same
-	; way. maps/falltrees2.pal day row.
+	; way. Was maps/falltrees2.pal's day row; retuned with the SGB row 2026-10-29.
 	RGB 28, 31, 26
-	RGB 25, 15,  0
-	RGB 31, 10,  3
+	RGB 25, 25,  0
+	RGB 29, 11,  3
 	RGB  6,  0,  0
 
 	; PAL_BW	;joenote - adding a black & white palette just for GBC

@@ -1867,6 +1867,7 @@ def observe_startup_seed(harness: RedRogueHarness) -> None:
                [harness.read8("hRandomAdd"), harness.read8("hRandomSub")],
         "joy": [harness.read8(name) for name in ("hJoyHeld", "hJoyPressed", "hJoyIgnore")],
         "key1": harness.pyboy.memory[0xff4d] if harness.hardware_mode == "CGB" else None,
+        "svbk": harness.pyboy.memory[0xff70] if harness.hardware_mode == "CGB" else None,
     }
 
 

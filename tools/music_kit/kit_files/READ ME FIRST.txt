@@ -44,7 +44,17 @@ PICKING THE SOUND: put it in the track name
   Ch1 / Ch2:  "Square 12.5", "Square 25", "Square 50" or "Square 75"
               (how thin the pulse is). Or "Duty 0" to "Duty 3" (same four,
               in that order). With neither, you get 12.5%.
-  Ch3:        "Wave 0" to "Wave 4" (5 different shapes). With none, Wave 0.
+  Ch3:        "Wave 0" to "Wave 14" (15 different shapes). With none, Wave 0.
+              Waves 0-4 are the classic Red ones; 5-14 are new. A rough guide
+              (listen and tell us if one is wrong):
+                 0 smooth, round        1 smooth, a little flatter
+                 2 hollow, flute-like   3 reedy, wobbly
+                 4 bright, buzzy        5 stepped, nasal
+                 6 organ-like           7 gritty, jagged
+                 8 rough, brassy        9 thin and quiet
+                10 mellow, wide hump   11 bright sawtooth
+                12 soft, low           13 pure, sine-like
+                14 square (hollow)
   Example track names: "Ch1 Square 50", "Ch2 Square 25", "Ch3 Wave 2".
   Programs that let you put text events in the MIDI can also use the effect
   markers in Template.mid, for example "duty_cycle 2". A marker in the MIDI
@@ -71,15 +81,15 @@ THE LIMITS
           nothing there. Put quiet parts on Ch1 or Ch2 instead.
 
 4. DRUMS (Ch4): ONE HIT AT A TIME, 19 SOUNDS.
-   The Game Boy has 19 noise sounds and no real kick drum. You can write
-   drums two ways:
+   The game's drum kit has 19 noise sounds and no real kick drum. You can
+   write drums two ways:
      a) Normal drums (General MIDI). Use MuseScore's drumset, or any drum
         kit in your program: kick, snare, hats, toms and cymbals are changed
         into the closest Game Boy sound. This is a first-guess mapping, so
         listen to the result and tell us what sounds wrong. If two drums land
         on the same beat, the louder one stays (the window says how many were
         dropped).
-     b) The Game Boy's own drums, MIDI notes 0 to 18 (very low notes; some
+     b) The kit's own drums, MIDI notes 0 to 18 (very low notes; some
         programs call note 0 "C-1", others "C-2"). Kick on 36 and snare on 38
         are General MIDI, so they are changed as in (a); notes 19 to 34, and
         above 81, are rejected.
@@ -106,24 +116,48 @@ THE LIMITS
    note. If you do, you get an error mentioning notes that "overlap other
    events".
 
-6. SIZE. After each run, the window prints "Song size: X of Y bytes". Stay
-   under Y. A song over the limit may still play in the tester, but it cannot
-   go into the real game. Repeated phrases are stored once, so reusing
-   identical sections saves space. Very long songs fail with "too long".
+6. SIZE. After each run, the window prints "Song size: X of Y bytes". Y is the
+   biggest song the game has room for, so stay under it (the tester prints
+   the exact limit for this version). A song over the limit may still play in
+   the tester, but it cannot go into the real game. Repeated phrases are
+   stored once, so reusing identical sections saves space. Very long songs
+   fail with "too long".
 
 7. YOU HAVE ONE SONG SLOT. The tester replaces the title-screen music each
    run. It does not keep or mix songs.
 
 
+WRITING THE SONG FILE YOURSELF (optional, advanced)
+---------------------------------------------------
+If you work in a tracker or write music code by hand, you can skip MIDI and
+drag a song file in the game's own format (a .asm file) onto the same
+"DROP YOUR SONG HERE". Template.asm is a small working example: open it in a
+text editor, change it, drag it on.
+
+The tester checks the file and tells you in plain words what is wrong:
+  - one song label ending in :: followed by "channel_count", with one
+    "channel n, Label" line per voice;
+  - every channel, sound_call, sound_jump and sound_loop must point at a label
+    inside the same file (the song is stored in one piece);
+  - only the engine's own music commands (no load_wave, INCLUDE or INCBIN).
+Labels are renamed for you so two songs never clash. Drum kits are your job
+here: toggle_noise 0 / toggle_noise 1 pick the kit (see Template.asm).
+Crystal Tracker is a free tracker that exports this format. It is not
+included in this kit; search for "Crystal Tracker" and download it from its
+official release page.
+
+
 HEARING IT WHILE YOU WRITE (optional)
 -------------------------------------
 Your program's piano will not sound like the Game Boy. The DAW Samples folder
-fixes that. The tester is still the real test; these are a close preview.
+fixes that. The tester is still the real test: these previews are approximate
+(the SoundFont's pitch, volume and wave shapes are close but not identical to
+the game), and what the game plays is authoritative.
 
   "Red Rogue Game Boy.sf2"   one SoundFont with everything. Presets:
         Square 12.5, Square 25, Square 50, Square 75   (for Ch1 and Ch2)
-        Wave 0 ... Wave 4                              (for Ch3)
-        Drums            the 19 Game Boy drums on notes 0-18, and on the
+        Wave 0 ... Wave 14                             (for Ch3)
+        Drums            the kit's 19 drums on notes 0-18, and on the
                          General MIDI drum notes, using the same mapping the
                          tester uses
         Game Boy Drums   the same drum kit as a General MIDI percussion kit

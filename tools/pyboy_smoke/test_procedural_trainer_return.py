@@ -72,7 +72,8 @@ class ProceduralTrainerReturnTest(HarnessTestCase):
                         h.write8(f'wSprite{index:02d}StateData1', picture)
                         h.write8('wTrainerEngageDistance', 4 * 16)
                         h.call_routine('StageEventLimitTrainerSight')
-                        expected = 16 if sprite in ('Nurse', 'Jessie', 'James') else 64
+                        # Jenny joined the stationary pictures with RR-0038 (2026-10-29).
+                        expected = 16 if sprite in ('Nurse', 'Jessie', 'James', 'Jenny') else 64
                         self.assertEqual(h.read8('wTrainerEngageDistance'), expected)
         # A stale procedural event must not affect an ordinary-map trainer.
         h.write8('hCurMap', self.maps['OAKS_LAB'])
@@ -101,7 +102,8 @@ class ProceduralTrainerReturnTest(HarnessTestCase):
                         h.write8(f'wSprite{slot:02d}StateData1', 0, offset=9)
                         h.write8('wTrainerEngageDistance', 64)
                         h.call_routine('TrainerEngage')
-                        stationary = picture in ('SPRITE_NURSE', 'SPRITE_JESSIE', 'SPRITE_JAMES')
+                        stationary = picture in ('SPRITE_NURSE', 'SPRITE_JESSIE', 'SPRITE_JAMES',
+                                                 'SPRITE_OFFICER_JENNY')
                         self.assertEqual(h.read8('wTrainerSpriteOffset'),
                                          0 if stationary and distance == 2 else 0xff)
 

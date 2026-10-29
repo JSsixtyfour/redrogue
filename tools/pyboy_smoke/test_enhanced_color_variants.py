@@ -26,8 +26,9 @@ SGB_PALETTES = REPO_ROOT / "data" / "sgb" / "sgb_palettes.asm"
 CGB_PALETTES = REPO_ROOT / "data" / "gfx" / "cgb_palettes.asm"
 SGB_PATH = REPO_ROOT / "engine" / "gfx" / "palettes.asm"
 
-SPRING_ROW = [(28, 31, 26), (25, 14, 14), (27, 16, 16), (6, 0, 0)]
-FALL_ROW = [(28, 31, 26), (25, 15, 0), (31, 10, 3), (6, 0, 0)]
+# Retuned by the user in 8edf8621 (2026-10-29); no longer the .pal files' day rows.
+SPRING_ROW = [(28, 31, 26), (24, 24, 12), (27, 11, 18), (6, 0, 0)]
+FALL_ROW = [(28, 31, 26), (25, 25, 0), (29, 11, 3), (6, 0, 0)]
 
 
 def enh_source() -> str:

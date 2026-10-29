@@ -74,11 +74,13 @@ def normalize_summary(case, summary):
 
 
 def normalize_matched_sram(case, summary):
-    from sram_fuzz import MATCHED_MODE, evaluate_matched_pair
+    from sram_fuzz import MATCHED_MODE, evaluate_matched_pair, play_options
     from run_autoplay import parse_seeds
     args = case_parser(case).parse_args(case.get("args", []))
     if not args.matched_controls or summary.get("schema_version") != 2 or summary.get("comparison_mode") != MATCHED_MODE:
         raise ValueError("matched-control schema/configuration mismatch")
+    if summary.get("options") != play_options(args):
+        raise ValueError("worker play options differ from configured scenario")
     seeds = parse_seeds(args.seeds)
     fills = ["ff"] + [f"random{k}" for k in range(1, args.fills + 1)]
     wanted_pairs = {(seed, fill) for seed in seeds for fill in fills}
@@ -112,6 +114,10 @@ def normalize_matched_sram(case, summary):
         task = expected.get(identity(row))
         if task is None or any(row[field] != task[field] for field in ("role", "directory", "input_sha256")):
             raise ValueError("worker record differs from expected matched task")
+        if row["execution"] == "completed" and (
+                row["hardware_mode"] != ("CGB" if args.cgb else "DMG") or
+                row["comparison_boundary"]["rng_boundary"] != ("OakSpeech" if args.new_game else "SelectAndPatchLobbyExit")):
+            raise ValueError("worker hardware/startup boundary differs from configuration")
     if len({key(row) for row in results}) != len(results) or any(key(row) not in wanted_pairs for row in results):
         raise ValueError("unexpected or duplicated initialization comparison")
     for row in results:

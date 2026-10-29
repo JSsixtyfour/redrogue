@@ -10,7 +10,7 @@ import run_campaign as campaign
 import sram_fuzz as fuzz
 
 HEADER = {"label": "sSaveHeader", "offset": 0x2040, "length": 8}
-CASE = {"scenario": "sram", "args": ["--seeds", "1", "--fills", "0", "--matched-controls"]}
+CASE = {"scenario": "sram", "args": ["--seeds", "1", "--fills", "0", "--new-game", "--matched-controls"]}
 
 
 def fixture(root):
@@ -36,6 +36,7 @@ def fixture(root):
         row["report_sha256"] = campaign.digest(directory / "report.json")
         records.append(row)
     summary = {"schema_version": 2, "comparison_mode": fuzz.MATCHED_MODE, "seeds": [1], "fills": ["ff"],
+               "options": fuzz.play_options(fuzz.build_parser().parse_args(CASE["args"])),
                "expected_fills": tasks, "expected_comparisons": pairs, "records": records, "divergences": []}
     return summary
 
@@ -51,7 +52,29 @@ def rewrite_trace(row, frame):
     row["report_sha256"] = campaign.digest(directory / "report.json")
 
 
+def sync_report_context(row):
+    path = Path(row["directory"]) / "report.json"
+    report = json.loads(path.read_text())
+    report.update(hardware_mode=row["hardware_mode"], build_identity=row["build_identity"],
+                  startup={**row["comparison_boundary"], "events": [{"kind": kind} for kind in row["startup_path"]]})
+    campaign.atomic_json(path, report)
+    row["report_sha256"] = campaign.digest(path)
+
+
 class MatchedSRAMTest(unittest.TestCase):
+    def test_cgb_seed_requires_main_wram_context(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = fixture(Path(tmp))
+            for row in summary["records"]:
+                row["hardware_mode"] = "CGB"
+                row["comparison_boundary"]["comparison_state"].update(key1=254, svbk=0xf9)
+                sync_report_context(row)
+            self.assertEqual(fuzz.evaluate_matched_pair(summary["expected_comparisons"][0], summary["records"])["status"], "equivalent")
+            row = next(row for row in summary["records"] if row["role"] == "candidate")
+            row["comparison_boundary"]["comparison_state"]["svbk"] = 0xfa
+            sync_report_context(row)
+            self.assertEqual(fuzz.evaluate_matched_pair(summary["expected_comparisons"][0], summary["records"])["status"], "invalid_evidence")
+
     def test_plan_has_bounded_unique_repeats_and_controls(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(fuzz, "header_range", return_value=HEADER), \
                 patch.object(fuzz, "fill_bytes", side_effect=lambda name, seed: bytes([0 if name == "zero" else 0x47]) * fuzz.SRAM_SIZE):
@@ -117,6 +140,7 @@ class MatchedSRAMTest(unittest.TestCase):
                     row["build_identity"]["gbc"] = "c" * 64
                 else:
                     del row["comparison_boundary"]["comparison_state"]
+                sync_report_context(row)
                 result = fuzz.evaluate_matched_pair(summary["expected_comparisons"][0], summary["records"])
                 self.assertIn(result["status"], ("confounded", "invalid_evidence"))
 
@@ -173,3 +197,6 @@ class MatchedSRAMTest(unittest.TestCase):
                 campaign.normalize_summary({"scenario": "sram", "args": ["--seeds", "1", "--fills", "1", "--matched-controls"]}, summary)
             summary["initialization_comparisons"] = []
             self.assertEqual(campaign.classify(0, campaign.normalize_summary(CASE, summary), "completed"), "incomplete")
+            summary["options"]["cgb_mode"] = True
+            with self.assertRaisesRegex(ValueError, "play options"):
+                campaign.normalize_summary(CASE, summary)

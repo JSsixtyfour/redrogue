@@ -146,27 +146,27 @@ def cmd_drums(rom, mapfile, out, count=19):
 
 
 def measure_hz(seg):
-    """Fundamental from autocorrelation: the shortest lag that repeats the
-    waveform almost as well as the best lag does. Zero-crossing counts are
-    fooled by pulse and wave shapes with several crossings per period."""
+    """Fundamental from the spectrum: the lowest peak that is at least half as
+    strong as the strongest one. Autocorrelation (used before 2026-10-29) read
+    Ch3's wave shapes up to +108 cents sharp and failed outright on some
+    notes, while the spectrum matches the frequency the engine wrote
+    (CRYSTAL_AUDIO_PHASE3_SPEC.md B7). Returns None if there is no peak."""
     seg = seg.astype(np.float64) - seg.mean()
-    n = len(seg)
-    spec = np.fft.rfft(seg, 2 * n)
-    ac = np.fft.irfft(spec * np.conj(spec))[:n]
-    ac /= ac[0]
-    lo, hi = int(RATE / 4000), int(RATE / 30)
-    win = ac[lo:hi]
-    best = win.max()
-    lag = lo + int(np.nonzero(win >= 0.9 * best)[0][0])
-    # refine to the local peak around that lag, with parabolic interpolation
-    while lag + 1 < hi and ac[lag + 1] > ac[lag]:
-        lag += 1
-    a, b, c = ac[lag - 1], ac[lag], ac[lag + 1]
-    shift = 0.5 * (a - c) / (a - 2 * b + c) if (a - 2 * b + c) else 0.0
-    if not np.isfinite(shift) or abs(shift) >= 1 or lag + shift <= 0:
-        print("measure_hz: no usable autocorrelation peak (lag %d, shift %r)" % (lag, shift))
+    size = 1 << 18
+    sp = np.abs(np.fft.rfft(seg * np.hanning(len(seg)), size))
+    fr = np.fft.rfftfreq(size, 1.0 / RATE)
+    band = np.nonzero((fr >= 30) & (fr <= 4000))[0]
+    peak = sp[band].max()
+    if not np.isfinite(peak) or peak <= 0:
+        print("measure_hz: silent or non-finite segment")
         return None
-    return RATE / (lag + shift)
+    for i in band:
+        if sp[i] >= 0.5 * peak and sp[i] >= sp[i - 1] and sp[i] >= sp[i + 1]:
+            a, b, c = sp[i - 1], sp[i], sp[i + 1]
+            shift = 0.5 * (a - c) / (a - 2 * b + c) if (a - 2 * b + c) else 0.0
+            return float(fr[i] + shift * (fr[1] - fr[0]))
+    print("measure_hz: no spectral peak")
+    return None
 
 
 def cmd_pitch(rom, mapfile):

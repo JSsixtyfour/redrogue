@@ -191,6 +191,8 @@ def boundary_key(record):
     if mode not in ("DMG", "CGB") or (mode == "DMG" and state["key1"] is not None) or (
             mode == "CGB" and (type(state["key1"]) is not int or not 0 <= state["key1"] <= 255)):
         raise ValueError("hardware/speed evidence unavailable")
+    if mode == "CGB" and (type(state.get("svbk")) is not int or state["svbk"] & 7 not in (0, 1)):
+        raise ValueError("CGB seed boundary is not in the main WRAM bank")
     return json.dumps({"path": record["startup_path"], "boundary": boundary, "build": build, "mode": mode}, sort_keys=True)
 
 
@@ -419,6 +421,12 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def play_options(args):
+    return {"new_game": args.new_game, "runs": args.runs, "stages": args.stages,
+            "max_frames": args.max_frames, "discard_test_sram": True,
+            "rom": args.rom, "cgb_mode": args.cgb}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -427,9 +435,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.timeout <= 0 or args.jobs < 1 or args.fills < 0:
         parser.error("timeout/jobs must be positive and fills nonnegative")
 
-    options = {"new_game": args.new_game, "runs": args.runs, "stages": args.stages,
-               "max_frames": args.max_frames, "discard_test_sram": True,
-               "rom": args.rom, "cgb_mode": args.cgb}
+    options = play_options(args)
     seeds = parse_seeds(args.seeds)
     if not seeds or len(seeds) != len(set(seeds)):
         parser.error("seeds must be nonempty and unique")
