@@ -283,6 +283,7 @@ class AutoplayAgent:
         if menu_input not in MENU_INPUTS:
             raise ValueError(f"unknown menu input {menu_input!r}")
         self.h = harness
+        self.disable_joypad_mask = 1 << parse_rgbds_constants(ROOT / 'constants/ram_constants.asm')['BIT_DISABLE_JOYPAD']
         self.active_save_pending = capture_active_save
         # --ai-telemetry: ai_telemetry.BattleAITelemetry, read-only; one record per trainer battle.
         self.ai_telemetry = ai_telemetry
@@ -1179,7 +1180,8 @@ class AutoplayAgent:
             return "battle"
         if self.naming_screen or self.last_ui_frame > self.last_overworld_frame:
             return "dialogue"
-        if self.h.read8("hSimulatedJoypadStatesIndex") or self.h.read8("hJoyIgnore") & 0xF0:
+        if (self.h.read8("hSimulatedJoypadStatesIndex") or self.h.read8("hJoyIgnore") & 0xF0 or
+                self.h.read8('wStatusFlags5') & self.disable_joypad_mask):
             return "busy"  # arrow tiles, scripted walks: the game has the d-pad
         if self.last_overworld_frame >= 0 and self.h.pyboy.frame_count - self.last_overworld_frame <= 2:
             return "overworld"

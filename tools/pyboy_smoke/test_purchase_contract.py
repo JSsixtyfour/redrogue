@@ -7,6 +7,22 @@ from run_campaign import classify
 
 
 class PurchaseContractTest(unittest.TestCase):
+    def test_quantity_three_requires_three_items_and_exact_total(self):
+        before = {'money': 1000, 'items': [0], 'party': [1]}
+        after = {'money': 400, 'items': [3], 'party': [1]}
+        self.assertEqual(contract(before, after, bought=True, quantity=3, potion_slot=0, paid_calls=1, give_calls=1), [])
+        after['items'] = [1]
+        self.assertEqual([row['field'] for row in contract(before, after, bought=True, quantity=3,
+                         potion_slot=0, paid_calls=1, give_calls=1)], ['items'])
+
+    def test_full_pocket_cannot_charge_without_delivering_an_item(self):
+        before = {'money': 1000, 'items': [99], 'party': [1]}
+        self.assertEqual(contract(before, before, bought=False, potion_slot=0, paid_calls=0,
+                                  give_calls=1, give_attempts=1), [])
+        findings = contract(before, {**before, 'money': 800}, bought=False, potion_slot=0,
+                            paid_calls=1, give_calls=1, give_attempts=1)
+        self.assertEqual([row['field'] for row in findings], ['money','paid_calls'])
+
     def test_control_preserves_real_faults_including_same_field(self):
         before = {"money": 1000, "items": [0], "party": [1]}
         after = {"money": 799, "items": [1], "party": [2]}

@@ -6,9 +6,22 @@ from types import SimpleNamespace
 import unittest
 import autoplay_branch as branch
 import run_campaign as campaign
+import autoplay
 
 
 class SnapshotIdentityTest(unittest.TestCase):
+    def test_disabled_joypad_poll_is_not_overworld_readiness(self):
+        agent = object.__new__(autoplay.AutoplayAgent)
+        memory = {'hIsInBattle': 0, 'hSimulatedJoypadStatesIndex': 0, 'hJoyIgnore': 0, 'wStatusFlags5': 0x20}
+        agent.h = SimpleNamespace(read8=lambda name: memory[name], pyboy=SimpleNamespace(frame_count=10))
+        agent.disable_joypad_mask = 1 << autoplay.parse_rgbds_constants(autoplay.ROOT / 'constants/ram_constants.asm')['BIT_DISABLE_JOYPAD']
+        agent.naming_screen = False
+        agent.last_ui_frame = -1
+        agent.last_overworld_frame = 10
+        self.assertEqual(agent.mode(), 'busy')
+        memory['wStatusFlags5'] = 0
+        self.assertEqual(agent.mode(), 'overworld')
+
     def test_corpus_quota_counts_unique_validated_states_and_rejects_missing_metadata(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

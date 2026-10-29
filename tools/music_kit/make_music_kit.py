@@ -245,10 +245,35 @@ NATIVE_REJECTIONS = [
     ("missing_channel_target", "A::\n\tchannel_count 1\n\tchannel 1, Nowhere\n", "isn't defined in this file"),
     ("outside_call", "A::\n\tchannel_count 1\n\tchannel 1, A_Ch1\nA_Ch1::\n\tsound_call Elsewhere\n\tsound_ret\n",
      "must stay inside the file"),
-    ("unknown_command", "A::\n\tchannel_count 1\n\tchannel 1, A_Ch1\nA_Ch1::\n\tdb $12\n\tsound_ret\n", "isn't a command"),
+    ("unknown_command", "A::\n\tchannel_count 1\n\tchannel 1, A_Ch1\nA_Ch1::\n\tdw $12\n\tsound_ret\n", "isn't a command"),
     ("load_wave", "A::\n\tchannel_count 1\n\tchannel 1, A_Ch1\nA_Ch1::\n\tload_wave Foo\n\tsound_ret\n", "load_wave"),
     ("include", "A::\n\tchannel_count 1\n\tchannel 1, A_Ch1\nA_Ch1::\n\tINCLUDE \"x.asm\"\n", "isn't allowed"),
 ]
+
+
+# Donor-style songs the native path must accept: a leftover "db" byte after the
+# header, and a call into another channel's local label in the same file.
+NATIVE_ACCEPTS = (
+    "A:\n\tchannel_count 2\n\tchannel 1, A_Ch1\n\tchannel 2, A_Ch2\n\n\tdb $3 ; unused\n\n"
+    "A_Ch1:\n\ttempo 160\n\tvolume 7, 7\n\tnote_type 12, 11, 3\n\toctave 4\n\tsound_call A_Ch2.shared\n.again:\n"
+    "\tnote C_, 4\n\tsound_loop 0, .again\n\nA_Ch2:\n\tnote_type 12, 10, 3\n\toctave 3\n\tnote C_, 4\n\tsound_ret\n"
+    ".shared:\n\tnote E_, 4\n\tsound_ret\n"
+)
+
+
+def check_native_accepts(out):
+    log("check: native donor-style song (db byte, Label.local call, single-colon label) is accepted")
+    path = os.path.join(WORK, "donor_style.asm")
+    with open(path, "w", newline="\n") as f:
+        f.write(NATIVE_ACCEPTS)
+    dst = os.path.join(out, "donor_style.out.asm")
+    said = convert(path, "-NoBuild", "-OutAsm", winpath(dst))
+    text = open(dst).read()
+    for want in ("Music_KitPreview::", "Ch2.shared", "db $3"):
+        if want not in text:
+            sys.exit("donor-style song: expected %r in the converted song:\n%s" % (want, text))
+    if "raw data byte" not in said:
+        sys.exit("donor-style song: the db byte should be reported:\n" + said)
 
 
 def check_native_rejections(out):
@@ -346,6 +371,7 @@ def main():
     log("check: Template.asm builds")
     print(convert(os.path.join(KIT, "Template.asm")), end="")
     check_native_rejections(out)
+    check_native_accepts(out)
 
     # 3d. The kit switch: a Ch4 that alternates kit-0 and kit-1 drums, with a
     #     repeated bar stored as a subroutine. Static: the kit is 0 at every

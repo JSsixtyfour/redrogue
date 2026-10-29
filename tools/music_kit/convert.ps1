@@ -449,6 +449,7 @@ function ConvertAsm {
 	$src = @($raw -split "`r?`n")
 	$globals = [ordered]@{}   # every global label the file defines
 	$locals = @{}
+	$scope = ''
 	$cmds = New-Object System.Collections.Generic.List[object]   # @{ n; cmd; args }
 	for ($i = 0; $i -lt $src.Count; $i++) {
 		$code = ($src[$i] -replace ';.*$', '').TrimEnd()
@@ -456,11 +457,12 @@ function ConvertAsm {
 		if ($code -eq '') { continue }
 		if ($code -match '^([A-Za-z_]\w*)(::?)$') {
 			$globals[$Matches[1]] = 1
+			$scope = $Matches[1]   # a .local label belongs to the global label above it
 			continue
 		}
-		if ($code -match '^\.(\w+)(::?)?$') { $locals[$Matches[1]] = 1; continue }
+		if ($code -match '^\.(\w+)(::?)?$') { $locals["$scope.$($Matches[1])"] = 1; continue }
 		if ($code -match '^\s+([A-Za-z_]\w*)\s*(.*)$') {
-			$cmds.Add(@{ n = $n; cmd = $Matches[1]; args = $Matches[2].Trim() })
+			$cmds.Add(@{ n = $n; cmd = $Matches[1]; args = $Matches[2].Trim(); scope = $scope })
 			continue
 		}
 		Fail "Line ${n}: I can't read '$($src[$i].Trim())'. Commands must be indented, labels start in the first column and end in ::"
@@ -489,6 +491,13 @@ function ConvertAsm {
 		# (e) dependencies the kit does not carry
 		if ($name -eq 'load_wave') { Fail "Line $($c.n): load_wave needs a wave table that isn't in the kit. Use note_type's third number (waves 0-14) instead." }
 		if ($name -in @('include', 'incbin')) { Fail "Line $($c.n): $($c.cmd) isn't allowed: the kit only takes one self-contained file." }
+		# Some Crystal songs keep one leftover data byte after the header
+		# ("db $3 ; unused"). It is original data, so keep it, numbers only.
+		if ($name -eq 'db') {
+			if ($c.args -notmatch '^[\$%0-9A-Fa-f ,]+$') { Fail "Line $($c.n): 'db' may only hold plain numbers here." }
+			Say "  Note: line $($c.n) keeps a raw data byte ($($c.args)) from the original song." 'Yellow'
+			continue
+		}
 		# (d) must be an engine command
 		if (-not $macros.ContainsKey($name)) { Fail "Line $($c.n): '$($c.cmd)' isn't a command the music engine knows." }
 		$ops = @($c.args -split '\s*,\s*' | Where-Object { $_ -ne '' })
@@ -501,7 +510,12 @@ function ConvertAsm {
 			if ($ops.Count -lt 1) { Fail "Line $($c.n): $($c.cmd) needs a target label." }
 			$target = $ops[$ops.Count - 1]
 			if ($target -match '^\.(\w+)$') {
-				if (-not $locals.ContainsKey($Matches[1])) { Fail "Line $($c.n): $($c.cmd) points at '$target', which isn't defined in this file." }
+				if (-not $locals.ContainsKey("$($c.scope).$($Matches[1])")) { Fail "Line $($c.n): $($c.cmd) points at '$target', which isn't defined in this file." }
+			} elseif ($target -match '^([A-Za-z_]\w*)\.(\w+)$') {
+				# Label.local: a local label under another global label of this file
+				if (-not ($globals.Contains($Matches[1]) -and $locals.ContainsKey("$($Matches[1]).$($Matches[2])"))) {
+					Fail "Line $($c.n): $($c.cmd) points at '$target', which isn't defined in this file. Songs are stored in one piece, so every call, jump and loop must stay inside the file."
+				}
 			} elseif (-not $globals.Contains($target)) {
 				Fail "Line $($c.n): $($c.cmd) points at '$target', which isn't defined in this file. Songs are stored in one piece, so every call, jump and loop must stay inside the file."
 			}

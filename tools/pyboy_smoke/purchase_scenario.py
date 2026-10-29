@@ -19,13 +19,14 @@ from run_campaign import atomic_json, digest
 
 VERSION = 1
 CASES = ("success", "exact_funds", "cancel_quantity", "cancel_confirm", "decline", "insufficient")
+BOUNDARY_CASES = ('quantity_three', 'capacity_full', 'capacity_after_fill')
 PRICE = 200  # Potion, independent fixture expectation: data/items/prices.asm.
 
 
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seeds", default="1")
-    parser.add_argument("--case", choices=(*CASES, "all"), default="all")
+    parser.add_argument("--case", choices=(*CASES, *BOUNDARY_CASES, "all"), default="all")
     parser.add_argument("--cgb", action="store_true")
     parser.add_argument("--output", type=Path, default=None)
     parser.add_argument("--replay", type=Path, help="replay a retained case from its initial state and inputs")
@@ -41,13 +42,13 @@ def snapshot(h):
             "party": h.read_bytes("wPartyDataStart", h.address("wPartyDataEnd") - h.address("wPartyDataStart"))}
 
 
-def contract(before, after, *, bought, potion_slot, paid_calls, give_calls):
+def contract(before, after, *, bought, potion_slot, paid_calls, give_calls, quantity=1, give_attempts=None):
     """Only explicit transaction-owned fields may change; timers are excluded."""
     expected_items = list(before["items"])
-    expected_items[potion_slot] += int(bought)
-    expected = {"money": before["money"] - PRICE * int(bought),
+    expected_items[potion_slot] += quantity * int(bought)
+    expected = {"money": before["money"] - PRICE * quantity * int(bought),
                 "items": expected_items, "party": before["party"],
-                "paid_calls": int(bought), "give_calls": int(bought)}
+                "paid_calls": int(bought), "give_calls": int(bought) if give_attempts is None else give_attempts}
     actual = {**after, "paid_calls": paid_calls, "give_calls": give_calls}
     return [{"check": "mart_transaction", "version": VERSION, "field": field,
              "expected": value, "observed": actual[field],
@@ -160,7 +161,7 @@ def configure(h, seed, name):
     inject("PCClerkText1", [1], 1)
     inject("PCClerkText1Items", [potion, 0xff])
     inject("wWitchPrizesEarned", [0, 0])
-    inject("wRecoveryItemCounts", [0], slot)
+    inject("wRecoveryItemCounts", [99 if name == 'capacity_full' else 98 if name == 'capacity_after_fill' else 0], slot)
     digits = f"{funds:06d}"
     inject("wPlayerMoney", [int(digits[i:i + 2], 16) for i in (0, 2, 4)])
     return slot, injections, agent
@@ -215,31 +216,34 @@ def run_one(seed, name, directory, *, cgb=False, control=False):
         data["before"] = snapshot(h)
         evidence(h, directory, "before")
         start = h.pyboy.frame_count
+        wanted_visits = 3 if name == 'capacity_after_fill' else 2
         agent.plan = {"kind": "shop", "steps": 0, "done": False}
         # Record and render presses produced by the shared shopping driver.
         agent.press = lambda button, hold=2, after=6: act(h, data["inputs"], button, hold, after)
         act(h, data["inputs"], "a")
         while h.pyboy.frame_count - start < 8000:
-            done = obs.visits >= 2 or obs.insufficient
+            done = obs.visits >= wanted_visits or obs.insufficient
             if obs.closed and obs.overworld_frame > start and h.pyboy.frame_count - obs.overworld_frame <= 2:
                 break
             if h.pyboy.frame_count - obs.wait_frame > 2:
                 act(h, data["inputs"], hold=1, after=0)
                 continue
             agent.plan["done"] = agent.plan["done"] or done
-            agent.shop_step(select_purchase=lambda stock: (0, 1, stock[0]),
+            agent.shop_step(select_purchase=lambda stock: (0, 3 if name == 'quantity_three' else 1, stock[0]),
                             cancel_quantity=name == "cancel_quantity",
                             confirmation="cancel" if name == "cancel_confirm" else "no" if name == "decline" else "yes")
         actual_after = snapshot(h)
         data.update(actual_after=actual_after, after=controlled_observation(actual_after, control),
                     events=obs.events, paid_calls=obs.paid, give_calls=obs.given)
-        reached = obs.closed and obs.overworld_frame > start and (obs.insufficient if name == "insufficient" else obs.visits >= 2)
+        reached = obs.closed and obs.overworld_frame > start and (obs.insufficient if name == "insufficient" else obs.visits >= wanted_visits)
         if not reached:
             data["detail"] = "scenario did not reach its transaction exit and normal overworld input"
         else:
             data["execution"] = "completed"
             data["findings"] = observed_findings(data["before"], actual_after, control=control,
-                                        bought=name in ("success", "exact_funds"),
+                                        bought=name in ("success", "exact_funds", 'quantity_three', 'capacity_after_fill'),
+                                        quantity=3 if name == 'quantity_three' else 1,
+                                        give_attempts=1 if name == 'capacity_full' else 2 if name == 'capacity_after_fill' else None,
                                         potion_slot=slot, paid_calls=obs.paid, give_calls=obs.given)
             data["verdict"] = "contract_violation" if data["findings"] else "no_issue_detected"
         if h.hook_errors:
@@ -277,7 +281,9 @@ def replay(path, output):
         actual_after = snapshot(h)
         after = controlled_observation(actual_after, bool(data.get("detector_input_control")))
         findings = observed_findings(before, actual_after, control=bool(data.get("detector_input_control")),
-                            bought=data["scenario"] in ("success", "exact_funds"),
+                            bought=data["scenario"] in ("success", "exact_funds", 'quantity_three', 'capacity_after_fill'),
+                            quantity=3 if data['scenario'] == 'quantity_three' else 1,
+                            give_attempts=1 if data['scenario'] == 'capacity_full' else 2 if data['scenario'] == 'capacity_after_fill' else None,
                             potion_slot=data["potion_slot"], paid_calls=obs.paid, give_calls=obs.given)
         events = [{**event, "frame": event["frame"] - frame_offset} for event in obs.events]
         result = {"same_state": before == data["before"] and after == data["after"],
