@@ -270,6 +270,7 @@ class AutoplayAgent:
         profile: Profile | None = None,
         player: str = "basic",
         ai_telemetry=None,
+        capture_active_save: bool = False,
     ):
         if profile is not None:
             battle_policy = profile.battle_policy
@@ -282,6 +283,7 @@ class AutoplayAgent:
         if menu_input not in MENU_INPUTS:
             raise ValueError(f"unknown menu input {menu_input!r}")
         self.h = harness
+        self.active_save_pending = capture_active_save
         # --ai-telemetry: ai_telemetry.BattleAITelemetry, read-only; one record per trainer battle.
         self.ai_telemetry = ai_telemetry
         self.ai_battles: list[dict[str, object]] = []
@@ -1203,6 +1205,12 @@ class AutoplayAgent:
                 self.snapshot(kind, {"map": self.map_name(current_map), "stages": self.report.stages_cleared,
                                      "opponent": self.last_opponent if kind == "battle" else None})
         mode = self.mode()
+        if (self.active_save_pending and self.snapshot is not None and mode == "overworld"
+                and self.h.read8("wRunTimerState") == 1 and not self.h.read8("hJoyIgnore")
+                and not self.h.read8("hSimulatedJoypadStatesIndex")):
+            self.snapshot("save_overworld", {"map": self.map_name(current_map),
+                "provenance": "natural first active-run overworld", "clock_injected": False})
+            self.active_save_pending = False
         if mode != "busy":
             self.busy_since = None
         if mode == "overworld":
@@ -1861,6 +1869,8 @@ def boot(harness: RedRogueHarness, seed: int, battle_count: int = 1,
             seeded["done"] = True
             harness.seed_rng([seed >> 24, seed >> 16, seed >> 8, seed])
             harness.startup_comparison_frame = harness.pyboy.frame_count
+            harness.startup_comparison_cycle = harness.cycle_count()
+            harness.startup_comparison_ly = harness.pyboy.memory[0xff44]
 
     harness.register_hook("SelectAndPatchLobbyExit", seed_once)
     harness.boot_to_lobby(battle_count=battle_count)
@@ -1881,6 +1891,8 @@ def boot_new_game(harness: RedRogueHarness, seed: int, difficulty: str | None = 
             seeded["done"] = True
             harness.seed_rng([seed >> 24, seed >> 16, seed >> 8, seed])
             harness.startup_comparison_frame = harness.pyboy.frame_count
+            harness.startup_comparison_cycle = harness.cycle_count()
+            harness.startup_comparison_ly = harness.pyboy.memory[0xff44]
 
     harness.register_hook("OakSpeech", seed_once)
     if difficulty is not None or ironman or profile is not None:
@@ -1988,6 +2000,7 @@ def play(
                               door_policy=door_policy, stall_frames=stall_frames, log=log,
                               heartbeat=heartbeat, menu_input=menu_input, menu_chaos=menu_chaos,
                               profile=profile, player=player,
+                              capture_active_save=new_game and save_checks,
                               snapshot=None if reel is None else lambda kind, info: reel.offer(
                                   kind, harness.pyboy.frame_count, info, harness.save_state))
         # After the agent's and the checks' own hooks, which keep their addresses.
@@ -2002,6 +2015,8 @@ def play(
         if discard_test_sram:
             data["startup"] = {"policy": "discard_disposable_test_sram",
                                "comparison_frame": getattr(harness, "startup_comparison_frame", None),
+                               "comparison_cycle": getattr(harness, "startup_comparison_cycle", None),
+                               "comparison_ly": getattr(harness, "startup_comparison_ly", None),
                                "rng_boundary": "OakSpeech" if new_game else "SelectAndPatchLobbyExit",
                                "events": harness.disposable_sram_consent["events"]}
         if error:
@@ -2039,10 +2054,11 @@ def play(
         import save_reload
 
         lobbies = [s for s in reel.select(SAVE_CHECK_LOBBIES) if s.kind == "lobby"]
+        save_snapshots = reel.kept.get("save_overworld", [])[:1] + lobbies
         if heartbeat is not None:
             heartbeat.write_text(json.dumps({"frame": None, "mode": "save checks", "map": None,
                                              "position": None}) + "\n", encoding="utf-8")
-        data["save_checks"] = save_reload.run_save_checks(seed, lobbies, cgb_mode=cgb_mode)
+        data["save_checks"] = save_reload.run_save_checks(seed, save_snapshots, cgb_mode=cgb_mode)
     if reel is not None and branches:
         options = {} if freeze_frames is None else {"freeze_frames": freeze_frames}
         data["branches"] = autoplay_branch.run_snapshots(
@@ -2079,8 +2095,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--coverage", action="store_true",
                         help="record which code labels run (autoplay_coverage.py reports them)")
     parser.add_argument("--save-checks", action="store_true",
-                        help="save at lobby arrivals, reload on a fresh emulator, compare, and cut "
-                             "power mid-save (save_reload.py)")
+                        help="check an early active-run save and lobby saves; reload, compare, "
+                             "and cut power between lobby saves (save_reload.py)")
     parser.add_argument("--vary", action="store_true",
                         help="play this seed's own profile: battle policy, ironman, lobby and bag "
                              "errands, items in battle, starter (Profile, draw_profile)")

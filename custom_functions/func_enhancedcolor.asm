@@ -250,7 +250,7 @@ GBCEnhancedOverworldPalettes_ForestSpring:
 	; PAL_ENH_OVW_GREEN    	; $04 - spring trees, pink blossom (2026-10-06, was maps/springtrees2.pal's day row)
 	GBCEnh_White
 	RGB 17, 31, 11
-	RGB 28, 15, 24
+	RGB 31, 0, 17
 	; Colour 3 was the .pal file's RGB 6,0,0 (dark red). Every screen-black hold
 	; (rBGP = $FF) shows each palette's colour 3, so the trees - most of the
 	; Forest - flashed dark red for ~6 frames before every reveal (measured
@@ -303,7 +303,7 @@ GBCEnhancedOverworldPalettes_ForestFall:
 	; PAL_ENH_OVW_GREEN    	; $04 - fall trees, orange leaves (2026-10-06, was maps/falltrees2.pal's day row)
 	GBCEnh_White
 	RGB 17, 31, 11
-	RGB 31, 14,  0
+	RGB 31, 2,  0
 	GBCEnh_Black ; was RGB 6,0,0 - see the spring row above
 
 	; PAL_ENH_OVW_YELLOW  	; $05

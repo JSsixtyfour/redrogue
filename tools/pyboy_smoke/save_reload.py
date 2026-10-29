@@ -23,11 +23,13 @@ moments of an autoplay run (lobby arrivals, from SnapshotReel):
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
 import json
 import os
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 import autoplay
@@ -89,7 +91,7 @@ def region_image(h: RedRogueHarness) -> dict[str, bytes]:
 
 
 def differences(h: RedRogueHarness, saved: dict[str, bytes], loaded: dict[str, bytes],
-                only: str | None = None) -> list[dict[str, object]]:
+                only: str | None = None, *, accounted_timer: dict | None = None) -> list[dict[str, object]]:
     """Bytes that came back different, named by the nearest WRAM/HRAM label."""
     found = []
     for name, first, _length in region_spans(h):
@@ -99,6 +101,10 @@ def differences(h: RedRogueHarness, saved: dict[str, bytes], loaded: dict[str, b
             if was == now:
                 continue
             address = first + offset
+            if accounted_timer and accounted_timer["status"] == "accounted":
+                timer_index = address - h.address("wRunTimerState")
+                if 0 <= timer_index < 5 and now == accounted_timer["expected_clock"][timer_index]:
+                    continue
             label = h.symbols.nearest(0, address) or f"${address:04X}"
             allowed = EXPECTED_LOAD_CHANGES.get(label.split("+")[0])
             if allowed is not None and not (was ^ now) & ~allowed[0] & 0xFF:
@@ -138,6 +144,74 @@ def timer_observation(h: RedRogueHarness, boundary: str) -> dict:
     return {"boundary": boundary, "frame": h.pyboy.frame_count,
             "clock": h.read_bytes("wRunTimerState", 5),
             "timer_enabled": bool(h.read8("wStatusFlags6") & 1)}
+
+
+def advance_run_clock(clock: list[int], ticks: int) -> list[int]:
+    """Independent base-60 accounting; crossing 256 hours stops at the cap."""
+    if (len(clock) != 5 or any(type(value) is not int or not 0 <= value <= 255 for value in clock)
+            or clock[0] not in (0, 1, 2) or type(ticks) is not int or ticks < 0):
+        raise ValueError("invalid run clock or tick count")
+    state, hours, minutes, seconds, frames = clock
+    if state != 1:
+        return list(clock)  # inactive/finished fields must remain byte-exact
+    if any(value >= 60 for value in (minutes, seconds, frames)):
+        raise ValueError("active run clock is not normalized")
+    total = ((hours * 60 + minutes) * 60 + seconds) * 60 + frames + ticks
+    maximum = 256 * 60 * 60 * 60 - 1
+    if total > maximum:
+        return [2, 255, 59, 59, 59]
+    hours, rest = divmod(total, 60 * 60 * 60)
+    minutes, rest = divmod(rest, 60 * 60)
+    seconds, frames = divmod(rest, 60)
+    return [state, hours, minutes, seconds, frames]
+
+
+def account_run_timer(published, saved, loaded, ticks, *, saved_enabled, loaded_enabled):
+    """Only an exact publication and complete tick chain can explain a delta.
+
+    A tick ledger records the clock BEFORE each active RunTimerTick call.
+    Requiring each predecessor also detects corruption subsequently overwritten
+    by another clock field or a timer reset. No broad timer-byte allowance.
+    """
+    problems = []
+    expected = list(published)
+    if not isinstance(ticks, list):
+        ticks = []
+        problems.append("active tick ledger is unavailable")
+    try:
+        advance_run_clock(expected, 0)
+        if published != saved:
+            problems.append("published clock differs from save-entry clock")
+        if type(saved_enabled) is not bool or type(loaded_enabled) is not bool or saved_enabled != loaded_enabled:
+            problems.append("timer enable changed or is unavailable")
+        for tick in ticks:
+            if not saved_enabled or tick["timer_enabled"] is not True or tick["clock"] != expected or expected[0] != 1:
+                problems.append("active tick predecessor or enable does not match")
+                break
+            expected = advance_run_clock(expected, 1)
+        if expected != loaded:
+            problems.append("loaded clock is not explained by observed active ticks")
+    except (ValueError, TypeError, KeyError) as error:
+        problems.append(f"invalid timer evidence: {error}")
+    return {"version": 1, "status": "invalid" if problems else "accounted",
+            "published_clock": published, "saved_clock": saved, "loaded_clock": loaded,
+            "expected_clock": expected, "active_ticks": len(ticks), "problems": problems}
+
+
+def published_run_clock(h, sram):
+    bank, address = h.symbols.get("sMainData")
+    offset = bank * SRAM_BANK_SIZE + address - 0xa000 + h.address("wRunTimerState") - h.address("wMainDataStart")
+    return list(sram[offset:offset + 5])
+
+
+def account_saved_timer(h, saved, loaded, sram, ticks):
+    clock_offset = h.address("wRunTimerState") - h.address("wMainDataStart")
+    enable_offset = h.address("wStatusFlags6") - h.address("wMainDataStart")
+    return account_run_timer(published_run_clock(h, sram),
+        list(saved["main data"][clock_offset:clock_offset + 5]),
+        list(loaded["main data"][clock_offset:clock_offset + 5]), ticks,
+        saved_enabled=bool(saved["main data"][enable_offset] & 1),
+        loaded_enabled=bool(loaded["main data"][enable_offset] & 1))
 
 
 def save_now(h: RedRogueHarness, *, timer_observations=None) -> dict[str, bytes]:
@@ -184,6 +258,7 @@ class Reboot:
         self.loaded: dict[str, bytes] | None = None
         self.overworld = False
         self.timer_observations = []
+        self.active_timer_ticks = []
 
     def load(self) -> None:
         h = self.h
@@ -193,6 +268,8 @@ class Reboot:
         def timer_tick(_context) -> None:
             if h.read8("wRunTimerState") == 1:
                 active_ticks["count"] += 1
+                if self.status is None:
+                    self.active_timer_ticks.append(timer_observation(h, "RunTimerTick.entry"))
 
         def checked(_context) -> None:
             if self.status is None:
@@ -219,7 +296,7 @@ class Reboot:
 
 
 def classify(h: RedRogueHarness, old: dict[str, bytes], new: dict[str, bytes],
-             loaded: dict[str, bytes]) -> dict[str, str]:
+             loaded: dict[str, bytes], *, timer_context=None) -> dict[str, str]:
     """Each region: new, old, unchanged or other, allowing expected changes.
 
     A region equal in both snapshots cannot establish a mixed checkpoint.
@@ -227,7 +304,11 @@ def classify(h: RedRogueHarness, old: dict[str, bytes], new: dict[str, bytes],
     result = {}
     for name in new:
         def matches(image: dict[str, bytes]) -> bool:
-            return not [d for d in differences(h, {name: image[name]}, {name: loaded[name]}, only=name)]
+            accounted = account_saved_timer(h, image, loaded, *timer_context) if timer_context is not None and name == "main data" else None
+            if accounted is not None and accounted["status"] != "accounted":
+                return False
+            return not [d for d in differences(h, {name: image[name]}, {name: loaded[name]}, only=name,
+                                               accounted_timer=accounted)]
         is_new, is_old = matches(new), matches(old)
         result[name] = ("unchanged" if is_new and is_old else "new" if is_new
                         else "old" if is_old else "other")
@@ -248,20 +329,32 @@ def round_trip(h: RedRogueHarness, snapshot, driver: autoplay_branch.BranchDrive
     timer_save = []
     saved = save_now(h, timer_observations=timer_save)
     sram = sram_image(h)
-    bank, address = h.symbols.get("sMainData")
-    timer_offset = bank * SRAM_BANK_SIZE + address - 0xA000 + h.address("wRunTimerState") - h.address("wMainDataStart")
     boot = Reboot(sram, cgb_mode=cgb_mode)
     try:
         boot.load()
         result = {"snapshot": snapshot.name, "status": boot.status, "overworld": boot.overworld}
+        errors = h.hook_errors + boot.h.hook_errors
+        result["detectors"] = {"run_timer": {"enabled": True, "available": True,
+                                              "status": "error" if errors else "ok", "errors": errors}}
+        if errors:
+            result["problem"] = "save/load observer hook failed"
         result["run_timer_boundaries"] = {"save": timer_save,
-                                          "published_sram_clock": list(sram[timer_offset:timer_offset + 5]),
+                                          "published_sram_clock": published_run_clock(h, sram),
                                           "load": boot.timer_observations,
                                           "comparison_policy": "unchanged; raw timing evidence only"}
         if boot.status != 2:
             result["problem"] = "a fresh save did not load"
             return result
-        result["differences"] = differences(h, saved, boot.loaded)
+        if not boot.overworld:
+            result["problem"] = "loaded save did not return to overworld control"
+        accounting = account_saved_timer(h, saved, boot.loaded, sram, boot.active_timer_ticks)
+        result["run_timer_comparison"] = accounting
+        result["run_timer_boundaries"].update(comparison_policy="exact publication and active tick chain v1",
+                                               active_ticks=boot.active_timer_ticks)
+        result["raw_differences"] = differences(h, saved, boot.loaded)
+        result["differences"] = differences(h, saved, boot.loaded, accounted_timer=accounting)
+        if accounting["status"] != "accounted":
+            result["problem"] = "run timer publication or tick accounting failed"
         if boot.overworld and driver is not None:
             state = io.BytesIO()
             boot.h.save_state(state)
@@ -284,7 +377,6 @@ def power_cuts(h: RedRogueHarness, older, newer, *, cgb_mode: bool = False) -> l
     if not settle(h):
         return []
     write_sram(h, old_sram)
-    new = region_image(h)  # the same moment save_now captures: nothing runs in between
     cuts: list[tuple[str, bytes]] = []
     counts: dict[str, int] = {}
 
@@ -303,7 +395,7 @@ def power_cuts(h: RedRogueHarness, older, newer, *, cgb_mode: bool = False) -> l
     for label, callback in hooks:
         h.register_hook(label, callback)
     try:
-        save_now(h)
+        new = save_now(h)  # capture at actual entry, after call_routine parks safely
     finally:
         for label, callback in hooks:
             h.unregister_hook(label, callback)
@@ -315,11 +407,14 @@ def power_cuts(h: RedRogueHarness, older, newer, *, cgb_mode: bool = False) -> l
             boot.load()
             if boot.status != 2:
                 outcome, regions = "refused", {}
+            elif h.hook_errors or boot.h.hook_errors:
+                outcome, regions = "detector_error", {}
             else:
-                regions = classify(h, old, new, boot.loaded)
+                regions = classify(h, old, new, boot.loaded, timer_context=(sram, boot.active_timer_ticks))
                 outcome = checkpoint_kind(regions)
             results.append({"cut": f"{older.name}->{newer.name} at {name}", "loads": outcome,
-                            "regions": regions})
+                            "regions": regions, "active_run_timer_ticks": len(boot.active_timer_ticks),
+                            "detector_errors": h.hook_errors + boot.h.hook_errors})
         finally:
             boot.close()
     return results
@@ -328,6 +423,7 @@ def power_cuts(h: RedRogueHarness, older, newer, *, cgb_mode: bool = False) -> l
 def run_save_checks(seed: int, snapshots: list, *, play_after: bool = True,
                     cgb_mode: bool = False) -> dict[str, object]:
     lobbies = [s for s in snapshots if s.kind == "lobby"]
+    save_snapshots = [s for s in snapshots if s.kind in ("lobby", "save_overworld")]
     findings, trips, cut_results = [], [], []
     h = RedRogueHarness(autoplay.ROOT, autoplay.ARTIFACTS, rom=autoplay.ROM,
                         cgb_mode=cgb_mode)
@@ -335,9 +431,20 @@ def run_save_checks(seed: int, snapshots: list, *, play_after: bool = True,
                                      cgb_mode=cgb_mode) if play_after else None)
     try:
         driver = autoplay_branch.BranchDriver(driver_harness) if driver_harness else None
-        for snapshot in lobbies:
+        retained = None
+        for snapshot in save_snapshots:
             trip = round_trip(h, snapshot, driver, f"reload/{seed}/{snapshot.name}",
                               cgb_mode=cgb_mode)
+            if snapshot.kind == "save_overworld":
+                if retained is None:
+                    retained = autoplay.ARTIFACTS / f"{autoplay.stem(seed)}_save-{time.time_ns()}"
+                    retained.mkdir(parents=True, exist_ok=False)
+                path = retained / f"{snapshot.name}.state"
+                path.write_bytes(snapshot.state)
+                trip["source_snapshot"] = {"kind": snapshot.kind, "frame": snapshot.frame, "info": snapshot.info,
+                    "state": str(path), "sha256": hashlib.sha256(snapshot.state).hexdigest(),
+                    "rom_sha256": h.rom_sha256, "sym_sha256": h.sym_sha256}
+                (retained / f"{snapshot.name}.json").write_text(json.dumps(trip, indent=2) + "\n")
             trips.append(trip)
             if trip.get("problem") or trip.get("differences") or trip.get("after_load"):
                 findings.append({"check": "round_trip", **trip})

@@ -280,7 +280,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--freeze-frames", type=int, default=None,
                         help="frames without an input poll before a branch counts as frozen")
     parser.add_argument("--save-checks", action="store_true",
-                        help="save, reload and power-cut checks at lobby arrivals (save_reload.py)")
+                        help="early active-run and lobby save/reload checks; lobby power cuts (save_reload.py)")
     parser.add_argument("--vary", action="store_true",
                         help="each seed plays its own profile (battle policy, ironman, errands, "
                              "items in battle, starter); see autoplay.Profile")

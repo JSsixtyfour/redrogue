@@ -22,6 +22,14 @@ def bounded_fill_timeout(task_id, timeout, options):
 
 
 class CampaignTest(unittest.TestCase):
+    def test_sram_startup_path_comparisons_are_not_initialization_proof(self):
+        from sram_fuzz import comparison_kind
+        blank = {"startup_path": ["initialization_entered", "gameplay_ready"]}
+        consent = {"startup_path": ["discard_prompt", "consent_accepted", "initialization_entered", "gameplay_ready"]}
+        self.assertEqual(comparison_kind(blank, consent), "different_startup_paths")
+        self.assertEqual(comparison_kind(consent, consent), "same_startup_path")
+        self.assertEqual(comparison_kind({}, consent), "unverified_startup")
+
     def test_archived_build_and_source_must_remain_available(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

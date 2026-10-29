@@ -4,8 +4,9 @@
     python3 tools/music_kit/record_title.py wav   <test.gbc> <test.map> <seconds> <out.wav>
     python3 tools/music_kit/record_title.py pitch <test.gbc> <test.map>
 
-We hook HOME PlaySound and start the clock when it's called with the
-title-music id, so timing is anchored to the engine, not guessed from audio.
+We hook HOME PlayMusic and start the clock when it's called with the
+preview song's id (its row in the Music table, read from the ROM), so timing
+is anchored to the engine, not guessed from audio.
 
 drums: the ROM must be a kit build of test_midis.py's drumtest.mid (drum k
   one bar after drum k-1). Each slice starts at its first audible sample and
@@ -50,31 +51,45 @@ def map_symbols(path):
     return syms
 
 
-def record(rom, mapfile, seconds, label="Music_TitleScreen"):
-    """Return mono int16 samples (L+R) starting at the PlaySound for `label`."""
+def music_id(rom, syms, label):
+    """The song id whose Music table row (bank, address) is `label`.
+
+    Crystal engine (crysaudio/music_pointers_red.asm): ids index a table of
+    3-byte `dba` rows, so the id is the row, read back from the ROM itself."""
+    bank, addr = syms[label]
+    table_bank, table = syms["Music"]
+    with open(rom, "rb") as f:
+        data = f.read()
+    base = table_bank * 0x4000 + table - 0x4000
+    row = bytes((bank, addr & 0xFF, addr >> 8))
+    for song in range(256):
+        if data[base + 3 * song: base + 3 * song + 3] == row:
+            return song
+    sys.exit("%s is not in the Music table" % label)
+
+
+def record(rom, mapfile, seconds, label="Music_KitPreview"):
+    """Return mono int16 samples (L+R) starting at the PlayMusic for `label`."""
     syms = map_symbols(mapfile)
-    music_bank, header = syms[label]
-    music_id = (header - syms["SFX_Headers_1"][1]) // 3
-    ps_bank, ps_addr = syms["PlaySound"]
-    audio_bank = syms["wAudioROMBank"][1]
+    song = music_id(rom, syms, label)
+    pm_bank, pm_addr = syms["PlayMusic"]
 
     pyboy = PyBoy(rom, window="null", sound_emulated=True, sound_sample_rate=RATE, sound_volume=100)
     pyboy.set_emulation_speed(0)
     started = []
 
-    # Song/SFX ids are only unique within one audio bank (id 187 is an intro
-    # SFX in AUDIO_3 and a song in AUDIO_4), so match the bank too.
-    def on_playsound(_):
-        if not started and pyboy.register_file.A == music_id and pyboy.memory[audio_bank] == music_bank:
+    # HOME PlayMusic takes the song id in a (home/audio.asm).
+    def on_playmusic(_):
+        if not started and pyboy.register_file.A == song:
             started.append(True)
 
-    pyboy.hook_register(ps_bank, ps_addr, on_playsound, None)
+    pyboy.hook_register(pm_bank, pm_addr, on_playmusic, None)
     frames = 0
     while not started:
         pyboy.tick(1, False, True)
         frames += 1
         if frames > 60 * 120:
-            sys.exit("%s never started (no PlaySound with id %#x in bank $%02X within 120 s)" % (label, music_id, music_bank))
+            sys.exit("%s never started (no PlayMusic with id %#x within 120 s)" % (label, song))
 
     # The hook fired during the last tick; the song's first engine update is
     # in the next VBlank, so recording from the next buffer loses nothing.

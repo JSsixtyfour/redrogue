@@ -4,10 +4,10 @@ Init clears all of WRAM and HRAM (the ROM links in DMG mode, so WRAM0 is the
 whole 8 KB), so the one memory the game can read without writing it first is
 the cartridge's save RAM: 32 KB in four banks, holding whatever a new, used or
 flash cartridge had on it. This plays the same seed with SRAM all zeroes, then
-all $FF, then random bytes. Every run must play identically, event for event
-and relative frame for relative frame after the documented seeded startup
-boundary. A divergence is a suspected initialization sensitivity, not proof
-of an uninitialized read.
+all $FF, then random bytes. It compares events and relative frames after the
+documented seeded startup boundary. Different startup paths are reported as
+confounded comparisons and are not bisected as evidence of uninitialized reads.
+Even equal paths can differ in CPU/PPU phase; a divergence remains a suspect.
 
 The title menu's save check is kept out of the fills on purpose: a '@' in
 sPlayerName counts as a save (CheckForPlayerNameInSRAM), the checksum then
@@ -89,6 +89,12 @@ def first_divergence(a: list[tuple], b: list[tuple]) -> int | None:
     return None if len(a) == len(b) else min(len(a), len(b))
 
 
+def comparison_kind(baseline, candidate):
+    if not baseline.get("startup_path") or not candidate.get("startup_path"):
+        return "unverified_startup"
+    return "different_startup_paths" if baseline["startup_path"] != candidate["startup_path"] else "same_startup_path"
+
+
 def play_trace(seed: int, sram: bytes, options: dict[str, object]) -> list[tuple]:
     data = autoplay.play(seed, sram=sram, **options)
     return trace(data)
@@ -157,6 +163,10 @@ def fill_worker(task_id, options, results):
         record["build_identity"] = {ext: digest(autoplay.ROOT / f"{rom}.{ext}") for ext in ("gbc", "sym")}
         data = autoplay.play(task["seed"], sram=(directory / "input.sram").read_bytes(), **options["play"])
         atomic_json(directory / "report.json", data)
+        startup = data.get("startup") or {}
+        record["startup_path"] = [event["kind"] for event in startup.get("events", [])]
+        record["comparison_boundary"] = {key: startup.get(key) for key in
+                                          ("rng_boundary", "comparison_frame", "comparison_cycle", "comparison_ly")}
         record["anomalies"] = data.get("anomalies", [])
         record["outcome"] = data["outcome"]
         record["execution"] = "completed" if data["outcome"] in ("completed", "blackout", "champion") else "incomplete"
@@ -265,9 +275,16 @@ def main(argv: list[str] | None = None) -> int:
             got = ours[index] if index < len(ours) else None
             finding = {"seed": seed, "fill": name, "event_index": index,
                        "zero_sram": expected, "this_fill": got}
+            reference = next(r for r in records if r["seed"] == seed and r["repetition"] == 0)
+            candidate = next(r for r in records if r["seed"] == seed and r["fill"] == name)
+            finding["comparison_kind"] = comparison_kind(reference, candidate)
+            semantics = lambda events: [event[1:] if isinstance(event[0], int) else event for event in events]
+            finding["semantic_event_index"] = first_divergence(semantics(baseline), semantics(ours))
             print(f"DIFF seed {seed:>3} {name:<8} event {index}: zero SRAM {expected}\n"
                   f"{'':23}this fill {got}")
-            if args.bisect:
+            if args.bisect and finding["comparison_kind"] != "same_startup_path":
+                finding["bisect_skipped"] = "startup paths differ or are unverified; matched controls required"
+            if args.bisect and finding["comparison_kind"] == "same_startup_path":
                 frames = [event[0] for event in (expected, got) if event and isinstance(event[0], int)]
                 # Trace frames are relative to the seed boundary; the emulator
                 # max_frames limit is measured from power-on.

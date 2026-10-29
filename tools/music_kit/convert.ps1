@@ -1,14 +1,23 @@
 # Red Rogue music test kit: MIDI -> pokemid -> Red Rogue song -> test ROM -> emulator.
 #
 # Composer use (via "DROP YOUR SONG HERE.bat"):  convert.ps1 <song.mid>
-# Dev import use (tools/music_kit/import_music.sh):
+# Dev import use (tools/music_kit/import_music.py):
 #   convert.ps1 <song.mid> -Label Music_Foo -OutAsm <path> -NoBuild
+#
+# The game uses the Crystal audio engine (crysaudio/, pokered-crysaudio). pokemid
+# writes Red-format song text; the Crystal macros share its command names and
+# arguments, so step 3 only adds the song header, the Ch4 drum kit selection
+# and the Ch3 rules (CRYSTAL_AUDIO_PHASE3_SPEC.md in Red Rogue Files).
+#
+# The preview song gets its own floating ROMX section and the Music table's
+# title-screen row points at it, so a preview can use the largest free gap
+# in the ROM instead of the title song's old slot.
 #
 # Must run under Windows PowerShell 5.1. Keep it free of PS7-only syntax.
 
 param(
 	[Parameter(Position = 0)] [string]$Mid,
-	[string]$Label = 'Music_TitleScreen',
+	[string]$Label = 'Music_KitPreview',
 	[string]$OutAsm,
 	[switch]$NoBuild,
 	[switch]$NoLaunch,
@@ -21,7 +30,9 @@ $Engine = $PSScriptRoot
 $Src    = Join-Path $Engine 'src'
 $Out    = Join-Path $Engine 'output'
 $ErrLog = Join-Path $Out 'last-error.txt'
-$SongFile = 'audio\music\titlescreen.asm'
+# The Music table row the preview takes over (crysaudio/music_pointers_red.asm).
+$TitleRow = 'dba Music_RBYTitleScreen'
+$PreviewSection = 'Kit Preview Song'
 
 function Say([string]$msg, [string]$color = 'Gray') { Write-Host $msg -ForegroundColor $color }
 
@@ -129,7 +140,7 @@ function Test-Midi([byte[]]$d) {
 			$tk = $e[0]; $pitch = $e[1]
 			if (-not $e[2]) { $active.Remove($pitch); continue }
 			if ($ch -eq 'Ch4' -and $pitch -gt 18 -and -not $reported['drum']) {
-				$problems.Add("Ch4 has a note at $(& $where $tk) that isn't one of the 19 Game Boy drums. Ch4 only uses MIDI notes 0-18 (lowest notes on the keyboard); see the drum list in READ ME FIRST.")
+				$problems.Add("Ch4 has a note at $(& $where $tk) that isn't one of the kit's 19 drums. Ch4 only uses MIDI notes 0-18 (lowest notes on the keyboard); see the drum list in READ ME FIRST.")
 				$reported['drum'] = 1
 			}
 			# pokemid writes Ch3 an octave up (the wave channel's period is twice
@@ -272,20 +283,24 @@ function ConvertMidi {
 		}
 	}
 
-	# Ch3 (wave) volume: our engine keeps only bits 4-5 of the volume nibble
-	# (Audio1_note_type: and $30), so the usable values are 0=mute 1=100% 2=50%
-	# 3=25%. pokemid writes velocity-derived 0-15 there, which mutes most notes.
-	# Force full volume, and clamp the wave instrument to the real ones (0-4).
-	# audio/wave_samples.asm has 9 pointers: 5-8 all point at .wave5, which has no
-	# data of its own and reads the SFX bytes after it, different in every audio
-	# bank, so it would sound different once the song is imported elsewhere.
+	# Ch3 (wave) volume: the engine writes (volume nibble << 5) to NR32, so only
+	# its low two bits count: 0=mute 1=100% 2=50% 3=25% (crysaudio/engine.asm
+	# .load_wave_pattern: and $f0, sla a). pokemid writes velocity-derived 0-15
+	# there, which mutes most notes. Force full volume. Waves 0-14 are real
+	# (crysaudio/wave_samples.asm; 0-4 are Red's five); 15 means "keep the
+	# loaded wave", so clamp to 0-14. Kit v1 (old engine) clamped to 0-4.
 	if ($blocks.Contains('Ch3')) {
 		$b = $blocks['Ch3']
+		$newWaves = @{}
 		for ($i = 0; $i -lt $b.Count; $i++) {
 			if ($b[$i] -match '^(\s*)note_type\s+(\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*$') {
-				$wave = [Math]::Max(0, [Math]::Min(4, [int]$Matches[4]))
+				$wave = [Math]::Max(0, [Math]::Min(14, [int]$Matches[4]))
+				if ($wave -ge 5) { $newWaves[$wave] = 1 }
 				$b[$i] = "$($Matches[1])note_type $($Matches[2]), 1, $wave"
 			}
+		}
+		if ($newWaves.Count) {
+			Say "  Note: Ch3 uses wave $((@($newWaves.Keys) | Sort-Object) -join ', '). Kit versions before 2 played waves above 4 as wave 4." 'Yellow'
 		}
 		# Velocity changes used to differ only in volume; now they're identical
 		# repeats. Drop a note_type equal to the last one, but only within straight
@@ -304,18 +319,61 @@ function ConvertMidi {
 		$blocks['Ch3'] = $kept
 	}
 
-	# Missing channels: the title header plays all four, so each needs a body.
-	$order = @('Ch1', 'Ch2', 'Ch3', 'Ch4')
-	$text = New-Object System.Collections.Generic.List[string]
-	$text.Add("; Converted from $([IO.Path]::GetFileName($Mid)) by the Red Rogue music test kit (pokemid v0.9).")
-	foreach ($ch in $order) {
-		$text.Add('')
-		if ($blocks.Contains($ch)) {
-			$text.AddRange($blocks[$ch])
-		} else {
-			$text.Add("${Label}_${ch}::")
-			$text.Add("`tsound_ret ; not in the MIDI: silent")
+	# Ch4 drums: pokemid writes Red's drum ids 1-19 (MIDI note + 1). A Crystal
+	# drum note holds a 4-bit index into the current drumkit, and the kits that
+	# hold Red's drums are kit 0 = drums 1-12 and kit 1 = drums 8-19 at index
+	# (drum - 7) (crysaudio/drumkits.asm; the donor's own RBY conversions map
+	# them this way). Invariant: at every label, call, loop, jump and return the
+	# channel is on kit 0, so the kit is right whatever the control flow does.
+	# A drum from 13-19 switches to kit 1 inside a straight run ("toggle_noise"
+	# alone turns noise off, then "toggle_noise 1" back on with kit 1), and the
+	# next boundary switches back. Drums 8-12 play in either kit. The first
+	# toggle sits before pokemid's loop label: inside the loop it would turn the
+	# noise off on every pass.
+	if ($blocks.Contains('Ch4')) {
+		$b = $blocks['Ch4']
+		$drums = New-Object System.Collections.Generic.List[string]
+		$drums.Add($b[0])
+		$drums.Add("`ttoggle_noise 0")
+		$kit = 0
+		for ($i = 1; $i -lt $b.Count; $i++) {
+			$l = $b[$i]
+			if ($kit -ne 0 -and ($l -match '^\S' -or $l -match '^\s*(sound_call|sound_loop|sound_jump|sound_ret)\b')) {
+				$drums.Add("`ttoggle_noise")
+				$drums.Add("`ttoggle_noise 0")
+				$kit = 0
+			}
+			if ($l -match '^(\s*)drum_note\s+(\d+)\s*,\s*(\d+)\s*$') {
+				$d = [int]$Matches[2]
+				if ($d -lt 1 -or $d -gt 19) { Fail "Ch4 has a drum the game doesn't have (drum $d)." ($lines -join "`r`n") }
+				$want = if ($d -le 7) { 0 } elseif ($d -ge 13) { 1 } else { $kit }
+				if ($want -ne $kit) {
+					$drums.Add("`ttoggle_noise")
+					$drums.Add("`ttoggle_noise $want")
+					$kit = $want
+				}
+				$index = if ($kit -eq 0) { $d } else { $d - 7 }
+				$drums.Add("$($Matches[1])drum_note $index, $($Matches[3])")
+				continue
+			}
+			if ($l -match '^\s*drum_note\b') { Fail "Unrecognised drum line '$l'." ($lines -join "`r`n") }
+			$drums.Add($l)
 		}
+		$blocks['Ch4'] = $drums
+	}
+
+	# Crystal song header: one row per channel the MIDI has. A missing channel
+	# is simply left out (the old engine's header needed all four).
+	$order = @('Ch1', 'Ch2', 'Ch3', 'Ch4')
+	$present = @($order | Where-Object { $blocks.Contains($_) })
+	$text = New-Object System.Collections.Generic.List[string]
+	$text.Add("; Converted from $([IO.Path]::GetFileName($Mid)) by the Red Rogue music test kit (pokemid v0.9, Crystal engine).")
+	$text.Add("${Label}::")
+	$text.Add("`tchannel_count $($present.Count)")
+	foreach ($ch in $present) { $text.Add("`tchannel $($ch.Substring(2)), ${Label}_${ch}") }
+	foreach ($ch in $present) {
+		$text.Add('')
+		$text.AddRange($blocks[$ch])
 	}
 	while ($text[$text.Count - 1] -match '^\s*$') { $text.RemoveAt($text.Count - 1) }
 	$songText = ($text -join "`n") + "`n"
@@ -326,11 +384,9 @@ function ConvertMidi {
 }
 
 if ($SelfTest) {
-	# Rebuild with the game's own title music: proves the kit's tools, objects
-	# and flags still produce the real ROM. make_music_kit.py byte-compares it.
-	$pristine = Join-Path $Src "$SongFile.orig"
-	if (-not (Test-Path -LiteralPath $pristine)) { $pristine = Join-Path $Src $SongFile }
-	$songText = [IO.File]::ReadAllText($pristine)
+	# Rebuild the untouched game: proves the kit's tools, objects and flags
+	# still produce the real ROM. make_music_kit.py byte-compares it.
+	$songText = $null
 	Say 'Self-test: building the game with its original title music.' 'Cyan'
 } else {
 	$songText = ConvertMidi
@@ -343,15 +399,30 @@ if ($SelfTest) {
 }
 
 # ---------------------------------------------------------------- 4. build
-# Restore the pristine song file every run, then overwrite it, so a failed or
-# repeated run never leaves the kit in a half-edited state.
+# The staged sources are never edited. A preview build assembles generated
+# copies instead: kit_audio.asm (audio.asm with the Music table include swapped
+# and the preview section appended), kit_music_pointers.asm (the table with the
+# title row pointing at the song) and kit_song.asm. All three are rewritten on
+# every run, so a failed or repeated run never leaves the kit half-edited.
 
-$songPath = Join-Path $Src $SongFile
-$orig = "$songPath.orig"
-if (-not (Test-Path -LiteralPath $orig)) { Copy-Item -LiteralPath $songPath -Destination $orig }
-Copy-Item -LiteralPath $orig -Destination $songPath -Force
-[IO.File]::WriteAllText($songPath, $songText)
-[IO.File]::WriteAllText((Join-Path $Out 'song.asm'), $songText)
+$asmMain = 'audio.asm'
+if ($null -ne $songText) {
+	$audioText = [IO.File]::ReadAllText((Join-Path $Src 'audio.asm'))
+	$tableInclude = 'INCLUDE "crysaudio/music_pointers_red.asm"'
+	$tableText = [IO.File]::ReadAllText((Join-Path $Src 'crysaudio\music_pointers_red.asm'))
+	$rows = ([regex]::Matches($tableText, [regex]::Escape($TitleRow) + '\b')).Count
+	if ($rows -ne 1 -or ([regex]::Matches($audioText, [regex]::Escape($tableInclude))).Count -ne 1) {
+		Fail 'The kit''s engine files are not the ones this script expects. Ask the dev team for a fresh kit.' "title rows: $rows"
+	}
+	$tableText = [regex]::Replace($tableText, [regex]::Escape($TitleRow) + '\b', "dba $Label")
+	$audioText = $audioText.Replace($tableInclude, 'INCLUDE "kit_music_pointers.asm"')
+	$audioText += "`n`nSECTION `"$PreviewSection`", ROMX`n`nINCLUDE `"kit_song.asm`"`n"
+	[IO.File]::WriteAllText((Join-Path $Src 'kit_music_pointers.asm'), $tableText)
+	[IO.File]::WriteAllText((Join-Path $Src 'kit_audio.asm'), $audioText)
+	[IO.File]::WriteAllText((Join-Path $Src 'kit_song.asm'), $songText)
+	[IO.File]::WriteAllText((Join-Path $Out 'song.asm'), $songText)
+	$asmMain = 'kit_audio.asm'
+}
 
 $flags = if ($kit -and $kit.flags) { $kit.flags } else {
 	[pscustomobject]@{
@@ -367,7 +438,7 @@ $map      = Join-Path $Out 'test.map'
 foreach ($f in @($audioObj, $rom, $map)) { if (Test-Path -LiteralPath $f) { Remove-Item -LiteralPath $f -Force } }
 
 Say 'Building the game...' 'Cyan'
-$r = Invoke-Tool (Join-Path $Engine 'rgbasm.exe') (@($flags.asm) + @('-o', $audioObj, 'audio.asm')) $Src
+$r = Invoke-Tool (Join-Path $Engine 'rgbasm.exe') (@($flags.asm) + @('-o', $audioObj, $asmMain)) $Src
 if ($r.Code -ne 0) {
 	$plain = 'Your song converted, but the game couldn''t build it.'
 	if ($r.Text -match '(?i)(note_type|vibrato|duty_cycle|pitch_slide|volume|stereo_panning|drum_note|tempo)') {
@@ -389,22 +460,15 @@ $r = Invoke-Tool (Join-Path $Engine 'rgbfix.exe') (@($flags.fix) + @($rom)) $Src
 if ($r.Code -ne 0) { Fail 'The final ROM step failed.' $r.Text }
 
 # ---------------------------------------------------------------- 5. size
-# Song bytes = from <Label>_Ch1 to the first following symbol that isn't part
-# of this song (or the section's end).
+# Song bytes = the preview section's size (header included), as the map says.
+# An import gets a section of its own too, so this is what production pays.
 
 $size = $null
-$mapLines = Get-Content -LiteralPath $map
-$start = $null
-foreach ($l in $mapLines) {
-	if ($null -eq $start) {
-		if ($l -match "^\s+\`$([0-9a-f]{4}) = ${Label}_Ch1$") { $start = [Convert]::ToInt32($Matches[1], 16) }
-		continue
+foreach ($l in (Get-Content -LiteralPath $map)) {
+	if ($l -match ('\(\$([0-9a-f]+) bytes\) \["' + [regex]::Escape($PreviewSection) + '"\]')) {
+		$size = [Convert]::ToInt32($Matches[1], 16)
+		break
 	}
-	if ($l -match '^\s+\$([0-9a-f]{4}) = (\S+)$') {
-		if ($Matches[2] -notlike "${Label}_*") { $size = [Convert]::ToInt32($Matches[1], 16) - $start; break }
-	} elseif ($l -match '^\s+(SECTION|EMPTY):\s+\$([0-9a-f]{4})') {
-		$size = [Convert]::ToInt32($Matches[2], 16) - $start; break
-	} elseif ($l -match '^\S') { break }
 }
 
 Say ''

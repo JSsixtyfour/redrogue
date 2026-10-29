@@ -85,20 +85,29 @@ def looped(fn):
     return [fn((i * LOOP_CYCLES / LOOP_LEN) % 1.0) for i in range(LOOP_LEN)]
 
 
+NUM_WAVES = 15  # crysaudio/wave_samples.asm: "only indices 0-E are valid"
+
+
 def read_waves(repo):
-    """{index: [32 nibbles]} for .wave0-.wave4 in audio/wave_samples.asm.
-    .wave5 has no data of its own (reads the SFX bytes after it, different per
-    audio bank), so convert.ps1 clamps to 0-4 and there's nothing to sample."""
-    text = open(os.path.join(repo, "audio", "wave_samples.asm")).read()
+    """{index: [32 nibbles]} for waves 0-14 in crysaudio/wave_samples.asm: one
+    uncommented `dn` row of 32 nibbles per wave (0-4 are Red's five). convert.ps1
+    clamps Ch3 to 0-14; 15 means "keep the loaded wave"."""
+    text = open(os.path.join(repo, "crysaudio", "wave_samples.asm")).read()
+    rows = re.findall(r"^\s*dn([^\n;]*)", text, re.M)
     waves = {}
-    for m in re.finditer(r"^\.wave(\d+)\s*\n((?:\s*dn[^\n]*\n)+)", text, re.M):
-        nibs = [int(x) for x in re.findall(r"\d+", "".join(re.findall(r"dn([^\n;]*)", m.group(2))))]
+    for idx, row in enumerate(rows):
+        nibs = [int(x) for x in re.findall(r"\d+", row)]
         if len(nibs) != 32:
-            sys.exit(".wave%s has %d points, expected 32" % (m.group(1), len(nibs)))
-        waves[int(m.group(1))] = nibs
-    if sorted(waves) != list(range(5)):
-        sys.exit("expected .wave0-.wave4 in wave_samples.asm, found %s" % sorted(waves))
+            sys.exit("wave %d has %d points, expected 32" % (idx, len(nibs)))
+        waves[idx] = nibs
+    if sorted(waves) != list(range(NUM_WAVES)):
+        sys.exit("expected waves 0-%d in wave_samples.asm, found %s" % (NUM_WAVES - 1, sorted(waves)))
     return waves
+
+
+def wave_preset(idx):
+    """Waves 0-4 keep kit v1's presets 4-8 (Drums stays 9); 5-14 are 10-19."""
+    return 4 + idx if idx < 5 else 5 + idx
 
 
 def sfz_looped(path, sample, keys):
@@ -115,10 +124,11 @@ def read_wav(path):
 
 
 def build_soundfont(path, waves, drums):
-    """waves {0-4: 32 nibbles}, drums [19 lists of int16]. Presets (bank 0 unless
+    """waves {0-14: 32 nibbles}, drums [19 lists of int16]. Presets (bank 0 unless
     noted): 0-3 Square 12.5/25/50/75, 4-8 Wave 0-4, 9 Drums (keys 0-18 plus the
-    GM notes in GM_DRUMS); bank 128 program 0 is the same drum kit for hosts that
-    play General MIDI percussion."""
+    GM notes in GM_DRUMS), 10-19 Wave 5-14; bank 128 program 0 is the same drum
+    kit for hosts that play General MIDI percussion. Synth previews are
+    approximate; the game preview is authoritative."""
     sf = sf2.SF2("Red Rogue Game Boy", "The four Game Boy channels as the Red Rogue music engine plays them.")
 
     def pcm(samples):
@@ -129,11 +139,11 @@ def build_soundfont(path, waves, drums):
         smp = sf.sample("sq" + name, pcm(looped(lambda p: AMP if p < duty else -AMP)), RATE, KEY_A4, (0, LOOP_LEN))
         inst = sf.instrument("Square " + label, [sf2.Zone(smp, SQUARE_KEYS[0], SQUARE_KEYS[1], loop=True)])
         sf.preset("Square " + label, 0, i, inst)
-    for idx in range(5):
+    for idx in range(NUM_WAVES):
         nibs = waves[idx]
         smp = sf.sample("wave%d" % idx, pcm(looped(lambda p: AMP * (7.5 - nibs[int(p * 32)]) / 7.5)), RATE, KEY_A4, (0, LOOP_LEN))
         inst = sf.instrument("Wave %d" % idx, [sf2.Zone(smp, WAVE_KEYS[0], WAVE_KEYS[1], loop=True)])
-        sf.preset("Wave %d" % idx, 0, 4 + idx, inst)
+        sf.preset("Wave %d" % idx, 0, wave_preset(idx), inst)
     smps = [sf.sample("drum%02d" % k, d, RATE, 60) for k, d in enumerate(drums)]
     zones = [sf2.Zone(smps[k], k, k) for k in range(19)]
     zones += [sf2.Zone(smps[k], g, g) for g, k in sorted(GM_DRUMS.items())]

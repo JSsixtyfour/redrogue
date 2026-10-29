@@ -152,8 +152,7 @@ def stage(flags, prebuilt):
         dst = os.path.join(ENGINE, "src", rel)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copy2(os.path.join(REPO, rel), dst)
-    song = os.path.join(ENGINE, "src", "audio", "music", "titlescreen.asm")
-    shutil.copy2(song, song + ".orig")
+    # convert.ps1 never edits these; a preview assembles generated kit_*.asm copies.
     log("src: %d files from the include closure" % len(closure))
 
     names = set()
@@ -210,19 +209,22 @@ def main():
 
     flags, prebuilt = make_flags()
     log("flags from make: asm=%s" % " ".join(flags["asm"]))
-    banks = audio_banks.merged([os.path.join(REPO, m) for m in ("pokered.map", "pokeblue.map", "pokeblue_debug.map")
-                                if os.path.exists(os.path.join(REPO, m))])
-    budget = audio_banks.song_budget(banks)
-    log("audio banks: %s -> IMPORT_BUDGET %d" % (", ".join("$%02X free=%d id_room=%d" % (k, v["free"], v["id_room"])
-                                                          for k, v in sorted(banks.items())), budget))
-    if budget <= 0:
-        sys.exit("no audio bank can take a new song (free bytes or song ids exhausted); see audio_banks.py")
+    maps = [os.path.join(REPO, m) for m in ("pokered.map", "pokeblue.map", "pokeblue_debug.map")]
+    if not all(os.path.exists(m) for m in maps):
+        sys.exit("need all three maps for the budget (make red blue blue_debug): %s" % maps)
+    space = audio_banks.merged(maps)
+    budget = audio_banks.song_budget(space)
+    id_room = audio_banks.MAX_SONG_ID + 1 - audio_banks.song_count(os.path.join(REPO, "constants/music_constants.asm"))
+    log("largest free ROMX gap %d B (bank $%02X), %d B free in all; %d song ids left -> IMPORT_BUDGET %d"
+        % (space["largest"], space["bank"], space["free"], id_room, budget))
+    if budget <= 0 or id_room <= 0:
+        sys.exit("no room for a new song (ROMX gap or song ids exhausted); see audio_banks.py")
 
     stage(flags, prebuilt)
     kit = {
         "kitDate": date, "buildHash": git, "rgbds": RGBDS_VERSION, "pokemid": "0.9", "mgba": MGBA_VERSION,
-        "importBudget": budget,
-        "audioBanks": {"$%02X" % k: v for k, v in sorted(banks.items())},
+        "kitSchema": 2, "engine": "crysaudio pokered-crysaudio 9753183a",
+        "importBudget": budget, "songIdRoom": id_room, "romSpace": space,
         "flags": flags,
     }
     with open(os.path.join(ENGINE, "kit.json"), "w") as f:
@@ -232,7 +234,6 @@ def main():
     os.makedirs(WORK)
     test_midis.write_all(WORK)
     out = os.path.join(ENGINE, "output")
-    song = os.path.join(ENGINE, "src", "audio", "music", "titlescreen.asm")
 
     # 1. The pipeline itself: the game's own title music through the kit's
     #    tools, objects and flags must give pokered.gbc exactly.
@@ -263,11 +264,14 @@ def main():
         convert(os.path.join(WORK, mid), "-NoBuild", "-OutAsm", winpath(asm))
         text = open(asm).read()
         for want in wants:
-            if want not in text.replace("Music_TitleScreen_", ""):
+            if want not in text.replace("Music_KitPreview_", ""):
                 sys.exit("%s: expected %r in the converted song, got:\n%s" % (mid, want, text))
 
-    # Leave the kit clean: pristine song, empty output.
-    shutil.copy2(song + ".orig", song)
+    # Leave the kit clean: no generated preview sources, empty output.
+    for name in ("kit_audio.asm", "kit_music_pointers.asm", "kit_song.asm"):
+        path = os.path.join(ENGINE, "src", name)
+        if os.path.exists(path):
+            os.remove(path)
     shutil.rmtree(out)
     os.makedirs(out)
     if not os.path.exists(os.path.join(KIT, "READ ME FIRST.txt")):
