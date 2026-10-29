@@ -16,10 +16,12 @@ class NewGameConsentTest(unittest.TestCase):
         finally:
             h.close()
 
-    def prompt(self, image, debug=False):
+    def prompt(self, image, debug=False, disposable=False):
         boot = ColdBoot(image)
         self.addCleanup(boot.close)
         h = boot.h
+        if disposable:
+            h.enable_disposable_sram_consent()
         prompt = h.hook_flag("ConfirmNewGameOverwrite.prompt")
         menu = h.hook_flag("DisplayTwoOptionMenu.storeCurrentMenuItem")
         self.entered = []
@@ -120,6 +122,37 @@ class NewGameConsentTest(unittest.TestCase):
         reset = ColdBoot(self.entered[0])
         self.addCleanup(reset.close)
         self.assertEqual(reset.to_menu(), 1)
+
+    def test_explicit_disposable_policy_uses_existing_consent_lifecycle(self):
+        from sram_fuzz import fill_bytes
+        from test_save_header import SRAM_LABELS
+        damaged = bytearray(self.saved)
+        bank, address = SRAM_LABELS["sPlayerName"]
+        offset = bank * 8192 + address - 0xA000
+        damaged[offset:offset + 11] = b"\xff" * 11
+        for debug in (False, 2):
+            for image in (self.saved, bytes(damaged), fill_bytes("random1", 1), fill_bytes("random2", 7)):
+                with self.subTest(debug=debug, header=image[HEADER_OFFSET:HEADER_OFFSET + 8].hex()):
+                    boot = self.prompt(image, debug=debug, disposable=True)
+                    h = boot.h
+                    for _ in range(150):
+                        if self.entered:
+                            break
+                        if not h.step_disposable_sram_consent():
+                            h.tick(1)
+                    self.assertTrue(self.entered)
+                    kinds = [event["kind"] for event in h.disposable_sram_consent["events"]]
+                    self.assertEqual(kinds.count("consent_accepted"), 1)
+                    self.assertIn("initialization_entered", kinds)
+                    self.doCleanups()
+
+    def test_random_header_cancellation_preserves_sram_on_both_boot_paths(self):
+        from sram_fuzz import fill_bytes
+        for debug in (False, 2):
+            for button in ("a", "b"):
+                with self.subTest(debug=debug, button=button):
+                    self.cancel(fill_bytes("random1", 1), button=button, debug=debug)
+                    self.doCleanups()
 
 
 if __name__ == "__main__":

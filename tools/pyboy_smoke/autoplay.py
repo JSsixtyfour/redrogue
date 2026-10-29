@@ -1191,6 +1191,8 @@ class AutoplayAgent:
             self.cgb_wram_wait_frames += 1
             self.h.tick(1)
             return
+        if self.h.step_disposable_sram_consent(self.press):
+            return
         self.track_battles()
         current_map = self.h.read8("hCurMap")
         if current_map != self.current_map:
@@ -1858,6 +1860,7 @@ def boot(harness: RedRogueHarness, seed: int, battle_count: int = 1,
         if not seeded["done"]:
             seeded["done"] = True
             harness.seed_rng([seed >> 24, seed >> 16, seed >> 8, seed])
+            harness.startup_comparison_frame = harness.pyboy.frame_count
 
     harness.register_hook("SelectAndPatchLobbyExit", seed_once)
     harness.boot_to_lobby(battle_count=battle_count)
@@ -1868,16 +1871,18 @@ def boot(harness: RedRogueHarness, seed: int, battle_count: int = 1,
 def boot_new_game(harness: RedRogueHarness, seed: int, difficulty: str | None = None,
                   ironman: bool = False, profile: Profile | None = None) -> None:
     """Power on with no debug menu: the agent itself goes through the title
-    screen, NEW GAME, naming and the intro tour. The RNG is seeded when
-    StartNewGame runs, so the seed decides the starters and everything after."""
+    screen, NEW GAME, naming and the intro tour. Seed at OakSpeech, after
+    discard consent, before initialization. Startup paths remain observable
+    separately from the seeded post-consent comparison boundary."""
     seeded = {"done": False}
 
     def seed_once(_context) -> None:
         if not seeded["done"]:
             seeded["done"] = True
             harness.seed_rng([seed >> 24, seed >> 16, seed >> 8, seed])
+            harness.startup_comparison_frame = harness.pyboy.frame_count
 
-    harness.register_hook("StartNewGame", seed_once)
+    harness.register_hook("OakSpeech", seed_once)
     if difficulty is not None or ironman or profile is not None:
         # PrepareOakSpeech re-runs InitOptions (NORMAL) unless the OPTION
         # screen was opened first, so set it at the first overworld frame:
@@ -1920,6 +1925,7 @@ def play(
     cgb_mode: bool = False,
     player: str = "basic",
     ai_telemetry: bool = False,
+    discard_test_sram: bool = False,
 ) -> dict[str, object]:
     """Boot (Debug 2 lobby, or a real new game), play and return the report.
     A failure (see FAILURES) also writes a screenshot and state dump under
@@ -1964,6 +1970,10 @@ def play(
     if ram_path is not None:
         ram_path.unlink()
     try:
+        if discard_test_sram:
+            if sram is None:
+                raise ValueError("discard consent requires an explicit disposable test SRAM image")
+            harness.enable_disposable_sram_consent()
         ironman = bool(profile and profile.ironman)
         if new_game:
             boot_new_game(harness, seed, difficulty, ironman, profile)
@@ -1989,6 +1999,11 @@ def play(
             error = traceback.format_exc()
         report = agent.report
         data = report.to_json()
+        if discard_test_sram:
+            data["startup"] = {"policy": "discard_disposable_test_sram",
+                               "comparison_frame": getattr(harness, "startup_comparison_frame", None),
+                               "rng_boundary": "OakSpeech" if new_game else "SelectAndPatchLobbyExit",
+                               "events": harness.disposable_sram_consent["events"]}
         if error:
             data["traceback"] = error
         data["anomalies"] = agent.checks.anomalies

@@ -1053,6 +1053,57 @@ class RedRogueHarness:
         # needs no extra ticking that would advance past what they measure.
         self.park_before_hijack()
 
+    def enable_disposable_sram_consent(self) -> None:
+        """Explicit test-only policy, scoped to ConfirmNewGameOverwrite.
+
+        Call only for an SRAM image owned by the test. Ordinary harness boots
+        and cancellation tests retain the game's default NO protection.
+        Choreography follows test_new_game_consent: advance warning, wait for
+        the two-option menu, UP from default NO, then A. Never writes a cursor.
+        """
+        state = {"active": False, "menu_frame": None, "events": []}
+        self.disposable_sram_consent = state
+
+        def observe(kind):
+            def callback(_):
+                if kind in ("consent_accepted", "initialization_entered", "gameplay_ready") and any(
+                        event["kind"] == kind for event in state["events"]):
+                    return
+                state["events"].append({"kind": kind, "frame": self.pyboy.frame_count})
+                if kind == "discard_prompt":
+                    state.update(active=True, menu_frame=None, started=self.pyboy.frame_count)
+                elif kind in ("consent_accepted", "initialization_entered"):
+                    state["active"] = False
+            return callback
+
+        for label, kind in (("StartNewGame", "new_game_attempted"),
+                            ("ConfirmNewGameOverwrite.prompt", "discard_prompt"),
+                            ("ConfirmNewGameOverwrite.invalidate", "consent_accepted"),
+                            ("OakSpeech", "initialization_entered"),
+                            ("JoypadOverworld", "gameplay_ready")):
+            self.register_hook(label, observe(kind))
+
+        def menu_ready(_):
+            if state["active"] and state["menu_frame"] is None:
+                state["menu_frame"] = self.pyboy.frame_count
+        self.register_hook("DisplayTwoOptionMenu.storeCurrentMenuItem", menu_ready)
+
+    def step_disposable_sram_consent(self, press=None) -> bool:
+        state = getattr(self, "disposable_sram_consent", None)
+        if not state or not state["active"]:
+            return False
+        now = self.pyboy.frame_count
+        if now - state["started"] > 600:
+            raise AssertionError("disposable SRAM discard consent did not complete")
+        press = press or self.tap
+        if state["menu_frame"] is None:
+            press("a")
+        elif now - state["menu_frame"] < 20:
+            self.tick(1)
+        else:
+            press("up" if self.read8("hCurrentMenuItem") == 1 else "a")
+        return True
+
     def boot_to_lobby(
         self,
         battle_count: int = 11,
@@ -1116,11 +1167,14 @@ class RedRogueHarness:
         self.tap("down")
         self.tap("down")
         self.tap("a")
-        self.wait_until(
-            lambda: debug2_drawn["count"] >= 1,
-            "the Debug 2 config screen",
-            600,
-        )
+        config_deadline = self.pyboy.frame_count + 600
+        while self.pyboy.frame_count < config_deadline:
+            if debug2_drawn["count"] >= 1:
+                break
+            if not self.step_disposable_sram_consent():
+                self.tick(1)
+        else:
+            raise AssertionError("Timed out waiting for the Debug 2 config screen")
 
         # STATUS packs into wDebug2ForcedDoor1's top two bits (DBG2_STATUS_MASK
         # in engine/debug/debug2_config.asm); encounter_kind is 1-based to match

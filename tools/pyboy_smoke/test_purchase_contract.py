@@ -2,11 +2,20 @@
 import copy
 import unittest
 
-from purchase_scenario import contract
+from purchase_scenario import contract, observed_findings
 from run_campaign import classify
 
 
 class PurchaseContractTest(unittest.TestCase):
+    def test_control_preserves_real_faults_including_same_field(self):
+        before = {"money": 1000, "items": [0], "party": [1]}
+        after = {"money": 799, "items": [1], "party": [2]}
+        findings = observed_findings(before, after, control=True, bought=True,
+                                     potion_slot=0, paid_calls=1, give_calls=1)
+        self.assertEqual([(finding["field"], finding["evidence_origin"]) for finding in findings],
+                         [("money", "actual_ROM_fixture"), ("party", "actual_ROM_fixture"),
+                          ("money", "controlled_detector_input")])
+
     def test_expected_purchase_and_cancel(self):
         before = {"money": 200, "items": [0, 5], "party": [1, 2, 3]}
         after = {"money": 0, "items": [1, 5], "party": [1, 2, 3]}

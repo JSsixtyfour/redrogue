@@ -134,21 +134,36 @@ def settle(h: RedRogueHarness) -> bool:
         h.unregister_hook("JoypadOverworld", poll)
 
 
-def save_now(h: RedRogueHarness) -> dict[str, bytes]:
+def timer_observation(h: RedRogueHarness, boundary: str) -> dict:
+    return {"boundary": boundary, "frame": h.pyboy.frame_count,
+            "clock": h.read_bytes("wRunTimerState", 5),
+            "timer_enabled": bool(h.read8("wStatusFlags6") & 1)}
+
+
+def save_now(h: RedRogueHarness, *, timer_observations=None) -> dict[str, bytes]:
     """Run SaveGameData; return the saved regions as they were when it began
     (call_routine lets the game run on after it returns, so reading WRAM
     afterwards would compare against bytes the save never wrote)."""
     image: dict[str, bytes] = {}
+    copy_boundary = "SaveGameData.copyMain" if "SaveGameData.copyMain" in h.symbols._symbols else "CopyMainSaveData"
 
     def capture(_context) -> None:
         if not image:
             image.update(region_image(h))
+            if timer_observations is not None:
+                timer_observations.append(timer_observation(h, "SaveGameData.entry"))
+
+    def copying(_context) -> None:
+        if timer_observations is not None:
+            timer_observations.append(timer_observation(h, copy_boundary))
 
     h.register_hook("SaveGameData", capture)
+    h.register_hook(copy_boundary, copying)
     try:
         h.call_routine("SaveGameData", limit=60_000)
     finally:
         h.unregister_hook("SaveGameData", capture)
+        h.unregister_hook(copy_boundary, copying)
     return image
 
 
@@ -168,20 +183,29 @@ class Reboot:
         self.status: int | None = None
         self.loaded: dict[str, bytes] | None = None
         self.overworld = False
+        self.timer_observations = []
 
     def load(self) -> None:
         h = self.h
         _, done = h.symbols.get("TryLoadSaveFile.done")
+        active_ticks = {"count": 0}
+
+        def timer_tick(_context) -> None:
+            if h.read8("wRunTimerState") == 1:
+                active_ticks["count"] += 1
 
         def checked(_context) -> None:
             if self.status is None:
                 self.status = h.pyboy.register_file.A  # 2: loaded; 1: refused or none
                 self.loaded = region_image(h)
+                self.timer_observations.append({**timer_observation(h, "TryLoadSaveFile.done"),
+                                                "active_run_timer_ticks": active_ticks["count"]})
 
         def polled(_context) -> None:
             self.overworld = True
 
         h.register_hook("TryLoadSaveFile.done", checked)
+        h.register_hook("RunTimerTick", timer_tick)
         h.register_hook("JoypadOverworld", polled)
         for frame in range(BOOT_FRAMES + CONTINUE_FRAMES):
             h.tick(1)
@@ -221,12 +245,19 @@ def round_trip(h: RedRogueHarness, snapshot, driver: autoplay_branch.BranchDrive
     if not settle(h):
         return {"snapshot": snapshot.name, "status": None, "overworld": False,
                 "skipped": "no idle overworld frame to save at"}
-    saved = save_now(h)
+    timer_save = []
+    saved = save_now(h, timer_observations=timer_save)
     sram = sram_image(h)
+    bank, address = h.symbols.get("sMainData")
+    timer_offset = bank * SRAM_BANK_SIZE + address - 0xA000 + h.address("wRunTimerState") - h.address("wMainDataStart")
     boot = Reboot(sram, cgb_mode=cgb_mode)
     try:
         boot.load()
         result = {"snapshot": snapshot.name, "status": boot.status, "overworld": boot.overworld}
+        result["run_timer_boundaries"] = {"save": timer_save,
+                                          "published_sram_clock": list(sram[timer_offset:timer_offset + 5]),
+                                          "load": boot.timer_observations,
+                                          "comparison_policy": "unchanged; raw timing evidence only"}
         if boot.status != 2:
             result["problem"] = "a fresh save did not load"
             return result

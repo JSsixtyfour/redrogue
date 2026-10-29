@@ -121,7 +121,8 @@ def _worker(seed: int, options: dict[str, object], results) -> None:
                             "report": None}))
 
 
-def run_all(seeds: list[int], options: dict[str, object], jobs: int, timeout: float):
+def run_all(seeds: list[int], options: dict[str, object], jobs: int, timeout: float,
+            *, worker=None, timeout_row=None):
     """Yield one row per seed as each finishes, each seed in its own process
     so a hung emulator can be killed."""
     results = multiprocessing.Queue()
@@ -130,7 +131,7 @@ def run_all(seeds: list[int], options: dict[str, object], jobs: int, timeout: fl
     while waiting or running:
         while waiting and len(running) < jobs:
             seed = waiting.pop(0)
-            process = multiprocessing.Process(target=_worker, args=(seed, options, results))
+            process = multiprocessing.Process(target=worker or _worker, args=(seed, options, results))
             process.start()
             running[seed] = (process, time.monotonic())
         try:
@@ -142,7 +143,7 @@ def run_all(seeds: list[int], options: dict[str, object], jobs: int, timeout: fl
                     process.kill()
                     process.join()
                     del running[seed]
-                    yield hung_row(seed, timeout, options)
+                    yield (timeout_row or hung_row)(seed, timeout, options)
             continue
         running.pop(seed)[0].join()
         yield row

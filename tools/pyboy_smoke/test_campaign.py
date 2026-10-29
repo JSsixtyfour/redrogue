@@ -2,13 +2,143 @@
 import json
 from pathlib import Path
 import tempfile
+import queue
+import time
 import unittest
 from unittest.mock import patch
 
 import run_campaign as campaign
 
 
+def bounded_fill_probe(task_id, options, results):
+    if task_id == 1:
+        time.sleep(20)
+    else:
+        results.put((task_id, {"task": task_id, "execution": "completed"}))
+
+
+def bounded_fill_timeout(task_id, timeout, options):
+    return {"task": task_id, "execution": "budget_exhausted"}
+
+
 class CampaignTest(unittest.TestCase):
+    def test_archived_build_and_source_must_remain_available(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "build").mkdir()
+            (root / "build/game.gbc").write_bytes(b"rom")
+            (root / "source.tar.gz").write_bytes(b"source")
+            manifest = {"identity": {"builds": {"game.gbc": campaign.digest(root / "build/game.gbc")}},
+                        "archive_hashes": {"source.tar.gz": campaign.digest(root / "source.tar.gz")}}
+            campaign.validate_campaign_archive(root, manifest)
+            (root / "source.tar.gz").write_bytes(b"changed")
+            with self.assertRaisesRegex(ValueError, "archive missing or changed"):
+                campaign.validate_campaign_archive(root, manifest)
+            (root / "build/game.gbc").unlink()
+            with self.assertRaisesRegex(ValueError, "build missing or changed"):
+                campaign.validate_campaign_archive(root, manifest)
+
+    def test_fill_scheduler_keeps_successful_sibling_when_another_times_out(self):
+        from run_autoplay import run_all
+        rows = list(run_all([0, 1], {}, 2, 0.1, worker=bounded_fill_probe, timeout_row=bounded_fill_timeout))
+        self.assertEqual({row["task"]: row["execution"] for row in rows},
+                         {0: "completed", 1: "budget_exhausted"})
+
+    def test_fill_worker_retains_input_and_error_record(self):
+        import sram_fuzz
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            image = directory / "input.sram"
+            image.write_bytes(bytes(32768))
+            task = {"seed": 1, "fill": "zero", "repetition": 0, "directory": str(directory),
+                    "input_sha256": campaign.digest(image)}
+            results = queue.Queue()
+            with patch.object(sram_fuzz.autoplay, "ARTIFACTS", directory), \
+                    patch.object(sram_fuzz.autoplay, "play", side_effect=RuntimeError("injected boot failure")):
+                sram_fuzz.fill_worker(0, {"tasks": [task], "play": {}}, results)
+            record = json.loads((directory / "record.json").read_text())
+            self.assertEqual(record["execution"], "error")
+            self.assertIsNone(record["equivalent"])
+            self.assertIn("injected boot failure", record["detail"])
+            self.assertEqual(campaign.digest(image), task["input_sha256"])
+
+    def test_negative_control_matches_only_exact_expected_findings(self):
+        allowed = {"check": "mart_transaction", "version": 1, "field": "money",
+                   "evidence_origin": "controlled_detector_input"}
+        case = {"expected_findings": [allowed]}
+        summary = {"runs": [{"outcome": "completed", "contract_findings": [allowed]}]}
+        self.assertTrue(campaign.control_matches(case, summary, "completed", 1, {}))
+        for findings in ([], [allowed, allowed], [allowed, {**allowed, "field": "party",
+                           "evidence_origin": "actual_ROM_fixture"}], [{**allowed, "version": 2}]):
+            with self.subTest(findings=findings):
+                bad = {"runs": [{"outcome": "completed", "contract_findings": findings}]}
+                self.assertFalse(campaign.control_matches(case, bad, "completed", 1, {}))
+        self.assertFalse(campaign.control_matches(case, summary, "budget_exhausted", 1, {}))
+        self.assertFalse(campaign.control_matches(case, summary, "completed", 7, {}))
+        self.assertFalse(campaign.control_matches(case, summary, "completed", 1, {"stages": {}}))
+        summary["runs"][0]["anomalies"] = ["unrelated"]
+        self.assertFalse(campaign.control_matches(case, summary, "completed", 1, {}))
+
+    def test_invalid_referenced_evidence_cannot_bypass_quotas(self):
+        for payload in (None, "not json", "[]", '{"save_checks": []}',
+                        '{"save_checks": {"round_trips": [3]}}'):
+            with self.subTest(payload=payload), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                runner = root / "worker.py"
+                runner.write_text(
+                    "import json,os\nfrom pathlib import Path\n"
+                    "p=Path(os.environ['REDROGUE_AUTOPLAY_ARTIFACTS'])\n"
+                    f"payload={payload!r}\n"
+                    "if payload is not None: (p/'report.json').write_text(payload)\n"
+                    "(p/'autoplay_summary.json').write_text(json.dumps({'runs': ["
+                    "{'seed': 1, 'outcome': 'completed', 'stages_cleared': 1},"
+                    "{'seed': 2, 'outcome': 'completed', 'report': str(p/'report.json')}]}))\n")
+                with patch.object(campaign, "RUNNER", runner):
+                    result = campaign.execute_case({"id": "broken", "args": ["--seeds", "1,2"],
+                        "required_exposure": {"stages": 1, "save_round_trips": 1}}, root / "case", 10)
+                self.assertEqual(result["verdict"], "harness_error")
+                self.assertEqual(result["achieved_exposure"], {})
+                self.assertEqual(result["missing_exposure"]["stages"]["status"], "unknown")
+
+    def test_invalid_summary_schema_and_count_types(self):
+        for runs in (None, {}, [None], [{"stages_cleared": "1"}],
+                     [{"sram_fills": True}], [{"stages_cleared": -1}],
+                     [{"run_records": 1}]):
+            with self.subTest(runs=runs), self.assertRaises((ValueError, TypeError)):
+                campaign.achieved_exposure({"runs": runs})
+
+    def test_resume_checks_each_required_dependency_without_rerunning(self):
+        for name in ("report.json", "case.json", "initial.state", "inputs.json", "build_identity.json"):
+            for action in ("delete", "tamper"):
+                with self.subTest(name=name, action=action), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    runner = root / "worker.py"
+                    runner.write_text(
+                        "import json,os\nfrom pathlib import Path\n"
+                        "p=Path(os.environ['REDROGUE_AUTOPLAY_ARTIFACTS'])\n"
+                        "for name in ('report.json','case.json','inputs.json','build_identity.json'): "
+                        "(p/name).write_text('{}')\n"
+                        "(p/'initial.state').write_bytes(b'replay')\n"
+                        "(p/'autoplay_summary.json').write_text(json.dumps({'runs': ["
+                        "{'seed':1, 'outcome':'completed', 'report':str(p/'report.json')}]}))\n")
+                    config = root / "config.json"
+                    config.write_text(json.dumps({"cases": [{"id": "one", "args": ["--seeds", "1"]}]}))
+                    argv = [str(config), "--output", str(root / "campaign")]
+                    with patch.object(campaign, "RUNNER", runner), \
+                            patch.object(campaign, "source_identity", return_value={"files": {}}), \
+                            patch.object(campaign, "build_identity", return_value={}), \
+                            patch.object(campaign.subprocess, "check_output", return_value=b""):
+                        self.assertEqual(campaign.main(argv), 0)
+                        result_path = root / "campaign/one/result.json"
+                        original = json.loads(result_path.read_text())
+                        target = Path(original["attempt"]) / "artifacts" / name
+                        target.unlink() if action == "delete" else target.write_bytes(b'tampered')
+                        self.assertEqual(campaign.main(argv), 1)
+                        result = json.loads(result_path.read_text())
+                        self.assertEqual(result["verdict"], "harness_error")
+                        self.assertEqual(result["original_verdict"], "no_issue_detected")
+                        self.assertEqual(len(list((root / "campaign/one").glob("attempt-*"))), 1)
+
     def test_timeout_and_missing_results_cannot_pass(self):
         clean = {"runs": [{"outcome": "completed"}]}
         self.assertEqual(campaign.classify(0, clean, "budget_exhausted"), "incomplete")
@@ -69,7 +199,8 @@ class CampaignTest(unittest.TestCase):
             argv = [str(config), "--output", str(root / "campaign")]
             with patch.object(campaign, "RUNNER", runner), \
                     patch.object(campaign, "source_identity", return_value={"files": {}}), \
-                    patch.object(campaign, "build_identity", return_value={}):
+                    patch.object(campaign, "build_identity", return_value={}), \
+                    patch.object(campaign.subprocess, "check_output", return_value=b""):
                 self.assertEqual(campaign.main(argv), 0)
                 result_path = root / "campaign/one/result.json"
                 first = result_path.read_bytes()
@@ -103,10 +234,22 @@ class CampaignTest(unittest.TestCase):
             self.assertEqual(counts["completed_runs"], 2)
 
     def test_sram_normalization_preserves_findings_and_exposure(self):
+        tasks = [{"seed": seed, "fill": "ff", "repetition": 0} for seed in (1, 2)]
         normalized = campaign.normalize_summary({"scenario": "sram"}, {
-            "seeds": [1, 2], "fills": ["ff"], "divergences": [{"seed": 2, "fill": "ff"}]})
-        self.assertEqual(campaign.achieved_exposure(normalized)["sram_fills"], 2)
+            "seeds": [1, 2], "fills": ["ff"], "divergences": [{"seed": 2, "fill": "ff"}],
+            "expected_fills": tasks, "records": [dict(task, execution="completed", equivalent=task["seed"] == 1)
+                                                 for task in tasks]})
+        self.assertEqual(campaign.achieved_exposure(normalized)["sram_fills"], 1)
         self.assertEqual(campaign.classify(1, normalized, "completed"), "suspected_issue")
+
+    def test_partial_sram_records_never_fabricate_completion(self):
+        task = {"seed": 1, "fill": "random1", "repetition": 3}
+        for records in ([], [dict(task, execution="error", equivalent=None)],
+                        [dict(task, execution="completed", equivalent=None)]):
+            summary = campaign.normalize_summary({"scenario": "sram"}, {
+                "seeds": [1], "divergences": [], "expected_fills": [task], "records": records})
+            self.assertEqual(campaign.classify(0, summary, "completed"), "incomplete")
+            self.assertEqual(campaign.achieved_exposure(summary)["sram_fills"], 0)
 
     def test_missing_required_exposure_cannot_pass(self):
         with tempfile.TemporaryDirectory() as tmp:

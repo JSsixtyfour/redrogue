@@ -183,6 +183,18 @@ def act(h, inputs, button=None, hold=2, after=6):
     h.tick(after, render=True)
 
 
+def observed_findings(before, actual_after, *, control=False, **kwargs):
+    findings = [{**finding, "evidence_origin": "actual_ROM_fixture"}
+                for finding in contract(before, actual_after, **kwargs)]
+    if control:
+        # Preserve actual-ROM faults independently, even faults in the same
+        # money field as the deliberate detector-input mutation.
+        findings += [{**finding, "evidence_origin": "controlled_detector_input"}
+                     for finding in contract(before, controlled_observation(actual_after, True), **kwargs)
+                     if finding["field"] == "money"]
+    return findings
+
+
 def run_one(seed, name, directory, *, cgb=False, control=False):
     directory.mkdir(parents=True, exist_ok=False)
     h = RedRogueHarness(autoplay.ROOT, directory, cgb_mode=cgb)
@@ -226,10 +238,9 @@ def run_one(seed, name, directory, *, cgb=False, control=False):
             data["detail"] = "scenario did not reach its transaction exit and normal overworld input"
         else:
             data["execution"] = "completed"
-            data["findings"] = contract(data["before"], data["after"], bought=name in ("success", "exact_funds"),
+            data["findings"] = observed_findings(data["before"], actual_after, control=control,
+                                        bought=name in ("success", "exact_funds"),
                                         potion_slot=slot, paid_calls=obs.paid, give_calls=obs.given)
-            for finding in data["findings"]:
-                finding["evidence_origin"] = "controlled_detector_input" if control else "actual_ROM_fixture"
             data["verdict"] = "contract_violation" if data["findings"] else "no_issue_detected"
         if h.hook_errors:
             data.update(execution="detector_error", verdict="incomplete", detail=h.hook_errors)
@@ -263,12 +274,11 @@ def replay(path, output):
             if h.pyboy.frame_count != input_record["frame"] + frame_offset:
                 raise ValueError(f"replay frame divergence: recorded={input_record['frame']}, loaded={h.pyboy.frame_count}")
             act(h, [], input_record["button"], input_record["hold"], input_record["after"])
-        after = controlled_observation(snapshot(h), bool(data.get("detector_input_control")))
-        findings = contract(before, after, bought=data["scenario"] in ("success", "exact_funds"),
+        actual_after = snapshot(h)
+        after = controlled_observation(actual_after, bool(data.get("detector_input_control")))
+        findings = observed_findings(before, actual_after, control=bool(data.get("detector_input_control")),
+                            bought=data["scenario"] in ("success", "exact_funds"),
                             potion_slot=data["potion_slot"], paid_calls=obs.paid, give_calls=obs.given)
-        for finding in findings:
-            if any("evidence_origin" in old for old in data["findings"]):
-                finding["evidence_origin"] = "controlled_detector_input" if data.get("detector_input_control") else "actual_ROM_fixture"
         events = [{**event, "frame": event["frame"] - frame_offset} for event in obs.events]
         result = {"same_state": before == data["before"] and after == data["after"],
                   "same_events": events == data["events"], "host_frame_offset": frame_offset,
