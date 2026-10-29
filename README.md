@@ -12,10 +12,10 @@ Pokemon & Items are awarded based on a rarity system
 - Master Ball - Purple - Very Rare and highest value
 
 ## Recommended Playing Methods
-- Windows: BGB https://bgb.bircd.org/
-- Apple/iOS: SameBoy https://sameboy.github.io/downloads/
-- Android: Pizza Boy C https://play.google.com/store/apps/details?id=it.dbtecno.pizzaboy
-- Real Hardware: Everdrive https://krikzz.com/
+- Windows: [BGB](https://bgb.bircd.org/)
+- Apple/iOS: [SameBoy](https://sameboy.github.io/downloads/)
+- Android: [Lemuroid](https://play.google.com/store/apps/details?id=it.dbtecno.pizzaboy)
+- Real Hardware: [Everdrive](https://krikzz.com/)
   - Pokemon Red Rogue works on Game Boy, Super Game Boy, and Game Boy Color. However, for the best playing experience, it is recommend that you play on Game Boy Color. Otherwise, various features will be excluded from the game and you may experience some minor slowdown.
 
 ## Features
@@ -119,7 +119,7 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
 - Josh Brody
 - MayRai
 ## Source Mod Credits
-### Shin Pokemon Red
+### [Shin Pokemon Red](https://github.com/jojobear13/shinpokered)
 #### Creators:
 - jojobear13 - Developer
      - Enhanced Colors
@@ -137,7 +137,7 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
      - M. Gene/M. Tome
      - Zero Delay Text
      - and much more
-### Credits For Pokemon Yume:
+### Credits For [Pokemon Yume](https://github.com/PokefanMarcel/yumepokered):
 #### Creator:
 - PokefanMarcel - Developer
    - Bill's PC grid
@@ -150,7 +150,7 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
    - EXP Bar
    - AI Work
    - and much more
-### Credits For Pokemon Extreme Yellow:
+### Credits For [Pokemon Extreme Yellow](https://github.com/RainbowMetalPigeon/ExtremeYellow):
 #### Creator:
 - RainbowMetalPigeon
    - mid-battle evolution
@@ -161,7 +161,7 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
 #### Programmer:  
 - Porygondolier
    - mid-battle evolution
-### Credits For Kanto Expansion Pak:
+### Credits For [Kanto Expansion Pak](https://github.com/MementoMartha/kep-hack):
 #### Creator:
 - MementoMartha
    - Post GSC Species Data
@@ -169,23 +169,23 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
 #### Sprite Artist
 - Albatross
    - Sprites for Various Regional Forms, Eeveelutions, and other Pokemon
-### Credits For Red++:
+### Credits For [Red++](https://github.com/JustRegularLuna/rpp-backup):
 #### Creator:
 - JustRegularLuna
    - Johto Species Data
    - Sprites for Various Regional Forms, Eeveelutions, and other Pokemon
-### Credits For Polished Crystal:
+### Credits For [Polished Crystal](https://github.com/rangi42/polishedcrystal):
 #### Creator:
 - Rangi
    - Multiplication & Division Routine
-### Credits For pureRGB:
+### Credits For [pureRGB](https://github.com/Vortyne/pureRGB):
 #### Creator:
 - Vortyne - Developer
    - HBlank tile copying
    - map-redraw speedups
    - AI Heuristics
    - assorted fixes
-### Credits For Yellow Legacy:
+### Credits For [Yellow Legacy](https://github.com/cRz-Shadows/Pokemon_Yellow_Legacy):
 #### Creators:
 - TheSmithPlays - Developer
 - cRz Shadows - Developer
