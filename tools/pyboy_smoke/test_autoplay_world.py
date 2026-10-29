@@ -4,8 +4,32 @@ No ROM: synthetic grids, plus the block-to-step decoding on hand-built
 wOverworldMap and blockset bytes.
 """
 import unittest
+from types import SimpleNamespace
 
 import autoplay_world as world
+
+
+class SpinnerCacheLifecycleTest(unittest.TestCase):
+    def test_warp_retires_layout_and_same_map_id_accepts_new_table(self):
+        import autoplay
+        agent = object.__new__(autoplay.AutoplayAgent)
+        agent.h = SimpleNamespace(
+            read8=lambda name: {"hCurMap": 243, "hLoadedROMBank": 47}[name],
+            pyboy=SimpleNamespace(register_file=SimpleNamespace(HL=0x7bec, B=3, C=4)))
+        agent.position = lambda: (30, 29)
+        agent.warps_taken = set()
+        agent.arrow_table = (243, 47, 0x7000, 2, 2)
+        agent._arrows = (agent.arrow_table, {(30, 28): (33, 28)})
+        agent._on_warp(None)
+        self.assertIsNone(agent.arrow_table)
+        self.assertEqual(agent._arrows, (None, {}))
+        self.assertIn((243, 30, 29), agent.warps_taken)
+        agent._on_arrow_table(None)
+        self.assertEqual(agent.arrow_table, (243, 47, 0x7bec, 26, 26))
+        # Recursive decoder hooks must still retain the first complete table.
+        agent.h.pyboy.register_file.HL += 6
+        agent._on_arrow_table(None)
+        self.assertEqual(agent.arrow_table[2], 0x7bec)
 
 WALL, FLOOR, LEDGE, STAND, COUNTER = 0x01, 0x02, 0x37, 0x2C, 0x03
 

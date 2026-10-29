@@ -813,6 +813,10 @@ class AutoplayAgent:
         # Still on the old map, standing on the warp being taken.
         self.warping = True
         self.warps_taken.add((self.h.read8("hCurMap"), *self.position()))
+        # Procedural rooms can reuse a map ID with a new spinner layout.
+        # Retire the old table before the destination script supplies its own.
+        self.arrow_table = None
+        self._arrows = (None, {})
 
     def _on_enter_map(self, _context) -> None:
         # Right after LoadMapData: the warp-in step, before a scripted walk-in
