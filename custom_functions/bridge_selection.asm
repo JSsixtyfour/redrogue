@@ -129,6 +129,9 @@ BridgePickTwoRooms:
 	cp 2
 	jr nc, .haveTwo
 	call BridgeResetOfferedMask
+	; Fresh-run state for every room, or a room visited earlier this circuit
+	; comes back with its story flags set (Endless only; custom_functions/endless.asm).
+	farcall RecycleBridgePool
 .haveTwo
 IF DEF(_DEBUG)
 	ld hl, wDebug2ForcedDoor1

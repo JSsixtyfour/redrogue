@@ -134,7 +134,7 @@ def run_fill(seed: int, name: str, options: dict[str, object]) -> tuple[int, str
     return seed, name, play_trace(seed, fill_bytes(name, seed), options)
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Find reads of uninitialised save RAM.")
     parser.add_argument("--seeds", default="1-4")
     parser.add_argument("--fills", type=int, default=3, help="random fills per seed, besides zero and $FF")
@@ -145,6 +145,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-frames", type=int, default=400_000)
     parser.add_argument("--bisect", action="store_true", help="narrow each divergence down to SRAM bytes")
     parser.add_argument("--jobs", type=int, default=4)
+    parser.set_defaults(timeout=120)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
     args = parser.parse_args(argv)
 
     options = {"new_game": args.new_game, "runs": args.runs, "stages": args.stages,

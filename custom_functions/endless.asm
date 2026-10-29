@@ -281,3 +281,217 @@ EndlessSeedGymHistory:
 EndlessGymPool:
 	gym_leader_pool_rows
 ASSERT @ - EndlessGymPool == NUM_GYM_POOL_ALL
+
+; ============================================================
+; RecycleStagePool / RecycleBridgePool  -- farcalled from the stage picker and
+; the gift-room picker (bank $38) at the moment each pool's no-repeat history
+; runs out and is cleared.
+;
+; A run never exhausts either pool; an Endless run does, MID-circuit (routes
+; around circuit 3, gift rooms around circuit 4), and the next pick can then be
+; a map already cleared earlier in the same circuit: its trainers beaten, its
+; reward taken, Bill's PC already switched to the viewer. A continuation resets
+; every run event, but nothing resets them mid-circuit.
+;
+; So every map in the pool goes back to the state a fresh run gives it, by the
+; run reset's own three steps restricted to the pool: its run events, its map
+; script bytes, and (stages) its hidden objects. The events and script bytes are
+; generated (tools/gen_pool_recycle.py, data/events/pool_recycle.asm); the
+; player is in the lobby, so no pool map is loaded.
+; Clobbers everything.
+; ============================================================
+RecycleStagePool::
+	ld de, StagePoolEventMask
+	ld hl, StagePoolScripts
+	call RecyclePool
+	ASSERT BANK(RogueStageToggleClear) == BANK(@) ; both pinned to $3C
+	jp RogueStageToggleClear
+
+RecycleBridgePool::
+	ld de, BridgePoolEventMask
+	ld hl, BridgePoolScripts
+	; fallthrough
+; de = the pool's event mask over ZONE 1, hl = its 0-terminated script list.
+RecyclePool:
+	push de
+.script
+	ld a, [hli]
+	ld e, a
+	ld a, [hli]
+	ld d, a
+	or e
+	jr z, .events
+	xor a
+	ld [de], a                    ; map script 0: its default entry state
+	jr .script
+.events
+	pop de
+	ld hl, wEventFlags + RUN_EVENTS_START / 8
+	ld c, POOL_MASK_BYTES
+.byte
+	ld a, [de]
+	inc de
+	cpl
+	and [hl]
+	ld [hli], a
+	dec c
+	jr nz, .byte
+	ret
+
+; One accumulator per ZONE 1 byte, OR'd together by pool_event and written out
+; by pool_mask_emit, so the generated lists name events, never bit numbers.
+DEF POOL_MASK_BYTES EQU (RUN_EVENTS_END + 1 - RUN_EVENTS_START) / 8
+ASSERT RUN_EVENTS_START % 8 == 0 && RUN_EVENTS_END % 8 == 7
+
+MACRO pool_mask_begin
+	FOR _pool_i, RUN_EVENTS_START / 8, RUN_EVENTS_END / 8 + 1
+		DEF POOL_MASK_{d:_pool_i} = 0
+	ENDR
+ENDM
+
+MACRO pool_event
+	ASSERT (\1) >= RUN_EVENTS_START && (\1) <= RUN_EVENTS_END, "\1 is not a run event"
+	DEF _pool_byte = (\1) / 8
+	DEF POOL_MASK_{d:_pool_byte} |= 1 << ((\1) % 8)
+ENDM
+
+MACRO pool_mask_emit
+	FOR _pool_i, RUN_EVENTS_START / 8, RUN_EVENTS_END / 8 + 1
+		db POOL_MASK_{d:_pool_i}
+	ENDR
+ENDM
+
+INCLUDE "data/events/pool_recycle.asm"
+
+; ============================================================
+; LegendaryPoolUnowned  -- farcalled from legendary_boss_helpers.asm (bank $38,
+; which has no room for it).
+;
+; Challenge 11's per-leader pools, minus the species the player already owns,
+; so a recurring gym (Endless) never trades a second copy of the same
+; legendary, and the witch never offers a bargain whose only prize is owned.
+; Ownership is AllSpeciesCheck's scope, the party and the current box. Every
+; pool species is single-stage, so family-wide is the species itself, and this
+; needs none of AllSpeciesCheck's wAllSpecies buffer: that shares a UNION with
+; live battle state, and the ace roll runs during party generation.
+;
+; In:  e = trainer class; d = 0 to count only, nonzero to pick one.
+; Out: carry SET = the class has a pool with at least one unowned species, and
+;      when picking, e = one of them, uniformly. With nothing owned the pick
+;      consumes the same draw and lands on the same species as before.
+;      carry CLEAR = no pool, or every member owned.
+; Clobbers a/bc/hl.
+; ============================================================
+LegendaryPoolUnowned::
+	ld a, e
+	call GetLegendaryPoolForClass  ; hl -> count, carry = has a pool
+	ret nc
+	ld a, [hli]
+	ld b, a                        ; b = members left to count
+	ld c, 0                        ; c = unowned
+	push hl
+.count
+	ld a, [hli]
+	call LegendarySpeciesOwned
+	jr c, .counted
+	inc c
+.counted
+	dec b
+	jr nz, .count
+	pop hl                         ; hl -> first member
+	ld a, c
+	and a
+	ret z                          ; all owned; `and a` cleared carry
+	ld a, d
+	and a
+	jr z, .yes                     ; count only
+	call Rangerandom               ; a = 0..c-1; preserves bc/de/hl
+	ld b, a                        ; b = unowned members still to skip
+.pick
+	ld a, [hli]
+	ld e, a
+	call LegendarySpeciesOwned
+	jr c, .pick
+	ld a, b
+	and a
+	jr z, .yes
+	dec b
+	jr .pick
+.yes
+	scf
+	ret
+
+; a = species -> carry SET if it is in the party or the current box, the
+; $ff-terminated lists AllSpeciesCheck reads. Preserves bc/de/hl.
+LegendarySpeciesOwned:
+	push hl
+	push bc
+	ld b, a
+	ld hl, wPartySpecies
+	call .scan
+	jr c, .done
+	ld hl, wBoxSpecies
+	call .scan
+.done
+	pop bc
+	pop hl
+	ret
+.scan
+	ld a, [hli]
+	cp $ff
+	jr z, .notFound
+	cp b
+	jr nz, .scan
+	scf
+	ret
+.notFound
+	and a
+	ret
+
+; ============================================================
+; LegendaryBossTable
+; Challenge 11's leaders and the legendaries each can field, keyed on TRAINER
+; CLASS. Never key this on wGymLeaderNo: Kanto and Johto share 1-8 (Morty and
+; Erika are both 4, Pryce and Blaine both 7), and gyms are drawn in a random
+; order every run, so neither the number nor a "gym N" says who the leader is.
+; Every species here must be single-stage (LegendaryPoolUnowned relies on it;
+; test_endless_recycle checks it).
+;
+; Row: db class, count, species x count. Terminated by db 0.
+; The witch's offer gate (witch_setup.asm) checks the same seven leaders by
+; their gym MAP, since at lobby time no battle has set wTrainerClass. Keep the
+; two lists in step.
+; ============================================================
+LegendaryBossTable:
+	db ERIKA,    2, MEW, CELEBI
+	db SABRINA,  4, MEWTWO, MEW, CELEBI, LUGIA
+	db BLAINE,   2, MEW, HO_OH
+	db GIOVANNI, 1, MEWTWO
+	db FALKNER,  2, LUGIA, HO_OH
+	db MORTY,    1, HO_OH
+	db PRYCE,    1, CELEBI
+	db 0
+
+; GetLegendaryPoolForClass
+; Input:  a = trainer class
+; Output: carry SET -> hl = the row's count byte, species follow it
+;         carry CLEAR -> the class has no legendary
+; Clobbers: a, b, hl
+GetLegendaryPoolForClass:
+	ld b, a
+	ld hl, LegendaryBossTable
+.loop
+	ld a, [hli]
+	and a
+	ret z                        ; end of table; `and a` cleared carry
+	cp b
+	jr z, .found
+	ld a, [hli]                  ; count: skip that many species
+	add l
+	ld l, a
+	jr nc, .loop
+	inc h
+	jr .loop
+.found
+	scf
+	ret

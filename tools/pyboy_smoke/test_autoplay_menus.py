@@ -45,5 +45,40 @@ class RealMenuInputTest(HarnessTestCase):
         self.assertGreater(sum(stats["stray"] for stats in agent.menu_stats.values()), 0)
 
 
+class SharedShopInputTest(HarnessTestCase):
+    def test_default_shop_policy_still_buys_its_healing_stock_with_real_input(self):
+        # Reuse the same documented stock/funds fixture as directed contracts.
+        # The ordinary driver must choose its quantity itself and stop shopping.
+        from purchase_scenario import configure, Observation, snapshot
+
+        h = self.harness
+        slot, _injections, agent = configure(h, 1, "success")
+        # Debug 2 supplies other healing items. Empty those explicitly so the
+        # ordinary stocking policy has a reason to buy the offered Potion.
+        for item in agent.heal_amounts:
+            h.write8("wRecoveryItemCounts", 0, agent.recovery_table.index(item))
+        before = snapshot(h)
+        self.assertEqual(sum(agent.recovery_counts().get(item, 0) for item in agent.heal_amounts), 0)
+        obs = Observation(h)
+        agent.plan = {"kind": "shop", "steps": 0, "done": False}
+        start = h.pyboy.frame_count
+        agent.press("a")
+        while h.pyboy.frame_count - start < 8000:
+            if obs.closed and obs.overworld_frame > start and h.pyboy.frame_count - obs.overworld_frame <= 2:
+                break
+            if h.pyboy.frame_count - agent.last_wait_frame <= 2:
+                agent.shop_step()  # unchanged ordinary policy, no scenario overrides
+            else:
+                h.tick(1)
+        self.assertTrue(obs.closed and obs.overworld_frame > start, obs.events)
+        after = snapshot(h)
+        expected = list(before["items"])
+        expected[slot] = 4
+        self.assertEqual(after["items"], expected)
+        self.assertEqual(after["money"], before["money"] - 800)
+        self.assertEqual(after["party"], before["party"])
+        self.assertEqual((obs.paid, obs.given), (1, 1))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

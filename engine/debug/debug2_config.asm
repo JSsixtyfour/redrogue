@@ -212,11 +212,11 @@ Debug2DrawEndless:
 	dec a
 	ld de, Debug2EndlessOnText
 	jp z, PlaceString
-	ld [hl], "D"
+	ld [hl], 'D'
 	inc hl
-	ld [hl], " "
+	ld [hl], ' '
 	inc hl
-	add "0"                        ; a = the depth, 1-9
+	add '0'                        ; a = the depth, 1-9
 	ld [hl], a
 	ret
 

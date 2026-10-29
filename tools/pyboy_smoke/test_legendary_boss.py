@@ -160,6 +160,18 @@ class LegendaryBossGateSmokeTest(HarnessTestCase):
                   "LT_SURGE", "KOGA"]
         for i, name in enumerate(lineup):
             h.write8("wRunGymLineup", self.classes[name], offset=i)
+        # A leader is a legendary door only while its pool holds a species the
+        # player does not own (party or current box), so ownership is an input
+        # here: start with no legendary anywhere.
+        self._own([self.species["PIDGEY"]])
+
+    def _own(self, party, box=()):
+        h = self.harness
+        for i, sp in enumerate(list(party) + [0xFF]):
+            h.write8("wPartySpecies", sp, offset=i)
+        h.write8("wBoxCount", len(box))
+        for i, sp in enumerate(list(box) + [0xFF]):
+            h.write8("wBoxSpecies", sp, offset=i)
 
     def _doors(self, door1, door2):
         latched = 1 << self.ram["BIT_GYM_CHOICE_LATCHED"]
@@ -175,6 +187,10 @@ class LegendaryBossGateSmokeTest(HarnessTestCase):
             with self.subTest(door1=door1, door2=door2):
                 self._doors(door1, door2)
                 self.assertEqual(self._call("LegendaryBossDoors")["E"], want)
+        # Morty fields only Ho-Oh: owning one (here in the box) closes his door.
+        self._own([self.species["PIDGEY"]], box=[self.species["HO_OH"]])
+        self._doors(1, 2)
+        self.assertEqual(self._call("LegendaryBossDoors")["E"], 0b01)
         self.harness.write8("wGymChoice", 0)  # nothing latched: a route visit
         self.assertEqual(self._call("LegendaryBossDoors")["E"], 0)
 

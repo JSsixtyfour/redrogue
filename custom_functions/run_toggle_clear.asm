@@ -25,7 +25,17 @@
 ; ============================================================
 RogueRunToggleClear::
 	ld hl, RunClearedToggles
-.loop
+	jr ToggleClearList
+
+; ============================================================
+; RogueStageToggleClear - the same step for the stage maps only, when the stage
+; pool recycles mid-run (RecycleStagePool, custom_functions/endless.asm). The
+; stage toggles are the tail of RunClearedToggles, so the two lists cannot
+; drift apart. Clobbers everything.
+; ============================================================
+RogueStageToggleClear::
+	ld hl, StageClearedToggles
+ToggleClearList:
 	ld a, [hli]
 	cp -1
 	ret z
@@ -35,11 +45,21 @@ RogueRunToggleClear::
 	ld hl, wToggleableObjectFlags
 	predef FlagActionPredef
 	pop hl
-	jr .loop
+	jr ToggleClearList
 
 RunClearedToggles:
 	; Repair saves where an older build hid gym Giovanni after his advice.
 	db TOGGLE_VIRIDIAN_GYM_GIOVANNI
+	; Oak's Lab: the player's and rival's starter balls hide when taken, and
+	; the rival hides after the lab battle. Starter selection replays every
+	; run (wPlayerStarter/EVENT_GOT_STARTER are run-scoped), so all four must
+	; come back or run 2 finds one ball, no rival, and a freeze on pickup.
+	db TOGGLE_ROGUE_STARTER_POKEBALL_1
+	db TOGGLE_ROGUE_STARTER_POKEBALL_2
+	db TOGGLE_ROGUE_STARTER_POKEBALL_3
+	db TOGGLE_OAKS_LAB_RIVAL
+	; Everything from here on is on a RogueStageMapTable map.
+StageClearedToggles:
 	; Pokemon Tower 7F: rockets walk off and hide when beaten; Fuji hides when
 	; he warps the player to the lobby.
 	db TOGGLE_POKEMON_TOWER_7F_ROCKET_1
@@ -49,12 +69,4 @@ RunClearedToggles:
 	db TOGGLE_POKEMON_TOWER_7F_MR_FUJI
 	; SS Anne B1F: the captain hides once the rooms' four trainers are beaten.
 	db TOGGLE_SS_ANNE_B1F_CAPTAIN
-	; Oak's Lab: the player's and rival's starter balls hide when taken, and
-	; the rival hides after the lab battle. Starter selection replays every
-	; run (wPlayerStarter/EVENT_GOT_STARTER are run-scoped), so all four must
-	; come back or run 2 finds one ball, no rival, and a freeze on pickup.
-	db TOGGLE_ROGUE_STARTER_POKEBALL_1
-	db TOGGLE_ROGUE_STARTER_POKEBALL_2
-	db TOGGLE_ROGUE_STARTER_POKEBALL_3
-	db TOGGLE_OAKS_LAB_RIVAL
 	db -1 ; end

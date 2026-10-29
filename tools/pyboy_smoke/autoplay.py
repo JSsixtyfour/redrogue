@@ -57,7 +57,8 @@ from source_constants import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-ARTIFACTS = Path(__file__).resolve().parent / "artifacts"
+ARTIFACTS = Path(os.environ.get("REDROGUE_AUTOPLAY_ARTIFACTS",
+                               Path(__file__).resolve().parent / "artifacts"))
 # The build played (a file stem). play(rom=) sets it for the process, so the
 # branch and save-check emulators run the same build. The release builds have
 # no Debug 2 menu and play only from NEW GAME (compare_builds.py).
@@ -1448,9 +1449,16 @@ class AutoplayAgent:
         price, index, item, wanted = min(options)
         return index, min(wanted, money // price), item
 
-    def shop_step(self) -> None:
+    def shop_step(self, *, select_purchase=None, cancel_quantity: bool = False,
+                  confirmation: str = "yes") -> None:
         """One press at the lobby clerk: BUY, then each purchase (item,
-        quantity with UP, YES) until choose_purchase is satisfied, then out."""
+        quantity with UP, YES) until choose_purchase is satisfied, then out.
+
+        Directed scenarios may supply a selection policy and cancel/decline
+        decisions. They share the ordinary menu lifecycle and real input.
+        """
+        if confirmation not in ("yes", "no", "cancel"):
+            raise ValueError(f"unknown shop confirmation: {confirmation}")
         plan = self.plan
         plan["steps"] += 1
         if plan["steps"] > PLAN_STEP_LIMIT:
@@ -1462,10 +1470,17 @@ class AutoplayAgent:
             # quantity menu can miss an A right after UP, so it is answered
             # until the YES/NO prompt shows.
             if caller.startswith("DisplayTwoOptionMenu"):
-                button = "a"
-                plan["selected"] = self.quantity_waiting = False
+                if confirmation == "no" and cursor == 0:
+                    button = "down"
+                else:
+                    button = "b" if confirmation == "cancel" else "a"
+                    plan["selected"] = self.quantity_waiting = False
             elif self.quantity_waiting:
-                button = "up" if self.h.read8("wItemQuantity") < plan["quantity"] else "a"
+                if cancel_quantity:
+                    button = "b"
+                    plan["selected"] = self.quantity_waiting = False
+                else:
+                    button = "up" if self.h.read8("wItemQuantity") < plan["quantity"] else "a"
             else:
                 self.h.tick(2)  # the next of its menus is still opening
                 return
@@ -1474,7 +1489,7 @@ class AutoplayAgent:
         elif caller.startswith("DisplayListMenuID") and self.h.read8("wListMenuID") == PRICED_ITEM_LIST_MENU:
             pointer = self.word("wListPointer")
             stock = [self.mem[pointer + 1 + i] for i in range(self.mem[pointer])]
-            purchase = None if plan["done"] else self.choose_purchase(stock)
+            purchase = None if plan["done"] else (select_purchase or self.choose_purchase)(stock)
             if purchase is None:
                 plan["done"] = True
                 button = "b"

@@ -712,6 +712,9 @@ _PickRandomUnvisitedStage::
 	ld [hli], a
 	ld [hli], a
 	ld [hl], a
+	; ...and put every stage back to fresh-run state, or the next pick can be a
+	; map cleared earlier in this circuit (Endless only; custom_functions/endless.asm).
+	farcall RecycleStagePool
 	ld b, NUM_STAGE_MAPS
 .srus_has
 	; Pick a random number in [0, unvisited_count - 1]

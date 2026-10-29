@@ -51,51 +51,9 @@ HasMasterballClassMon::
 	scf                          ; set carry = found
 	ret
 
-; ============================================================
-; LegendaryBossTable
-; Challenge 11's leaders and the legendaries each can field, keyed on TRAINER
-; CLASS. Never key this on wGymLeaderNo: Kanto and Johto share 1-8 (Morty and
-; Erika are both 4, Pryce and Blaine both 7), and gyms are drawn in a random
-; order every run, so neither the number nor a "gym N" says who the leader is.
-;
-; Row: db class, count, species x count. Terminated by db 0.
-; The witch's offer gate (witch_setup.asm) checks the same seven leaders by
-; their gym MAP, since at lobby time no battle has set wTrainerClass. Keep the
-; two lists in step.
-; ============================================================
-LegendaryBossTable:
-	db ERIKA,    2, MEW, CELEBI
-	db SABRINA,  4, MEWTWO, MEW, CELEBI, LUGIA
-	db BLAINE,   2, MEW, HO_OH
-	db GIOVANNI, 1, MEWTWO
-	db FALKNER,  2, LUGIA, HO_OH
-	db MORTY,    1, HO_OH
-	db PRYCE,    1, CELEBI
-	db 0
-
-; GetLegendaryPoolForClass
-; Input:  a = trainer class
-; Output: carry SET -> hl = the row's count byte, species follow it
-;         carry CLEAR -> the class has no legendary
-; Clobbers: a, b, hl
-GetLegendaryPoolForClass::
-	ld b, a
-	ld hl, LegendaryBossTable
-.loop
-	ld a, [hli]
-	and a
-	ret z                        ; end of table; `and a` cleared carry
-	cp b
-	jr z, .found
-	ld a, [hli]                  ; count: skip that many species
-	add l
-	ld l, a
-	jr nc, .loop
-	inc h
-	jr .loop
-.found
-	scf
-	ret
+; LegendaryBossTable (the leaders and the legendaries each can field) and its
+; lookup live in custom_functions/endless.asm with LegendaryPoolUnowned, which
+; filters each pool to species the player does not own. This bank had no room.
 
 ; RollLegendaryBossAce
 ; The Challenge 11 swap, farcalled by the party spec builder for a team's LAST
@@ -105,8 +63,8 @@ GetLegendaryPoolForClass::
 ; farcall keeps only d, e and the flags.
 ;
 ; If the bargain is accepted, the challenge is Legendary Boss and this
-; trainer's class has a pool, rolls one species from the pool into
-; wCurPartySpecies and records it in wLegendaryBossSpecies, which the
+; trainer's class has a pool member the player does not own yet, rolls one of
+; those into wCurPartySpecies and records it in wLegendaryBossSpecies, which the
 ; post-battle trade reads (wGymLeaderNo is zeroed by then). Also writes the
 ; ace's wSpawnForm: 0, except Giovanni's Mewtwo, which is Armored Mewtwo. The
 ; trade gives that same Mewtwo armored (OfferLegendaryTradeGiovanni).
@@ -120,15 +78,11 @@ RollLegendaryBossAce::
 	cp CHALLENGE_LEGENDARY_BOSS
 	jr nz, .no
 	ld a, [wTrainerClass]
-	call GetLegendaryPoolForClass
-	ret nc
-	ld a, [hli]
-	ld c, a
-	call Rangerandom             ; a = 0..count-1; preserves hl
 	ld e, a
-	ld d, 0
-	add hl, de
-	ld a, [hl]
+	ld d, 1                      ; pick
+	farcall LegendaryPoolUnowned ; carry, e = species; keeps d/e and the flags
+	ret nc
+	ld a, e
 	ld [wCurPartySpecies], a
 	ld [wLegendaryBossSpecies], a
 	ld b, a
@@ -285,7 +239,10 @@ LegendaryBossDoors::
 
 ; SlotIsLegendaryBoss
 ; Input:  a = badge slot (0-7)
-; Output: carry SET if that slot's lineup leader has a LegendaryBossTable row.
+; Output: carry SET if that slot's lineup leader has a LegendaryBossTable row
+;         with a species the player does not own yet. Every Challenge 11 gate
+;         (the witch's offer, the door line, the wrong-door check) asks this, so
+;         an owned-out leader is never a legendary door.
 ;         An unrolled lineup (old saves, never at 4+ badges) counts as no.
 ; Clobbers: a, b, c, hl. Preserves de.
 SlotIsLegendaryBoss::
@@ -297,8 +254,10 @@ SlotIsLegendaryBoss::
 	and a
 	ret z                        ; `and a` cleared carry
 	push de
-	call GetLegendaryPoolForClass
-	pop de
+	ld e, a
+	ld d, 0                      ; count only: consumes no RNG
+	farcall LegendaryPoolUnowned
+	pop de                       ; pop keeps the carry
 	ret
 
 ; IsLegendaryBossOfferable: the witch's gate for Challenge 11.
