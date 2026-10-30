@@ -8,8 +8,9 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class TradeRedrawTest(unittest.TestCase):
-    def trade(self, *, sgb=False, cgb=False, given=0x54, received=0x24, form=0):
-        h = RedRogueHarness(ROOT, ROOT/'builds/route_issue_20261027/trade_tests', cgb_mode=cgb)
+    def trade(self, *, sgb=False, cgb=False, given=0x54, received=0x24, form=0,
+              before_trade=None, after_trade=None, output=None):
+        h = RedRogueHarness(ROOT, output or ROOT/'builds/route_issue_20261027/trade_tests', cgb_mode=cgb)
         try:
             h.boot_to_lobby(battle_count=37)
             if sgb:
@@ -41,6 +42,8 @@ class TradeRedrawTest(unittest.TestCase):
             h.write8('wroguenpctradegive',given)
             h.write8('wroguenpctradeget',received)  # default Pidgey: no evolution
             h.write8('wroguenpctradeform',form)
+            if before_trade is not None:
+                before_trade(h)
             restored=h.hook_flag('InGameTrade_RestoreScreen')
             finished=h.hook_flag('InGameTrade_DoTrade.tradeSucceeded')
             exchanges=h.hook_flag('InGameTrade_PrepareTradeData')
@@ -87,6 +90,8 @@ class TradeRedrawTest(unittest.TestCase):
             self.assertEqual(catch_rate & 0x60,form << 5)
             self.assertEqual(anim_form,[form],"the animation showed a different form than the party got")
             self.assertFalse(h.hook_errors,h.hook_errors)
+            if after_trade is not None:
+                after_trade(h)
         finally:
             h.close()
 

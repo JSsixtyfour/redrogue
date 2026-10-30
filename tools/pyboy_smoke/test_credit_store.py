@@ -215,28 +215,35 @@ class CreditStoreRuntimeTest(ItemDescriptionRuntimeBase):
 class CreditStoreLiveTest(unittest.TestCase):
     """Constructed arrival/ownership fixture; genuine vendor inputs and return."""
 
-    def live(self, case, *, cgb=False, output=None, assert_contract=True):
+    def live(self, case, *, cgb=False, output=None, assert_contract=True,
+             harness=None, initialize=True, funds_override=None):
         fixture = credit_fixture(case)
         upgrade, tier = fixture["upgrade"], fixture["tier"]
         target = (4, 3) if upgrade else (2, 3)
         art = Path(output) if output is not None else Path(__file__).parent / "artifacts" / f"credit_live_{case}_{'cgb' if cgb else 'dmg'}"
         art.mkdir(parents=True, exist_ok=True)
-        h = RedRogueHarness(REPO_ROOT, art, cgb_mode=cgb)
-        self.addCleanup(h.close)
-        h.boot_to_lobby()
-        h.tick(180)
         maps = parse_map_constants(REPO_ROOT / "constants/map_constants.asm")
         # Reuse the entrance-warp fixture pattern. This does not claim natural
         # hub progression: only the destination of the arrival warp is changed.
-        h.write8("wWarpEntries", 0, offset=2)
-        h.write8("wWarpEntries", maps["CREDIT_EXCHANGE"], offset=3)
-        h.move_tile("up")
-        h.pyboy.button_press("down")
-        try:
-            h.wait_until(lambda: h.read8("hCurMap") == maps["CREDIT_EXCHANGE"], "credit entry", 600)
-        finally:
-            h.pyboy.button_release("down")
-        h.tick(180)
+        if harness is None:
+            h = RedRogueHarness(REPO_ROOT, art, cgb_mode=cgb)
+            self.addCleanup(h.close)
+            h.boot_to_lobby()
+            h.tick(180)
+            h.write8("wWarpEntries", 0, offset=2)
+            h.write8("wWarpEntries", maps["CREDIT_EXCHANGE"], offset=3)
+            h.move_tile("up")
+            h.pyboy.button_press("down")
+            try:
+                h.wait_until(lambda: h.read8("hCurMap") == maps["CREDIT_EXCHANGE"], "credit entry", 600)
+            finally:
+                h.pyboy.button_release("down")
+            h.tick(180)
+        else:
+            h = harness
+            self.assertFalse(initialize, 'continuation must not reset its fixture state')
+            self.assertEqual(h.hardware_mode, 'CGB' if cgb else 'DMG')
+            self.assertEqual(h.read8('hCurMap'), maps['CREDIT_EXCHANGE'])
         agent = autoplay.AutoplayAgent(h, seed=7)
         for _ in range(50):
             if agent.position() == target:
@@ -247,12 +254,17 @@ class CreditStoreLiveTest(unittest.TestCase):
         self.assertEqual(agent.position(), target)
         agent.press("up", 2, 20)
         before_flags = fixture["flags"]
-        h.write_sram_bytes("sKeyItemsBitfield", before_flags)
         tiers = fixture["tiers"]
-        h.write_sram_bytes("sKeyItemTiers", tiers)
-        funds = fixture["funds"]
-        h.write8("wPlayerCoins", 0)
-        h.write8("wPlayerCoins", int(f"{funds:02d}", 16), 1)
+        funds = fixture["funds"] if funds_override is None else funds_override
+        coins = [0, int(f"{funds:02d}", 16)]
+        if initialize:
+            h.write_sram_bytes("sKeyItemsBitfield", before_flags)
+            h.write_sram_bytes("sKeyItemTiers", tiers)
+            for offset, value in enumerate(coins): h.write8('wPlayerCoins', value, offset)
+        else:
+            self.assertEqual(h.read_sram_bytes('sKeyItemsBitfield', 4), before_flags)
+            self.assertEqual(h.read_sram_bytes('sKeyItemTiers', 4), tiers)
+            self.assertEqual(h.read_bytes('wPlayerCoins', 2), coins)
         party = h.read_bytes("wPartyDataStart", h.address("wPartyDataEnd") - h.address("wPartyDataStart"))
         counts = h.read_bytes("wRecoveryItemCounts", h.address("wItemCountsEnd") - h.address("wRecoveryItemCounts"))
         before_contract = {"coins": h.read_bytes("wPlayerCoins", 2),
@@ -321,7 +333,8 @@ class CreditStoreLiveTest(unittest.TestCase):
         self.assertNotEqual(agent.position(), target, "legal movement did not recover")
         evidence(h, art, "after")
         (art / "result.json").write_text(json.dumps({"case": case, "cgb": cgb,
-            "fixture": "retargeted arrival warp, explicit tiers, ownership and funds",
+            "fixture": ("retargeted arrival warp, explicit tiers, ownership and funds" if initialize else
+                        "continued existing state; ownership, tiers and funds asserted without injection"),
             "rom_sha256": h.rom_sha256, "sym_sha256": h.sym_sha256,
             "initial_state_sha256": hashlib.sha256(initial.read_bytes()).hexdigest(),
             "started_frame": started, "final_frame": h.pyboy.frame_count,
@@ -331,6 +344,7 @@ class CreditStoreLiveTest(unittest.TestCase):
             "flags": h.read_sram_bytes("sKeyItemsBitfield", 4),
             "tiers": h.read_sram_bytes("sKeyItemTiers", 4),
             "position": agent.position()}, indent=2))
+        return h
 
     def test_live_exact_funds(self):
         self.live("exact")
