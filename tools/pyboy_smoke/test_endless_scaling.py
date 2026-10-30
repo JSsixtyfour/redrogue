@@ -137,16 +137,41 @@ class EndlessScalingTest(HarnessTestCase):
 
     def test_round_step_clamps_the_round_not_the_count(self) -> None:
         """Clamping the count would make every Endless route trainer step 7, a
-        final gym trainer (ENDLESS_MODE_CHECKPOINT_D.md section 9, finding 1)."""
+        final gym trainer (ENDLESS_MODE_CHECKPOINT_D.md section 9, finding 1).
+        The step is the circuit-local count's, never saturated progress's: 255
+        is step 7 whatever the real position (2026-10-29 review, repair 1)."""
         h = self.harness
-        cases = [(0, 1), (0, 40), (0, 71), (1, 1), (1, 4), (1, 13), (2, 60), (3, 76)]
+        cases = [(0, 1), (0, 4), (0, 5), (0, 7), (0, 8), (0, 40), (0, 71), (0, 76),
+                 (1, 1), (1, 4), (1, 13), (2, 1), (2, 60),
+                 (3, 38), (3, 39), (3, 40), (3, 41), (3, 76)]
+        cases += [(depth, 8 + step) for depth in (4, 12, 255) for step in range(ROUND_BATTLES)]
         for depth, count in cases:
             self.at(depth, count)
             h.call_routine("GetRunRoundStep")
             r = self.regs()
             p = self.progress(depth, count)
             self.assertEqual(r["B"], min(p // ROUND_BATTLES, LAST_ROUND), (depth, count))
-            self.assertEqual(r["A"], p % ROUND_BATTLES, (depth, count))
+            self.assertEqual(r["A"], count % ROUND_BATTLES, (depth, count))
+            self.assertTrue(r["F"] & 0x10, f"carry clear {(depth, count)}")
+            self.assertFalse(r["F"] & 0x80, f"Z set {(depth, count)}")
+
+    def test_late_endless_route_trainer_is_not_a_final_trainer(self) -> None:
+        """GetRandRoster's final-trainer flag (wRogueFlagsBitfield bit 1) at a
+        saturated depth: set only on the route's last step and the last gym
+        trainer, the same steps as at depth 0."""
+        h = self.harness
+        h.write8("wMoneyMatchState", 0)
+        final_steps = {4, 7}                                  # FINAL_ROUTE_STEP, FINAL_GYM_TRAINER_STEP
+        for depth in (0, 4, 12):
+            for step in (1, 2, 4, 5, 7):
+                count = 8 + step
+                self.at(depth, count)
+                h.write8("wRogueFlagsBitfield", h.read8("wRogueFlagsBitfield") ^ 2)  # stale either way
+                h.call_routine("RogueBattleRound")
+                self.assertEqual(self.regs()["A"], step, (depth, count))
+                h.call_routine("GetRandRoster", limit=200000)
+                flag = bool(h.read8("wRogueFlagsBitfield") & 2)
+                self.assertEqual(flag, step in final_steps, (depth, count))
 
     # -- levels -------------------------------------------------------
 
@@ -181,12 +206,13 @@ class EndlessScalingTest(HarnessTestCase):
         h.call_routine("GetRewardMonLevel")
         base = h.read8("wCurEnemyLevel")
         self.assertLessEqual(base, 50)
-        for depth, count in [(1, 1), (1, 60), (3, 40)]:
+        # (3, 40), (4, 5) and (12, 3) are saturated: progress 255 is step 7,
+        # but the circuit-local step picks the table (repair 1).
+        for depth, count in [(1, 1), (1, 60), (3, 40), (3, 39), (4, 5), (12, 3)]:
             self.at(depth, count)
             h.call_routine("GetRewardMonLevel")
-            p = self.progress(depth, count)
             # Endless reads the last row uncapped: route 0x31 + 4/2 or gym 0x34 + 4/2.
-            base = 51 if p % ROUND_BATTLES < 4 else 54
+            base = 51 if count % ROUND_BATTLES < 4 else 54
             want = min(MAX_LEVEL, base + self.row(depth, count))
             self.assertEqual(h.read8("wCurEnemyLevel"), want, (depth, count))
             self.assertEqual(self.regs()["A"], want, "callers read the level from a")

@@ -65,7 +65,11 @@ class Debug2GymIdentityTest(HarnessTestCase):
         trainers = trainer_classes()
         h.boot_to_lobby(battle_count=61)
         h.write8('wGymChoice', 0x80 | 7 | (7 << 3))
-        h.write8('wRunGymLineup', trainers['JANINE'], offset=3)
+        # Supply a valid unique lineup. The seeded roster may already contain
+        # Janine elsewhere; overwriting only slot3 would manufacture a duplicate.
+        lineup = ['BROCK', 'CLAIR', 'MISTY', 'JANINE', 'ERIKA', 'SABRINA', 'PRYCE', 'GIOVANNI']
+        for slot, leader in enumerate(lineup):
+            h.write8('wRunGymLineup', trainers[leader], offset=slot)
         h.write8('wLobbyDoor1StageMap', maps['FUCHSIA_GYM'])
         h.write8('wLobbyDoor2StageMap', maps['BLACKTHORN_GYM'])
         h.call_routine('Debug2SyncGymChoice')

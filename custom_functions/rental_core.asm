@@ -982,7 +982,7 @@ RentalChargeDaycare::
 	ld hl, wDayCareDepositBattleCount2
 .depositReady
 	ld a, [wBattleCount]
-	sub [hl] ; match the ordinary daycare's byte-wrap elapsed-battle policy
+	sub [hl] ; the ordinary daycare's elapsed battles (EndlessContinue holds it)
 	ld b, 0
 	jr z, .roundsReady
 	dec a
@@ -1014,6 +1014,17 @@ RentalChargeDaycare::
 	pop bc
 	dec b
 	jr nz, .priceLoop
+	; Cap the quote at Y9999, where the lobby's 2-byte fee saturates (AddBCD),
+	; so a long Endless hold costs the same either way.
+	ldh a, [hMoney]
+	and a
+	jr z, .quoted
+	xor a
+	ldh [hMoney], a
+	ld a, $99
+	ldh [hMoney + 1], a
+	ldh [hMoney + 2], a
+.quoted
 	call HasEnoughMoney
 	jr c, .shortfall
 	ld hl, hMoney + 2

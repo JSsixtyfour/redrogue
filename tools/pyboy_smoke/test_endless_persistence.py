@@ -88,6 +88,33 @@ class EndlessSaveReloadTest(EndlessFixture):
             boot.close()
 
 
+    def test_retained_daycare_deposit_survives_save_reload(self) -> None:
+        h = self.harness
+        with isolated_routine_calls(h):
+            self.set_groups(johto=False)
+            h.write8("wEndlessDepth", 0)
+            h.write8("wDayCareInUse", 1)
+            h.write8("wDayCareDepositBattleCount", 1)
+            for _ in range(3):
+                h.write8("wBattleCount", 73)
+                h.call_routine("EndlessContinue")
+            snapshot = h.read8("wDayCareDepositBattleCount")
+            elapsed = (h.read8("wBattleCount") - snapshot) & 0xFF
+            self.assertEqual(elapsed, 183)
+            saved = save_reload.save_now(h)
+            sram = save_reload.sram_image(h)
+        boot = save_reload.Reboot(sram)
+        try:
+            boot.load()
+            self.assertEqual(boot.status, 2, "the Endless save did not load")
+            b = boot.h
+            self.assertEqual(b.read8("wDayCareDepositBattleCount"), snapshot)
+            self.assertEqual((b.read8("wBattleCount") - b.read8("wDayCareDepositBattleCount")) & 0xFF,
+                             elapsed, "daycare elapsed changed across save and reload")
+        finally:
+            boot.close()
+
+
 class EndlessEnduranceTest(EndlessFixture):
     def setUp(self) -> None:
         super().setUp()

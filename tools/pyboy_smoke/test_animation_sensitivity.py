@@ -8,6 +8,7 @@ from harness import RedRogueHarness
 from source_constants import parse_rgbds_constants
 from test_smoke import HarnessTestCase, REPO_ROOT, ARTIFACTS
 from test_evolution_flow import EvolutionFlowFixture
+from test_move_tutor_prices import run_entry
 
 
 class AnimationSensitivityTest(HarnessTestCase):
@@ -112,17 +113,18 @@ class AnimationSensitivityTest(HarnessTestCase):
     def test_sensitivity_keeps_dialogue_arrow_visible(self):
         h = self.harness
         h.boot_fight2(seed=1)
-        h.write8("wOptions3", h.read8("wOptions3") | 0x10)
         cell = h.address("wTileMap") + 18 + 16 * 20
-        h.pyboy.memory[cell] = 0xEE  # charmap's down arrow
-        h.write8("hDownArrowBlinkCount1", 1)
-        h.write8("hDownArrowBlinkCount2", 1)
-        h.register_hook("HandleDownArrowBlinkTiming", lambda _:
-                        setattr(h.pyboy.register_file, "HL", cell))
-        h.call_routine("HandleDownArrowBlinkTiming")
-        self.assertEqual(h.pyboy.memory[cell], 0xEE)
-        self.assertEqual(h.read8("hDownArrowBlinkCount1"), 1)
-        self.assertEqual(h.read8("hDownArrowBlinkCount2"), 1)
+        def setup(h):
+            h.write8("wOptions3", h.read8("wOptions3") | 0x10)
+            h.pyboy.memory[cell] = 0xEE
+            h.write8("hDownArrowBlinkCount1", 1)
+            h.write8("hDownArrowBlinkCount2", 1)
+        # Observe the return before the abandoned battle redraws the tilemap.
+        result = run_entry(h, "HandleDownArrowBlinkTiming", registers={"HL": cell}, setup=setup,
+                           capture=lambda h: {"tile": h.pyboy.memory[cell],
+                               "counts": [h.read8("hDownArrowBlinkCount1"), h.read8("hDownArrowBlinkCount2")]})
+        self.assertEqual(result["tile"], 0xEE)
+        self.assertEqual(result["counts"], [1, 1])
 
     def run_live(self, routine, setup=None, limit=1800, entry="JoypadLowSensitivity"):
         """Borrow one real menu-input call, preserving its return and interrupts."""
@@ -210,23 +212,22 @@ class AnimationSensitivityTest(HarnessTestCase):
         h = self.harness
         h.boot_fight2(seed=1)
         cell = h.address("wTileMap") + 2 * 20 + 8
-        h.register_hook("OptDrawBattleAnim", lambda _ctx:
-                        setattr(h.pyboy.register_file, "HL", cell))
         for options, extra, label in ((0x80, 0x10, "OptTextAnimSensitivity"),
                                       (0, 0, "OptTextAnimOn"),
                                       (0x80, 0, "OptTextAnimOff")):
             with self.subTest(label=label):
-                h.park_before_hijack()
-                h.write8("wOptions", options)
-                h.write8("wOptions3", extra)
-                h.pyboy.memory[cell - 1] = 0x7F
-                h.pyboy.memory[cell + 11] = 0x7F
+                def setup(h):
+                    h.write8("wOptions", options)
+                    h.write8("wOptions3", extra)
+                    h.pyboy.memory[cell - 1] = 0x7F
+                    h.pyboy.memory[cell + 11] = 0x7F
                 bank, address = h.symbols.get(label)
                 expected = list(h.pyboy.memory[bank, address:address + 11])
-                h.call_routine("OptDrawBattleAnim")
-                self.assertEqual(list(h.pyboy.memory[cell:cell + 11]), expected)
-                self.assertEqual(h.pyboy.memory[cell - 1], 0x7F)
-                self.assertEqual(h.pyboy.memory[cell + 11], 0x7F)
+                result = run_entry(h, "OptDrawBattleAnim", registers={"HL": cell}, setup=setup,
+                    capture=lambda h: {"tiles": list(h.pyboy.memory[cell:cell + 11]),
+                        "guards": [h.pyboy.memory[cell - 1], h.pyboy.memory[cell + 11]]})
+                self.assertEqual(result["tiles"], expected)
+                self.assertEqual(result["guards"], [0x7F, 0x7F])
 
     def test_rotation_and_legacy_reduced_preserve_other_options(self):
         h = self.harness

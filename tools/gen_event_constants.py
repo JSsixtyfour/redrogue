@@ -608,11 +608,16 @@ def reachable_maps():
     return seen, obj_map
 
 
+SCAN_EXCLUDED_DIRS = {"tmp", ".git", "pyboy_smoke", ".claude", "builds"}
+
+
 def scrape_refs(names):
     refs = defaultdict(set)
     nameset = set(names)
-    for dirpath, _, files in os.walk(ROOT):
-        parts = dirpath.replace("\\", "/").split("/")
+    for dirpath, dirnames, files in os.walk(ROOT):
+        # Prune in place so os.walk never descends into excluded trees.
+        dirnames[:] = [d for d in dirnames if d not in SCAN_EXCLUDED_DIRS]
+        parts = os.path.relpath(dirpath, ROOT).replace("\\", "/").split("/")
         # .claude holds agent worktrees: full checkouts whose EVENT_ refs
         # (possibly from another branch) must not count as references here.
         # builds/ (gitignored) holds whole-tree snapshots with the same refs.

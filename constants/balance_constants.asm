@@ -402,6 +402,13 @@ DEF SALESMAN_PRICE_GREATBALL_WORD EQU ((SALESMAN_PRICE_GREATBALL_BCD >> 4) << 8)
 DEF SALESMAN_PRICE_ULTRABALL_WORD EQU ((SALESMAN_PRICE_ULTRABALL_BCD >> 4) << 8) | ((SALESMAN_PRICE_ULTRABALL_BCD & $0F) << 4)
 ; BCD $0500 = Y500 per round. Read by engine/events/lobby_daycare.asm.
 DEF DAYCARE_PRICE_PER_ROUND_BCD EQU $5
+; Endless: a deposit's elapsed battles are a byte, (wBattleCount - snapshot).
+; EndlessContinue holds each elapsed value at this, so one more circuit (at
+; most CHAMPION_BATTLECOUNT - 1 battles) can never wrap it back to zero, a
+; fresh deposit. The hold still bills past the fee's Y9999 cap (2-byte BCD;
+; RentalChargeDaycare caps there too), so no fee changes.
+DEF DAYCARE_ELAPSED_CARRY_MAX EQU 256 - CHAMPION_BATTLECOUNT
+	ASSERT ((DAYCARE_ELAPSED_CARRY_MAX - 1) / ROUND_BATTLES + 1) * DAYCARE_PRICE_PER_ROUND_BCD * 100 > 9999
 ; The Psychic's price is computed (Y1000 x (badges + 1)), not a literal here.
 
 ; --- Lobby NPC appearance odds ----------------------------------------------

@@ -111,18 +111,26 @@ EndlessContinue:
 	farcall WitchSettlePendingPrize
 
 	; --- 3. Elapsed progress. Daycare growth/price and rental time are
-	; (wBattleCount - deposit snapshot) mod 256, so moving every snapshot by the
-	; same delta as the count keeps each elapsed value exact. After the
-	; farcall above, which would clobber b.
+	; (wBattleCount - deposit snapshot) mod 256. Rebase each snapshot so its
+	; elapsed value carries over to the count of 1 below, held at
+	; DAYCARE_ELAPSED_CARRY_MAX: unheld, 256 battles wrapped it to zero, which
+	; read as a fresh deposit (no growth, no fee; 2026-10-29 review). After the
+	; farcall above, which would clobber c.
+	ASSERT wDayCareDepositBattleCount2 == wDayCareDepositBattleCount + 1
+	ld hl, wDayCareDepositBattleCount
+	ld c, 2
+.rebaseDeposit
 	ld a, [wBattleCount]
-	dec a                         ; delta: the count becomes 1 below
-	ld b, a
-	ld a, [wDayCareDepositBattleCount]
-	sub b
-	ld [wDayCareDepositBattleCount], a
-	ld a, [wDayCareDepositBattleCount2]
-	sub b
-	ld [wDayCareDepositBattleCount2], a
+	sub [hl]                      ; elapsed: exact, the hold keeps it below 256
+	cp DAYCARE_ELAPSED_CARRY_MAX
+	jr c, .elapsedReady
+	ld a, DAYCARE_ELAPSED_CARRY_MAX
+.elapsedReady
+	cpl
+	add 2                         ; 1 - elapsed
+	ld [hli], a
+	dec c
+	jr nz, .rebaseDeposit
 	ld a, 1                       ; the count Oak's Lab leaves a new run on
 	ld [wBattleCount], a
 

@@ -3,6 +3,7 @@ import unittest
 import io
 
 import test_rental_settlement as boxed
+from routine_session import isolated_routine_calls
 from test_move_tutor_prices import run_entry, return_from_call
 from source_constants import parse_map_constants, parse_rgbds_constants
 from test_save_header import REPO_ROOT
@@ -63,6 +64,42 @@ class RentalDaycareFallbackTest(boxed.RentalSettlementTest):
         self.assertEqual(h.read8("wPartyMon1Level"), 6)
         self.assertEqual(h.read_bytes("wPartyMon1Exp", 3), [0,0,216])
         self.assertEqual(h.read8("wPartySpecies"), species["DITTO"])
+
+    def test_retained_deposit_after_three_continuations_grows_once_and_bills_the_cap(self):
+        species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
+        max_level = parse_rgbds_constants(REPO_ROOT / "constants/battle_constants.asm")["MAX_LEVEL"]
+        h = self.h
+        # Real continuations first, on the clean lobby; seed the box afterwards.
+        groups = parse_rgbds_constants(REPO_ROOT / "constants/rogue_species_groups.asm")
+        h.write_sram_bytes("sRogueSpeciesGroupsEnabled", [1 << groups["BIT_GROUP_KANTO"]], bank=1)
+        h.write8("wEndlessDepth", 0)
+        h.write8("wDayCareInUse", 1)
+        h.write8("wDayCareDepositBattleCount", 1)
+        with isolated_routine_calls(h):
+            for _ in range(3):
+                h.write8("wBattleCount", 73)
+                h.call_routine("EndlessContinue")
+            carried = h.read8("wDayCareDepositBattleCount")
+            self.assertEqual(h.read8("wEndlessDepth"), 3)
+            self.assertEqual((1 - carried) & 0xFF, 183)
+        self.seed(h, 5, {}, 0)
+        h.write8("wDayCareInUse2", 0)
+        self.daycare(h, 0, 30, deposit=carried)
+        h.write8("wDayCareMonSpecies", species["DITTO"])
+        h.write8("wDayCareMonBoxLevel", 5)
+        h.write8("wEndlessDepth", 3)
+        h.write8("wBattleCount", 1)
+        h.write8("wPartyCount", 0)
+        start = h.address("wPlayerMoney")
+        h.pyboy.memory[start:start + 3] = [0x02, 0x00, 0x00]  # 20000
+        self.live_entry(lambda h: None)
+        self.assertEqual(h.read8("wPartyCount"), 1)
+        self.assertEqual(h.read8("wPartyMons", offset=12), 30)
+        level = h.read8("wPartyMon1Level")
+        self.assertGreater(level, 5)
+        self.assertLessEqual(level, max_level)
+        self.assertEqual(h.read_bytes("wPlayerMoney", 3), [0x01, 0x00, 0x01])  # 20000 - 9999
+        self.assertEqual(h.read8("wDayCareInUse"), 0)
 
     def daycare(self, h, slot, marker, deposit=0):
         suffix = "2" if slot else ""

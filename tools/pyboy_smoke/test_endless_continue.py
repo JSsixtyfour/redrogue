@@ -276,6 +276,35 @@ class EndlessContinueTest(HarnessTestCase):
         self.assertEqual((h.read8("wBattleCount") - h.read8("wDayCareDepositBattleCount")) & 0xFF, 13)
         self.assertEqual((h.read8("wBattleCount") - h.read8("wDayCareDepositBattleCount2")) & 0xFF, 3)
 
+    def test_daycare_elapsed_never_wraps_to_a_fresh_deposit(self) -> None:
+        """Byte elapsed, rebased every continuation: unheld, 256 battles read
+        as zero, a fresh deposit (no growth, no fee; 2026-10-29 review, repair
+        2). Held at DAYCARE_ELAPSED_CARRY_MAX, a whole circuit on top of it
+        still fits, so it never wraps and never shrinks below the fee cap."""
+        h = self.harness
+        rounds = parse_rgbds_constants(REPO_ROOT / "constants" / "round_constants.asm")
+        champion = rounds["CHAMPION_BATTLECOUNT"]
+        hold = 256 - champion
+        self.set_groups(johto=False)
+        h.write8("wEndlessDepth", 0)
+        h.write8("wDayCareInUse", 1)
+        h.write8("wDayCareInUse2", 1)
+        h.write8("wDayCareDepositBattleCount", 1)       # deposited at the start
+        h.write8("wDayCareDepositBattleCount2", 40)     # deposited mid-circuit
+        true = [champion - 1, champion - 40]
+        for circuit in range(6):
+            h.write8("wBattleCount", champion)
+            h.call_routine("EndlessContinue")
+            for slot, label in enumerate(("wDayCareDepositBattleCount", "wDayCareDepositBattleCount2")):
+                carried = (1 - h.read8(label)) & 0xFF
+                self.assertEqual(carried, min(true[slot], hold), (circuit, slot))
+                # The whole next circuit, every count up to the Champion's.
+                for count in range(1, champion + 1):
+                    elapsed = (count - h.read8(label)) & 0xFF
+                    self.assertEqual(elapsed, carried + count - 1, (circuit, slot, count))
+                    self.assertNotEqual(elapsed, 0, (circuit, slot, count))
+            true = [t + champion - 1 for t in true]
+
     def test_health_is_restored(self) -> None:
         h = self.harness
         self.set_groups(johto=False)
