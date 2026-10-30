@@ -732,6 +732,11 @@ class AutoplayAgent:
         forced = in_battle and (self.h.read8("wForcePlayerToChooseMon") or not (
             self.h.read8("wBattleMonHP") or self.h.read8("wBattleMonHP", 1)))
         if self.errand is not None and not forced:
+            if self.errand["kind"] == "bag" and self.errand["presses"] > ERRAND_PRESSES:
+                # A refused TM returns to this menu. Recovery must retain B
+                # ownership instead of selecting another incompatible mon.
+                self.party_menu_goal(0, "b")
+                return
             self.party_menu_goal(self.errand_rng.randrange(max(1, self.h.read8("wPartyCount"))), "a")
             return
         if not in_battle:

@@ -67,6 +67,17 @@ class BagErrandRecoveryTest(unittest.TestCase):
         agent._on_abandon_learning(None)
         self.assertIsNone(agent.menu_goal)
 
+    def test_refused_tm_party_menu_keeps_bag_recovery_cancel(self):
+        import autoplay
+        for presses in (autoplay.ERRAND_PRESSES + 1, autoplay.ERRAND_GIVE_UP + 1):
+            agent = object.__new__(autoplay.AutoplayAgent)
+            agent.h = SimpleNamespace(read8=lambda _: 0)
+            agent.errand = {"kind": "bag", "presses": presses}
+            goals = []
+            agent.party_menu_goal = lambda target, button: goals.append((target, button))
+            agent._on_party_menu(None)
+            self.assertEqual(goals, [(0, "b")])
+
 
 class SpinnerCacheLifecycleTest(unittest.TestCase):
     def test_warp_retires_layout_and_same_map_id_accepts_new_table(self):
