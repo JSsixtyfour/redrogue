@@ -648,9 +648,12 @@ RogueTryMidBattleEvolution::
 	cpl
 	and c
 	push af                     ; bench flags, active bit cleared (tried once only)
+	ld a, [wMusicID]            ; the battle song, replayed after the evolution
+	push af
 	ld a, b
 	ld [wCanEvolveFlags], a
 	predef EvolutionAfterBattle
+	pop de                      ; d = battle song
 	pop af
 	ld [wCanEvolveFlags], a
 
@@ -660,11 +663,14 @@ RogueTryMidBattleEvolution::
 	ld a, [wEvolutionOccurred]
 	and a
 	ret z
+	ld a, d
 	jp RogueRefreshBattleMonAfterEvolution
 
 ; LoadBattleMonFromParty (engine/battle/core.asm) WITHOUT its trailing stat-mod
 ; reset, so boosts, drops, Substitute and status all survive the evolution.
+; a = the battle song to restart.
 RogueRefreshBattleMonAfterEvolution:
+	push af
 	ld a, [wPlayerMonNumber]
 	ld bc, PARTYMON_STRUCT_LENGTH
 	ld hl, wPartyMon1Species
@@ -722,7 +728,11 @@ RogueRefreshBattleMonAfterEvolution:
 ; EvolutionAfterBattle deliberately skips PlayDefaultMusic while in battle
 ; (engine/pokemon/evos_moves.asm:281-287), so nothing is playing here.  It also
 ; skips the tileset reload (:242-244), so the HUD tile patterns need restoring.
-	farcall PlayBattleMusic
+; Replay the song that was playing rather than re-running PlayBattleMusic's
+; routing: an Endless pick would re-roll, and the cemetery boss flag is gone.
+	pop af
+	ld e, a
+	farcall PlayBattleSong
 	farcall LoadHudTilePatterns
 	farcall DrawPlayerHUDAndHPBar
 	call SaveScreenTilesToBuffer1
