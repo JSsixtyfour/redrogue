@@ -32,6 +32,16 @@ def credit_contract(before, after, *, bought, upgrade, flags, tiers,
     Flags/tiers are predicted from declared fixture ownership, not ROM output.
     These fixtures spend all credits on success and preserve them on refusal.
     """
+    for observation in (before, after):
+        for field, size in (("coins", 2), ("money", 3), ("flags", 4), ("tiers", 4),
+                            ("party", None), ("items", None)):
+            value = observation[field]
+            if (not isinstance(value, list) or not value or (size is not None and len(value) != size)
+                    or any(type(byte) is not int or not 0 <= byte <= 255 for byte in value)):
+                raise ValueError(f"invalid credit observation: {field}")
+    for field in ("paid_calls", "grant_calls", "tier_calls"):
+        if type(after[field]) is not int or after[field] < 0:
+            raise ValueError(f"invalid credit observation: {field}")
     expected = {field: before[field] for field in ("coins", "money", "flags", "tiers", "party", "items")}
     expected.update({"coins": [0, 0] if bought else before["coins"],
                 "flags": flags, "tiers": tiers, "paid_calls": int(bought),
@@ -43,6 +53,30 @@ def credit_contract(before, after, *, bought, upgrade, flags, tiers,
              "classification": "contract_violation", "severity": "correctness",
              "evidence_origin": evidence_origin}
             for field, value in expected.items() if after[field] != value]
+
+
+def credit_fixture(case):
+    """Declared ownership and exact-funds expectations shared by worker/auditor."""
+    upgrade = case.startswith("upgrade_")
+    tier = 2 if case == "upgrade_max" else int(case == "upgrade_final")
+    owned = (("LEFTOVERS", "PP_TONIC", "KO_DEFIANCE") if case == "full_active" else
+             ("SHINY_CHARM",) if upgrade else ())
+    active = () if case == "upgrade_pc" else owned
+    flags = bits(owned, active)
+    tiers = [0] * 4
+    index = RAM["KEY_ITEM_BIT_SHINY_CHARM_OWNED"] // 2
+    tiers[index // 4] = tier << (2 * (index % 4))
+    funds = ({"upgrade_exact":18, "upgrade_final":36, "upgrade_decline":18,
+              "upgrade_insufficient":17, "upgrade_pc":18, "upgrade_max":99}[case]
+             if upgrade else 10 if case == "insufficient" else 11)
+    bought = case in ("exact", "full_active", "upgrade_exact", "upgrade_final", "upgrade_pc")
+    after_tiers = list(tiers)
+    if bought and upgrade:
+        after_tiers[index // 4] = (tier + 1) << (2 * (index % 4))
+    after_flags = (flags if upgrade or not bought else
+                   bits((*owned, "SHINY_CHARM"), owned if owned else ("SHINY_CHARM",)))
+    return dict(upgrade=upgrade, tier=tier, flags=flags, tiers=tiers, funds=funds,
+                expected=dict(bought=bought, upgrade=upgrade, flags=after_flags, tiers=after_tiers))
 
 
 class CreditContractSensitivityTest(unittest.TestCase):
@@ -83,6 +117,17 @@ class CreditContractSensitivityTest(unittest.TestCase):
         before, after, expected = self.fixture()
         del after["coins"]
         with self.assertRaises(KeyError):
+            credit_contract(before, after, **expected)
+
+    def test_malformed_observations_cannot_agree_their_way_to_clean(self):
+        for field, value in (("party", None), ("coins", []), ("money", [False, 0, 0])):
+            before, after, expected = self.fixture()
+            before[field] = after[field] = value
+            with self.assertRaises(ValueError):
+                credit_contract(before, after, **expected)
+        before, after, expected = self.fixture()
+        after['paid_calls'] = True
+        with self.assertRaises(ValueError):
             credit_contract(before, after, **expected)
         before, after, expected = self.fixture()
         del before["money"]
@@ -170,11 +215,11 @@ class CreditStoreRuntimeTest(ItemDescriptionRuntimeBase):
 class CreditStoreLiveTest(unittest.TestCase):
     """Constructed arrival/ownership fixture; genuine vendor inputs and return."""
 
-    def live(self, case, *, cgb=False):
-        upgrade = case.startswith("upgrade_")
-        tier = 2 if case == "upgrade_max" else int(case == "upgrade_final")
+    def live(self, case, *, cgb=False, output=None, assert_contract=True):
+        fixture = credit_fixture(case)
+        upgrade, tier = fixture["upgrade"], fixture["tier"]
         target = (4, 3) if upgrade else (2, 3)
-        art = Path(__file__).parent / "artifacts" / f"credit_live_{case}_{'cgb' if cgb else 'dmg'}"
+        art = Path(output) if output is not None else Path(__file__).parent / "artifacts" / f"credit_live_{case}_{'cgb' if cgb else 'dmg'}"
         art.mkdir(parents=True, exist_ok=True)
         h = RedRogueHarness(REPO_ROOT, art, cgb_mode=cgb)
         self.addCleanup(h.close)
@@ -201,19 +246,11 @@ class CreditStoreLiveTest(unittest.TestCase):
             agent.walk(path[0])
         self.assertEqual(agent.position(), target)
         agent.press("up", 2, 20)
-        owned = ("LEFTOVERS", "PP_TONIC", "KO_DEFIANCE") if case == "full_active" else ()
-        if upgrade:
-            owned = ("SHINY_CHARM",)
-        active = () if case == "upgrade_pc" else owned
-        before_flags = bits(owned, active)
+        before_flags = fixture["flags"]
         h.write_sram_bytes("sKeyItemsBitfield", before_flags)
-        tiers = [0] * 4
-        index = RAM["KEY_ITEM_BIT_SHINY_CHARM_OWNED"] // 2
-        tiers[index // 4] = tier << (2 * (index % 4))
+        tiers = fixture["tiers"]
         h.write_sram_bytes("sKeyItemTiers", tiers)
-        funds = ({"upgrade_exact":18, "upgrade_final":36, "upgrade_decline":18,
-                  "upgrade_insufficient":17, "upgrade_pc":18, "upgrade_max":99}[case]
-                 if upgrade else 10 if case == "insufficient" else 11)
+        funds = fixture["funds"]
         h.write8("wPlayerCoins", 0)
         h.write8("wPlayerCoins", int(f"{funds:02d}", 16), 1)
         party = h.read_bytes("wPartyDataStart", h.address("wPartyDataEnd") - h.address("wPartyDataStart"))
@@ -252,7 +289,7 @@ class CreditStoreLiveTest(unittest.TestCase):
                 agent.press("b")
             else:
                 agent.press("a")
-        bought = case in ("exact", "full_active", "upgrade_exact", "upgrade_final", "upgrade_pc")
+        bought = fixture["expected"]["bought"]
         self.assertEqual(exited["count"], 1)
         self.assertEqual(visits["count"], 0 if case == "upgrade_max" else 1 if case == "upgrade_final" else 2)
         self.assertFalse(h.read8("wFontLoaded") & 1, "vendor did not return to overworld")
@@ -260,10 +297,8 @@ class CreditStoreLiveTest(unittest.TestCase):
         stock = h.read_bytes("wCreditItemList", h.read8("wCreditItemList") + 1)[1:]
         self.assertEqual(ITEMS["SHINY_CHARM"] in stock, tier + int(bought) < 2 if upgrade else not bought,
                          "vendor shelf did not reflect ownership after the transaction")
-        expected_flags = (before_flags if upgrade or not bought else
-                          bits((*owned, "SHINY_CHARM"), owned if owned else ("SHINY_CHARM",)))
-        if bought and upgrade:
-            tiers[index // 4] = (tier + 1) << (2 * (index % 4))
+        expected_flags = fixture["expected"]["flags"]
+        tiers = fixture["expected"]["tiers"]
         after_contract = {"coins": h.read_bytes("wPlayerCoins", 2),
             "money": h.read_bytes("wPlayerMoney", 3),
             "flags": h.read_sram_bytes("sKeyItemsBitfield", 4),
@@ -278,7 +313,8 @@ class CreditStoreLiveTest(unittest.TestCase):
             "after": after_contract, "expected": {"bought": bought, "upgrade": upgrade,
                 "flags": expected_flags, "tiers": tiers}, "findings": findings,
             "scope": "configured exact-funds credit fixture; not a general price oracle"}, indent=2))
-        self.assertEqual(findings, [])
+        if assert_contract:
+            self.assertEqual(findings, [])
         self.assertEqual(h.read8("hJoyIgnore"), 0)
         agent.press("down", 20, 20)
         self.assertEqual(h.read8("hCurMap"), maps["CREDIT_EXCHANGE"])

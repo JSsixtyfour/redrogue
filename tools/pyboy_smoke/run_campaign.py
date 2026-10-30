@@ -44,6 +44,9 @@ def measured(name, operation):
 
 def case_parser(case):
     kind = case.get("scenario", "autoplay")
+    if kind == "credit":
+        import credit_scenario
+        return credit_scenario.build_parser()
     if kind == "purchase":
         import purchase_scenario
         return purchase_scenario.build_parser()
@@ -57,6 +60,16 @@ def case_parser(case):
 
 
 def normalize_summary(case, summary):
+    if case.get("scenario") == "credit":
+        import credit_scenario
+        args = case_parser(case).parse_args(case.get('args', []))
+        rows = summary['runs']
+        if len(rows) != 1:
+            raise ValueError('credit requires one fixed fixture seed')
+        row = credit_scenario.read_report(Path(rows[0]['report']), args)
+        if rows != [row]:
+            raise ValueError('credit summary differs from audited evidence')
+        return {'runs': [row]}
     if case.get("scenario") == "sram":
         matched_requested = case_parser(case).parse_args(case.get("args", [])).matched_controls
         if matched_requested or summary.get("comparison_mode"):
@@ -168,7 +181,7 @@ def normalize_matched_sram(case, summary):
 def achieved_exposure(summary):
     if not isinstance(summary, dict) or not isinstance(summary.get("runs", []), list):
         raise ValueError("summary runs must be a list")
-    counts = dict(completed_runs=0, stages=0, save_round_trips=0, power_cuts=0, purchase_cases=0, sram_fills=0, corpus_states=0)
+    counts = dict(completed_runs=0, stages=0, save_round_trips=0, power_cuts=0, purchase_cases=0, credit_cases=0, sram_fills=0, corpus_states=0)
     corpus_hashes = set()
     for row in summary.get("runs", []):
         if not isinstance(row, dict):
@@ -182,7 +195,8 @@ def achieved_exposure(summary):
                 raise ValueError(f"{field} must be a list")
         counts["completed_runs"] += len(row.get("run_records", []))
         counts["stages"] += row.get("stages_cleared", 0)
-        counts["purchase_cases"] += sum(c.get("execution") == "completed" for c in row.get("cases", []))
+        counts["purchase_cases"] += sum(c.get("execution") == "completed" and c.get('family', 'purchase') == 'purchase' for c in row.get("cases", []))
+        counts["credit_cases"] += sum(c.get("execution") == "completed" and c.get('family') == 'credit' for c in row.get("cases", []))
         counts["sram_fills"] += row.get("sram_fills", 0)
         if row.get("report"):
             data = json.loads(Path(row["report"]).read_text())
@@ -348,12 +362,15 @@ def validate_config(config):
             raise ValueError(f"unsafe or duplicate case id: {name}")
         ids.add(name)
         args = case_parser(case).parse_args(case["args"])
+        if case.get('scenario') == 'credit' and args.control_credit_balance and args.case != 'exact':
+            raise ValueError('credit balance control requires exact fixture')
         expected_verdict = case.get("expected_verdict", "no_issue_detected")
         if expected_verdict not in ("no_issue_detected", "contract_violation"):
             raise ValueError("unsupported expected verdict")
         if expected_verdict == "contract_violation" and not (
-                case.get("scenario") == "purchase" and args.control_overcharge):
-            raise ValueError("an expected violation requires the isolated purchase detector control")
+                (case.get("scenario") == "purchase" and args.control_overcharge) or
+                (case.get("scenario") == "credit" and args.control_credit_balance and args.case == 'exact')):
+            raise ValueError("an expected violation requires an isolated transaction detector control")
         if expected_verdict == "contract_violation":
             expected = case.get("expected_findings")
             if not isinstance(expected, list) or not expected or any(
@@ -418,7 +435,7 @@ def execute_case(case, directory, budget):
     attempt.mkdir()
     artifacts = attempt / "artifacts"
     artifacts.mkdir()
-    workers = {"purchase": "purchase_scenario.py", "sram": "sram_fuzz.py"}
+    workers = {"purchase": "purchase_scenario.py", "credit": "credit_scenario.py", "sram": "sram_fuzz.py"}
     runner = Path(__file__).with_name(workers[case["scenario"]]) if case.get("scenario") in workers else RUNNER
     command = [sys.executable, str(runner), *case["args"]]
     memory_log = attempt / "peak_rss_kib.txt"
