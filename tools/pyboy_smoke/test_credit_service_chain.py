@@ -16,8 +16,8 @@ def state(h):
             'tiers': h.read_sram_bytes('sKeyItemTiers', 4)}
 
 
-def run_chain(test, *, cgb):
-    output = Path(__file__).parent / 'artifacts' / f"credit_service_chain_{'cgb' if cgb else 'dmg'}"
+def run_chain(test, *, cgb, output=None):
+    output = Path(output) if output is not None else Path(__file__).parent / 'artifacts' / f"credit_service_chain_{'cgb' if cgb else 'dmg'}"
     output.mkdir(parents=True, exist_ok=True)
     h = credit_store.CreditStoreLiveTest.live(test, 'exact', cgb=cgb, output=output/'purchase')
     purchased = state(h)

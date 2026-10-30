@@ -12,6 +12,18 @@ from test_credit_store import credit_fixture
 
 
 class CreditCampaignTest(unittest.TestCase):
+    def test_balance_control_audit_keeps_exact_control_signature(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(credit, 'digest', lambda path: path.name):
+            _, folder, _ = self.fixture(Path(tmp))
+            observation = json.loads((folder / 'contract.json').read_text())
+            changed = copy.deepcopy(observation['after']); changed['coins'][1] ^= 1
+            findings = credit.credit_contract(observation['before'], changed, **observation['expected'],
+                                              evidence_origin='controlled_detector_input')
+            (folder / 'case.json').write_text(json.dumps({'case':'exact','cgb':False,'control':True,'findings':findings}))
+            audited = credit.audit_case(folder, 'exact', False, True)
+            self.assertEqual([(f['field'],f['evidence_origin']) for f in audited['findings']],
+                             [('coins','controlled_detector_input')])
+
     def fixture(self, directory):
         args = credit.build_parser().parse_args(['--case', 'exact'])
         fixture = credit_fixture('exact')

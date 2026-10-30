@@ -26,12 +26,10 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def audit_case(directory, name, cgb, control):
-    record = json.loads((directory / 'case.json').read_text())
+def audit_driver(directory, name, cgb, *, funds_override=None):
+    """Audit the shared live-driver evidence, including continued fixtures."""
     result = json.loads((directory / 'result.json').read_text())
     observation = json.loads((directory / 'contract.json').read_text())
-    if (record['case'], record['cgb'], record['control']) != (name, cgb, control):
-        raise ValueError('credit case identity mismatch')
     if (result['case'], result['cgb']) != (name, cgb):
         raise ValueError('credit driver identity mismatch')
     if (result['rom_sha256'], result['sym_sha256']) != (
@@ -42,7 +40,8 @@ def audit_case(directory, name, cgb, control):
     if not result['inputs'] or result['final_frame'] <= result['started_frame']:
         raise ValueError('credit inputs or completion missing')
     fixture = credit_fixture(name)
-    expected_before = {'coins': [0, int(f"{fixture['funds']:02d}", 16)],
+    funds = fixture['funds'] if funds_override is None else funds_override
+    expected_before = {'coins': [0, int(f"{funds:02d}", 16)],
                        'flags': fixture['flags'], 'tiers': fixture['tiers']}
     if any(observation['before'][key] != value for key, value in expected_before.items()):
         raise ValueError('credit fixture precondition mismatch')
@@ -60,11 +59,20 @@ def audit_case(directory, name, cgb, control):
     real = credit_contract(observation['before'], after, **fixture['expected'])
     if real != observation['findings']:
         raise ValueError('credit observed findings mismatch')
+    return observation, result, real
+
+
+def audit_case(directory, name, cgb, control):
+    record = json.loads((directory / 'case.json').read_text())
+    if (record['case'], record['cgb'], record['control']) != (name, cgb, control):
+        raise ValueError('credit case identity mismatch')
+    observation, result, real = audit_driver(directory, name, cgb)
+    after = observation['after']
     findings = list(real)
     if control:
         changed = copy.deepcopy(after)
         changed['coins'][1] ^= 1
-        findings += credit_contract(observation['before'], changed, **fixture['expected'],
+        findings += credit_contract(observation['before'], changed, **credit_fixture(name)['expected'],
                                     evidence_origin='controlled_detector_input')
     if record['findings'] != findings:
         raise ValueError('credit recorded findings mismatch')

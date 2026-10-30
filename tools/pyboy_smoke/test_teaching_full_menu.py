@@ -13,9 +13,9 @@ from test_teaching_identity_chain import close_text
 from test_trade_identity_chain import party
 
 
-def run_chain(test, *, cgb, cancellation):
+def run_chain(test, *, cgb, cancellation, output=None):
     root=Path(__file__).resolve().parents[2]
-    output=Path(__file__).parent/'artifacts'/f"teaching_full_{cancellation}_{'cgb' if cgb else 'dmg'}"
+    output=Path(output) if output is not None else Path(__file__).parent/'artifacts'/f"teaching_full_{cancellation}_{'cgb' if cgb else 'dmg'}"
     output.mkdir(parents=True,exist_ok=True)
     h=RedRogueHarness(root,output,cgb_mode=cgb);test.addCleanup(h.close);test.harness=h
     teacher.BridgeTeachKnownMoveTest.prepare_teacher(test)

@@ -21,10 +21,10 @@ def party(h):
             'names': [h.read_bytes('wPartyMonNicks', width, slot * width) for slot in range(count)]}
 
 
-def run_chain(test, *, cgb):
+def run_chain(test, *, cgb, output=None):
     root = Path(__file__).resolve().parents[2]
     species = parse_rgbds_constants(root/'constants/pokemon_constants.asm')
-    output = Path(__file__).parent/'artifacts'/f"trade_identity_chain_{'cgb' if cgb else 'dmg'}"
+    output = Path(output) if output is not None else Path(__file__).parent/'artifacts'/f"trade_identity_chain_{'cgb' if cgb else 'dmg'}"
     output.mkdir(parents=True, exist_ok=True)
     context = {}; removed = []
     def before(h):

@@ -20,9 +20,9 @@ def close_text(h):
     return not h.read8('wFontLoaded') & 1 and save_reload.settle(h)
 
 
-def run_chain(test, *, cgb):
+def run_chain(test, *, cgb, output=None):
     root=Path(__file__).resolve().parents[2]
-    output=Path(__file__).parent/'artifacts'/f"teaching_identity_chain_{'cgb' if cgb else 'dmg'}"
+    output=Path(output) if output is not None else Path(__file__).parent/'artifacts'/f"teaching_identity_chain_{'cgb' if cgb else 'dmg'}"
     output.mkdir(parents=True,exist_ok=True)
     h=RedRogueHarness(root,output,cgb_mode=cgb);test.addCleanup(h.close)
     test.harness=h

@@ -44,6 +44,9 @@ def measured(name, operation):
 
 def case_parser(case):
     kind = case.get("scenario", "autoplay")
+    if kind == "directed":
+        import directed_scenario
+        return directed_scenario.build_parser()
     if kind == "credit":
         import credit_scenario
         return credit_scenario.build_parser()
@@ -60,6 +63,16 @@ def case_parser(case):
 
 
 def normalize_summary(case, summary):
+    if case.get('scenario') == 'directed':
+        import directed_scenario
+        args = case_parser(case).parse_args(case.get('args', []))
+        rows = summary['runs']
+        if len(rows) != 1:
+            raise ValueError('directed requires one fixed catalog identity')
+        row = directed_scenario.read_report(Path(rows[0]['report']), args)
+        if rows != [row]:
+            raise ValueError('directed summary differs from audited evidence')
+        return {'runs': [row]}
     if case.get("scenario") == "credit":
         import credit_scenario
         args = case_parser(case).parse_args(case.get('args', []))
@@ -182,6 +195,8 @@ def achieved_exposure(summary):
     if not isinstance(summary, dict) or not isinstance(summary.get("runs", []), list):
         raise ValueError("summary runs must be a list")
     counts = dict(completed_runs=0, stages=0, save_round_trips=0, power_cuts=0, purchase_cases=0, credit_cases=0, sram_fills=0, corpus_states=0)
+    counts.update(directed_chains=0, directed_credit_chains=0, directed_trade_chains=0,
+                  directed_teaching_empty_chains=0, directed_teaching_full_chains=0)
     corpus_hashes = set()
     for row in summary.get("runs", []):
         if not isinstance(row, dict):
@@ -197,6 +212,13 @@ def achieved_exposure(summary):
         counts["stages"] += row.get("stages_cleared", 0)
         counts["purchase_cases"] += sum(c.get("execution") == "completed" and c.get('family', 'purchase') == 'purchase' for c in row.get("cases", []))
         counts["credit_cases"] += sum(c.get("execution") == "completed" and c.get('family') == 'credit' for c in row.get("cases", []))
+        for chain in row.get('cases', []):
+            if chain.get('family') == 'directed' and chain.get('execution') == 'completed':
+                key = 'directed_' + chain.get('chain_family', '') + '_chains'
+                if key not in counts:
+                    raise ValueError('unknown directed chain family')
+                counts['directed_chains'] += 1
+                counts[key] += 1
         counts["sram_fills"] += row.get("sram_fills", 0)
         if row.get("report"):
             data = json.loads(Path(row["report"]).read_text())
@@ -256,9 +278,11 @@ def evidence_inventory(attempt, summary):
                     raise ValueError("referenced report missing or outside attempt")
     entries = []
     for path in sorted(artifacts.rglob("*")):
+        if path.is_symlink():
+            raise ValueError("artifact escapes attempt")
         if not path.is_file():
             continue
-        if path.is_symlink() or not path.resolve().is_relative_to(artifacts):
+        if not path.resolve().is_relative_to(artifacts):
             raise ValueError("artifact escapes attempt")
         kind = ("replay_state" if path.suffix == ".state" else
                 "case_record" if path.name == "case.json" else
@@ -362,6 +386,8 @@ def validate_config(config):
             raise ValueError(f"unsafe or duplicate case id: {name}")
         ids.add(name)
         args = case_parser(case).parse_args(case["args"])
+        if case.get('scenario') == 'directed' and args.control_identity and args.case != 'trade':
+            raise ValueError('identity control requires trade fixture')
         if case.get('scenario') == 'credit' and args.control_credit_balance and args.case != 'exact':
             raise ValueError('credit balance control requires exact fixture')
         expected_verdict = case.get("expected_verdict", "no_issue_detected")
@@ -369,7 +395,8 @@ def validate_config(config):
             raise ValueError("unsupported expected verdict")
         if expected_verdict == "contract_violation" and not (
                 (case.get("scenario") == "purchase" and args.control_overcharge) or
-                (case.get("scenario") == "credit" and args.control_credit_balance and args.case == 'exact')):
+                (case.get("scenario") == "credit" and args.control_credit_balance and args.case == 'exact') or
+                (case.get('scenario') == 'directed' and args.control_identity and args.case == 'trade')):
             raise ValueError("an expected violation requires an isolated transaction detector control")
         if expected_verdict == "contract_violation":
             expected = case.get("expected_findings")
@@ -384,6 +411,8 @@ def validate_config(config):
         if args.jobs < 1 or args.timeout <= 0:
             raise ValueError("jobs and timeout must be positive")
         for key, value in case.get("required_exposure", {}).items():
+            if key.startswith('directed_') and case.get('scenario') != 'directed':
+                raise ValueError('directed quotas require audited directed evidence')
             if key not in achieved_exposure({}) or not isinstance(value, int) or value < 0:
                 raise ValueError(f"invalid exposure quota: {key}={value}")
     return cases
@@ -435,7 +464,7 @@ def execute_case(case, directory, budget):
     attempt.mkdir()
     artifacts = attempt / "artifacts"
     artifacts.mkdir()
-    workers = {"purchase": "purchase_scenario.py", "credit": "credit_scenario.py", "sram": "sram_fuzz.py"}
+    workers = {"purchase": "purchase_scenario.py", "credit": "credit_scenario.py", "directed": "directed_scenario.py", "sram": "sram_fuzz.py"}
     runner = Path(__file__).with_name(workers[case["scenario"]]) if case.get("scenario") in workers else RUNNER
     command = [sys.executable, str(runner), *case["args"]]
     memory_log = attempt / "peak_rss_kib.txt"
