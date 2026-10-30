@@ -38,8 +38,13 @@ CalcExperience::
 ; garbage exp that reads back as level 100.
 ;
 ; Level 1 is the ONLY input that can underflow, verified by evaluating all six
-; growth rates over levels 1-255; the maximum is 1,250,000, which also leaves no
-; overflow case. Guarding just that one level, instead of reordering the term
+; growth rates over levels 1-255. OVERFLOW is a separate limit: hExperience is 3
+; bytes (16,777,215), which Slow passes above level 237 and Medium Slow above 245
+; (the other four stay under it to 255; measured 2026-10-29). An earlier version
+; of this comment said "maximum 1,250,000, no overflow case": that is Slow at
+; level 100, not 255. MAX_LEVEL (235) keeps every PLAYER mon under it; an enemy
+; at 246-255 gets a wrapped total, which nothing reads (ENDLESS_MODE_CHECKPOINT_G.md).
+; Guarding just that one level, instead of reordering the term
 ; summation the way the upstream fix does, keeps every level >= 2 computing
 ; bit-for-bit as before. That matters here: the reordered version was measured
 ; to shift this fork's deterministic party-generation RNG stream (the pyboy

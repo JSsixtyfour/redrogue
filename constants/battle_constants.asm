@@ -1,4 +1,18 @@
-DEF MAX_LEVEL EQU 100
+; The player's level cap (ENDLESS_MODE_CHECKPOINT_G.md, user 2026-10-29): every
+; mon the player owns, gains EXP or is given stays at or below it. 235 sits under
+; the 3-byte EXP overflow (Slow growth passes 16,777,215 above level 237, Medium
+; Slow above 245; CalcExperience).
+DEF MAX_LEVEL EQU 235
+; Enemies keep growing in Endless up to the level byte's limit. Only the enemy
+; level funnel (RogueApplyDifficulty) and the party-spec level clamp read this;
+; anything that GIVES the player a mon from an enemy level clamps to MAX_LEVEL.
+DEF ENEMY_MAX_LEVEL EQU 255
+	ASSERT MAX_LEVEL <= ENEMY_MAX_LEVEL && ENEMY_MAX_LEVEL <= 255
+	ASSERT MAX_LEVEL <= 237, "the player cap must stay under the EXP overflow"
+; The highest level whose Psywave cap (level * 1.5) fits in a byte. Above it,
+; core.asm's PsywaveLargeDamage rolls in 16 bits instead.
+DEF PSYWAVE_BYTE_MAX_LEVEL EQU 170
+	ASSERT PSYWAVE_BYTE_MAX_LEVEL + PSYWAVE_BYTE_MAX_LEVEL / 2 <= 255
 
 ; maximum moves known per mon
 DEF NUM_MOVES EQU 4

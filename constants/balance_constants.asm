@@ -57,6 +57,11 @@ DEF GYM_R8_STEP EQU 2
 ; row's fallback source. Never upward - a set written for higher levels would
 ; hand the mon its moves early.
 DEF SET_LEVEL_SLACK_BELOW EQU 10
+; The curated corpus's level ceiling: tools/gen_movesets.py clamps every
+; record's lvl_min/lvl_max to 1-100. An enemy above it (Endless, levels past 100;
+; ENDLESS_MODE_CHECKPOINT_G.md B3) is matched against the sets as if it were
+; this level, so its strongest sets stay available instead of none.
+DEF MOVESET_CORPUS_MAX_LEVEL EQU 100
 
 ; --- TM level gate (MOVESET_DIFFICULTY_ANALYSIS_2026-10-27.md R2.2) ----------
 ; Gen 1 TMs have no level requirement, so without this a level-11 gym ace could

@@ -446,7 +446,7 @@ INCLUDE "data/balance/trainer_levels.asm"
 
 ; Applies all active trainer-level modifiers after a base level is written, in
 ; this order: Endless growth, the witch's +10%, the LEVELS setting, then the
-; 1..100 clamp (inside RogueApplyDifficulty). Endless goes first so both
+; 1..ENEMY_MAX_LEVEL clamp (inside RogueApplyDifficulty). Endless goes first so both
 ; percentages scale the whole level, as they do in the original circuit.
 ; No register arguments. Clobbers a and the Divide/Multiply HRAM scratch;
 ; preserves bc, de, and hl for callers that are walking trainer data.
@@ -511,9 +511,10 @@ RogueApplyWitchLevelBonus::
 
 ; Adjusts wCurEnemyLevel by the player's LEVELS setting (wOptions2 bits 0-2):
 ; level +/- level*|pct|//100 with pct = DifficultyLevelPct[setting] (signed),
-; then clamps it to 1..MAX_LEVEL on every path. The 0% baseline used to return
-; unclamped, which was safe only while no base reached 100; Endless growth and
-; the witch bonus (saturating at 255) can now push one past it.
+; then clamps it to 1..ENEMY_MAX_LEVEL on every path. The 0% baseline used to
+; return unclamped, which was safe only while no base reached the cap; Endless
+; growth and the witch bonus (saturating at 255) can now push one past it.
+; Enemies only: a caller that gives the player a mon clamps to MAX_LEVEL itself.
 ; No register arguments.  Clobbers a and the Multiply/Divide HRAM scratch.
 RogueApplyDifficulty::
 	ld a, [wOptions2]
@@ -569,11 +570,8 @@ RogueApplyDifficulty::
 .harder
 	ld a, d
 	add c
-	jr c, .ceiling
-	cp 101
-	jr c, .store
-.ceiling
-	ld a, 100
+	jr nc, .store
+	ld a, $ff                    ; saturate; .cap applies ENEMY_MAX_LEVEL
 .store
 	ld [wCurEnemyLevel], a
 .done
@@ -581,11 +579,13 @@ RogueApplyDifficulty::
 	pop de
 	pop bc
 .cap
+IF ENEMY_MAX_LEVEL < 255
 	ld a, [wCurEnemyLevel]
-	cp MAX_LEVEL + 1
+	cp ENEMY_MAX_LEVEL + 1
 	ret c
-	ld a, MAX_LEVEL
+	ld a, ENEMY_MAX_LEVEL
 	ld [wCurEnemyLevel], a
+ENDC
 	ret
 
 ; RogueApplyWildLevelModifiers for a level that is not in wCurEnemyLevel, for

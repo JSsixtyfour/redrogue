@@ -28,7 +28,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import parse  # noqa: E402
 from parse import EVOLVE_ITEM, EVOLVE_TRADE, GameData  # noqa: E402
 
-MAX_LEVEL = 100
+_LEVEL_CAPS = parse.parse_rgbds_constants(parse.ROOT / "constants" / "battle_constants.asm")
+# The player's cap (level-ups, rewards, wild-area bosses, gifts) and the enemy
+# cap (the level funnel), ENDLESS_MODE_CHECKPOINT_G.md: 235 and 255.
+MAX_LEVEL = _LEVEL_CAPS["MAX_LEVEL"]
+ENEMY_MAX_LEVEL = _LEVEL_CAPS["ENEMY_MAX_LEVEL"]
 DIFFICULTIES = ("normal", "easy", "very_easy", "hard", "very_hard")   # DIFFICULTY_* order
 # The LEVELS ladder as the ROM reads it (balance_constants.asm DIFF_*, since 2026-10-09):
 # signed enemy-level percent and prize bonus percent per stored setting. HARD is
@@ -117,7 +121,7 @@ class Config:
     bridge_take_mon: float = 1.0
     # Endless mode (ENDLESS_MODE_CHECKPOINT_D.md): circuits played past the first
     # Champion, and the per-round level rows (EndlessLevelRows, rounds
-    # ENDLESS_FIRST_ROUND..31). None = read data/balance/endless_levels.asm.
+    # ENDLESS_FIRST_ROUND on, held at the last row; checkpoint G). None = read data/balance/endless_levels.asm.
     endless_depth: int = 0
     endless_rows: tuple[int, ...] | None = None
     # Runtime, set by Simulator.p() for the battle being built: the Endless
@@ -144,14 +148,14 @@ PROPOSED_TIERS = {
 def apply_difficulty(level: int, difficulty: str, bonus: int = 0) -> int:
     """The level funnel (func_enc_gen.asm): the Endless bonus (EndlessLevelBonus,
     saturating at 255), then RogueApplyDifficulty's level +/- level*|pct|//100,
-    floor 1, then the 1..100 clamp it applies on every path. A named setting reads
+    floor 1, then the 1..ENEMY_MAX_LEVEL clamp it applies on every path. A named setting reads
     DIFFICULTY_LEVEL_PCT; "pct:N" is a what-if."""
     level = min(level + bonus, 255)
     p = int(difficulty[4:]) if difficulty.startswith("pct:") else DIFFICULTY_LEVEL_PCT[difficulty]
     delta = level * abs(p) // 100
     if p < 0:
-        return min(max(1, level - delta), MAX_LEVEL)
-    return min(level + delta, MAX_LEVEL)
+        return min(max(1, level - delta), ENEMY_MAX_LEVEL)
+    return min(level + delta, ENEMY_MAX_LEVEL)
 
 
 def evolve_by_level(g: GameData, cfg: Config, species: str, level: int, rng: random.Random) -> str:
@@ -382,7 +386,7 @@ def spec_battle(g: GameData, cfg: Config, kind: str, count: int, n: int, base: i
     pinned ace is not evolved, except the rival starter placeholder."""
     mons: list[tuple[str, int]] = []
     for slot in range(n):
-        lv = apply_difficulty(max(1, min(base + slot * step, MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
+        lv = apply_difficulty(max(1, min(base + slot * step, ENEMY_MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
         if slot == n - 1 and ace == "RIVAL_STARTER_PLACEHOLDER":
             sp = rival_starter_evolve(g, rival_starter, lv, cfg, rng)
         elif slot == n - 1 and ace:
@@ -412,13 +416,13 @@ def leader_battle(g: GameData, cfg: Config, leader: parse.LeaderRecord, rnd: int
     allow_uber = rnd >= 7 and "ALLOW_UBER" in leader.late_flags
     # PartyGenPreRollAce: the ace is drawn first (party still empty) and the
     # other slots dedupe against it; it is still fielded in the last slot.
-    ace_lv = apply_difficulty(max(1, min(base + (n - 1) * step, MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
+    ace_lv = apply_difficulty(max(1, min(base + (n - 1) * step, ENEMY_MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
     # A round's own AceR<rnd> list wins over the band's (banded_round_spec).
     ace_pool = f"{pre}AceR{rnd}" if f"{pre}AceR{rnd}" in g.pools else f"{pre}Ace{band}"
     ace = draw_pool(g, cfg, ace_pool, ace_lv, [], allow_uber, rng, keep=True)
     mons: list[tuple[str, int]] = []
     for slot in range(n):
-        lv = apply_difficulty(max(1, min(base + slot * step, MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
+        lv = apply_difficulty(max(1, min(base + slot * step, ENEMY_MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
         used = [m for m, _ in mons] + [ace]
         if slot == n - 1:
             sp = ace
@@ -455,7 +459,7 @@ def miniboss_battle(g: GameData, cfg: Config, who: str, count: int, rival_starte
     off_slot = min(var, n - 2) if off and n >= 2 else None
 
     def level(slot: int) -> int:
-        return apply_difficulty(max(1, min(base + slot * step, MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
+        return apply_difficulty(max(1, min(base + slot * step, ENEMY_MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
 
     no_rival = rival_starter if who == "RIVAL" else None
     if who == "RIVAL":
@@ -484,7 +488,7 @@ def e4_battle(g: GameData, cfg: Config, member: parse.E4Record, count: int, rng:
     tier = min(max(count - k["E4_FIRST_BATTLECOUNT"], 0), k["NUM_E4_BATTLES"] - 1) + 1
     base, step = k["E4_BASE_LEVEL"] + tier, k["E4_LEVEL_STEP"]
     pre = f"POOL_BAND_{member.name}_"
-    ace_lv = apply_difficulty(max(1, min(base + 5 * step, MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
+    ace_lv = apply_difficulty(max(1, min(base + 5 * step, ENEMY_MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
     ace = draw_pool(g, cfg, f"{pre}Ace1", ace_lv, [], False, rng, keep=True)
     b = spec_battle(g, cfg, "e4", count, 6, base, step, f"{pre}Fod1", ace, False,
                     g.money[class_name(member.name)], rng)
@@ -512,7 +516,7 @@ def stage_event_battle(g: GameData, cfg: Config, count: int, rng: random.Random,
     ace_pool = f"{pre}Ace{band}" if f"{pre}Ace{band}" in g.pools else None
     ace = None
     if ace_pool:
-        ace_lv = apply_difficulty(max(1, min(base + (n - 1) * step, MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
+        ace_lv = apply_difficulty(max(1, min(base + (n - 1) * step, ENEMY_MAX_LEVEL)), cfg.difficulty, cfg.level_bonus)
         ace = draw_pool(g, cfg, ace_pool, ace_lv, [], False, rng, keep=True)
     b = spec_battle(g, cfg, "stage_event", count, n, base, step, f"{pre}Fod{band}", ace, False,
                     g.money[cls], rng)
@@ -564,7 +568,8 @@ def wild_boss_battle(g: GameData, cfg: Config, count: int, rng: random.Random,
     unowned-only filter is not modelled, like every ownership re-roll here).
     Depth 0 consumes exactly the RNG it always did."""
     idx = round_of(g, count)
-    lv = apply_difficulty(g.tables.wild_boss[idx], cfg.difficulty, cfg.level_bonus)
+    # PCGetBossLevel caps at the PLAYER's MAX_LEVEL: the gift keeps the fight's level.
+    lv = min(MAX_LEVEL, apply_difficulty(g.tables.wild_boss[idx], cfg.difficulty, cfg.level_bonus))
     bonus_round = count // g.knobs["ROUND_BATTLES"] if endless else idx
     cls = pc_roll_mon_class(bonus_round, g.knobs["WILD_BOSS_RARITY_BUMP"], rng, g.knobs["WILD_CLASS_ROUND_STEP"])
     if endless and cls == 4 and endless_uber_step(g, count, rng):
@@ -716,7 +721,7 @@ def level_from_exp(curve: tuple[int, int, int, int, int], exp: int) -> int:
 def reward_level(g: GameData, count: int, endless: bool = False) -> int:
     """GetRewardMonLevel, stage caller: the gym block of the current round,
     min + range/2, clamped to [REWARD_LEVEL_FLOOR, REWARD_LEVEL_CAP]. Endless
-    (depth >= 1) lifts the cap; the bonus and the 100 clamp bound it."""
+    (depth >= 1) lifts the cap; the bonus and the MAX_LEVEL (player) clamp bound it."""
     block = g.tables.gym[round_of(g, count)]
     lv = max(g.knobs["REWARD_LEVEL_FLOOR"], block.min_level + (block.level_range >> 1))
     return lv if endless else min(lv, g.knobs["REWARD_LEVEL_CAP"])
@@ -807,10 +812,12 @@ class Simulator:
         span = k["LAST_ROUND_BATTLECOUNT"] + 1
         prog = min(255, count + span * self.depth)
         self.cfg.level_bonus = 0
-        if self.depth:
-            row = prog // k["ROUND_BATTLES"] - span // k["ROUND_BATTLES"]
-            if 0 <= row < len(self.rows):
-                self.cfg.level_bonus = self.rows[row]
+        if self.depth and self.rows:
+            # EndlessLevelBonus reads its OWN round, count + depth * span with no
+            # 255 saturation (checkpoint G), and holds the last row past the table.
+            row = (count + span * self.depth) // k["ROUND_BATTLES"] - span // k["ROUND_BATTLES"]
+            if row >= 0:
+                self.cfg.level_bonus = self.rows[min(row, len(self.rows) - 1)]
         return prog
 
     # --- bookkeeping ---
@@ -1197,7 +1204,10 @@ def selfcheck(g: GameData, runs: int) -> list[str]:
     for diff, want in (("hard", 43), ("normal", 39), ("easy", 35), ("very_easy", 31), ("very_hard", 47)):
         check(f"difficulty {diff}", apply_difficulty(43, diff), want)
     check("difficulty floor", apply_difficulty(1, "very_easy"), 1)
-    check("difficulty cap", apply_difficulty(95, "very_hard"), 100)
+    # Enemies are no longer held at 100 (checkpoint G): 95 + 9% passes it, and
+    # only ENEMY_MAX_LEVEL stops the level.
+    check("difficulty past 100", apply_difficulty(95, "very_hard"), 104)
+    check("difficulty cap", apply_difficulty(240, "very_hard"), ENEMY_MAX_LEVEL)
 
     # Money: route trainer base x last level; Amulet Coin tier 3 (+20%).
     b = Battle("route", 1, [("PIDGEY", 4)], True, g.knobs["MONEY_BASE_TRAINER"])

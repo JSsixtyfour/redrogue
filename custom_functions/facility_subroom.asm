@@ -413,6 +413,12 @@ FacManiacPrize:
 	ld de, wStringBuffer
 	ld bc, NAME_LENGTH
 	call CopyData
+	; An Endless enemy can be above the player's cap (ENEMY_MAX_LEVEL); its
+	; copied struct (stats, EXP) would be too. Give a fresh mon at MAX_LEVEL
+	; instead (ENDLESS_MODE_CHECKPOINT_G.md step 4).
+	ld a, [wLoadedMonLevel]
+	cp MAX_LEVEL + 1
+	jr nc, .overCap
 	ld a, [wPartyCount]
 	cp PARTY_LENGTH
 	jr nc, .box
@@ -439,11 +445,18 @@ FacManiacPrize:
 	call CopyData
 	ld hl, FacManiacGotMonText
 	jp PrintText
+.overCap
+	ld a, MAX_LEVEL
+	ld [wLoadedMonLevel], a
+	ld a, [wPartyCount]
+	cp PARTY_LENGTH
+	jr c, .giveFresh                ; party room: GivePokemon puts it there
 .box
 	ld a, [wBoxCount]
 	cp MONS_PER_BOX
 	ld hl, FacManiacNoRoomText
 	jp nc, PrintText
+.giveFresh
 	ld hl, FacManiacGotMonText
 	call PrintText
 	call .form

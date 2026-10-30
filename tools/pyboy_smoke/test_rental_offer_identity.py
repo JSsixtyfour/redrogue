@@ -4,11 +4,14 @@ import io
 from pathlib import Path
 
 from harness import RedRogueHarness
+from source_constants import parse_rgbds_constants
 from test_move_tutor_prices import return_from_call
 from test_save_header import ColdBoot, dump_sram
 
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = Path(__file__).parent / "artifacts"
+# The player's level cap (235 since Endless checkpoint G); one past it is corrupt.
+MAX_LEVEL = parse_rgbds_constants(ROOT / "constants" / "battle_constants.asm")["MAX_LEVEL"]
 
 
 class RentalOfferIdentityTest(unittest.TestCase):
@@ -136,7 +139,7 @@ class RentalOfferIdentityTest(unittest.TestCase):
             self.assertEqual(h.read_bytes("hMoney", 3), price)
             self.assertEqual(h.read_bytes("wPlayerMoney", 3), money)
         for label, value in (("wRentalOfferClass", 0), ("wRentalOfferClass", 4),
-                             ("wRentalOfferLevel", 0), ("wRentalOfferLevel", 101),
+                             ("wRentalOfferLevel", 0), ("wRentalOfferLevel", MAX_LEVEL + 1),
                              ("wRentalOfferForm", 4), ("wRentalOfferSpecies", 0),
                              ("wRentalOfferFlags", 0)):
             previous = h.read8(label)

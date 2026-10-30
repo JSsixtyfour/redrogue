@@ -513,10 +513,13 @@ class AIPhaseZeroSmokeTest(HarnessTestCase):
                     h.write8("wCriticalHitOrOHKO", critical)
                     routine = "GetDamageVarsForEnemyAttack" if side else "GetDamageVarsForPlayerAttack"
                     h.call_routine(routine)
+                    # e is the raw level either way: since checkpoint G the
+                    # crit's level doubling happens inside CalculateDamage, in
+                    # 16 bits (an 8-bit doubling wrapped past level 127).
                     self.assertEqual(
                         observed["stats"],
                         (attack if critical else 100, defense if critical else 100,
-                         40, 100 if critical else 50),
+                         40, 50),
                     )
 
     def test_focus_energy_increases_critical_hit_threshold(self) -> None:

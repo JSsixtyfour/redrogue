@@ -1519,6 +1519,37 @@ PCGetBossLevel::
 ; EASY it sat ~7 levels over the starter, the hardest fight of its round.
 ; Endless growth first, through the same wild-area funnel.
 	farcall RogueApplyWildLevelModifiers ; preserves bc/de/hl
+; A wild-area boss stops at the PLAYER's cap, not ENEMY_MAX_LEVEL: beating it
+; offers it as a gift at this same level, and it must not drop levels on the
+; way into the party (user, 2026-10-29; ENDLESS_MODE_CHECKPOINT_G.md).
+	ld a, [wCurEnemyLevel]
+	cp MAX_LEVEL + 1
+	ret c
+	ld a, MAX_LEVEL
+	ld [wCurEnemyLevel], a
+	ret
+
+; ============================================================
+; PCBossEngageLevel  -- farcalled from EngageMapTrainer (HOME) when an
+; OW_POKEMON whose species is the staged boss engages.
+; The boss's map object stores its level with OW_POKEMON in bit 7, so the engage
+; path keeps only bits 0-6: an Endless boss above 127 would fight at its level
+; minus 128. Recompute the real level (PCGetBossLevel is deterministic) and put
+; it back, but only when its low 7 bits match the stored ones, so an ordinary
+; overworld mon of the same species keeps its own level.
+; Clobbers a/bc/hl and wCurEnemyLevel (InitBattleEnemyParameters rewrites it).
+; ============================================================
+PCBossEngageLevel::
+	call PCGetBossLevel
+	ld a, [wCurEnemyLevel]
+	ld b, a
+	and $7f
+	ld c, a
+	ld a, [wEngagedTrainerSet]
+	cp c
+	ret nz
+	ld a, b
+	ld [wEngagedTrainerSet], a
 	ret
 
 ; Entrance table for randomized entrance experiment.

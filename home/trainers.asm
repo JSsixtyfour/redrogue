@@ -405,6 +405,11 @@ EngageMapTrainer::
 	cp [hl]
 	ld a, 0
 	jr nz, .noBossForm
+	; The staged boss: bit 7 of its level byte is the OW_POKEMON flag, so above
+	; 127 (Endless) the masked level is wrong; put the real one back.
+	push bc
+	farcall PCBossEngageLevel
+	pop bc
 	ld a, [wRoguePokemonForm1]
 .noBossForm
 	ld [wSpawnForm], a

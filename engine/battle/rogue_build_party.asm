@@ -698,16 +698,18 @@ PartyGenResolveLevel:
 .stepDone
 	ld a, d
 .gotLevel
-; Clamp. A negative step can walk a late slot below 1, and MAX_LEVEL is the
-; ceiling every other level path in the game respects.
+; Clamp. A negative step can walk a late slot below 1, and ENEMY_MAX_LEVEL is
+; the ceiling every enemy level path respects (RogueApplyDifficulty clamps again).
 	and a
 	jr nz, .notZero
 	inc a
 .notZero
-	cp MAX_LEVEL + 1
+IF ENEMY_MAX_LEVEL < 255
+	cp ENEMY_MAX_LEVEL + 1
 	jr c, .inRange
-	ld a, MAX_LEVEL
+	ld a, ENEMY_MAX_LEVEL
 .inRange
+ENDC
 	ld [wCurEnemyLevel], a
 	farcall RogueApplyTrainerLevelModifiers
 	ret
@@ -2136,7 +2138,7 @@ PartyGenApplySetMovesetMask:
 	ld hl, wPartyGenTMUsed          ; set_tier_mask
 	and [hl]
 	jr z, .recordFail
-	ld a, [wCurEnemyLevel]
+	call .setLevel
 	ld hl, wPartyGenCandidates + 10 ; lvl_min
 	cp [hl]
 	jr c, .recordFail                ; level < lvl_min
@@ -2145,7 +2147,7 @@ PartyGenApplySetMovesetMask:
 	ld hl, wPartyGenCandidates + 13
 	add [hl]
 	ld d, a                           ; d = lvl_max + slack_below
-	ld a, [wCurEnemyLevel]
+	call .setLevel
 	ld h, a
 	ld a, d
 	cp h
@@ -2156,8 +2158,16 @@ PartyGenApplySetMovesetMask:
 	xor a
 	ret
 
-; Corpus lvl_min/lvl_max are levels, so at most MAX_LEVEL (tools/gen_movesets.py).
-ASSERT MAX_LEVEL + SET_LEVEL_SLACK_BELOW < 256, \
+; a = wCurEnemyLevel, clamped to the corpus ceiling (MOVESET_CORPUS_MAX_LEVEL).
+.setLevel:
+	ld a, [wCurEnemyLevel]
+	cp MOVESET_CORPUS_MAX_LEVEL + 1
+	ret c
+	ld a, MOVESET_CORPUS_MAX_LEVEL
+	ret
+
+; Corpus lvl_min/lvl_max are 1-MOVESET_CORPUS_MAX_LEVEL (tools/gen_movesets.py).
+ASSERT MOVESET_CORPUS_MAX_LEVEL + SET_LEVEL_SLACK_BELOW < 256, \
 	"a set level slack this large would overflow .recordPasses' 8-bit sum"
 
 ; ===========================================================================

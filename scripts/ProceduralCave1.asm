@@ -265,7 +265,7 @@ ProceduralCave1BossOfferText:
     ld a, [hCurrentMenuItem]
 	and a
 	jr nz, .done ; if player chose No
-	farcall PCGetBossLevel        ; sets wCurEnemyLevel from wBattleCount
+	farcall PCGetBossLevel        ; capped at MAX_LEVEL, so the gift keeps the fight's level
 	ld a, [wRoguePokemon1]
 	ld b, a                       ; b = species
 	ld a, [wCurEnemyLevel]

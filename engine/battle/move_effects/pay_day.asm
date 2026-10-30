@@ -8,13 +8,18 @@ PayDayEffect_:
 	jr z, .payDayEffect
 	ld a, [wEnemyMonLevel]
 .payDayEffect
-; level * 2
+; level * 2, carried into a second byte: past level 127 it no longer fits one
+; (ENDLESS_MODE_CHECKPOINT_G.md). At most 2 * MAX_LEVEL, so the hundreds digit
+; below stays a single BCD digit.
+	ASSERT 2 * MAX_LEVEL < 1000
 	add a
 	ldh [hDividend + 3], a
+	ld a, 0                 ; keeps the carry
+	rla
+	ldh [hDividend + 2], a
 	xor a
 	ldh [hDividend], a
 	ldh [hDividend + 1], a
-	ldh [hDividend + 2], a
 ; convert to BCD
 	ld a, 100
 	ldh [hDivisor], a

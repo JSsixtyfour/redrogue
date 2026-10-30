@@ -35,7 +35,6 @@ PARTY_LENGTH = 6
 NUM_MOVES = 4
 NAME_LENGTH = 11
 TEXT_TERMINATOR = 0x50  # "@"
-MAX_LEVEL = 100
 MAX_ITEM_COUNT = 99
 MAX_WARP_EVENTS = 32
 SPECIAL_WARP_MAPS = (0xFD, 0xFE, 0xFF)  # WARP_NO_RETURN, ROGUE_MAP, LAST_MAP
@@ -74,6 +73,10 @@ class GameChecks:
         self.species = {value for value in species.values() if value}
         self.num_moves = parse_rgbds_constants(root / "constants/move_constants.asm")["STRUGGLE"]
         self.num_maps = len(parse_map_constants(root / "constants/map_constants.asm"))
+        # The player's party stops at MAX_LEVEL (235), enemies at ENEMY_MAX_LEVEL
+        # (255): ENDLESS_MODE_CHECKPOINT_G.md. Either side past its own cap is a bug.
+        caps = parse_rgbds_constants(root / "constants/battle_constants.asm")
+        self.level_caps = {"party": caps["MAX_LEVEL"], "enemy_party": caps["ENEMY_MAX_LEVEL"]}
         ram = parse_rgbds_constants(root / "constants/ram_constants.asm")
         self.pockets = [  # (count label, items in the table, saved slots)
             ("wRecoveryItemCounts", ram["NUM_RECOVERY_ITEMS"], ram["RECOVERY_ITEM_SLOTS"]),
@@ -268,14 +271,14 @@ class GameChecks:
         self.check_items()
         self.check_map()
 
-    def _mon_problems(self, base: int, *, check_pp: bool) -> list[str]:
+    def _mon_problems(self, base: int, *, check_pp: bool, max_level: int) -> list[str]:
         memory = self.h.pyboy.memory
         problems = []
         species = memory[base + MON_SPECIES]
         if species not in self.species:
             problems.append(f"species ${species:02X}")
         level = memory[base + MON_LEVEL]
-        if not 1 <= level <= MAX_LEVEL:
+        if not 1 <= level <= max_level:
             problems.append(f"level {level}")
         hp = memory[base + MON_HP] << 8 | memory[base + MON_HP + 1]
         max_hp = memory[base + MON_MAXHP] << 8 | memory[base + MON_MAXHP + 1]
@@ -319,7 +322,7 @@ class GameChecks:
             if listed[slot] != self.h.pyboy.memory[mon + MON_SPECIES]:
                 self.anomaly(check, f"slot {slot + 1} listed as ${listed[slot]:02X} "
                              f"but holds ${self.h.pyboy.memory[mon + MON_SPECIES]:02X}")
-            for problem in self._mon_problems(mon, check_pp=check_pp):
+            for problem in self._mon_problems(mon, check_pp=check_pp, max_level=self.level_caps[check]):
                 self.anomaly(check, f"slot {slot + 1} "
                              f"({self.agent.species_names.get(listed[slot], listed[slot])}): {problem}")
 

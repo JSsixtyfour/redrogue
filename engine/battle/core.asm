@@ -4294,21 +4294,22 @@ CheckForDisobedience:
 	jp z, .canUseMove
 ; it was traded
 .monIsTraded
-; what level might disobey?
+; what level might disobey? Every badge count answers "none at or below the
+; player's level cap" (MAX_LEVEL + 1; was 101 when the cap was 100).
 	ld hl, wObtainedBadges
 	bit BIT_EARTHBADGE, [hl]
-	ld a, 101
+	ld a, MAX_LEVEL + 1
 	jr nz, .next
 	bit BIT_MARSHBADGE, [hl]
-	ld a, 101
+	ld a, MAX_LEVEL + 1
 	jr nz, .next
 	bit BIT_RAINBOWBADGE, [hl]
-	ld a, 101
+	ld a, MAX_LEVEL + 1
 	jr nz, .next
 	bit BIT_CASCADEBADGE, [hl]
-	ld a, 101
+	ld a, MAX_LEVEL + 1
 	jr nz, .next
-	ld a, 101
+	ld a, MAX_LEVEL + 1
 .next
 	ld b, a
 	ld c, a
@@ -4624,12 +4625,8 @@ GetDamageVarsForPlayerAttack:
 	ld b, l ; b = player's offensive stat (possibly scaled)
 	        ; (c already contains enemy's defensive stat (possibly scaled))
 	ld a, [wBattleMonLevel]
-	ld e, a ; e = level
-	ld a, [wCriticalHitOrOHKO]
-	and a ; check for critical hit
-	jr z, .done
-	sla e ; double level if it was a critical hit
-.done
+	ld e, a ; e = level (CalculateDamage doubles it for a critical hit)
+.done ; b/c/d/e are final here (test_smoke hooks this)
 	ld a, 1
 	and a
 	ret
@@ -4786,12 +4783,8 @@ GetDamageVarsForEnemyAttack:
 	ld b, l ; b = enemy's offensive stat (possibly scaled)
 	        ; (c already contains player's defensive stat (possibly scaled))
 	ld a, [wEnemyMonLevel]
-	ld e, a
-	ld a, [wCriticalHitOrOHKO]
-	and a ; check for critical hit
-	jr z, .done
-	sla e ; double level if it was a critical hit
-.done
+	ld e, a ; e = level (CalculateDamage doubles it for a critical hit)
+.done ; b/c/d/e are final here (test_smoke hooks this)
 	ld a, $1
 	and a
 	ret
@@ -4920,21 +4913,30 @@ CalculateDamage:
 	ld hl, hDividend
 	ld [hli], a
 	ld [hli], a
-	ld [hl], a
-
-; Multiply level by 2
-	ld a, e ; level
-	add a
-	jr nc, .nc
-	push af
-	ld a, 1
-	ld [hl], a
-	pop af
-.nc
-	inc hl
 	ld [hli], a
+	ld [hl], e ; level, as a 16-bit value in hDividend+2/+3
+
+; Multiply level by 2, and by 2 again for a critical hit. The crit used to
+; double e itself before the call (`sla e`), which wraps once Endless levels pass
+; 127: a level-150 crit hit as level 44 (ENDLESS_MODE_CHECKPOINT_G.md B1). Every
+; caller sets wCriticalHitOrOHKO before its GetDamageVarsFor*Attack, and the
+; non-crit paths (confusion, the AI's estimate) zero it, so this reads the same
+; flag those routines used to read.
+	ld a, [wCriticalHitOrOHKO]
+	and a
+	ld a, 1
+	jr z, .double
+	inc a
+.double
+	sla [hl]
+	dec hl
+	rl [hl]
+	inc hl
+	dec a
+	jr nz, .double
 
 ; Divide by 5
+	inc hl
 	ld a, 5
 	ld [hld], a
 	push bc
@@ -5298,6 +5300,11 @@ ApplyAttackToEnemyPokemon:
 	jr z, .storeDamage
 ; Psywave
 	ld a, [hl]
+	cp PSYWAVE_BYTE_MAX_LEVEL + 1
+	jr c, .bytePsywave
+	call PsywaveLargeDamage ; level * 1.5 no longer fits a byte (Endless)
+	jr ApplyDamageToEnemyPokemon
+.bytePsywave
 	ld b, a
 	srl a
 	add b
@@ -5422,6 +5429,11 @@ ApplyAttackToPlayerPokemon:
 	jr z, .storeDamage
 ; Psywave
 	ld a, [hl]
+	cp PSYWAVE_BYTE_MAX_LEVEL + 1
+	jr c, .bytePsywave
+	call PsywaveLargeDamage ; level * 1.5 no longer fits a byte (Endless)
+	jr ApplyDamageToPlayerPokemon
+.bytePsywave
 	ld b, a
 	srl a
 	add b
@@ -7891,6 +7903,38 @@ PrintEmptyString:
 
 .emptyString
 	db "@"
+
+; Psywave for a user above PSYWAVE_BYTE_MAX_LEVEL, where level * 1.5 wraps a byte:
+; at 171 the byte cap was 0 and at 172 it was 1, and the "random in [1, cap)"
+; loop above never found a number, hanging the game (ENDLESS_MODE_CHECKPOINT_G.md
+; B2). Shin Red's overflow-safe roll (its PsywaveDamage / PsywaveEnhanced,
+; WITHOUT its best-of-several reroll): r uniform in [0, level], damage =
+; max(1, r + r/2) as 16 bits, the same 0.75 x level mean the AI estimate uses.
+; In: a = the user's level. Out: wDamage. Clobbers a, b, de, hl.
+PsywaveLargeDamage:
+	ld b, a
+.roll
+	call BattleRandom
+	cp b
+	jr z, .rolled
+	jr nc, .roll
+.rolled
+	ld l, a
+	ld h, 0
+	srl a
+	ld e, a
+	ld d, 0
+	add hl, de
+	ld a, h
+	or l
+	jr nz, .store
+	inc l
+.store
+	ld a, h
+	ld [wDamage], a
+	ld a, l
+	ld [wDamage + 1], a
+	ret
 
 
 BattleRandom:

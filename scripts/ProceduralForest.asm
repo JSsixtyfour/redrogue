@@ -452,7 +452,7 @@ ProceduralForestBossOfferText:
 	ld a, [hCurrentMenuItem]
 	and a
 	jr nz, .done
-	farcall PCGetBossLevel
+	farcall PCGetBossLevel        ; capped at MAX_LEVEL, so the gift keeps the fight's level
 	ld a, [wRoguePokemon1]
 	ld b, a
 	ld a, [wCurEnemyLevel]

@@ -52,8 +52,10 @@ DEF ENDLESS_CIRCUIT_SPAN EQU LAST_ROUND_BATTLECOUNT + 1
 ; Endless circuit 1's first route is progress 1 + ENDLESS_CIRCUIT_SPAN.
 DEF ENDLESS_FIRST_ROUND EQU ENDLESS_CIRCUIT_SPAN / ROUND_BATTLES
 	ASSERT ENDLESS_FIRST_ROUND == LAST_ROUND_BATTLECOUNT / ROUND_BATTLES + 1
-; Rounds ENDLESS_FIRST_ROUND .. 255 / ROUND_BATTLES: one level-bonus row each.
-DEF NUM_ENDLESS_LEVEL_ROWS EQU 255 / ROUND_BATTLES + 1 - ENDLESS_FIRST_ROUND
+; One level-bonus row per global round from ENDLESS_FIRST_ROUND: the generated
+; data/balance/endless_levels.asm defines NUM_ENDLESS_LEVEL_ROWS (checkpoint G
+; extended the curve past progress's round-31 saturation, so the count is the
+; solver's, not 255 / ROUND_BATTLES).
 ; Uber step (EndlessUberStep, ENDLESS_MODE_CHECKPOINT_E.md section 3): after a
 ; Master roll at depth >= 1, Uber's width out of 256 is BASE + STEP x (Endless
 ; rounds so far). STEP 4 is the user's pick (Q1): ~0.5% of bosses in Endless

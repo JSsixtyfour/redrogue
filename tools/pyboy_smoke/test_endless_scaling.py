@@ -17,6 +17,9 @@ from routine_session import isolated_routine_calls
 from source_constants import parse_rgbds_constants
 from test_smoke import HarnessTestCase, REPO_ROOT
 
+_BATTLE = parse_rgbds_constants(REPO_ROOT / "constants/battle_constants.asm")
+MAX_LEVEL = _BATTLE["MAX_LEVEL"]              # the player's cap (checkpoint G: 235)
+ENEMY_MAX_LEVEL = _BATTLE["ENEMY_MAX_LEVEL"]  # enemies (255)
 SPAN = 72              # ENDLESS_CIRCUIT_SPAN
 ROUND_BATTLES = 8
 LAST_ROUND = 8
@@ -36,9 +39,15 @@ def endless_rows() -> list[int]:
 class EndlessLevelTableTest(unittest.TestCase):
     def test_rows_are_solved_monotone_and_complete(self) -> None:
         rows = endless_rows()
-        self.assertEqual(len(rows), 255 // ROUND_BATTLES + 1 - FIRST_ROUND)
+        text = (REPO_ROOT / "data/balance/endless_levels.asm").read_text()
+        declared = int(re.search(r"DEF NUM_ENDLESS_LEVEL_ROWS EQU (\d+)", text).group(1))
+        self.assertEqual(len(rows), declared)
         self.assertTrue(any(rows), "still the all-zero placeholder")
         self.assertEqual(rows, sorted(rows), "a later round would get easier")
+        # Checkpoint G: the curve runs past progress's round-31 saturation, and
+        # its last row (held from there on) is the post-cap ramp's top.
+        self.assertGreater(len(rows), 255 // ROUND_BATTLES + 1 - FIRST_ROUND)
+        self.assertGreater(rows[-1], rows[len(rows) // 2])
 
 
 class MovesetCeilingTest(unittest.TestCase):
@@ -110,6 +119,12 @@ class EndlessScalingTest(HarnessTestCase):
     def progress(depth: int, count: int) -> int:
         return min(255, count + depth * SPAN)
 
+    def row(self, depth: int, count: int) -> int:
+        """EndlessLevelBonus's row: its OWN round, (count + depth * SPAN) / 8,
+        unsaturated (checkpoint G), holding the last row past the table."""
+        index = (count + depth * SPAN) // ROUND_BATTLES - FIRST_ROUND
+        return self.rows[min(index, len(self.rows) - 1)]
+
     # -- accessors ----------------------------------------------------
 
     def test_run_progress(self) -> None:
@@ -143,16 +158,21 @@ class EndlessScalingTest(HarnessTestCase):
 
     def test_level_bonus_follows_the_table(self) -> None:
         self.assertEqual(self.bonus_level(0, 70, 40), 40, "depth 0 must not change")
-        for depth, count in [(1, 1), (1, 40), (2, 9), (3, 1), (3, 100)]:
-            p = self.progress(depth, count)
-            want = 40 + self.rows[p // ROUND_BATTLES - FIRST_ROUND]
+        # (3, 100) is past progress's round-31 saturation; (12, 1) and (255, 76)
+        # reach the post-cap ramp and then hold the table's last row.
+        for depth, count in [(1, 1), (1, 40), (2, 9), (3, 1), (3, 100), (6, 30), (12, 1), (255, 76)]:
+            want = 40 + self.row(depth, count)
             self.assertEqual(self.bonus_level(depth, count, 40), min(255, want), (depth, count))
 
-    def test_funnels_cap_at_100(self) -> None:
+    def test_funnels_cap_at_the_enemy_cap(self) -> None:
+        """Enemies are no longer held at 100 (checkpoint G): the funnel adds the
+        Endless row and stops only at ENEMY_MAX_LEVEL."""
         h = self.harness
         h.set_difficulty("HARD")
+        row = self.row(3, 40)
         for label in ("RogueApplyTrainerLevelModifiers", "RogueApplyWildLevelModifiers"):
-            self.assertEqual(self.bonus_level(3, 40, 90, label), 100, label)
+            self.assertEqual(self.bonus_level(3, 40, 90, label), min(ENEMY_MAX_LEVEL, 90 + row), label)
+            self.assertEqual(self.bonus_level(3, 40, 250, label), ENEMY_MAX_LEVEL, f"{label} saturates")
             self.assertEqual(self.bonus_level(0, 40, 37, label), 37, f"{label} depth 0")
 
     def test_reward_level_lifts_the_cap_in_endless(self) -> None:
@@ -167,7 +187,7 @@ class EndlessScalingTest(HarnessTestCase):
             p = self.progress(depth, count)
             # Endless reads the last row uncapped: route 0x31 + 4/2 or gym 0x34 + 4/2.
             base = 51 if p % ROUND_BATTLES < 4 else 54
-            want = min(100, base + self.rows[p // ROUND_BATTLES - FIRST_ROUND])
+            want = min(MAX_LEVEL, base + self.row(depth, count))
             self.assertEqual(h.read8("wCurEnemyLevel"), want, (depth, count))
             self.assertEqual(self.regs()["A"], want, "callers read the level from a")
 

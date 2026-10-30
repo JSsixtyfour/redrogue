@@ -454,6 +454,10 @@ LegendarySpeciesOwned:
 	scf
 	ret
 
+; The solved rows and their count (NUM_ENDLESS_LEVEL_ROWS), included above the
+; routine that reads them so the count is defined before its use.
+INCLUDE "data/balance/endless_levels.asm"
+
 ; ============================================================
 ; EndlessLevelBonus  -- farcalled from the level funnels (func_enc_gen.asm,
 ; RogueApplyTrainerLevelModifiers / RogueApplyWildLevelModifiers), before the
@@ -467,22 +471,55 @@ LegendarySpeciesOwned:
 ; circuit. The rows are solved by tools/balance/model.py (--endless), never
 ; hand-tuned: ENDLESS_MODE_CHECKPOINT_D.md section 3.3.
 ;
-; wCurEnemyLevel += EndlessLevelRows[progress / ROUND_BATTLES - ENDLESS_FIRST_ROUND],
-; saturating at 255 (the funnel's RogueApplyDifficulty clamps to 100). Nothing
-; at depth 0, so the original circuit cannot change.
+; wCurEnemyLevel += EndlessLevelRows[round - ENDLESS_FIRST_ROUND], saturating at
+; 255 (the funnel's RogueApplyDifficulty clamps to ENEMY_MAX_LEVEL). Nothing at
+; depth 0, so the original circuit cannot change.
+;
+; The round is this routine's OWN, (wBattleCount + depth * ENDLESS_CIRCUIT_SPAN)
+; / ROUND_BATTLES in 16 bits, NOT GetRunProgress's: progress saturates at 255
+; (round 31), and checkpoint G's curve keeps climbing long after that, to the
+; player's cap and then up the post-cap ramp (ENDLESS_MODE_CHECKPOINT_G.md).
+; Past the table's last row the bonus holds at that row.
 ; Clobbers a/bc/hl; keeps de.
 ; ============================================================
 EndlessLevelBonus::
 	ld a, [wEndlessDepth]
 	and a
 	ret z
-	call GetRunProgress
+	push de
+	ld l, a
+	ld h, 0                       ; hl = depth
+	ASSERT ENDLESS_CIRCUIT_SPAN == 72
+	add hl, hl
+	add hl, hl
+	add hl, hl                    ; depth * 8
+	ld d, h
+	ld e, l
+	add hl, hl
+	add hl, hl
+	add hl, hl                    ; depth * 64
+	add hl, de                    ; depth * 72 (at most 18,360)
+	ld a, [wBattleCount]
+	ld e, a
+	ld d, 0
+	add hl, de                    ; + the circuit-local count
 	ASSERT ROUND_BATTLES == 8
-	srl a
-	srl a
-	srl a                         ; a = global round
-	sub ENDLESS_FIRST_ROUND
-	ret c                         ; cannot happen at depth >= 1; stay safe
+	REPT 3
+	srl h
+	rr l
+	ENDR                          ; hl = global round
+	ld de, -ENDLESS_FIRST_ROUND
+	add hl, de                    ; depth >= 1 puts the round at or past the first row
+	pop de
+	ld a, h
+	and a
+	jr nz, .lastRow
+	ld a, l
+	cp NUM_ENDLESS_LEVEL_ROWS
+	jr c, .haveRow
+.lastRow
+	ld a, NUM_ENDLESS_LEVEL_ROWS - 1
+.haveRow
 	ld c, a
 	ld b, 0
 	ld hl, EndlessLevelRows
@@ -495,14 +532,12 @@ EndlessLevelBonus::
 	ld [wCurEnemyLevel], a
 	ret
 
-INCLUDE "data/balance/endless_levels.asm"
-
 ; ============================================================
 ; EndlessRewardLevelBonus  -- farcalled from GetRewardMonLevel
 ; (rogue_reward_menu.asm) after its REWARD_LEVEL_CAP clamp. The cap holds the
 ; original circuit's last rewards at 50; past it, the same per-round bonus the
 ; trainers get goes on top (what tools/balance/model.py join_reward solves
-; against), then 1..100. Nothing at depth 0.
+; against), then 1..MAX_LEVEL (the player cap: a reward is the player's mon). Nothing at depth 0.
 ; Clobbers a/bc/hl; keeps de.
 ; ============================================================
 EndlessRewardLevelBonus::
