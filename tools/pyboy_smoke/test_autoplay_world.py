@@ -9,6 +9,65 @@ from types import SimpleNamespace
 import autoplay_world as world
 
 
+class BagErrandRecoveryTest(unittest.TestCase):
+    def test_battle_takes_control_from_bag_errand_but_keeps_battle_errand(self):
+        import autoplay
+        for kind in ("bag", "battle"):
+            with self.subTest(kind=kind):
+                agent = object.__new__(autoplay.AutoplayAgent)
+                agent.h = SimpleNamespace(pyboy=SimpleNamespace(frame_count=100),
+                    read8=lambda name: {"hIsInBattle": 1, "wIsTrainerBattle": 1,
+                                        "wCurOpponent": 42}[name])
+                agent.in_battle = False
+                agent.errand = {"kind": kind, "presses": 123, "start": 0}
+                agent.trainer_names = {42: "TEST_TRAINER"}
+                agent.ai_telemetry = None
+                events = []
+                agent.event = lambda *args, **kwargs: events.append((args, kwargs))
+                agent.track_battles()
+                self.assertTrue(agent.in_battle)
+                if kind == "bag":
+                    self.assertIsNone(agent.errand)
+                    self.assertEqual(events[0][1]["why"], "battle started")
+                else:
+                    self.assertEqual(agent.errand["kind"], "battle")
+
+    def test_exhausted_bag_errand_keeps_cancelling_until_overworld(self):
+        import autoplay
+        agent = object.__new__(autoplay.AutoplayAgent)
+        agent.errand = {"kind": "bag", "presses": autoplay.ERRAND_GIVE_UP, "opened": True}
+        original = agent.errand
+        buttons, events = [], []
+        agent.press = buttons.append
+        agent.event = lambda *args, **kwargs: events.append((args, kwargs))
+        # Several nested menus may each require B. Returning control to the
+        # default A policy between them would re-enter the selected item.
+        for _ in range(4):
+            agent.errand_step()
+            self.assertIs(agent.errand, original)
+        self.assertEqual(buttons, ["b"] * 4)
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0][0], ("errand_recovery",))
+
+    def test_learning_cancel_goal_waits_for_the_new_confirmation(self):
+        import autoplay
+        agent = object.__new__(autoplay.AutoplayAgent)
+        agent.h = SimpleNamespace(pyboy=SimpleNamespace(frame_count=100), read8=lambda _: 1)
+        agent.errand = {"kind": "bag", "presses": autoplay.ERRAND_GIVE_UP}
+        agent.menu_frame = 99
+        agent.last_menu_caller = "DisplayTwoOptionMenu.notNoYesMenu"
+        agent._on_abandon_learning(None)
+        self.assertFalse(agent.menu_goal.waiting())
+        agent.menu_frame = 101
+        self.assertTrue(agent.menu_goal.waiting())
+        self.assertEqual(agent.menu_goal.next_button(), "up")
+        self.assertEqual(agent.menu_goal.button, "a")
+        agent.errand = {"kind": "battle", "presses": 999}
+        agent.menu_goal = None
+        agent._on_abandon_learning(None)
+        self.assertIsNone(agent.menu_goal)
+
+
 class SpinnerCacheLifecycleTest(unittest.TestCase):
     def test_warp_retires_layout_and_same_map_id_accepts_new_table(self):
         import autoplay

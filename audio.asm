@@ -156,6 +156,11 @@ SECTION "Audio Engine", ROMX
 
 INCLUDE "crysaudio/engine.asm"
 
+; channel_struct (macros/ram.asm) and the CHANNEL_* offsets must agree, field for field.
+ASSERT CHANNEL_STRUCT_LENGTH == wChannel2 - wChannel1
+ASSERT CHANNEL_NOTE_LENGTH == wChannel1NoteLength - wChannel1
+ASSERT CHANNEL_FIELD30 == wChannel1Field30 - wChannel1
+
 INCLUDE "crysaudio/music_pointers_red.asm"
 
 INCLUDE "crysaudio/music/nothing.asm" ; song 0 (silence), as in the donor
@@ -200,7 +205,7 @@ INCLUDE "crysaudio/music/RBY/wildbattle.asm"
 INCLUDE "crysaudio/music/TCG2/grdueltheme2.asm"
 
 
-SECTION "Songs 2", ROMX ; $08, ~13541 B of 15442
+SECTION "Songs 2", ROMX ; $08, ~13183 B of 15442
 
 INCLUDE "crysaudio/music/RBY/bikeriding.asm"
 INCLUDE "crysaudio/music/RBY/cities1.asm"
@@ -217,7 +222,6 @@ INCLUDE "crysaudio/music/RBY/meetrival.asm"
 INCLUDE "crysaudio/music/RBY/museumguy.asm"
 INCLUDE "crysaudio/music/RBY/routes3.asm"
 INCLUDE "crysaudio/music/RBY/ssanne.asm"
-INCLUDE "crysaudio/music/RBY/unusedsong.asm"
 INCLUDE "crysaudio/music/TCG/dueltheme2.asm"
 INCLUDE "crysaudio/music/johtogymbattle.asm"
 INCLUDE "crysaudio/music/pinball/catchemblue.asm"

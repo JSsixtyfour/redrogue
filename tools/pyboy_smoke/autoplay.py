@@ -430,6 +430,7 @@ class AutoplayAgent:
         h.register_hook("DisplayBattleMenu", self._on_battle_menu)
         h.register_hook("MoveSelectionMenu", self._on_move_menu)
         h.register_hook("PartyMenuInit", self._on_party_menu)
+        h.register_hook("AbandonLearning", self._on_abandon_learning)
         h.register_hook("DisplayChooseQuantityMenu", lambda _c: setattr(self, "quantity_waiting", True))
         h.register_hook("HandlePartyMenuInput", lambda _c: setattr(self, "party_menu_waiting", True))
         for entry, kind in CHOICE_MENUS.items():
@@ -681,6 +682,15 @@ class AutoplayAgent:
         errand = self.errand
         errand["presses"] += 1
         if errand["presses"] > ERRAND_GIVE_UP:
+            if errand["kind"] == "bag":
+                # Keep ownership until overworld_step observes the menu has
+                # closed. Dropping the errand here hands control to the default
+                # A policy, which can repeatedly reopen an unusable item's UI.
+                if not errand.get("recovering"):
+                    errand["recovering"] = True
+                    self.event("errand_recovery", errand="bag", policy="cancel_to_overworld")
+                self.press("b")
+                return
             self.end_errand("gave up")
             self.press("b")
             return
@@ -704,6 +714,18 @@ class AutoplayAgent:
         records = self.h.read_bytes("wBridgeSelectedEffects", 4)
         return any(records[i] == owner and records[i + 1] == self.body_armor
                    for i in range(0, len(records), 2))
+
+    def _on_abandon_learning(self, _context) -> None:
+        # B declines "abandon learning" and starts the learning dialogue again.
+        # A bag errand backing out must answer YES at this particular prompt.
+        if (self.errand is None or self.errand["kind"] != "bag"
+                or self.errand["presses"] <= ERRAND_PRESSES):
+            return
+        entered = self.h.pyboy.frame_count
+        self.set_menu_goal("abandon_learning", lambda: self.menu_frame >= entered
+                           and self.last_menu_caller.startswith("DisplayTwoOptionMenu"), 0,
+                           lambda: self.line_button(self.h.read8("hCurrentMenuItem"), 0),
+                           chaos=())
 
     def _on_party_menu(self, _context) -> None:
         in_battle = self.h.read8("hIsInBattle")
@@ -1232,6 +1254,8 @@ class AutoplayAgent:
     def track_battles(self) -> None:
         in_battle = self.h.read8("hIsInBattle")
         if in_battle and not self.in_battle:
+            if self.errand is not None and self.errand["kind"] != "battle":
+                self.end_errand("battle started")
             if self.h.read8("wIsTrainerBattle"):
                 opponent = self.h.read8("wCurOpponent")
                 self.last_opponent = self.trainer_names.get(opponent, str(opponent))
