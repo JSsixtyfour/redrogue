@@ -241,6 +241,7 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
     - [Remove 25% chance for enemy stat down moves to miss](https://github.com/pret/pokered/wiki/Remove-25%25-chance-for-enemy-stat-down-moves-to-miss)
     - [Implement move priority system](https://github.com/pret/pokered/wiki/Implement-move-priority-system)
 - Dannye - [Add All Unique Party Menu Sprite Icons](https://github.com/pret/pokered/wiki/Add-All-Unique-Party-Menu-Sprite-Icons)
+- Dannye/Sanqui - [pokered-crysaudio](https://github.com/dannye/pokered-crysaudio)
 - SoupPotato/Dannye - [Functioning EXP bar in battle](https://github.com/AhabsStudios/pokekaizen/commit/0332a4d1ca74b4993b2f4bc8d926bac971a0751d)
 - Mateo - [Move Relearner/Tutor]([https://github.com/pret/pokered/wiki/Add-Item-Sorting-In-Bag](https://github.com/pret/pokered/wiki/Adding-a-Move-Relearner-&-Move-Deleter))
 - SatoMew (presumably more people worked on these but satomew is the only page author) - [Bugs and Glitches](https://github.com/pret/pokered/wiki/%5BARCHIVED%5D-Bugs-and-Glitches)
