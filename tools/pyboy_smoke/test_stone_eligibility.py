@@ -20,7 +20,9 @@ CASES = (
     ('SNEASEL', 0, 'ICE_STONE', 'WEAVILE', 0, 4),
     ('VULPIX', 1, 'ICE_STONE', 'NINETALES', 1, 0),
     ('GROWLITHE', 1, 'FIRE_STONE', 'ARCANINE', 1, 0),
-    ('SLOWPOKE', 1, 'WATER_STONE', 'SLOWKING', 1, 2),
+    # G-Slowking is a Time Warp form of a Johto species: a form entry skips the
+    # species gate since 2026-10-29 (test_pwooper_evolution_gate), like the two above.
+    ('SLOWPOKE', 1, 'WATER_STONE', 'SLOWKING', 1, 0),
     ('PIKACHU', 0, 'MOON_STONE', 'RAICHU', 1, 4),
     ('EXEGGCUTE', 0, 'MOON_STONE', 'EXEGGUTOR', 1, 4),
     ('KOFFING', 0, 'MOON_STONE', 'WEEZING', 1, 4),

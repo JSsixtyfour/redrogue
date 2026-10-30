@@ -158,6 +158,9 @@ def engine_hashes():
 
 def stage(flags, prebuilt):
     shutil.rmtree(KIT, ignore_errors=True)
+    if os.path.exists(KIT):
+        sys.exit("could not delete the old kit at %s; close the kit's mGBA (or anything "
+                 "else with a file open in it) and run again" % KIT)
     for d in ("src", "prebuilt", "output", "emulator"):
         os.makedirs(os.path.join(ENGINE, d))
 

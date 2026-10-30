@@ -591,7 +591,7 @@ EvolvePoolMon::
 
 ; Evolves a FORM mon along its own list as far as wCurEnemyLevel allows, with
 ; the same rules EvolveMonByLevel applies to a species: stone and trade entries
-; need level 35, a level entry its own level, every target must pass the
+; need level 35, a level entry its own level, a plain target must pass the
 ; species-group gate, and eligible entries are sampled uniformly. A form's entry
 ; carries its own form forward, which is never gated (as for the player).
 ; IN:  d = species, e = form (1..NUM_FORM_SLOTS)
@@ -633,6 +633,11 @@ EvolveFormMonByLevel:
 	cp [hl]                     ; carry = below the entry's level
 	inc hl                      ; inc rr leaves the flags alone
 	jr c, .nextEntry
+; A FORM target is never species-gated (IsEvolutionTargetAllowed, the player's
+; side): Clodsire and G-Slowking are Johto species but Time Warp forms.
+	ld a, c
+	and a
+	jr nz, .eligible
 	push hl
 	push bc
 	push de
@@ -642,6 +647,7 @@ EvolveFormMonByLevel:
 	pop bc
 	pop hl
 	jr nc, .nextEntry
+.eligible
 	inc b                       ; reservoir sampling, as EvolveMonByLevel does
 	ld a, b
 	cp 1

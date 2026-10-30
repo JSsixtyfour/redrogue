@@ -122,7 +122,13 @@ def write_wav(path, mono):
 
 def sounding_spans(mono):
     """[(start, end)] of audible regions separated by >= TAIL_SILENCE_S of silence."""
-    loud = np.nonzero(np.abs(mono) > THRESH)[0]
+    # PyBoy can emit a lone one-sample spike once per frame (measured 2026-10-29 after
+    # the engine's sfx-channel skip: same buffer index at 48 and 240 kHz, so it isn't
+    # CPU-timed, and the pre-skip engine shows it at 240 kHz too). It made the drum
+    # test hear one 39 s "hit". No real sound is one sample long, so drop lone samples.
+    mask = np.abs(mono) > THRESH
+    lone = mask & ~np.concatenate(([False], mask[:-1])) & ~np.concatenate((mask[1:], [False]))
+    loud = np.nonzero(mask & ~lone)[0]
     if len(loud) == 0:
         return []
     gap = int(TAIL_SILENCE_S * RATE)

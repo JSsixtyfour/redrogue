@@ -26,7 +26,8 @@
 	; tm/hm learnset
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    STRENGTH,     DOUBLE_EDGE,  \
 	     EARTHQUAKE,   RAGE,         DIG,          MIMIC,        DOUBLE_TEAM,  \
-	     BIDE,         SKULL_BASH,   REST,         SUBSTITUTE
+	     BIDE,         SKULL_BASH,   REST,         SUBSTITUTE,   SURF,         \
+		 WATER_GUN,    BUBBLEBEAM,   FISSURE
 	; end
 
 	db BANK(PWooperPicFront) ; pic bank

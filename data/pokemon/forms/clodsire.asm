@@ -3,8 +3,7 @@
 ; Poison/Ground, both valid Gen 1 types.
 ; Special split: modern SpA 45 / SpD 100, take the HIGHER -> spc 100.
 ; Catch rate/base exp/growth copied from Quagsire. TM list is Paldean
-; Wooper's plus Hyper Beam, Fissure and Rock Slide (Quagsire's extras that
-; are not Water or arm moves).
+; Wooper's plus Hyper Beam, Fissure and Rock Slide.
 	form_record QUAGSIRE, 1
 
 	db DEX_QUAGSIRE ; pokedex id (documentation only - GetMonHeader overwrites
@@ -27,7 +26,8 @@
 	tmhm TOXIC,        BODY_SLAM,    TAKE_DOWN,    STRENGTH,     DOUBLE_EDGE,  \
 	     HYPER_BEAM,   EARTHQUAKE,   FISSURE,      DIG,          ROCK_SLIDE,   \
 	     RAGE,         MIMIC,        DOUBLE_TEAM,  BIDE,         SKULL_BASH,   \
-	     REST,         SUBSTITUTE
+	     REST,         SUBSTITUTE,   SURF,         WATER_GUN,    BUBBLEBEAM,   \
+		 HORN_DRILL
 	; end
 
 	db BANK(ClodsirePicFront) ; pic bank

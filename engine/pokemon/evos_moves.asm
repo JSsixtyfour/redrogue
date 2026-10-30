@@ -1098,12 +1098,20 @@ NoEvolutionsList:
 ; IN: hl = target species byte, wEvoNewForm = parsed entry form, wLoadedMon
 ;     = source mon, wEvoStoneItemID = stone (0 for level/trade).
 ; OUT: carry SET = allowed. PRESERVES hl; clobbers af, bc, de.
+; A FORM entry skips the species-group gate: its form's own group decides
+; (IsEvoStoneFormAllowed). Clodsire is QUAGSIRE form 1 and G-Slowking SLOWKING
+; form 1, Johto species but Time Warp forms; the species gate stranded them in a
+; Warp-on, Johto-off run (measured 2026-10-29, test_pwooper_evolution_gate).
 IsEvolutionTargetAllowed:
+	ld a, [wEvoNewForm]
+	inc a                       ; $FF (a plain entry) -> 0
+	jr nz, .formGate
 	push hl
 	ld e, [hl]                  ; only de carries inputs across farcall
 	farcall RogueIsSpeciesEvolutionAllowedFar
 	pop hl
 	ret nc
+.formGate
 	push hl
 	ld c, [hl]
 	call IsEvoStoneFormAllowed

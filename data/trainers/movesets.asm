@@ -3,7 +3,7 @@
 ; (MOVESET_REVISION_IMPLEMENTATION_PLAN.md). NOT wired into `make` - edit the
 ; catalog, re-run by hand and commit both. Never hand-edit this file.
 ;
-; Catalog: 2527 rows, 2347 ACTIVE, 104 ARCHIVED, 73 EXCLUDED, 1 HELD, 2 REJECTED. Emitted: 2347 sets from the ACTIVE rows.
+; Catalog: 2540 rows, 2360 ACTIVE, 104 ARCHIVED, 73 EXCLUDED, 1 HELD, 2 REJECTED. Emitted: 2360 sets from the ACTIVE rows.
 ; Level-bumped: 18 records had lvl_min raised to the level the mon's
 ;   line first learns all four moves (lvl_max raised to match if passed).
 ;   Mew, Mewtwo, Celebi, Lugia and Ho-Oh are exempt (LEVEL_BUMP_EXEMPT).
@@ -12,7 +12,7 @@
 ;   catalog segments sat wholly under it and are not emitted. Same exemption.
 ; Plus 28 character sets (levels 1-100, tagged `; roster <Prefix>`, not gated)
 ;   from the Sets tables in data/trainers/PARTY_ROSTER.md.
-; Plus 195 regional/eeveelution FORM records in their own
+; Plus 208 regional/eeveelution FORM records in their own
 ;   section, found through MovesetFormIndex. A form mon never reads its base
 ;   species' sets: a base set can carry moves the form cannot learn.
 
@@ -2943,6 +2943,21 @@ MovesetForm_GEODUDE_ALOLA::
 	db ROCK_SLIDE, THUNDERBOLT, EARTHQUAKE, SELFDESTRUCT, TIER_NORMAL, 2, 36, 100
 	db ROCK_SLIDE, THUNDERBOLT, HARDEN, EARTHQUAKE, TIER_NORMAL, 2, 36, 100 ; salvaged REFLECT->HARDEN
 	db BODY_SLAM, EARTHQUAKE, ROCK_SLIDE, THUNDER_WAVE, TIER_NORMAL, 2, 36, 100
+MovesetForm_WOOPER_PALDEA::
+	db TACKLE, POISON_STING, TAIL_WHIP, WATER_GUN, TIER_EASY | TIER_NORMAL, 2, 4, 15
+	db ACID, SLAM, TAIL_WHIP, WATER_GUN, TIER_EASY | TIER_NORMAL, 2, 16, 28
+	db SLUDGE, DIG, AMNESIA, SLAM, TIER_NORMAL, 2, 24, 30
+MovesetForm_CLODSIRE::
+	db AMNESIA, SURF, REST, EARTHQUAKE, TIER_HARD | TIER_ELITE, 2, 40, 100
+	db AMNESIA, SURF, REST, TOXIC, TIER_NORMAL | TIER_HARD, 2, 36, 100
+	db EARTHQUAKE, PIN_MISSILE, SLUDGE, ROCK_SLIDE, TIER_NORMAL | TIER_HARD, 2, 40, 100
+	db DIG, TOXIC, DOUBLE_TEAM, REST, TIER_HARD, 2, 36, 100
+	db BODY_SLAM, PIN_MISSILE, EARTHQUAKE, SLUDGE, TIER_HARD | TIER_ELITE, 2, 40, 100
+	db DIG, TOXIC, SURF, SLUDGE, TIER_EASY | TIER_NORMAL, 2, 36, 100
+	db ACID, SLAM, AMNESIA, WATER_GUN, TIER_EASY | TIER_NORMAL, 2, 20, 28
+	db SLUDGE, DIG, AMNESIA, SLAM, TIER_EASY | TIER_NORMAL, 2, 24, 40
+	db SLUDGE, SURF, AMNESIA, DIG, TIER_NORMAL | TIER_HARD, 2, 30, 45
+	db EARTHQUAKE, BODY_SLAM, TOXIC, REST, TIER_ELITE, 2, 45, 100
 MovesetForm_SLOWKING_GALAR::
 	db PSYCHIC_M, SLUDGE, THUNDER_WAVE, REST, TIER_HARD, 2, 40, 100
 	db AMNESIA, PSYCHIC_M, REST, THUNDER_WAVE, TIER_HARD, 2, 40, 100
@@ -3098,11 +3113,17 @@ MovesetFormIndex::
 	db GEODUDE, 1
 	dw MovesetForm_GEODUDE_ALOLA
 	db 3, BANK(MovesetForm_GEODUDE_ALOLA)
+	db WOOPER, 1
+	dw MovesetForm_WOOPER_PALDEA
+	db 3, BANK(MovesetForm_WOOPER_PALDEA)
+	db QUAGSIRE, 1
+	dw MovesetForm_CLODSIRE
+	db 10, BANK(MovesetForm_CLODSIRE)
 	db SLOWKING, 1
 	dw MovesetForm_SLOWKING_GALAR
 	db 4, BANK(MovesetForm_SLOWKING_GALAR)
 	db 0 ; end
-	ASSERT @ - MovesetFormIndex == 49 * MOVESET_FORM_ENTRY_SIZE + 1
+	ASSERT @ - MovesetFormIndex == 51 * MOVESET_FORM_ENTRY_SIZE + 1
 
 ; Blackout labels: "You were defeated / by <label>" (engine/battle/loss_origin.asm,
 ; pinned to this same bank and read with plain [hl]). A record's origin_id

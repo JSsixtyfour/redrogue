@@ -609,7 +609,38 @@ def step7(rows):
         print(f"  {k}: {v}")
 
 
-STEPS = {1: step1, 2: step2, 3: step3, 5: step5, 6: step6, 7: step7}
+# Paldean Wooper / Clodsire, restored 2026-10-29 with no sets. User-authored
+# sets (tiers chosen by Claude) plus fills for Wooper's range (evolves at 20),
+# Clodsire before the level-36 TM gate, Easy at 36+ and Elite.
+NH, HE = "TIER_NORMAL | TIER_HARD", "TIER_HARD | TIER_ELITE"
+PWOOPER_SETS = [
+    ("user", "CLODSIRE", "AMNESIA SURF REST EARTHQUAKE", 40, 100, HE),
+    ("user", "CLODSIRE", "AMNESIA SURF REST TOXIC", 36, 100, NH),
+    ("user", "CLODSIRE", "EARTHQUAKE PIN_MISSILE SLUDGE ROCK_SLIDE", 40, 100, NH),
+    ("user", "CLODSIRE", "DIG TOXIC DOUBLE_TEAM REST", 36, 100, H),
+    ("user", "CLODSIRE", "BODY_SLAM PIN_MISSILE EARTHQUAKE SLUDGE", 40, 100, HE),
+    ("user", "CLODSIRE", "DIG TOXIC SURF SLUDGE", 36, 100, EN),
+    ("fill", "WOOPER_PALDEA", "TACKLE POISON_STING TAIL_WHIP WATER_GUN", 4, 15, EN),
+    ("fill", "WOOPER_PALDEA", "ACID SLAM TAIL_WHIP WATER_GUN", 16, 28, EN),
+    ("fill", "WOOPER_PALDEA", "SLUDGE DIG AMNESIA SLAM", 24, 30, N),
+    ("fill", "CLODSIRE", "ACID SLAM AMNESIA WATER_GUN", 20, 28, EN),
+    ("fill", "CLODSIRE", "SLUDGE DIG AMNESIA SLAM", 24, 40, EN),
+    ("fill", "CLODSIRE", "SLUDGE SURF AMNESIA DIG", 30, 45, NH),
+    ("fill", "CLODSIRE", "EARTHQUAKE BODY_SLAM TOXIC REST", 45, 100, EL),
+]
+
+
+def step8(rows):
+    species_ids = g.parse_species_constants(g.POKEMON_CONSTANTS)
+    c = Counter()
+    for who, species, moves, lo, hi, tier in PWOOPER_SETS:
+        why = "user-authored set for the restored form" if who == "user" else "restored-form fill"
+        c[add_row(rows, species, moves, [(lo, hi, tier)], why, species_ids, day="2026-10-29")] += 1
+    for k, v in sorted(c.items()):
+        print(f"  {k}: {v}")
+
+
+STEPS = {1: step1, 2: step2, 3: step3, 5: step5, 6: step6, 7: step7, 8: step8}
 
 
 def main():
