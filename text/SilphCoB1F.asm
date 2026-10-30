@@ -1,6 +1,32 @@
 ; Phase III navigation text for the Silph Co. basement hub.
 ; Keep each rendered segment at 17 characters or fewer.
 
+_SilphCoB1FPostAIText::
+	text "PROF PALM: Thank"
+	line "you for rescuing"
+	cont "me!"
+
+	para "You're welcome to"
+	line "stay here as long"
+	cont "as you like."
+
+	para "Also, I've"
+	line "upgraded the"
+	cont "system so you can"
+	cont "keep a run going"
+	cont "indefinitely in"
+	cont "ENDLESS MODE."
+
+	para "The system will"
+	line "ask at the end of"
+	cont "any future"
+	cont "championship"
+	cont "victories."
+
+	para "Join me when"
+	line "you're ready."
+	done
+
 _SilphCoB1FDormText::
 	text "PROF PALM: Your"
 	line "accommodations"

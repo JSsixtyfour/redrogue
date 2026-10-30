@@ -25,6 +25,71 @@ APPROVED_PURCHASES = {'SHINY_CHARM': 11, 'AMULET_COIN': 8, 'TURN_REWIND': 10, 'R
 APPROVED_UPGRADES = {'LEFTOVERS': (6, 12), 'PP_TONIC': (6, 12), 'KO_DEFIANCE': (12, 24), 'SHINY_CHARM': (18, 36), 'AMULET_COIN': (9, 18), 'TURN_REWIND': (15, 30), 'RARE_SCOPE': (12, 24), 'RARE_LENS': (12, 24), 'DV_BOOSTER': (15, 30), 'STAT_BOOSTER': (12, 24), 'DOOR_DICE': (9, 18), 'MON_DICE': (9, 18), 'ITEM_DICE': (9, 18), 'ELEMENT_PRISM': (12, 24)}
 
 
+def credit_contract(before, after, *, bought, upgrade, flags, tiers,
+                    evidence_origin="actual_ROM_fixture"):
+    """Independent expected result for the existing exact-funds fixtures.
+
+    Flags/tiers are predicted from declared fixture ownership, not ROM output.
+    These fixtures spend all credits on success and preserve them on refusal.
+    """
+    expected = {field: before[field] for field in ("coins", "money", "flags", "tiers", "party", "items")}
+    expected.update({"coins": [0, 0] if bought else before["coins"],
+                "flags": flags, "tiers": tiers, "paid_calls": int(bought),
+                "grant_calls": int(bought and not upgrade),
+                "tier_calls": int(bought and upgrade)})
+    return [{"check": "credit_transaction", "version": 1, "field": field,
+             "expected": value, "observed": after[field],
+             "signature": f"credit_transaction/v1/{field}",
+             "classification": "contract_violation", "severity": "correctness",
+             "evidence_origin": evidence_origin}
+            for field, value in expected.items() if after[field] != value]
+
+
+class CreditContractSensitivityTest(unittest.TestCase):
+    def fixture(self, bought=True, upgrade=False):
+        before = {"coins": [0, 0x18 if upgrade else 0x11], "money": [0, 0x50, 0],
+                  "flags": [1, 0, 0, 0], "tiers": [0] * 4,
+                  "party": [1, 2], "items": [3, 4]}
+        flags = [1, 0, 0, 0] if upgrade or not bought else [5, 0, 0, 0]
+        tiers = [4, 0, 0, 0] if upgrade and bought else [0] * 4
+        expected = dict(bought=bought, upgrade=upgrade, flags=flags, tiers=tiers)
+        after = {**before, "coins": [0, 0] if bought else before["coins"],
+                 "flags": flags, "tiers": tiers, "paid_calls": int(bought),
+                 "grant_calls": int(bought and not upgrade), "tier_calls": int(bought and upgrade)}
+        return before, after, expected
+
+    def test_purchase_upgrade_and_refusal_known_good(self):
+        for bought, upgrade in ((True, False), (True, True), (False, False), (False, True)):
+            before, after, expected = self.fixture(bought, upgrade)
+            self.assertEqual(credit_contract(before, after, **expected), [])
+
+    def test_each_accounting_identity_and_call_field_has_an_exact_signature(self):
+        import copy
+        for bought, upgrade in ((True, False), (True, True), (False, False)):
+            before, after, expected = self.fixture(bought, upgrade)
+            for field, value in after.items():
+                changed = copy.deepcopy(after)
+                if isinstance(value, list):
+                    changed[field][0] ^= 1
+                else:
+                    changed[field] += 1
+                findings = credit_contract(before, changed, **expected,
+                                           evidence_origin="controlled_detector_input")
+                self.assertEqual(len(findings), 1, findings)
+                self.assertEqual(findings[0]["signature"], f"credit_transaction/v1/{field}")
+                self.assertEqual(findings[0]["evidence_origin"], "controlled_detector_input")
+
+    def test_missing_observation_cannot_be_clean(self):
+        before, after, expected = self.fixture()
+        del after["coins"]
+        with self.assertRaises(KeyError):
+            credit_contract(before, after, **expected)
+        before, after, expected = self.fixture()
+        del before["money"]
+        with self.assertRaises(KeyError):
+            credit_contract(before, after, **expected)
+
+
 class CreditStoreRuntimeTest(ItemDescriptionRuntimeBase):
     def tier(self, item, tier):
         index = RAM[f"KEY_ITEM_BIT_{item}_OWNED"] // 2
@@ -153,6 +218,9 @@ class CreditStoreLiveTest(unittest.TestCase):
         h.write8("wPlayerCoins", int(f"{funds:02d}", 16), 1)
         party = h.read_bytes("wPartyDataStart", h.address("wPartyDataEnd") - h.address("wPartyDataStart"))
         counts = h.read_bytes("wRecoveryItemCounts", h.address("wItemCountsEnd") - h.address("wRecoveryItemCounts"))
+        before_contract = {"coins": h.read_bytes("wPlayerCoins", 2),
+            "money": h.read_bytes("wPlayerMoney", 3), "flags": list(before_flags),
+            "tiers": list(tiers), "party": party, "items": counts}
         visits = h.hook_flag("DisplayListMenuID")
         confirm = h.hook_flag("YesNoChoice")
         paid = h.hook_flag("SubtractCredits")
@@ -189,20 +257,28 @@ class CreditStoreLiveTest(unittest.TestCase):
         self.assertEqual(visits["count"], 0 if case == "upgrade_max" else 1 if case == "upgrade_final" else 2)
         self.assertFalse(h.read8("wFontLoaded") & 1, "vendor did not return to overworld")
         self.assertEqual(confirm["count"], int(case not in ("insufficient", "upgrade_insufficient", "upgrade_max")))
-        self.assertEqual(paid["count"], int(bought))
-        self.assertEqual(grant["count"], int(bought and not upgrade))
-        self.assertEqual(changed_tier["count"], int(bought and upgrade))
         stock = h.read_bytes("wCreditItemList", h.read8("wCreditItemList") + 1)[1:]
         self.assertEqual(ITEMS["SHINY_CHARM"] in stock, tier + int(bought) < 2 if upgrade else not bought,
                          "vendor shelf did not reflect ownership after the transaction")
-        self.assertEqual(h.read_bytes("wPlayerCoins", 2), [0, 0] if bought else [0, int(f"{funds:02d}", 16)])
-        self.assertEqual(h.read_sram_bytes("sKeyItemsBitfield", 4),
-                         before_flags if upgrade or not bought else bits((*owned, "SHINY_CHARM"), owned if owned else ("SHINY_CHARM",)))
+        expected_flags = (before_flags if upgrade or not bought else
+                          bits((*owned, "SHINY_CHARM"), owned if owned else ("SHINY_CHARM",)))
         if bought and upgrade:
             tiers[index // 4] = (tier + 1) << (2 * (index % 4))
-        self.assertEqual(h.read_sram_bytes("sKeyItemTiers", 4), tiers)
-        self.assertEqual(h.read_bytes("wPartyDataStart", len(party)), party)
-        self.assertEqual(h.read_bytes("wRecoveryItemCounts", len(counts)), counts)
+        after_contract = {"coins": h.read_bytes("wPlayerCoins", 2),
+            "money": h.read_bytes("wPlayerMoney", 3),
+            "flags": h.read_sram_bytes("sKeyItemsBitfield", 4),
+            "tiers": h.read_sram_bytes("sKeyItemTiers", 4),
+            "party": h.read_bytes("wPartyDataStart", len(party)),
+            "items": h.read_bytes("wRecoveryItemCounts", len(counts)),
+            "paid_calls": paid["count"], "grant_calls": grant["count"],
+            "tier_calls": changed_tier["count"]}
+        findings = credit_contract(before_contract, after_contract, bought=bought, upgrade=upgrade,
+                                   flags=expected_flags, tiers=tiers)
+        (art / "contract.json").write_text(json.dumps({"before": before_contract,
+            "after": after_contract, "expected": {"bought": bought, "upgrade": upgrade,
+                "flags": expected_flags, "tiers": tiers}, "findings": findings,
+            "scope": "configured exact-funds credit fixture; not a general price oracle"}, indent=2))
+        self.assertEqual(findings, [])
         self.assertEqual(h.read8("hJoyIgnore"), 0)
         agent.press("down", 20, 20)
         self.assertEqual(h.read8("hCurMap"), maps["CREDIT_EXCHANGE"])

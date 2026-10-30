@@ -8,7 +8,7 @@ SilphCoB1F_Script:
 	ld a, [wSilphCoB1FCurScript]
 	cp SCRIPT_SILPHCOB1F_JOHTO_APPROACH
 	jp c, SilphCoB1FElevatorBlockerScript
-	cp SCRIPT_SILPHCOB1F_FINAL_ENTER_VR + 1
+	cp SCRIPT_SILPHCOB1F_POST_AI_GREETING + 1
 	jp nc, SilphCoB1FElevatorBlockerScript
 .introTour
 	ld hl, SilphCoB1F_ScriptPointers
@@ -40,10 +40,12 @@ SilphCoB1F_ScriptPointers:
 	dw_const SilphCoB1FFinalReturnApproachScript,     SCRIPT_SILPHCOB1F_FINAL_RETURN_APPROACH
 	dw_const SilphCoB1FFinalReturnGreetingScript,     SCRIPT_SILPHCOB1F_FINAL_RETURN_GREETING
 	dw_const SilphCoB1FFinalEnterVRScript,            SCRIPT_SILPHCOB1F_FINAL_ENTER_VR
+	dw_const SilphCoB1FPostAIApproachScript,         SCRIPT_SILPHCOB1F_POST_AI_APPROACH
+	dw_const SilphCoB1FActivationGreetingScript,     SCRIPT_SILPHCOB1F_POST_AI_GREETING
 
 ; Normalize the distinct Palm and stair-scientist objects on every map load,
-; then stage Checkpoint 2 on the first fresh return from the Dorm after the
-; Rival Champion. wWarpedFromWhichMap is written by the common warp handler
+; then stage pending story greetings on a fresh return from the Dorm.
+; wWarpedFromWhichMap is written by the common warp handler
 ; before hCurMap changes, so it is authoritative rather than wLastMap.
 SilphCoB1FHandleMapEntry:
 	ld hl, wCurrentMapScriptFlags
@@ -102,6 +104,13 @@ SilphCoB1FStageMapEntryActors:
 	; Later story beats take priority if debug progression or an imported save
 	; leaves more than one activation pending at once.
 .checkTimeWarpActivation
+	CheckEvent EVENT_AI_DEFEATED
+	jr z, .checkLanceActivation
+	CheckEvent EVENT_POST_AI_PALM_COMPLETE
+	jr nz, .checkLanceActivation
+	ld a, SCRIPT_SILPHCOB1F_POST_AI_APPROACH
+	jr .stageActivation
+.checkLanceActivation
 	CheckEvent EVENT_LANCE_CHAMPION_DEFEATED
 	jr z, .checkRivalActivation
 	CheckEvent EVENT_KANTO_TIMEWARP_ACTIVATED
@@ -631,6 +640,10 @@ SilphCoB1FJohtoApproachScript:
 
 SilphCoB1FTimeWarpApproachScript:
 	ld a, SCRIPT_SILPHCOB1F_TIMEWARP_GREETING
+	jr SilphCoB1FStartActivationApproach
+
+SilphCoB1FPostAIApproachScript:
+	ld a, SCRIPT_SILPHCOB1F_POST_AI_GREETING
 
 SilphCoB1FStartActivationApproach:
 	push af
@@ -666,6 +679,8 @@ SilphCoB1FActivationGreetingScript:
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
 	call SilphCoB1FGetActivationParameters
+	; The post-AI scene only acknowledges the existing Endless unlock.
+	; Its zero mask preserves the species-group options exactly.
 	ldh [hTextID], a
 	call DisplayTextID
 	ld a, PAD_BUTTONS | PAD_CTRL_PAD
@@ -705,9 +720,16 @@ SilphCoB1FActivationGreetingScript:
 	ret
 
 ; Returns a = dialogue text id, c = group-enable mask, e = completion event.
-; The current greeting state selects one of two three-byte parameter rows.
+; The post-AI greeting preserves options; the earlier greetings use table rows.
 SilphCoB1FGetActivationParameters:
 	ld a, [wSilphCoB1FCurScript]
+	cp SCRIPT_SILPHCOB1F_POST_AI_GREETING
+	jr nz, .activation
+	ld a, TEXT_SILPHCOB1F_POST_AI
+	ld c, 0
+	ld e, EVENT_POST_AI_PALM_COMPLETE
+	ret
+.activation
 	sub SCRIPT_SILPHCOB1F_JOHTO_GREETING
 	ld c, a
 	add a
@@ -957,6 +979,7 @@ SilphCoB1F_TextPointers:
 	dw_const SilphCoB1FVRText,             TEXT_SILPHCOB1F_VR
 	dw_const SilphCoB1FJohtoActivationText, TEXT_SILPHCOB1F_JOHTO_ACTIVATION
 	dw_const SilphCoB1FTimeWarpActivationText, TEXT_SILPHCOB1F_TIMEWARP_ACTIVATION
+	dw_const SilphCoB1FPostAIText, TEXT_SILPHCOB1F_POST_AI
 	dw_const SilphCoB1FFinalLanceWarningText, TEXT_SILPHCOB1F_FINAL_LANCE_WARNING
 	dw_const SilphCoB1FFinalFakePalmText,      TEXT_SILPHCOB1F_FINAL_FAKE_PALM
 	dw_const SilphCoB1FFinalLanceReactionText, TEXT_SILPHCOB1F_FINAL_LANCE_REACTION
@@ -994,6 +1017,10 @@ SilphCoB1FJohtoActivationText:
 
 SilphCoB1FTimeWarpActivationText:
 	text_far _SilphCoB1FTimeWarpActivationText
+	text_end
+
+SilphCoB1FPostAIText:
+	text_far _SilphCoB1FPostAIText
 	text_end
 
 SilphCoB1FFinalLanceWarningText:

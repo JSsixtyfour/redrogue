@@ -217,6 +217,7 @@ PERSISTENT = [
     "EVENT_AI_ATTEMPT_SPENT",
     "EVENT_PRISM_BUGSY_SHOWN",
     "EVENT_PRISM_WHITNEY_SHOWN",
+    "EVENT_POST_AI_PALM_COMPLETE",
 ]
 
 PERSISTENT_GROUP = "__persistent__"
@@ -343,6 +344,7 @@ EXTRA_SEEDS = {
 # comes out UNREF/DEAD, so listing one does not force it live.
 # ---------------------------------------------------------------------------
 NEW_EVENTS = [
+    "EVENT_POST_AI_PALM_COMPLETE",
     # 2026-09-23: NORMAL / FLYING / BUG cartridges moved off the Champion onto
     # Falkner, Bugsy and Whitney (element_prism.asm JohtoPrismEventTable).
     "EVENT_PRISM_FALKNER_SHOWN",

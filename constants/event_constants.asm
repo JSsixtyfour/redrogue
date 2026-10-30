@@ -80,7 +80,8 @@ DEF EVENT_PALMS_ROOM_OPEN                        EQU   33 ; byte 4 bit 1
 DEF EVENT_AI_ATTEMPT_SPENT                       EQU   34 ; byte 4 bit 2
 DEF EVENT_PRISM_BUGSY_SHOWN                      EQU   35 ; byte 4 bit 3
 DEF EVENT_PRISM_WHITNEY_SHOWN                    EQU   36 ; byte 4 bit 4
-DEF PERSISTENT_EVENTS_END   EQU 36
+DEF EVENT_POST_AI_PALM_COMPLETE                  EQU   37 ; byte 4 bit 5
+DEF PERSISTENT_EVENTS_END   EQU 37
 
 ; ==========================================================================
 ; ZONE 1 - RUN-SCOPED (cleared by RogueResetRunState)
