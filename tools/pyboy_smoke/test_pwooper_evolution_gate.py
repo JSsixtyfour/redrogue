@@ -15,6 +15,7 @@ import unittest
 
 from harness import RedRogueHarness
 from source_constants import parse_rgbds_constants
+from test_move_tutor_prices import return_from_call
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SPECIES = parse_rgbds_constants(REPO_ROOT / "constants" / "pokemon_constants.asm")
@@ -89,10 +90,23 @@ class PwooperEvolutionGateTest(unittest.TestCase):
         out = self.run_routine("RogueIsSpeciesEvolutionAllowedFar", E=SPECIES[species])
         return bool(out["F"] & FLAG_C)
 
-    def evolve_form(self, species: str, form: int, level: int) -> tuple[int, int]:
+    def evolve_form(self, species: str, form: int, level: int, *, random_choice=None) -> tuple[int, int]:
         self.h.write8("wCurEnemyLevel", level)
         self.h.write8("wCurPartySpecies", SPECIES[species])
-        out = self.run_routine("EvolveFormMonByLevel", D=SPECIES[species], E=form)
+        choices = []
+        def choose(_):
+            choices.append(self.h.pyboy.register_file.C)
+            self.h.pyboy.register_file.A = random_choice
+            return_from_call(self.h)
+        if random_choice is not None:
+            self.h.register_hook('Rangerandom', choose)
+        try:
+            out = self.run_routine("EvolveFormMonByLevel", D=SPECIES[species], E=form)
+        finally:
+            if random_choice is not None:
+                self.h.unregister_hook('Rangerandom', choose)
+        if random_choice is not None:
+            self.assertEqual(choices, [2], 'expected exactly two eligible reservoir targets')
         return out["D"], out["E"]
 
     def player_allowed(self, target: str, entry_form: int, mon_form: int) -> bool:
@@ -117,7 +131,11 @@ class PwooperEvolutionGateTest(unittest.TestCase):
                 self.assertEqual(self.target_allowed("QUAGSIRE"), johto)
                 # Trainer path: the form lines reach their Johto-species forms.
                 self.assertEqual(self.evolve_form("WOOPER", 1, 30), (SPECIES["QUAGSIRE"], 1))
-                self.assertEqual(self.evolve_form("SLOWPOKE", 1, 40), (SPECIES["SLOWBRO"], 1))
+                # At L40 both the L37 Slowbro and generated stone-floor
+                # Slowking entries qualify. Exercise both reservoir choices;
+                # unrelated RNG timing must not determine the expected target.
+                self.assertEqual(self.evolve_form("SLOWPOKE", 1, 40, random_choice=1), (SPECIES["SLOWBRO"], 1))
+                self.assertEqual(self.evolve_form("SLOWPOKE", 1, 40, random_choice=0), (SPECIES["SLOWKING"], 1))
                 # Player path: a form entry passes, a plain entry is still gated.
                 self.assertTrue(self.player_allowed("QUAGSIRE", 1, 1))
                 self.assertTrue(self.player_allowed("SLOWKING", 1, 1))

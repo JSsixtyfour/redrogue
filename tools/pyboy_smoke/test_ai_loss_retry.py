@@ -43,7 +43,9 @@ class EventLayoutTest(unittest.TestCase):
         # appended AFTER EVENT_AI_ATTEMPT_SPENT, so nothing above moved.
         self.assertEqual(events["EVENT_PRISM_BUGSY_SHOWN"], 35)
         self.assertEqual(events["EVENT_PRISM_WHITNEY_SHOWN"], 36)
-        self.assertEqual(events["PERSISTENT_EVENTS_END"], 36)
+        # Committed post-AI Palm completion appends bit 37; run flags stay at 40.
+        self.assertEqual(events["EVENT_POST_AI_PALM_COMPLETE"], 37)
+        self.assertEqual(events["PERSISTENT_EVENTS_END"], 37)
         self.assertEqual(events["RUN_EVENTS_START"], 40)
         self.assertLess(events["EVENT_AI_ATTEMPT_SPENT"], events["PERSISTENT_EVENTS_END"] + 1)
         self.assertLessEqual(events["PERSISTENT_EVENTS_END"] + 1, events["RUN_EVENTS_START"])
