@@ -168,7 +168,85 @@ class PCIdentityChainTest(unittest.TestCase):
     def test_full_party_withdraw_refusal_then_retry(self):
         self.run_refusal_retry('full_party')
 
-    def reopen_boxed_save(self, expected_party, stored, owner, nickname):
+    def begin_swap(self):
+        self.phase = None
+        self.press('a')
+        self.assertEqual(self.phase, 'menu')
+        self.press('a')  # SWAP is the first action in either domain
+        self.assertEqual(self.phase, 'grid')
+        self.assertNotEqual(self.h.read8('wParentMenuItem'), 255)
+
+    def test_cross_domain_swap_cancel_continue_and_reverse(self):
+        self.prepare_capacity(2, 1)
+        h = self.h
+        # Distinct incoming record, unlike capacity fixtures' identical copies.
+        incoming = h.read_bytes('wPartyMons', 33, 44)
+        incoming[3] = h.read8('wPartyMon2Level')
+        for label, values in (
+            ('wBoxMons', incoming),
+            ('wBoxMonOT', h.read_bytes('wPartyMonOT', 11, 11)),
+            ('wBoxMonNicks', h.read_bytes('wPartyMonNicks', 11, 11))):
+            for offset, value in enumerate(values): h.write8(label, value, offset=offset)
+        h.write8('wBoxSpecies', incoming[0])
+        h.write8('wPartyMon1CatchRate', (h.read8('wPartyMon1CatchRate') & 0x9F) | 0x20)
+        types = parse_rgbds_constants(ROOT/'constants/type_constants.asm')
+        h.write8('wPartyMon1Type2', types['DRAGON'])
+        h.write8('wPartyMon1PP', h.read8('wPartyMon1PP') | 0x80)
+        before = self.storage_snapshot()
+        self.assertNotEqual(incoming[0], before['party']['species'][0])
+        self.open_pc()
+        # Cancel pending source selection from both domains, using only B.
+        for source in (0, 6):
+            if source: self.press('right')
+            self.begin_swap()
+            self.assertEqual(h.read8('wParentMenuItem'), source)
+            self.press('b')
+            self.assertEqual(h.read8('wParentMenuItem'), 255)
+            self.assertEqual(self.storage_snapshot(), before)
+            if source: self.press('left')
+        self.begin_swap()
+        self.press('right')
+        self.press('a')
+        self.assertEqual(h.read8('wParentMenuItem'), 255)
+        swapped = party(h)
+        original = before['party']
+        outgoing = original['mons'][0][:33]
+        outgoing[3] = original['mons'][0][33]
+        self.assertEqual(swapped['count'], 2)
+        self.assertEqual(swapped['species'], [incoming[0], original['species'][1], 255])
+        self.assertEqual(swapped['mons'][0][:33], incoming)
+        self.assertEqual(swapped['mons'][1:], original['mons'][1:])
+        for field in ('ot', 'names'):
+            self.assertEqual(swapped[field], [original[field][1], original[field][1]])
+        self.assertEqual(h.read_bytes('wBoxMons', 33), outgoing)
+        self.assertEqual(h.read_bytes('wPlayerMoney', 3), before['money'])
+        self.reopen_boxed_save(swapped, outgoing, original['ot'][0], original['names'][0])
+        h = self.h
+        self.press('right')
+        self.begin_swap()  # now box is source, party is destination
+        self.press('left')
+        self.press('a')
+        restored = party(h)
+        self.assertEqual(h.read8('wParentMenuItem'), 255)
+        self.assertEqual(restored['species'], original['species'])
+        self.assertEqual(restored['mons'][0][:33], outgoing)
+        self.assertEqual(restored['mons'][1:], original['mons'][1:])
+        for field in ('ot', 'names'): self.assertEqual(restored[field], original[field])
+        self.assertEqual(h.read_bytes('wBoxMons', 33), incoming)
+        self.assertEqual(h.read8('wBoxCount'), 1)
+        self.assertEqual(h.read_bytes('wBoxSpecies', 2), [incoming[0], 255])
+        self.assertEqual(h.read_bytes('wBoxMonOT', 11), original['ot'][1])
+        self.assertEqual(h.read_bytes('wBoxMonNicks', 11), original['names'][1])
+        self.assertEqual(h.read_bytes('wPlayerMoney', 3), before['money'])
+        self.assertFalse(h.hook_errors)
+        self.reopen_boxed_save(restored, incoming, original['ot'][1], original['names'][1], stem='reverse_boxed')
+        self.assertFalse(self.h.hook_errors)
+        (self.output/'swap.json').write_text(json.dumps({'before':before,
+            'swapped':swapped,'restored':restored,'incoming':incoming,'outgoing':outgoing,
+            'post_open_fixture_writes':[],'hardware_mode':h.hardware_mode,
+            'rom_sha256':h.rom_sha256,'sym_sha256':h.sym_sha256}, indent=2))
+
+    def reopen_boxed_save(self, expected_party, stored, owner, nickname, *, stem='boxed'):
         for _ in range(20):
             if self.phase == 'world': break
             self.press('b')
@@ -176,7 +254,7 @@ class PCIdentityChainTest(unittest.TestCase):
         self.assertTrue(save_reload.settle(self.h))
         save_reload.save_now(self.h)
         sram = save_reload.sram_image(self.h)
-        (self.output/'boxed.sav').write_bytes(sram)
+        (self.output/(stem + '.sav')).write_bytes(sram)
         with patch.object(autoplay, 'ROM', autoplay.DEBUG_ROM):
             boot = save_reload.Reboot(sram, cgb_mode=self.cgb)
         self.addCleanup(boot.close)
