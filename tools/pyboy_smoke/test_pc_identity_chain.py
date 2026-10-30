@@ -87,6 +87,87 @@ class PCIdentityChainTest(unittest.TestCase):
     def test_boxed_identity_survives_continue_before_withdrawal(self):
         self.run_identity_chain(save_while_boxed=True)
 
+    def storage_snapshot(self):
+        h = self.h
+        return {'party':party(h), 'box':h.read_bytes('wBoxCount',
+            h.address('wBoxDataEnd') - h.address('wBoxCount')),
+            'money':h.read_bytes('wPlayerMoney', 3)}
+
+    def prepare_capacity(self, party_count, box_count):
+        h = self.h
+        # Valid copies of the Debug1 mon, prepared before any PC input.
+        mon = h.read_bytes('wPartyMons', 33)
+        mon[3] = h.read8('wPartyMon1Level')
+        for slot in range(box_count):
+            for label, values, stride in (
+                ('wBoxMons', mon, 33),
+                ('wBoxMonOT', h.read_bytes('wPartyMonOT', 11), 11),
+                ('wBoxMonNicks', h.read_bytes('wPartyMonNicks', 11), 11)):
+                for offset, value in enumerate(values):
+                    h.write8(label, value, offset=slot * stride + offset)
+            h.write8('wBoxSpecies', mon[0], offset=slot)
+        h.write8('wBoxCount', box_count)
+        h.write8('wBoxSpecies', 255, offset=box_count)
+        h.write8('wPartyCount', party_count)
+        h.write8('wPartySpecies', 255, offset=party_count)
+
+    def run_refusal_retry(self, kind):
+        party_count, box_count = {'last_party':(1, 1), 'full_box':(2, 20),
+                                  'full_party':(6, 1)}[kind]
+        self.prepare_capacity(party_count, box_count)
+        before = self.storage_snapshot()
+        self.open_pc()
+        withdraw = kind == 'full_party'
+        entered = self.h.hook_flag('WithdrawBillsPCSelectedBoxMon' if withdraw
+                                  else 'DepositBillsPCSelectedPartyMon')
+        if withdraw: self.press('right')
+        self.grid_action()
+        self.assertEqual(entered['count'], 1, 'refusal path was not invoked')
+        refused = self.storage_snapshot()
+        self.assertEqual(refused, before, kind + ' refusal mutated storage/money')
+        if withdraw:
+            self.press('left')
+            self.grid_action()  # deposit frees a party slot without fixture writes
+            self.assertEqual(self.h.read8('wPartyCount'), 5)
+            self.press('right')
+            self.grid_action()
+        else:
+            self.press('right')
+            self.grid_action()  # withdrawal supplies a second mon / frees box slot
+            self.assertEqual(self.h.read8('wPartyCount'), party_count + 1)
+            self.assertEqual(self.h.read8('wBoxCount'), box_count - 1)
+            self.press('left')
+            self.grid_action()
+        self.assertEqual(entered['count'], 2, 'same operation did not retry')
+        self.assertEqual(self.h.read8('wPartyCount'), party_count)
+        self.assertEqual(self.h.read8('wBoxCount'), box_count)
+        self.assertEqual(self.h.read_bytes('wPlayerMoney', 3), before['money'])
+        self.assertFalse(self.h.hook_errors)
+        after = self.storage_snapshot()
+        # The first party mon was deposited; all original survivors compact.
+        for field in ('mons', 'ot', 'names'):
+            self.assertEqual(after['party'][field][:-1], before['party'][field][1:], field)
+        incoming = before['party']['mons'][0][:33]
+        incoming[3] = before['party']['mons'][0][33]
+        self.assertEqual(after['party']['mons'][-1][:33], incoming)
+        self.assertEqual(after['party']['ot'][-1], before['party']['ot'][0])
+        self.assertEqual(after['party']['names'][-1], before['party']['names'][0])
+        # Deposit appends the original party mon at the end of the live box.
+        self.assertEqual(self.h.read_bytes('wBoxMons', 33, (box_count - 1) * 33), incoming)
+        (self.output/'refusal_retry.json').write_text(json.dumps({'kind':kind,
+            'before':before,'refused':refused,'after_retry':after,
+            'post_open_fixture_writes':[],'hardware_mode':self.h.hardware_mode,
+            'rom_sha256':self.h.rom_sha256,'sym_sha256':self.h.sym_sha256}, indent=2))
+
+    def test_last_party_deposit_refusal_then_retry(self):
+        self.run_refusal_retry('last_party')
+
+    def test_full_box_deposit_refusal_then_retry(self):
+        self.run_refusal_retry('full_box')
+
+    def test_full_party_withdraw_refusal_then_retry(self):
+        self.run_refusal_retry('full_party')
+
     def reopen_boxed_save(self, expected_party, stored, owner, nickname):
         for _ in range(20):
             if self.phase == 'world': break
