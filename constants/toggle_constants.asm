@@ -492,61 +492,36 @@ ENDM
 	const TOGGLE_FUCHSIA_KOGA ; EB
 	const TOGGLE_FUCHSIA_JANINE ; EC
 
-; New Johto gyms. Each needs its OWN gym-guide toggle: the Kanto gyms hide
-; TOGGLE_GYM_GUY, which belongs to PEWTER_CITY, and ToggleableObjectStates rows
-; carry the map id, so reusing it from another map would hide Pewter City's
-; object instead. Append each new gym here AND in the same order at the end of
-; data/maps/toggleable_objects.asm.
-	toggle_consts_for VIOLET_GYM
-	const TOGGLE_VIOLET_GYM_GUIDE ; ED
-
-	toggle_consts_for AZALEA_GYM
-	const TOGGLE_AZALEA_GYM_GUIDE ; EE
-
-	toggle_consts_for GOLDENROD_GYM
-	const TOGGLE_GOLDENROD_GYM_GUIDE ; EF
-
-	toggle_consts_for ECRUTEAK_GYM
-	const TOGGLE_ECRUTEAK_GYM_GUIDE ; F0
-
-	toggle_consts_for CIANWOOD_GYM
-	const TOGGLE_CIANWOOD_GYM_GUIDE ; F1
-
-	toggle_consts_for OLIVINE_GYM
-	const TOGGLE_OLIVINE_GYM_GUIDE ; F2
-
-	toggle_consts_for MAHOGANY_GYM
-	const TOGGLE_MAHOGANY_GYM_GUIDE ; F3
-
-	toggle_consts_for BLACKTHORN_GYM
-	const TOGGLE_BLACKTHORN_GYM_GUIDE ; F4
+; The Johto gyms' guides have no toggles: like the Kanto guides they stay
+; visible. (They used to hide on victory, and toggles outlive a run, so every
+; later run found the gym with no guide. Removed 2026-10-30, schema 16.)
 
 ; B1F keeps Palm separate from the stair scientist. Appended so no existing
 ; toggle id shifts; keep this block last in data/maps/toggleable_objects.asm.
 	toggle_consts_for SILPH_CO_B1F
-	const TOGGLE_SILPH_CO_B1F_SCIENTIST ; F5
-	const TOGGLE_SILPH_CO_B1F_PROF_PALM ; F6
-	const TOGGLE_SILPH_CO_B1F_LANCE ; F7
-	const TOGGLE_SILPH_CO_B1F_ROCKET ; F8
+	const TOGGLE_SILPH_CO_B1F_SCIENTIST ; ED
+	const TOGGLE_SILPH_CO_B1F_PROF_PALM ; EE
+	const TOGGLE_SILPH_CO_B1F_LANCE ; EF
+	const TOGGLE_SILPH_CO_B1F_ROCKET ; F0
 
 	toggle_consts_for AI_LAIR
-	const TOGGLE_AI_LAIR_OPPONENT ; F9
+	const TOGGLE_AI_LAIR_OPPONENT ; F1
 
 	toggle_consts_for PALMS_ROOM
-	const TOGGLE_PALMS_ROOM_PROF_PALM ; FA
-	const TOGGLE_PALMS_ROOM_LANCE ; FB
+	const TOGGLE_PALMS_ROOM_PROF_PALM ; F2
+	const TOGGLE_PALMS_ROOM_LANCE ; F3
 
 	; The Facility subroom's item ball (PROCEDURAL_SUBROOMS_PLAN Phase 4).
 	; Appended last so no earlier id moves. Shown once per Facility
 	; (FacSubroomStageObjects), hidden when picked up.
 	toggle_consts_for PROCEDURAL_FACILITY_SUBROOM
-	const TOGGLE_FACSUBROOM_BALL ; FC
+	const TOGGLE_FACSUBROOM_BALL ; F4
 
 	; The cave subroom's resident (PROCEDURAL_SUBROOMS_PLAN Phase 4): one of the
 	; two is shown per cave (CaveStageFirstEntry). Appended last.
 	toggle_consts_for PROCEDURAL_CAVE_SUBROOM
-	const TOGGLE_CAVESUB_GAMBLER ; FD
-	const TOGGLE_CAVESUB_SUPER_NERD ; FE
-	const TOGGLE_CAVESUB_BALL ; FF
+	const TOGGLE_CAVESUB_GAMBLER ; F5
+	const TOGGLE_CAVESUB_SUPER_NERD ; F6
+	const TOGGLE_CAVESUB_BALL ; F7
 
 DEF NUM_TOGGLEABLE_OBJECTS EQU const_value

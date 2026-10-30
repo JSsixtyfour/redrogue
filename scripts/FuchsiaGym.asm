@@ -73,16 +73,26 @@ FuchsiaGymIsJanine:
 
 ; ============================================================
 ; FuchsiaGymHideUnusedLeader
-; Hides whichever of the two leader objects is not this run's leader. Both are
-; declared ON in data/maps/toggleable_objects.asm, so exactly one HideObject
-; call is needed and the survivor needs no ShowObject.
+; Explicitly restores this run's leader, then hides the other. HideObject flags
+; persist between runs, so a Koga run's visit leaves Janine hidden and a later
+; Janine run would otherwise hide Koga too, leaving no leader (the same bug
+; ChampionsRoomHideUnusedChampion had). This also repairs existing saves on
+; room entry.
 ; ============================================================
 FuchsiaGymHideUnusedLeader:
 	call FuchsiaGymIsJanine
-	ld a, TOGGLE_FUCHSIA_JANINE
-	jr nz, .hideChosen      ; Koga's run, so hide Janine
+	jr z, .janine
 	ld a, TOGGLE_FUCHSIA_KOGA
-.hideChosen
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+	ld a, TOGGLE_FUCHSIA_JANINE
+	ld [wToggleableObjectIndex], a
+	predef_jump HideObject
+.janine
+	ld a, TOGGLE_FUCHSIA_JANINE
+	ld [wToggleableObjectIndex], a
+	predef ShowObject
+	ld a, TOGGLE_FUCHSIA_KOGA
 	ld [wToggleableObjectIndex], a
 	predef_jump HideObject
     

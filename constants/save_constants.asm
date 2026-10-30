@@ -69,7 +69,11 @@
 ; ds 28 - 19), so every saved main-data field after wFollowerDataEnd moves down 100
 ; bytes. Meanings are unchanged; migration followerPadTrimmed copies them by label.
 ; The loss-recovery record is repacked to match and cleared on conversion.
-DEF SAVE_SCHEMA_ID EQU 15
+; Schema 16 (2026-10-30): the eight Johto gym-guide toggles were removed (the
+; guides no longer hide), so TOGGLE_SILPH_CO_B1F_SCIENTIST through
+; TOGGLE_CAVESUB_BALL moved down 8 ($F5-$FF -> $ED-$F7). No field moved;
+; migration flagsRenumbered translates the toggle bits by name.
+DEF SAVE_SCHEMA_ID EQU 16
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; "RRSG" as raw ASCII, not through the game's text charmap.

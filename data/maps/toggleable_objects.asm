@@ -475,38 +475,14 @@ ToggleableObjectStates:
 	toggle_object_state 3, OFF   ; slot 3 = stage-event NPC 2
 	toggle_object_state CEMETERY_4_CHANNELER, OFF ; slot 4 = the Channeler
 
-; Both Fuchsia leaders start ON; FuchsiaGymHideUnusedLeader hides exactly one on
-; map load. Must stay LAST here to match the matching block at the end of
+; Both Fuchsia leaders start ON; FuchsiaGymHideUnusedLeader shows this run's
+; leader and hides the other on map load. Must stay LAST here to match the matching block at the end of
 ; constants/toggle_constants.asm - the macro asserts this table's byte offset
 ; equals TOGGLEMAP{FUCHSIA_GYM}_ID * 3, so the two files' block order is a
 ; build-time contract, not a convention.
 	toggleable_objects_for FUCHSIA_GYM
 	toggle_object_state FUCHSIAGYM_KOGA,   ON
 	toggle_object_state FUCHSIAGYM_JANINE, ON
-
-	toggleable_objects_for VIOLET_GYM
-	toggle_object_state VIOLETGYM_GYM_GUIDE, ON
-
-	toggleable_objects_for AZALEA_GYM
-	toggle_object_state AZALEAGYM_GYM_GUIDE, ON
-
-	toggleable_objects_for GOLDENROD_GYM
-	toggle_object_state GOLDENRODGYM_GYM_GUIDE, ON
-
-	toggleable_objects_for ECRUTEAK_GYM
-	toggle_object_state ECRUTEAKGYM_GYM_GUIDE, ON
-
-	toggleable_objects_for CIANWOOD_GYM
-	toggle_object_state CIANWOODGYM_GYM_GUIDE, ON
-
-	toggleable_objects_for OLIVINE_GYM
-	toggle_object_state OLIVINEGYM_GYM_GUIDE, ON
-
-	toggleable_objects_for MAHOGANY_GYM
-	toggle_object_state MAHOGANYGYM_GYM_GUIDE, ON
-
-	toggleable_objects_for BLACKTHORN_GYM
-	toggle_object_state BLACKTHORNGYM_GYM_GUIDE, ON
 
 	; Separate objects are required because the scientist must be independently
 	; restored during normal/postgame B1F states.

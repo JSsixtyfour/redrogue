@@ -92,10 +92,6 @@ OlivineGymScriptReceiveTM:
 	ld hl, wRogueFlagsBitfield
 	res 0, [hl]                 ; route is next after this gym
 
-	ld a, TOGGLE_OLIVINE_GYM_GUIDE
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-
 	jp OlivineGymResetScripts
 
 OlivineGym_TextPointers:

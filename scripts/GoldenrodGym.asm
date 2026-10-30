@@ -92,10 +92,6 @@ GoldenrodGymScriptReceiveTM:
 	ld hl, wRogueFlagsBitfield
 	res 0, [hl]                 ; route is next after this gym
 
-	ld a, TOGGLE_GOLDENROD_GYM_GUIDE
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-
 	jp GoldenrodGymResetScripts
 
 GoldenrodGym_TextPointers:
