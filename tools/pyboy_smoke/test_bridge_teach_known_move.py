@@ -34,6 +34,10 @@ def lobby_text_id(name: str) -> int:
 class BridgeTeachKnownMoveTest(HarnessTestCase):
     def setUp(self) -> None:
         super().setUp()
+        self.prepare_teacher()
+
+    def prepare_teacher(self) -> None:
+        """Prepare the existing text-handler fixture on the supplied harness."""
         assert self.harness is not None
         autoplay.boot(self.harness, seed=1)
         h = self.harness
@@ -47,7 +51,7 @@ class BridgeTeachKnownMoveTest(HarnessTestCase):
     def moves(self) -> list[int]:
         return [self.harness.pyboy.memory[self.moves_at + i] for i in range(4)]
 
-    def teach(self, move: int) -> int:
+    def teach(self, move: int, *, input_policy=None) -> int:
         """Teach `move` to party slot 2 through BridgeTeachMoveToCurrent, run as
         the witch's text_asm; return F as it returns."""
         h = self.harness
@@ -97,7 +101,10 @@ class BridgeTeachKnownMoveTest(HarnessTestCase):
                 if state["flags"] is not None:
                     break
                 if state["swapped"] and frame % 20 == 0:
-                    h.tap("a", 2)
+                    if input_policy is None:
+                        h.tap("a", 2)
+                    else:
+                        input_policy(h)
         finally:
             for label, callback in hooks:
                 h.unregister_hook(label, callback)
