@@ -146,9 +146,10 @@ The tester checks the file and tells you in plain words what is wrong:
   - only the engine's own music commands (no load_wave, INCLUDE or INCBIN).
 Labels are renamed for you so two songs never clash. Drum kits are your job
 here: toggle_noise 0 / toggle_noise 1 pick the kit (see Template.asm).
-Crystal Tracker is a free tracker that exports this format. It is not
-included in this kit; search for "Crystal Tracker" and download it from its
-official release page.
+CRYSTAL TRACKER (included): a free song editor made for this format, in the
+"Crystal Tracker" folder. Double-click "Crystal Tracker.exe", no install
+needed. It is free software by dannye (see the files next to it), included
+unchanged; the latest version is on its official GitHub release page.
 
   Using it with this kit: keep your .asm files in this folder (next to
   Template.asm) and open them from here. Crystal Tracker finds the game's

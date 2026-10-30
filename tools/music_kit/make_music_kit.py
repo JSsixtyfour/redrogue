@@ -5,7 +5,8 @@
 See MUSIC_TEST_KIT_PLAN.md in Red Rogue Files. Steps:
   1. read the exact rgbasm/rgblink/rgbfix flags for pokered.gbc from `make -n`
   2. stage _engine/: prebuilt *_red.o + buildid, layout.link, audio.asm's
-     include closure, Windows rgbds/pokemid, portable mGBA, convert.ps1
+     include closure, Windows rgbds/pokemid, portable mGBA, convert.ps1;
+     Crystal Tracker (+ its LGPL/GPL texts) and its Makefile/crysaudio stub at the kit root
   3. kit.json: flags, IMPORT_BUDGET (largest free audio bank), build hash
   4. end-to-end check through the staged kit with powershell.exe: an untouched
      rebuild must equal pokered.gbc byte for byte; Template.mid must build
@@ -48,11 +49,20 @@ ENGINE_HASH_FILES = ("crysaudio/macros.asm", "crysaudio/wave_samples.asm", "crys
 
 RGBDS_VERSION = open(os.path.join(REPO, ".rgbds-version")).read().strip()
 MGBA_VERSION = "0.10.5"
+TRACKER_VERSION = "0.9.1"  # dannye/crystal-tracker, LGPL-3.0; latest as of 2026-10-29
+TRACKER_SOURCE = "https://github.com/dannye/crystal-tracker/tree/v%s" % TRACKER_VERSION
 DOWNLOADS = {
     "rgbds": ("https://github.com/gbdev/rgbds/releases/download/v%s/rgbds-win64.zip" % RGBDS_VERSION, "rgbds-%s.zip" % RGBDS_VERSION),
     "pokemid": ("https://github.com/mtolly/pokemid/releases/download/v0.9/pokemid-v0.9-windows-x64.zip", "pokemid-v0.9.zip"),
     "mgba": ("https://github.com/mgba-emu/mgba/releases/download/%s/mGBA-%s-win64.7z" % (MGBA_VERSION, MGBA_VERSION), "mgba-%s.7z" % MGBA_VERSION),
+    # one portable exe; LGPL-3.0 is GPL-3.0 plus permissions, so both texts ship with it
+    "tracker": ("https://github.com/dannye/crystal-tracker/releases/download/v%s/crystaltracker-x64.exe" % TRACKER_VERSION,
+                "crystaltracker-v%s-x64.exe" % TRACKER_VERSION),
+    "tracker_lgpl": ("https://raw.githubusercontent.com/dannye/crystal-tracker/v%s/LICENSE.md" % TRACKER_VERSION,
+                     "crystaltracker-v%s-LICENSE.md" % TRACKER_VERSION),
+    "gpl3": ("https://www.gnu.org/licenses/gpl-3.0.txt", "gpl-3.0.txt"),
 }
+TRACKER_DIR = "Crystal Tracker"
 SEVENZIP = "/mnt/c/Program Files/7-Zip/7z.exe"
 # mGBA files the composer doesn't need (keep LICENSE.txt + licenses/: MPL-2.0)
 MGBA_SKIP = {"mgba-sdl.exe", "nointro.dat", "README_DE.html", "README_ES.html", "README_ZH_CN.html", "shaders", "scripts"}
@@ -214,6 +224,18 @@ def stage(flags, prebuilt):
         f.write("# Not a real Makefile. Crystal Tracker looks for this file to find the\n"
                 "# kit's waves and drums in crysaudio/. Songs are built by DROP YOUR SONG HERE.\n")
 
+    # The tracker itself, unmodified, with its license and where its source is.
+    tracker = os.path.join(KIT, TRACKER_DIR)
+    os.makedirs(tracker)
+    shutil.copy2(fetch("tracker"), os.path.join(tracker, "Crystal Tracker.exe"))
+    shutil.copy2(fetch("tracker_lgpl"), os.path.join(tracker, "LICENSE (LGPL-3.0).md"))
+    shutil.copy2(fetch("gpl3"), os.path.join(tracker, "LICENSE (GPL-3.0).txt"))
+    with open(os.path.join(tracker, "SOURCE.txt"), "w", newline="\r\n") as f:
+        f.write("Crystal Tracker %s by dannye and contributors.\n"
+                "This is the official Windows release, unmodified. It is free software under the\n"
+                "GNU LGPL 3.0 (the two LICENSE files here). Source code for this exact version:\n"
+                "%s\n" % (TRACKER_VERSION, TRACKER_SOURCE))
+
 
 def convert(mid=None, *extra):
     """Run the staged kit's convert.ps1 the way the .bat does; return its output."""
@@ -326,6 +348,7 @@ def main():
     stage(flags, prebuilt)
     kit = {
         "kitDate": date, "buildHash": git, "rgbds": RGBDS_VERSION, "pokemid": "0.9", "mgba": MGBA_VERSION,
+        "crystalTracker": TRACKER_VERSION,
         "kitSchema": 2, "engine": ENGINE_ID,
         "engineHashes": engine_hashes(), "romSha256": sha256_file(os.path.join(REPO, "pokered.gbc")),
         "importBudget": budget, "songIdRoom": id_room, "romSpace": space,
