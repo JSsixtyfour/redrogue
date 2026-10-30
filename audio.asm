@@ -160,6 +160,10 @@ INCLUDE "crysaudio/engine.asm"
 ASSERT CHANNEL_STRUCT_LENGTH == wChannel2 - wChannel1
 ASSERT CHANNEL_NOTE_LENGTH == wChannel1NoteLength - wChannel1
 ASSERT CHANNEL_FIELD30 == wChannel1Field30 - wChannel1
+; The engine steps by CHANNEL_STRUCT_LENGTH within each block and reaches a music
+; channel's sfx channel by one fixed offset, so both blocks must be contiguous.
+ASSERT wChannel4 - wChannel1 == 3 * CHANNEL_STRUCT_LENGTH
+ASSERT wChannel8 - wChannel5 == 3 * CHANNEL_STRUCT_LENGTH
 
 INCLUDE "crysaudio/music_pointers_red.asm"
 

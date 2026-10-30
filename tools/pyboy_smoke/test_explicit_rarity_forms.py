@@ -117,17 +117,21 @@ class ExplicitRarityFormsTest(unittest.TestCase):
         self.assertEqual(len(ordinary), 253)
         self.assertEqual(ordinary.count(SPECIES['SWINUB']), 2)
         self.assertEqual(len(set(ordinary)), 252)
-        self.assertEqual(len(direct_forms), 24)
-        self.assertEqual(len(set(direct_forms)), 24)
+        self.assertEqual(len(direct_forms), 25)
+        self.assertEqual(len(set(direct_forms)), 25)
         # All active form records occur either in direct lists or commented
         # evolution references, never silently through a substitution rule.
         references = {(SPECIES[sp], int(form)) for sp, form in
                       re.findall(r'^; rarity_mon (\w+),\s*(\d+)', source, re.M)}
-        records = self.rom_bytes('FormOverrides', 50 * 41)
+        records = self.rom_bytes('FormOverrides', 54 * 41)
         active = {(records[i], records[i+1]) for i in range(0, len(records), 41)}
         # Forms no pool ever rolls: Armored Mewtwo is Giovanni's Challenge 11
-        # ace and its trade only (legendary_boss_helpers.asm).
-        never_rolled = {(SPECIES['MEWTWO'], 1)}
+        # ace and its trade only (legendary_boss_helpers.asm); the Fossil forms
+        # are the cemetery ghost boss only.
+        never_rolled = {(SPECIES['MEWTWO'], 1), (SPECIES['AERODACTYL'], 1),
+                        (SPECIES['KABUTOPS'], 1)}
+        self.assertIn((SPECIES['WOOPER'], 1), active)  # Paldean Wooper restored 2026-10-29
+        self.assertIn((SPECIES['QUAGSIRE'], 1), active)  # Clodsire added 2026-10-29
         self.assertFalse(set(direct_forms) & references)
         self.assertFalse((set(direct_forms) | references) & never_rolled)
         self.assertEqual(set(direct_forms) | references | never_rolled, active)

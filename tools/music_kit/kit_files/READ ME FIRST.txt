@@ -150,6 +150,15 @@ Crystal Tracker is a free tracker that exports this format. It is not
 included in this kit; search for "Crystal Tracker" and download it from its
 official release page.
 
+  Using it with this kit: keep your .asm files in this folder (next to
+  Template.asm) and open them from here. Crystal Tracker finds the game's
+  waves and drums through the "Makefile" and "crysaudio" folder in this
+  folder, so leave those two where they are. Template.asm is a good first file
+  to open. Its playback is close to the game but not exact; drag the saved
+  .asm onto "DROP YOUR SONG HERE" to hear the real thing. For Ch3, pick waves
+  0-14 with note_type's third number; don't use load_wave (custom wave
+  shapes), which the tester rejects.
+
 
 HEARING IT WHILE YOU WRITE (optional)
 -------------------------------------

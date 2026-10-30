@@ -80,6 +80,7 @@ FORM_FILE_NAMES = {
     "ptaurosblaze": "Blaze Tauros",
     "ptauroscombat": "Combat Tauros",
     "sandyshocks": "Sandy Shocks",
+    "clodsire": "Clodsire",
     "screamtail": "Scream Tail",
 }
 REGION_PREFIX = {"a": "Alolan", "g": "Galarian", "h": "Hisuian", "p": "Paldean"}

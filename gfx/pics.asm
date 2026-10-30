@@ -741,6 +741,8 @@ PTaurosBlazePicFront::  INCBIN "gfx/pokemon/front/ptaurosblaze.lz"
 PTaurosBlazePicBack::   INCBIN "gfx/pokemon/back/ptaurosblazeb.lz"
 PTaurosAquaPicFront::   INCBIN "gfx/pokemon/front/ptaurosaqua.lz"
 PTaurosAquaPicBack::    INCBIN "gfx/pokemon/back/ptaurosaquab.lz"
+PWooperPicFront::       INCBIN "gfx/pokemon/front/pwooper.lz"
+PWooperPicBack::        INCBIN "gfx/pokemon/back/pwooperb.lz"
 SandyShocksPicFront::   INCBIN "gfx/pokemon/front/sandyshocks.lz"
 SandyShocksPicBack::    INCBIN "gfx/pokemon/back/sandyshocksb.lz"
 ScreamTailPicFront::    INCBIN "gfx/pokemon/front/screamtail.lz"
@@ -859,6 +861,11 @@ FossilKabutopsPicBack::    INCBIN "gfx/pokemon/back/fossilkabutopsb.lz"
 ; Moved out of "Trainer Pics" ($13) on 2026-10-29 to make room for OldManPic,
 ; which must stay there (player appearance). pic_money carries the bank.
 BrunoPic::            INCBIN "gfx/trainers/bruno.lz"
+
+; Clodsire (QUAGSIRE form 1). Paldean, but "Pics 15" ($37) had room only for
+; Paldean Wooper on 2026-10-29.
+ClodsirePicFront::    INCBIN "gfx/pokemon/front/clodsire.lz"
+ClodsirePicBack::     INCBIN "gfx/pokemon/back/clodsireb.lz"
 
 
 SECTION "Player Back Pics", ROMX ; pinned to $37 in layout.link

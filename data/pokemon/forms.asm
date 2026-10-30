@@ -89,11 +89,13 @@ ENDM
 ;   MEWTWO      Armored       -             -
 ;   AERODACTYL  Fossil        -             -      (cemetery ghost boss only)
 ;   KABUTOPS    Fossil        -             -      (cemetery ghost boss only)
+;   WOOPER      Paldean       -             -
+;   QUAGSIRE    Clodsire      -             -
 ;   (every other Group R base) its one regional variant
 ;
-; Hisuian Sneasel, Paldean Wooper and Hisuian Qwilfish were cut 2026-10-15:
-; placeholder art only, and their evolutions (Sneasler, Clodsire, Overqwil)
-; do not exist here.
+; Hisuian Sneasel and Hisuian Qwilfish were cut 2026-10-15: placeholder art
+; only, and their evolutions (Sneasler, Overqwil) do not exist here. Paldean
+; Wooper was cut with them and restored 2026-10-29 with real art and Clodsire.
 
 FormOverrides::
 ; Records must be dex-order-independent - ApplyFormOverride walks linearly and
@@ -150,6 +152,8 @@ INCLUDE "data/pokemon/forms/hvoltorb.asm"
 INCLUDE "data/pokemon/forms/armoredmewtwo.asm"
 INCLUDE "data/pokemon/forms/fossilaerodactyl.asm"
 INCLUDE "data/pokemon/forms/fossilkabutops.asm"
+INCLUDE "data/pokemon/forms/pwooper.asm"
+INCLUDE "data/pokemon/forms/clodsire.asm"
 
 	db 0 ; terminator
 

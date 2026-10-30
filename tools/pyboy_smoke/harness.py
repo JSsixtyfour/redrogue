@@ -1425,6 +1425,15 @@ class RedRogueHarness:
         # freezing pyboy.tick() for good (test_move_swap_restores_audio_state...).
         # It only surfaced when a timing change moved the park point off HOME code.
         saved_vblank_bank = self.read8("wVBlankSavedROMBank")
+        # The park is usually inside _UpdateSound's channel loop, which keeps its loop
+        # index in wCurChannel and the channel pointer in bc. A hijacked PlayMusic,
+        # PlayCry or SFX loads channels through LoadChannel, which rewrites
+        # wCurChannel; the resumed loop then steps bc for one channel while the index
+        # names another (measured 2026-10-29: the credits test's channel 2 ran as
+        # channel 4 once and stayed 39 frames late). The game never runs those
+        # mid-update, and outside an update the byte is dead scratch, so restore it.
+        saved_cur_channel = (self.read8("wCurChannel")
+                             if "wCurChannel" in self.symbols._symbols else None)
         enter_bank, enter_address = self.symbols.get("Bankswitch")
         return_bank, return_address = self.symbols.get("Bankswitch.Return")
         expected_return_sp = (saved_registers["SP"] - 2) & 0xFFFF
@@ -1539,6 +1548,8 @@ class RedRogueHarness:
             self.pyboy.memory[0x2000] = saved_bank
             self.write8("hLoadedROMBank", saved_bank)
             self.write8("wVBlankSavedROMBank", saved_vblank_bank)
+            if saved_cur_channel is not None:
+                self.write8("wCurChannel", saved_cur_channel)
             restore_vblank_mask()
             for name, value in saved_registers.items():
                 setattr(self.pyboy.register_file, name, value)

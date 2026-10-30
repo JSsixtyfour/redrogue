@@ -227,6 +227,7 @@ FORM_FILES = {
     "SCREAM_TAIL": "screamtail", "SANDY_SHOCKS": "sandyshocks",
     "TOEDSCOOL": "toedscool", "TOEDSCRUEL": "toedscruel",
     "WIGLETT": "wiglett", "WUGTRIO": "wugtrio",
+    "WOOPER_PALDEA": "pwooper", "CLODSIRE": "clodsire",
 }
 FORM_NAMES = set(FORM_FILES)
 FORM_RECORD_RE = re.compile(r"^\s*form_record\s+([A-Z_][A-Z0-9_]*)\s*,\s*(\d+)", re.M)

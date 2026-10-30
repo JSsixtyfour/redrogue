@@ -202,6 +202,15 @@ def stage(flags, prebuilt):
     for entry in os.listdir(os.path.join(HERE, "kit_files")):
         shutil.copy2(os.path.join(HERE, "kit_files", entry), KIT)
 
+    # Crystal Tracker takes the nearest folder with a Makefile as the project
+    # root and reads <root>/crysaudio/{wave_samples,drumkits}.asm for playback.
+    os.makedirs(os.path.join(KIT, "crysaudio"))
+    for rel in ("crysaudio/wave_samples.asm", "crysaudio/drumkits.asm"):
+        shutil.copy2(os.path.join(REPO, rel), os.path.join(KIT, rel))
+    with open(os.path.join(KIT, "Makefile"), "w", newline="\n") as f:
+        f.write("# Not a real Makefile. Crystal Tracker looks for this file to find the\n"
+                "# kit's waves and drums in crysaudio/. Songs are built by DROP YOUR SONG HERE.\n")
+
 
 def convert(mid=None, *extra):
     """Run the staged kit's convert.ps1 the way the .bat does; return its output."""

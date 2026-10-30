@@ -492,6 +492,7 @@ WarpGreatball:
 	rarity_mon VULPIX, 1 ; Alolan Vulpix
 	rarity_mon PONYTA, 1 ; Galarian Ponyta
 	rarity_mon SLOWPOKE, 1 ; Galarian Slowpoke
+	rarity_mon WOOPER, 1 ; Paldean Wooper
 WarpGreatball_Evos:
 ; Evolution-only form references. Commented entries are NOT direct picks.
 ; rarity_mon RAICHU, 1 ; Pikachu + Moon Stone -> Alolan Raichu
@@ -505,6 +506,7 @@ WarpGreatball_Evos:
 ; rarity_mon RAPIDASH, 1 ; Galarian Ponyta -> Galarian Rapidash
 ; rarity_mon SLOWBRO, 1 ; Galarian Slowpoke -> Galarian Slowbro
 ; rarity_mon SLOWKING, 1 ; Galarian Slowpoke + Water Stone -> Galarian Slowking
+; rarity_mon QUAGSIRE, 1 ; Paldean Wooper -> Clodsire
 ; rarity_mon FLAREON, 1 ; Eevee + Leaf Stone -> Leafeon
 ; rarity_mon VAPOREON, 1 ; Eevee + Ice Stone -> Glaceon
 ; rarity_mon VAPOREON, 2 ; Eevee + Moon Stone -> Sylveon
@@ -750,9 +752,10 @@ RogueGetSpeciesTierFar::
 ; one.
 ;
 ; ⚠ This is NOT the same as asking whether a form's BASE species is in an
-; unlocked group, and that distinction is the whole reason this exists: 47 of the
-; 48 form records hang off KANTO species (Meowth, Dugtrio, Vulpix, Moltres,
-; Tauros...), and Kanto is always active. Only gslowking has a Johto base.
+; unlocked group, and that distinction is the whole reason this exists: most
+; form records hang off KANTO species (Meowth, Dugtrio, Vulpix, Moltres,
+; Tauros...), and Kanto is always active. Only gslowking, pwooper and clodsire
+; have Johto bases.
 ; Without an explicit gate, Alolan Meowth shows up on
 ; turn one of a fresh run - which is exactly what happened in testing.
 ; ---------------------------------------------------------------------------

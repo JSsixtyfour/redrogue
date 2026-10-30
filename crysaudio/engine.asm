@@ -192,24 +192,11 @@ _UpdateSound::
 	cp NUM_MUSIC_CHANS
 	jr nc, .sfx_channel
 
-	push af
-	push bc
-	add 4 ; corresponding sfx channel
-	ld c, a
-	ld b, 0
-	ld hl, ChannelPointers
+	; hl = the corresponding sfx channel's flags. Channels 5-8 are a separate section
+	; (ram/wram.asm), but both blocks share one stride, so the offset is the same for
+	; all four pairs (ASSERTed in audio.asm).
+	ld hl, wChannel5Flags1 - wChannel1
 	add hl, bc
-	add hl, bc
-	ld c, [hl]
-	inc hl
-	ld b, [hl] ; bc = channel pointer
-	ld hl, CHANNEL_FLAGS1
-	add hl, bc
-	pop bc
-	pop af
-;	ld hl, CHANNEL_STRUCT_LENGTH * NUM_MUSIC_CHANS + CHANNEL_FLAGS1
-;	add hl, bc
-
 	bit SOUND_CHANNEL_ON, [hl]
 	jr nz, .sound_channel_on
 .sfx_channel
@@ -226,27 +213,31 @@ _UpdateSound::
 	xor a
 	ld [hl], a
 .nextchannel
-	; next channel
-;	ld hl, CHANNEL_STRUCT_LENGTH
-;	add hl, bc
-;	ld c, l
-;	ld b, h
+	; next channel: one stride on within each block (channels 1-4 and 5-8 are separate
+	; sections), so only the step from channel 4 to 5 needs the other block's address
 	ld a, [wCurChannel]
 	inc a
-
-	ld c, a
-	ld b, 0
-	ld hl, ChannelPointers
-	add hl, bc
-	add hl, bc
-	ld c, [hl]
-	inc hl
-	ld b, [hl] ; bc = channel pointer
-
 	ld [wCurChannel], a
+	cp NUM_MUSIC_CHANS
+	jr z, .sfx_channels
 	cp NUM_CHANNELS ; are we done?
-	jp nz, .loop ; do it all again
+	jr z, .done
+	ld hl, CHANNEL_STRUCT_LENGTH
+	add hl, bc
+	ld b, h
+	ld c, l
+	jp .loop ; do it all again
 
+.sfx_channels
+	; channels 5-8 only carry sfx and cries, and an inactive channel's pass does
+	; nothing, so skip all four when none is on (most frames)
+	call _CheckSFX
+	ld bc, wChannel5
+	jp c, .loop
+	ld a, NUM_CHANNELS
+	ld [wCurChannel], a
+
+.done
 	call RedRogueLowHealthAlarm ; Red Rogue policy around PlayDanger (audio/low_health_alarm.asm)
 	; fade music in/out
 	call FadeMusic
@@ -1270,24 +1261,11 @@ ParseMusic:
 	cp NUM_MUSIC_CHANS
 	jr nc, .chan_5to8
 
-	push af
-	push bc
-	add 4 ; corresponding sfx channel
-	ld c, a
-	ld b, 0
-	ld hl, ChannelPointers
+	; hl = the corresponding sfx channel's flags. Channels 5-8 are a separate section
+	; (ram/wram.asm), but both blocks share one stride, so the offset is the same for
+	; all four pairs (ASSERTed in audio.asm).
+	ld hl, wChannel5Flags1 - wChannel1
 	add hl, bc
-	add hl, bc
-	ld c, [hl]
-	inc hl
-	ld b, [hl] ; bc = channel pointer
-	ld hl, CHANNEL_FLAGS1
-	add hl, bc
-	pop bc
-	pop af
-;	ld hl, CHANNEL_STRUCT_LENGTH * NUM_MUSIC_CHANS + CHANNEL_FLAGS1
-;	add hl, bc
-
 	bit SOUND_CHANNEL_ON, [hl]
 	jr nz, .ok
 .chan_5to8
@@ -2241,9 +2219,15 @@ Music_NewSong:
 	ld e, a
 	call GetMusicByte
 	ld d, a
+	; _PlayMusic runs inside _UpdateSound's channel loop here, and its LoadChannel
+	; rewrites wCurChannel; the loop steps bc by stride, so put both back.
+	ld a, [wCurChannel]
+	push af
 	push bc
 	call _PlayMusic
 	pop bc
+	pop af
+	ld [wCurChannel], a
 	ret
 
 GetMusicByte:

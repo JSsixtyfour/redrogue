@@ -583,6 +583,7 @@
 	band_warp
 	band_mon SLOWPOKE, 1
 	band_mon GRIMER, 1
+	band_mon WOOPER, 1
 	band_end
 	band_pool Koga_Ace2
 	band_ace WEEZING
@@ -613,6 +614,7 @@
 	band_mon QWILFISH
 	band_warp
 	band_mon SLOWPOKE, 1
+	band_mon WOOPER, 1
 	band_end
 	band_pool Koga_Off2
 	band_mon PARAS
@@ -1042,6 +1044,7 @@
 	band_mon LARVITAR
 	band_mon SWINUB
 	band_warp
+	band_mon WOOPER, 1
 	band_mon TENTACOOL, 1
 	band_end
 	band_pool Giovanni_AceR1
@@ -1077,6 +1080,7 @@
 	band_mon SWINUB
 	band_mon GLIGAR
 	band_warp
+	band_mon WOOPER, 1
 	band_mon TENTACOOL, 1
 	band_end
 	band_pool Giovanni_Off2
@@ -1109,6 +1113,7 @@
 	band_mon SWINUB
 	band_mon GLIGAR
 	band_warp
+	band_mon WOOPER, 1
 	band_mon TENTACOOL, 1
 	band_mon MAGNETON, 1
 	band_end
@@ -2397,6 +2402,7 @@
 	band_mon LARVITAR
 	band_mon SWINUB
 	band_warp
+	band_mon WOOPER, 1
 	band_mon TENTACOOL, 1
 	band_end
 	band_pool GiovanniMiniBoss_Ace2
@@ -2427,6 +2433,7 @@
 	band_mon SWINUB
 	band_mon GLIGAR
 	band_warp
+	band_mon WOOPER, 1
 	band_mon TENTACOOL, 1
 	band_end
 	band_pool GiovanniMiniBoss_Off2
@@ -2458,6 +2465,7 @@
 	band_mon SWINUB
 	band_mon GLIGAR
 	band_warp
+	band_mon WOOPER, 1
 	band_mon TENTACOOL, 1
 	band_mon MAGNETON, 1
 	band_end
@@ -3210,6 +3218,7 @@
 	band_mon SLOWBRO, 1
 	band_mon SLOWKING, 1
 	band_mon WEEZING, 1
+	band_mon WOOPER, 1
 	band_end
 
 ; --- Lance -------------------------------------------------------------------
@@ -3317,6 +3326,7 @@
 	band_mon SLOWBRO, 1
 	band_mon SLOWKING, 1
 	band_mon WEEZING, 1
+	band_mon WOOPER, 1
 	band_end
 
 ; --- Will --------------------------------------------------------------------
