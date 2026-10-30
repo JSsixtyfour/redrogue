@@ -93,6 +93,33 @@ class SpinnerCacheLifecycleTest(unittest.TestCase):
 WALL, FLOOR, LEDGE, STAND, COUNTER = 0x01, 0x02, 0x37, 0x2C, 0x03
 
 
+class RevisitedExitTest(unittest.TestCase):
+    def test_revisited_forward_exit_precedes_arrival_but_backtracking_remains(self):
+        import autoplay
+        agent = object.__new__(autoplay.AutoplayAgent)
+        agent.h = SimpleNamespace(read8=lambda _: 106,
+            warp_entries=lambda: [(9, 18, 1, 105), (9, 3, 0, 107)])
+        agent.map_size = lambda: (22, 18)
+        agent.lobby_map = 174
+        agent.arrival = (18, 9)
+        agent.warps_taken = {(106, 18, 9), (106, 3, 9)}
+        groups = agent.exit_goals()
+        self.assertEqual([set(g.spots) for g in groups], [{(3, 9)}, {(18, 9)}])
+        agent.h.warp_entries = lambda: [(9, 18, 1, 105)]
+        self.assertEqual([set(g.spots) for g in agent.exit_goals()], [{(18, 9)}])
+
+    def test_busy_map_patch_cannot_refresh_progress_watchdog(self):
+        import autoplay
+        agent = object.__new__(autoplay.AutoplayAgent)
+        agent.game_world_reads_ready = lambda: True
+        agent.mode = lambda: 'busy'
+        agent.last_progress_frame = 100
+        agent.progress_marker = ('accepted',)
+        agent.note_progress()
+        self.assertEqual(agent.last_progress_frame, 100)
+        self.assertEqual(agent.progress_marker, ('accepted',))
+
+
 def grid_from_rows(rows, **kwargs):
     """'#' wall, '.' floor, 'v' ledge, 's' floor that can jump the ledge
     below, 'c' counter."""

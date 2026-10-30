@@ -1183,6 +1183,10 @@ class AutoplayAgent:
         # counts).
         if not self.game_world_reads_ready():
             return
+        # Map scripts patch trainer/party state while control is suspended.
+        # Those transient values must not keep a room-to-room loop alive.
+        if self.mode() == "busy":
+            return
         marker = (
             self.report.stages_cleared, len(self.warps_taken), self.report.battles_won,
             len(self.unbeaten_trainers()), len(self.talked), sum(self.choice_showings.values()),
@@ -1804,9 +1808,12 @@ class AutoplayAgent:
                 if dest not in (self.lobby_map, LAST_MAP, ROGUE_MAP) and not self.taken(step)]
         if side:
             groups.append(self.warp_goal(side, "warp_side"))
-        back = [step for step, _ in warps if step not in side]
+        back = [step for step, _ in warps if step not in side and not self.near_arrival(step)]
         if back:
             groups.append(self.warp_goal(back, "warp_back"))
+        arrival = [step for step, _ in warps if self.near_arrival(step)]
+        if arrival:
+            groups.append(self.warp_goal(arrival, "warp_back"))
         return groups
 
     def taken(self, step: tuple[int, int]) -> bool:
