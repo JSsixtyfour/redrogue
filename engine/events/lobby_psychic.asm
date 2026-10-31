@@ -50,9 +50,18 @@ PCLobbyExtrasSetup:
 	ld a, TOGGLE_PC_TRADENERD
 	ld b, LOBBY_TRADER_CHANCE
 	call LobbyRollNPC
+	; Match the Psychic's gift-visit gate, including the debug override.
+	rfarcall BridgeDoorsOfferedFar
 	ld a, TOGGLE_PC_RENTAL_OFFICIAL
 	ld b, LOBBY_RENTAL_CHANCE
+	dec e
+	jr nz, .rollRental
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	jr .rentalDone
+.rollRental
 	call LobbyRollNPC
+.rentalDone
 	ld a, TOGGLE_PC_MOVETUTOR
 	ld b, LOBBY_TUTOR_CHANCE
 	jr LobbyRollNPC

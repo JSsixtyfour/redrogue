@@ -104,6 +104,16 @@ RentalCanPrepareOffer:
 	ld a, [wRentalOwner]
 	and a
 	ret nz
+	; Gift visits are interludes, not rental opportunities. Wild providers
+	; still work even when the lobby's latched doors are no longer relevant.
+	ldh a, [hCurMap]
+	cp INDIGO_PLATEAU_LOBBY
+	jr nz, .available
+	rfarcall BridgeDoorsOfferedFar
+	ld a, e
+	and a
+	ret nz
+.available
 	scf
 	ret
 
@@ -1422,10 +1432,18 @@ RentalRetrieveDaycare::
 	ld a, [wBattleCount]
 	cp b
 	jr z, .move
+	ld a, [hl]
+	cp MAX_LEVEL
+	jr nc, .move
+	ld b, a
 	ld a, [wCurEnemyLevel]
-	cp [hl]
-	jr c, .move
-	jr z, .move
+	cp b
+	jr z, .minimumGrowth
+	jr nc, .commitGrowth
+.minimumGrowth
+	ld a, b
+	inc a
+.commitGrowth
 	ld [hl], a
 	push af ; target level
 	ld a, d

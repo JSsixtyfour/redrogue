@@ -86,8 +86,13 @@ DaycareGentlemanText:
 	ld a, [hl]
 	ld [wDayCareStartLevel], a
 	jr z, .noGrowth
+	cp MAX_LEVEL
+	jr nc, .noGrowth
 	cp d
-	jr nc, .noGrowth            ; current level (a) >= target (d): never lower a deposited mon's level
+	jr c, .reportGrowth
+	ld d, a
+	inc d                      ; progress guarantees one level even above the reward tier
+.reportGrowth
 	; Report only; .enoughMoney commits it once the mon really leaves (see
 	; engine/events/lobby_daycare.asm's header for why).
 	ld b, a
@@ -107,7 +112,7 @@ DaycareGentlemanText:
 	cp PARTY_LENGTH
 	ld hl, .NoRoomForMonText
 	jp z, .leaveMonInDayCare
-	; price = $500 per round (10 battles) started since deposit, rounded up
+	; price = $500 per ROUND_BATTLES started since deposit, rounded up
 	ld a, [wBattleCount]
 	ld b, a
 	ld a, [wDayCareDepositBattleCount]
@@ -116,7 +121,7 @@ DaycareGentlemanText:
 	sub c                       ; a = battles fought since deposit
 	ld b, 0                     ; b = rounds to charge
 	jr z, .stagesElapsedDone    ; no battles: free (and the gate above kept it from growing)
-	dec a                       ; round up: 1-10 battles -> 1, 11-20 -> 2, ...
+	dec a                       ; round up any partial round
 	inc b
 .countStagesElapsed
 	cp ROUND_BATTLES

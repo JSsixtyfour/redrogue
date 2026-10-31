@@ -21,7 +21,7 @@
 ;     via procedural_stage_hooks.asm's .addExitBattles), so "no battles" means
 ;     "has not been through another map". The level used to jump straight to the
 ;     lobby tier the moment it was deposited, for $0.
-;   - Price rounds UP to the next round: $500 per started block of 10 battles,
+;   - Price rounds UP to the next round: $500 per started block of ROUND_BATTLES,
 ;     $0 only when no battles have passed. With the old floor, one route (5
 ;     battles) grew the mon and still cost nothing.
 ; scripts/Daycare.asm carries the same two changes for the vanilla daycare map.
@@ -105,8 +105,13 @@ LobbyDaycareLady::
 	ld a, [hl]
 	ld [wDayCareStartLevel2], a
 	jr z, .noGrowth
+	cp MAX_LEVEL
+	jr nc, .noGrowth
 	cp d
-	jr nc, .noGrowth            ; current level (a) >= target (d): never lower a deposited mon's level
+	jr c, .reportGrowth
+	ld d, a
+	inc d                      ; progress guarantees one level even above the reward tier
+.reportGrowth
 	; Only REPORT the growth here. The stored mon is not touched until it really
 	; leaves (.enoughMoney): every path that keeps it here (full party, declined,
 	; can't pay) used to restore the old level but keep the new exp, and the
@@ -129,7 +134,7 @@ LobbyDaycareLady::
 	cp PARTY_LENGTH
 	ld hl, LobbyDaycareNoRoomForMonText
 	jp z, .leaveMonInDayCare
-	; price = $500 per round (10 battles) started since deposit, rounded up
+	; price = $500 per ROUND_BATTLES started since deposit, rounded up
 	ld a, [wBattleCount]
 	ld b, a
 	ld a, [wDayCareDepositBattleCount2]
@@ -138,7 +143,7 @@ LobbyDaycareLady::
 	sub c                       ; a = battles fought since deposit
 	ld b, 0                     ; b = rounds to charge
 	jr z, .stagesElapsedDone    ; no battles: free (and the gate above kept it from growing)
-	dec a                       ; round up: 1-10 battles -> 1, 11-20 -> 2, ...
+	dec a                       ; round up any partial round
 	inc b
 .countStagesElapsed
 	cp ROUND_BATTLES
@@ -347,8 +352,13 @@ LobbyDaycareGentleman::
 	ld a, [hl]
 	ld [wDayCareStartLevel], a
 	jr z, .noGrowth
+	cp MAX_LEVEL
+	jr nc, .noGrowth
 	cp d
-	jr nc, .noGrowth            ; current level (a) >= target (d): never lower a deposited mon's level
+	jr c, .reportGrowth
+	ld d, a
+	inc d                      ; progress guarantees one level even above the reward tier
+.reportGrowth
 	; Report only; .enoughMoney commits it (see LobbyDaycareLady).
 	ld b, a
 	ld a, d
@@ -367,7 +377,7 @@ LobbyDaycareGentleman::
 	cp PARTY_LENGTH
 	ld hl, LobbyDaycareNoRoomForMonText
 	jp z, .leaveMonInDayCare
-	; price = $500 per round (10 battles) started since deposit, rounded up
+	; price = $500 per ROUND_BATTLES started since deposit, rounded up
 	ld a, [wBattleCount]
 	ld b, a
 	ld a, [wDayCareDepositBattleCount]
@@ -376,7 +386,7 @@ LobbyDaycareGentleman::
 	sub c                       ; a = battles fought since deposit
 	ld b, 0                     ; b = rounds to charge
 	jr z, .stagesElapsedDone    ; no battles: free (and the gate above kept it from growing)
-	dec a                       ; round up: 1-10 battles -> 1, 11-20 -> 2, ...
+	dec a                       ; round up any partial round
 	inc b
 .countStagesElapsed
 	cp ROUND_BATTLES
