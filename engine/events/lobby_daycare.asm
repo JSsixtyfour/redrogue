@@ -267,7 +267,7 @@ LobbyDaycareLady::
 	ld a, [hl]
 	ld [de], a
 
-	ld hl, LobbyDaycareGotMonBackText
+	ld hl, LobbyDaycareLadyGotMonBackText
 	jr .done
 
 .leaveMonInDayCare               ; the stored mon was never modified, nothing to undo
@@ -529,6 +529,10 @@ LobbyDaycareOweMoneyText:
 
 LobbyDaycareGotMonBackText:
 	text_far _DaycareGentlemanGotMonBackText
+	text_end
+
+LobbyDaycareLadyGotMonBackText:
+	text_far _DaycareLadyGotMonBackText
 	text_end
 
 LobbyDaycareMonNeedsMoreTimeText:

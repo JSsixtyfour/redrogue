@@ -52,6 +52,13 @@ _DaycareGentlemanGotMonBackText::
 	text " back!"
 	done
 
+_DaycareLadyGotMonBackText::
+	text "<PLAYER> got"
+	line "@"
+	text_ram wDayCareMonName2
+	text " back!"
+	done
+
 _DaycareGentlemanMonNeedsMoreTimeText::
 	text "Back already?"
 	line "Your @"
