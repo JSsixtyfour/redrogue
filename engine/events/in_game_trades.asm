@@ -218,6 +218,7 @@ InGameTrade_DoTrade:
 .noTradeForm
 	ld [wSpawnForm], a
 	call AddPartyMon
+	call InGameTrade_CopyLegendaryMoves
 	call InGameTrade_CopyDataToReceivedMon
 	callfar InGameTrade_CheckForTradeEvo
 	call ClearScreen
@@ -234,6 +235,39 @@ InGameTrade_DoTrade:
 .tradeSucceeded
 	ld [wInGameTradeTextPointerTableIndex], a
     
+	ret
+
+; Challenge 11 receives the generated battle moves, with fresh PP. The offer
+; dialogue ID identifies this trade independently of other random trades.
+InGameTrade_CopyLegendaryMoves:
+	ld a, [wWhichTrade]
+	cp TRADE_FOR_RANDOM
+	ret nz
+	ld a, [wroguenpctradedialogue]
+	cp TRADE_DIALOGSET_LEGENDARY
+	ret nz
+	ld a, [wLegendaryBossSpecies]
+	and a
+	ret z
+	ld b, a
+	ld a, [wInGameTradeReceiveMonSpecies]
+	cp b
+	ret nz
+	ld hl, wPartyMon1Moves
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call InGameTrade_GetReceivedMonPointer
+	push de
+	ld hl, wLegendaryBossMoves
+	ld bc, NUM_MOVES
+	call CopyData
+	pop hl
+	push hl
+	ld bc, MON_PP - MON_MOVES - 1
+	add hl, bc
+	ld d, h
+	ld e, l
+	pop hl
+	predef LoadMovePPs
 	ret
 
 InGameTrade_RestoreScreen:

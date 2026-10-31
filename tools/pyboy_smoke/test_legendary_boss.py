@@ -35,6 +35,11 @@ NOT_ELIGIBLE = ["BROCK", "JASMINE", "CLAIR"]
 # Round 6 A: a gym-5-or-later team, the only place the witch offers the challenge.
 TRAINER_NO = 16
 
+def enable_expansions(h):
+    groups = parse_rgbds_constants(REPO_ROOT / "constants/rogue_species_groups.asm")
+    h.write_sram_bytes("sRogueSpeciesGroupsEnabled",
+                       [groups["GROUP_OVERRIDE_TAG"] | sum(1 << groups[n] for n in ("BIT_GROUP_KANTO", "BIT_GROUP_JOHTO", "BIT_GROUP_WARP"))], bank=1)
+
 
 def curated_sets(species, tiers):
     """{frozenset(moves)} of movesets.asm's rows for `species` whose tier
@@ -76,24 +81,20 @@ class LegendaryBossSwapSmokeTest(HarnessTestCase):
         count = h.read8("wEnemyPartyCount")
         return count, h.read_bytes("wEnemyPartySpecies", count + 1)
 
-    def _assert_boss_moves(self, ace, slot, stride):
-        """A boss row if the species has one, else a corpus ELITE/HARD row."""
-        name = next(n for n, v in self.species.items()
-                    if v == ace and n in {s for p in LEGENDARY_POOLS.values() for s in p})
-        boss = curated_sets(name, ["TIER_LEGENDARY_BOSS"])
-        allowed = boss or curated_sets(name, ["TIER_ELITE", "TIER_HARD"])
-        self.assertTrue(allowed, f"{name} has no curated sets to draw")
-        allowed = {frozenset(self.moves[m] for m in row) for row in allowed}
-        got = frozenset(self.harness.read_bytes("wEnemyMon1Moves", 4, offset=slot * stride))
-        self.assertIn(got, allowed,
-                      f"{name}'s moves {sorted(got)} are not one of its "
-                      f"{'boss' if boss else 'ELITE/HARD'} sets")
+    def _assert_ordinary_moves(self, ace, slot, stride):
+        """The ordinary slot source survives, and its moves survive for trade."""
+        h = self.harness
+        self.assertFalse(h.read8("wPartyGenSlotSource", offset=slot) & 0x80)
+        got = h.read_bytes("wEnemyMon1Moves", 4, offset=slot * stride)
+        self.assertTrue(any(got))
+        self.assertEqual(h.read_bytes("wLegendaryBossMoves", 4), got)
 
     def test_every_eligible_leader_fields_a_legendary_from_its_pool(self):
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
         h.set_difficulty("HARD")  # VERY EASY would skip curated sets by design
+        enable_expansions(h)
         self.moves = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
         self._set_challenge(True)
         stride = h.address("wEnemyMon2") - h.address("wEnemyMon1")
@@ -113,7 +114,7 @@ class LegendaryBossSwapSmokeTest(HarnessTestCase):
                 # other swapped ace, Sabrina's Mewtwo included, carries no form.
                 self.assertEqual(form, 1 if leader == "GIOVANNI" else 0,
                                  "only Giovanni's ace is armored")
-                self._assert_boss_moves(ace, count - 1, stride)
+                self._assert_ordinary_moves(ace, count - 1, stride)
 
     def test_no_swap_for_number_twins_or_without_the_challenge(self):
         h = self.harness
@@ -132,6 +133,18 @@ class LegendaryBossSwapSmokeTest(HarnessTestCase):
                 count, party = self._build(leader)
                 self.assertNotIn(party[count - 1], legendaries)
                 self.assertEqual(h.read8("wLegendaryBossSpecies"), 0)
+
+    def test_kanto_only_blaine_never_fields_ho_oh(self):
+        h = self.harness
+        h.boot_fight2(seed=1)
+        h.write_sram_bytes("sRogueSpeciesGroupsEnabled", [1], bank=1)
+        self._set_challenge(True)
+        for _ in range(6):
+            count, party = self._build("BLAINE")
+            self.assertEqual(party[count - 1], self.species["MEW"])
+        self._build("MORTY")
+        self.assertEqual(h.read8("wLegendaryBossSpecies"), 0,
+                         "a disabled-only pool cannot produce an ace")
 
 
 CARRY = 1 << 4
@@ -164,6 +177,7 @@ class LegendaryBossGateSmokeTest(HarnessTestCase):
         # player does not own (party or current box), so ownership is an input
         # here: start with no legendary anywhere.
         self._own([self.species["PIDGEY"]])
+        enable_expansions(h)
 
     def _own(self, party, box=()):
         h = self.harness
@@ -194,7 +208,7 @@ class LegendaryBossGateSmokeTest(HarnessTestCase):
         self.harness.write8("wGymChoice", 0)  # nothing latched: a route visit
         self.assertEqual(self._call("LegendaryBossDoors")["E"], 0)
 
-    def test_offer_needs_four_badges_a_door_and_a_masterball_mon(self):
+    def test_offer_needs_four_badges_both_doors_and_a_masterball_mon(self):
         h = self.harness
         mewtwo, pidgey = self.species["MEWTWO"], self.species["PIDGEY"]
 
@@ -206,11 +220,23 @@ class LegendaryBossGateSmokeTest(HarnessTestCase):
             return bool(self._call("IsLegendaryBossOfferable")["F"] & CARRY)
 
         # Badges are lineup slots; door slots must be unbeaten, so leave 0-2 clear.
-        self.assertTrue(offerable(0b11110000, 0, 1, [pidgey, mewtwo]))
+        self.assertTrue(offerable(0b11110000, 1, 2, [pidgey, mewtwo]))
+        self.assertTrue(offerable(0b11111101, 1, 1, [pidgey, mewtwo]), "one gym left")
+        self.assertFalse(offerable(0b11110000, 0, 1, [mewtwo]), "only door 2 qualifies")
+        self.assertFalse(offerable(0b11110000, 1, 0, [mewtwo]), "only door 1 qualifies")
         self.assertFalse(offerable(0b01110000, 0, 1, [mewtwo]), "3 badges")
         self.assertFalse(offerable(0b11110000, 0, 3, [mewtwo]), "no eligible door")
-        self.assertFalse(offerable(0b11110000, 0, 1, [pidgey]), "no masterball mon")
+        self.assertFalse(offerable(0b11110000, 1, 2, [pidgey]), "no masterball mon")
         self.assertFalse(offerable(0xFF, 1, 1, [mewtwo]), "finale")
+
+    def test_disabled_pool_closes_door_and_blocks_offer(self):
+        h = self.harness
+        h.write_sram_bytes("sRogueSpeciesGroupsEnabled", [1], bank=1)
+        self._doors(1, 2)  # Sabrina has Kanto options; Morty has only Ho-Oh.
+        self.assertEqual(self._call("LegendaryBossDoors")["E"], 0b01)
+        h.write8("wObtainedBadges", 0b11110000)
+        self._own([self.species["MEWTWO"]])
+        self.assertFalse(self._call("IsLegendaryBossOfferable")["F"] & CARRY)
 
     def test_wrong_door_breaks_the_bargain_and_right_door_keeps_it(self):
         h = self.harness
@@ -249,15 +275,14 @@ def learnable_moves(species):
 
 
 class LegendaryBossVeryEasySmokeTest(HarnessTestCase):
-    """VERY EASY (user decision 2026-10-13): the boss keeps its level-up
-    learnset - not a curated set, and not the mix's random fallback, which
-    measured empty move slots on a VERY EASY Lugia before this rule."""
+    """VERY EASY also keeps the ordinary slot source and preserves its moves."""
 
-    def test_very_easy_boss_uses_its_learnset(self):
+    def test_very_easy_boss_uses_ordinary_source(self):
         h = self.harness
         assert h is not None
         h.boot_fight2(seed=1)
         h.set_difficulty("VERY_EASY")
+        enable_expansions(h)
         species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
         classes = parse_trainer_class_indexes(REPO_ROOT / "constants/trainer_constants.asm")
         ram = parse_rgbds_constants(REPO_ROOT / "constants/ram_constants.asm")
@@ -278,10 +303,10 @@ class LegendaryBossVeryEasySmokeTest(HarnessTestCase):
                                  species[legend])
                 got = [m for m in h.read_bytes("wEnemyMon1Moves", 4,
                                                offset=(count - 1) * stride) if m]
-                legal = {moves[m] for m in learnable_moves(legend) if m in moves}
                 self.assertTrue(got, f"{legend} has no moves")
-                self.assertTrue(set(got) <= legal,
-                                f"{legend}'s moves {got} are not all from its learnset")
+                self.assertFalse(h.read8("wPartyGenSlotSource", offset=count - 1) & 0x80)
+                self.assertEqual(h.read_bytes("wLegendaryBossMoves", 4),
+                                 h.read_bytes("wEnemyMon1Moves", 4, offset=(count - 1) * stride))
 
 
 class LegendaryTradeFormSmokeTest(HarnessTestCase):
@@ -337,3 +362,32 @@ class LegendaryTradeFormSmokeTest(HarnessTestCase):
     def test_sabrina_trades_plain_mewtwo(self):
         self.harness.boot_fight2(seed=1)
         self.assertEqual(self._offer_form("OfferLegendaryTradeSabrina"), 0)
+
+
+class LegendaryTradeMovesSmokeTest(HarnessTestCase):
+    def test_received_moves_and_pp_match_preserved_battle_set(self):
+        h = self.harness
+        h.boot_fight2(seed=1)
+        species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
+        moves = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
+        script = parse_rgbds_constants(REPO_ROOT / "constants/script_constants.asm")
+        chosen = [moves[n] for n in ("SURF", "PSYCHIC_M", "RECOVER", "THUNDER_WAVE")]
+        h.write8("wWhichTrade", script["TRADE_FOR_RANDOM"])
+        h.write8("wroguenpctradedialogue", script["TRADE_DIALOGSET_LEGENDARY"])
+        h.write8("wLegendaryBossSpecies", species["MEW"])
+        h.write8("wInGameTradeReceiveMonSpecies", species["MEW"])
+        for i, move in enumerate(chosen):
+            h.write8("wLegendaryBossMoves", move, offset=i)
+        slot = h.read8("wPartyCount") - 1
+        offset = slot * (h.address("wPartyMon2") - h.address("wPartyMon1"))
+        for i in range(4):
+            h.write8("wPartyMon1Moves", moves["TACKLE"], offset=offset + i)
+            h.write8("wPartyMon1PP", 0, offset=offset + i)
+        h.call_routine("InGameTrade_CopyLegendaryMoves")
+        self.assertEqual(h.read_bytes("wPartyMon1Moves", 4, offset=offset), chosen)
+        self.assertEqual(h.read_bytes("wPartyMon1PP", 4, offset=offset), [15, 10, 20, 20])
+        # A later ordinary random trade must not inherit the challenge set.
+        h.write8("wroguenpctradedialogue", 0)
+        h.write8("wPartyMon1Moves", moves["TACKLE"], offset=offset)
+        h.call_routine("InGameTrade_CopyLegendaryMoves")
+        self.assertEqual(h.read8("wPartyMon1Moves", offset=offset), moves["TACKLE"])

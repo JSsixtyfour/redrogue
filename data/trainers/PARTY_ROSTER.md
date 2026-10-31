@@ -817,15 +817,20 @@ Aces: the two signature aces the old records pinned (variant A and C), now one i
 ## Legendary bosses
 
 Witch challenge 11 (Legendary Boss) swaps a gym leader's ace for a legendary rolled from
-`LegendaryBossTable` (`custom_functions/legendary_boss_helpers.asm`): Erika, Sabrina, Blaine,
+`LegendaryBossTable` (`custom_functions/endless.asm`): Erika, Sabrina, Blaine,
 Giovanni, Falkner, Morty and Pryce. The species come from that table, not from here, so this
-block has no bands or lists. Only the moves come from here.
+block has no bands or lists. Challenge 11 keeps the normal slot's moveset source and
+difficulty rules, and its trade gives the original generated moves with full PP.
+Its pool excludes owned species and species disabled for the run; both offered gym
+doors must have an eligible option (one remaining gym occupies both door slots).
 
 ### LegendaryBoss (Challenge 11 ace)
 
 #### Sets: TIER_LEGENDARY_BOSS
 
-The swapped ace draws one of these rows first. A species with no row here (Mew and Mewtwo today)
+The heading retains the historical generated origin label. The Endless Uber ace
+draws one of these rows first. Challenge 11 does not force these rows.
+A species with no row here (Mew and Mewtwo today)
 takes the shared corpus's `TIER_ELITE | TIER_HARD` sets instead, and only then its mix's fallback.
 A row is used at every level. After editing a row, run `py tools/gen_movesets.py` from Windows
 (never hand-edit `movesets.asm`; the next regen overwrites it).

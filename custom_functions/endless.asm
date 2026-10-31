@@ -429,11 +429,18 @@ LegendaryPoolUnowned::
 	scf
 	ret
 
-; a = species -> carry SET if it is in the party or the current box, the
-; lists AllSpeciesCheck reads. Preserves bc/de/hl.
+; a = species -> carry SET if disabled for this run, or in the party/current
+; box (the lists AllSpeciesCheck reads). Preserves bc/de/hl.
 LegendarySpeciesOwned:
 	push hl
 	push bc
+	push de
+	push af
+	ld e, a
+	farcall RogueIsSpeciesEvolutionAllowedFar
+	jr nc, .unavailable
+	pop af
+	pop de
 	ld b, a
 	ld hl, wPartyCount
 	call .scan
@@ -444,6 +451,11 @@ LegendarySpeciesOwned:
 	pop bc
 	pop hl
 	ret
+.unavailable
+	pop af
+	pop de
+	scf                            ; disabled species is skipped just like owned
+	jr .done
 ; hl -> a count byte and the species list after it. Bounded by the COUNT, not
 ; the $ff terminator: a debug boot (FIGHT 2) leaves an empty box's list
 ; unterminated, and a terminator scan ran on into unrelated WRAM and found a

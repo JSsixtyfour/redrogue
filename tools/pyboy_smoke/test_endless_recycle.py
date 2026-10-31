@@ -92,6 +92,9 @@ class EndlessRecycleTest(HarnessTestCase):
         super().setUp()
         h = self.harness
         h.boot_to_lobby()
+        groups = parse_rgbds_constants(REPO_ROOT / "constants/rogue_species_groups.asm")
+        h.write_sram_bytes("sRogueSpeciesGroupsEnabled",
+                          [groups["GROUP_OVERRIDE_TAG"] | sum(1 << groups[n] for n in ("BIT_GROUP_KANTO", "BIT_GROUP_JOHTO", "BIT_GROUP_WARP"))], bank=1)
         self.session = isolated_routine_calls(h)
         self.session.__enter__()
         self.events = parse_rgbds_constants(REPO_ROOT / "constants/event_constants.asm")
@@ -379,6 +382,9 @@ class LegendaryOwnershipBattleTest(HarnessTestCase):
         self.ram = parse_rgbds_constants(REPO_ROOT / "constants/ram_constants.asm")
         h = self.harness
         h.boot_fight2(seed=1)
+        groups = parse_rgbds_constants(REPO_ROOT / "constants/rogue_species_groups.asm")
+        h.write_sram_bytes("sRogueSpeciesGroupsEnabled",
+                          [groups["GROUP_OVERRIDE_TAG"] | sum(1 << groups[n] for n in ("BIT_GROUP_KANTO", "BIT_GROUP_JOHTO", "BIT_GROUP_WARP"))], bank=1)
         h.write8("wRogueFlagsBitfield",
                  h.read8("wRogueFlagsBitfield") | 1 << self.ram["BIT_WITCH_ACCEPTED"])
         h.write8("wWitchChallenge", self.ram["CHALLENGE_LEGENDARY_BOSS"])

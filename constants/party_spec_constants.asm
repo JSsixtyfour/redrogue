@@ -57,7 +57,7 @@
 	const MSRC_TUTOR           ; 7
 DEF NUM_MSRC EQU const_value
 ; Set on a wPartyGenSlotSource entry (over MSRC_SET) by PartyGenLegendaryBossAce
-; to mark Challenge 11's swapped ace. Only PartyGenApplyMoveset reads it; source
+; to mark an Endless Uber ace. Only PartyGenApplyMoveset reads it; source
 ; assignment is finished before any slot is built.
 DEF MSRC_LEGENDARY_BOSS_BIT EQU 7
 ASSERT NUM_MSRC <= 1 << MSRC_LEGENDARY_BOSS_BIT

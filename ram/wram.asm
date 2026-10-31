@@ -3507,6 +3507,11 @@ wRandomTableEnd::
 ASSERT HIGH(wRandomTable) == HIGH(wRandomTableEnd - 1), "the whole CMWC table must be within a single 256-byte block"
 
 
+; Original generated Challenge 11 moves, live until its post-battle trade.
+; Unsaved like wLegendaryBossSpecies; that byte gates every consumer.
+SECTION "Legendary Boss Moves", WRAM0
+wLegendaryBossMoves:: ds NUM_MOVES
+
 SECTION "Endless Debug State", WRAM0
 ; Outside every saved span, so it can never reach a save file or survive a
 ; power cycle (Init clears all WRAM0). Debug 2's Endless eligibility override:

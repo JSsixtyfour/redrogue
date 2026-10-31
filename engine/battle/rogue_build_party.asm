@@ -617,7 +617,28 @@ PartyGenBuildSlot:
 	call AddPartyMon
 
 ; --- moveset ---
-	jp PartyGenApplyMoveset
+	call PartyGenApplyMoveset
+; Preserve the generated challenge ace before overworld menus reuse the enemy
+; party UNION. Keep the original four moves even if battle uses Transform.
+	ld a, [wLegendaryBossSpecies]
+	and a
+	ret z
+	ld b, a
+	ld a, [wCurPartySpecies]
+	cp b
+	ret nz
+	ld a, [wPartyGenNMons]
+	dec a
+	ld b, a
+	ld a, [wPartyGenSlot]
+	cp b
+	ret nz
+	ld hl, wEnemyMon1Moves
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld de, wLegendaryBossMoves
+	ld bc, NUM_MOVES
+	jp CopyData
 
 ; ===========================================================================
 ; PartyGenLegendaryBossAce
@@ -629,12 +650,12 @@ PartyGenBuildSlot:
 ; only the flags survive the farcall back.
 ;
 ; A swapped ace takes the form RollLegendaryBossAce writes to wSpawnForm (none,
-; except Giovanni's Armored Mewtwo), and its slot source is overwritten with the
-; boss marker, whatever the mix row assigned: PartyGenApplyMoveset gives it a
-; TIER_LEGENDARY_BOSS set, else a corpus TIER_ELITE | TIER_HARD one. The swap runs
+; except Giovanni's Armored Mewtwo), and retains the slot's ordinary moveset
+; source and difficulty roll. Only Endless Uber aces take the boss marker.
+; The swap runs
 ; after the pool draw, so the uber filter in PartyGenPoolCandidateOk never sees
 ; the legendary: it keeps every leader uber-free outside this challenge and
-; Endless (EndlessSpecAceUber, which takes the same marker when it swaps).
+; Endless (EndlessSpecAceUber).
 ; ===========================================================================
 PartyGenLegendaryBossAce:
 	ld a, [wPartyGenNMons]
@@ -644,7 +665,7 @@ PartyGenLegendaryBossAce:
 	cp b
 	ret nz                         ; not the ace
 	farcall RollLegendaryBossAce   ; WRAM in (and wSpawnForm out), carry out
-	jr c, .swapped
+	ret c                          ; challenge uses the slot's ordinary moveset source
 	; Endless: the ace of a leader, Elite Four member, Champion or mini-boss may
 	; become an Uber instead (custom_functions/endless.asm). Same contract, same
 	; boss moveset path.
@@ -1650,7 +1671,7 @@ PartyGenApplyMoveset:
 	ret c                          ; a matching curated set was found and written
 	jr .setFallback
 
-; Challenge 11's swapped ace (PartyGenLegendaryBossAce). Its own boss sets
+; Endless Uber ace (PartyGenLegendaryBossAce). Its own boss sets
 ; first, then the shared corpus's strongest grades, then the mix's fallback
 ; like any MSRC_SET slot. VERY EASY keeps the legendary's level-up learnset
 ; (user decision 2026-10-13) rather than the mix's random fallback: AddPartyMon

@@ -262,7 +262,7 @@ SlotIsLegendaryBoss::
 
 ; IsLegendaryBossOfferable: the witch's gate for Challenge 11.
 ; Carry SET when: not the finale, at least 4 badges (so the next gym is gym 5-8,
-; whatever leaders those are), at least one door leads to a leader with a
+; whatever leaders those are), both doors lead to leaders with an eligible
 ; legendary, and the party holds a masterball-class mon to trade.
 ; Clobbers: a, b, c, d, e, hl
 IsLegendaryBossOfferable::
@@ -283,8 +283,8 @@ IsLegendaryBossOfferable::
 	jr c, .no
 	call LegendaryBossDoors
 	ld a, e
-	and a
-	ret z                        ; no eligible door; `and a` cleared carry
+	cp %11
+	jr nz, .no                   ; the single remaining gym occupies both doors
 	jp HasMasterballClassMon     ; carry = has one
 .no
 	and a
@@ -293,7 +293,7 @@ IsLegendaryBossOfferable::
 ; WitchLegendaryOfferCheck  (farcall, from PCWitchText's text_asm)
 ; Re-checks the doors LIVE when the player talks to her: the door dice can
 ; reroll the pair after PCWitchSetup rolled the offer. If Challenge 11 is on
-; offer and neither door qualifies any more, she withdraws: wWitchChallenge = 0
+; offer and either door no longer qualifies, she withdraws: wWitchChallenge = 0
 ; so nothing downstream sees an offer, and every later talk this visit lands
 ; on the same withdrawal (a visible witch with challenge 0 only happens here).
 ; Output: carry SET = carry on with the offer; CLEAR = she withdrew, end text.
@@ -305,8 +305,9 @@ WitchLegendaryOfferCheck::
 	jr nz, .go
 	call LegendaryBossDoors
 	ld a, e
-	and a
-	jr nz, .go
+	cp %11
+	jr z, .go
+	xor a
 	ld [wWitchChallenge], a      ; a = 0
 .withdrawn
 	ld hl, WitchLegendaryWithdrawText

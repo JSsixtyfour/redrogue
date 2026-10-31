@@ -650,8 +650,8 @@ MOVE_DISPLAY = {"PSYCHIC_M": "Psychic"}
 ROSTER_DRAWN = {"Gambler"}
 # Sections whose characters carry ONLY a Sets table: no pools, so parse_doc skips
 # them and the coverage lint has nothing to check against. "Legendary bosses" is
-# Challenge 11's swapped ace (custom_functions/legendary_boss_helpers.asm
-# LegendaryBossTable), which takes TIER_LEGENDARY_BOSS sets directly.
+# Endless's Uber ace (PartyGenLegendaryBossAce), which takes
+# TIER_LEGENDARY_BOSS sets directly. Challenge 11 uses the normal slot source.
 SETS_ONLY_SECTIONS = ("Legendary bosses",)
 
 
