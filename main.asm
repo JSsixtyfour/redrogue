@@ -853,9 +853,10 @@ INCLUDE "custom_functions/cemetery_channeler.asm"
 
 ; Route boss after-battle decision (reward menu vs. normal line vs. mini-boss
 ; line). Reached only by farcall from the route scripts, whose map
-; banks are too tight to hold it. Pinned to $3C (8.6 KB free) so first-fit
-; cannot backfill it into bank 1's last free bytes, as it did unpinned.
-SECTION "Rogue Boss After Battle", ROMX, BANK[$3C]
+; banks are too tight to hold it. Keep the decision code and its local text
+; together in $22; expanded quotes exhausted $3C. All entry calls are farcall,
+; and the only outgoing plain calls (Delay3/PrintText) are HOME routines.
+SECTION "Rogue Boss After Battle", ROMX, BANK[$22]
 
 INCLUDE "custom_functions/rogue_boss_after_battle.asm"
 
