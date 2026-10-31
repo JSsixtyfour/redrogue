@@ -13,7 +13,7 @@ from harness import SymbolTable
 from source_constants import parse_rgbds_constants
 
 CASES = {'credit': 'credit', 'trade': 'trade', 'teaching_empty': 'teaching_empty',
-         'teaching_decline': 'teaching_full', 'teaching_cancel_forget': 'teaching_full'}
+         'teaching_decline': 'teaching_full', 'teaching_cancel_forget': 'teaching_full', 'pc_boxed':'pc'}
 PROVENANCE = {name: {'natural_gameplay': False, 'save': 'writer_invoked',
     'interaction': 'text_handler_fixture_with_real_menus' if name.startswith('teaching') else 'configured_offer_with_real_input'} for name in CASES}
 REQUIRED = {'credit': ('purchase/initial.state','purchase/result.json','purchase/contract.json',
@@ -22,6 +22,9 @@ REQUIRED = {'credit': ('purchase/initial.state','purchase/result.json','purchase
             'teaching_empty': ('continued.state',),
             'teaching_decline': ('initial.state','continued.state'),
             'teaching_cancel_forget': ('initial.state','continued.state')}
+PROVENANCE['pc_boxed'] = {'natural_gameplay':False,'save':'writer_invoked',
+                         'interaction':'configured_warp_party_box_with_real_grid_input'}
+REQUIRED['pc_boxed'] = ('boxed.sav','reopened.state','result.json')
 
 
 def build_parser():
@@ -73,6 +76,31 @@ def semantic_findings(name,data,*,origin='actual_ROM_fixture'):
         if expected!=observed:findings.append({'check':'directed_chain','version':1,'field':field,
             'expected':expected,'observed':observed,'signature':f'directed_chain/v1/{field}',
             'classification':'contract_violation','severity':'correctness','evidence_origin':origin})
+    if name=='pc_boxed':
+        for field in ('before','deposited','withdrawn','restored'):valid_party(data[field])
+        before=data['before'];deposited=data['deposited'];withdrawn=data['withdrawn']
+        if before['count']<2 or data['cold_continue_while_boxed'] is not True:
+            raise ValueError('PC fixture/cold-load boundary missing')
+        expected=copy.deepcopy(before);expected['count']-=1;expected['species']=before['species'][1:]
+        for field in ('mons','ot','names'):expected[field]=before[field][1:]
+        compare('pc_deposited',expected,deposited)
+        stored=before['mons'][0][:33];stored[3]=before['mons'][0][33]
+        byte_list(data['boxed'],33);compare('pc_boxed',stored,data['boxed'])
+        boxed=data['boxed_restored']
+        if not isinstance(boxed,dict):raise ValueError('PC boxed cold observation missing')
+        if type(boxed.get('count')) is not int:raise ValueError('invalid PC box count')
+        valid_party(boxed['party']);byte_list(boxed['mon'],33)
+        byte_list(boxed['species'],2);byte_list(boxed['ot'],11);byte_list(boxed['name'],11)
+        compare('pc_boxed_restored',{'party':deposited,'count':1,'species':[stored[0],255],
+                'mon':stored,'ot':before['ot'][0],'name':before['names'][0]},boxed)
+        compare('pc_withdraw_count',before['count'],withdrawn['count'])
+        compare('pc_withdraw_species',before['species'][1:-1]+before['species'][:1]+[255],withdrawn['species'])
+        for field in ('mons','ot','names'):
+            compare('pc_survivors_'+field,before[field][1:],withdrawn[field][:-1])
+        compare('pc_withdraw_record',stored,withdrawn['mons'][-1][:33])
+        for field in ('ot','names'):compare('pc_withdraw_'+field,before[field][0],withdrawn[field][-1])
+        compare('restored',withdrawn,data['restored'])
+        return findings
     if name=='credit':
         from test_key_item_equipment import bits
         states=[data[key] for key in ('purchase','restored','upgrade_refused')]
@@ -153,10 +181,10 @@ def audit_chain(directory,name,args):
     data=json.loads((directory/'chain.json').read_text())
     if data['hardware_mode']!=identity(name,args)['hardware_mode'] or (data['rom_sha256'],data['sym_sha256'])!=(
             digest(autoplay.ROOT/'pokeblue_debug.gbc'),digest(autoplay.ROOT/'pokeblue_debug.sym')):raise ValueError('directed build/mode mismatch')
-    writes='post_load_fixture_writes' if name=='credit' else 'post_trade_fixture_writes' if name=='trade' else 'post_initial_party_fixture_writes'
+    writes='post_open_fixture_writes' if name=='pc_boxed' else 'post_load_fixture_writes' if name=='credit' else 'post_trade_fixture_writes' if name=='trade' else 'post_initial_party_fixture_writes'
     if data[writes]!=[]:raise ValueError('post-boundary fixture writes')
     findings=semantic_findings(name,data)
-    if name!='credit':
+    if name not in ('credit','pc_boxed'):
         movement=data['movement']
         byte_list(movement['from'],2);byte_list(movement['to'],2)
         if movement['from']==movement['to']:
@@ -188,7 +216,7 @@ def read_report(path,args):
 
 def main(argv=None):
     args=build_parser().parse_args(argv)
-    if args.control_identity and args.case!='trade':raise ValueError('identity control requires trade fixture')
+    if args.control_identity and args.case not in ('trade','pc_boxed'):raise ValueError('identity control requires identity fixture')
     from run_campaign import atomic_json
     from test_credit_service_chain import run_chain as credit
     from test_trade_identity_chain import run_chain as trade
@@ -203,6 +231,9 @@ def main(argv=None):
             if name=='credit':credit(test,cgb=args.cgb,output=directory)
             elif name=='trade':trade(test,cgb=args.cgb,output=directory)
             elif name=='teaching_empty':empty(test,cgb=args.cgb,output=directory)
+            elif name=='pc_boxed':
+                from test_pc_identity_chain import run_campaign_chain
+                run_campaign_chain(cgb=args.cgb,output=directory)
             else:full(test,cgb=args.cgb,cancellation='decline' if name=='teaching_decline' else 'cancel_forget',output=directory)
         except Exception:detail=traceback.format_exc()
         finally:

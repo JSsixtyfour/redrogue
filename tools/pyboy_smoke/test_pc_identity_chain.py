@@ -267,6 +267,11 @@ class PCIdentityChainTest(unittest.TestCase):
         self.assertEqual(boot.h.read_bytes('wBoxMons', 33), stored)
         self.assertEqual(boot.h.read_bytes('wBoxMonOT', 11), owner)
         self.assertEqual(boot.h.read_bytes('wBoxMonNicks', 11), nickname)
+        self.boxed_observation = {'party':party(boot.h), 'count':boot.h.read8('wBoxCount'),
+            'species':boot.h.read_bytes('wBoxSpecies', 2),
+            'mon':boot.h.read_bytes('wBoxMons', 33),
+            'ot':boot.h.read_bytes('wBoxMonOT', 11),
+            'name':boot.h.read_bytes('wBoxMonNicks', 11)}
         self.assertFalse(self.h.hook_errors)
         self.h = boot.h
         self.h.register_hook('BillsPC_.inputLoop', lambda _: setattr(self, 'phase', 'grid'))
@@ -361,6 +366,7 @@ class PCIdentityChainTest(unittest.TestCase):
             'deposited':deposited,'withdrawn':withdrawn,'restored':party(boot.h),
             'boxed':stored,'hardware_mode':h.hardware_mode,
             'cold_continue_while_boxed':save_while_boxed,
+            'boxed_restored':getattr(self, 'boxed_observation', None),
             'fixture':'configured destination warp, initial form/type/PP-Up bytes and empty current box',
             'post_open_fixture_writes':[],
             'rom_sha256':h.rom_sha256,'sym_sha256':h.sym_sha256}, indent=2))
@@ -368,6 +374,21 @@ class PCIdentityChainTest(unittest.TestCase):
 
 class CGBPCIdentityChainTest(PCIdentityChainTest):
     cgb = True
+
+
+def run_campaign_chain(*, cgb, output):
+    case = (CGBPCIdentityChainTest if cgb else PCIdentityChainTest)(
+        'test_boxed_identity_survives_continue_before_withdrawal')
+    try:
+        import sys
+        with patch.object(sys.modules[__name__], 'ARTIFACTS', Path(output)):
+            case.setUp()
+        case.output = Path(output)
+        case.test_boxed_identity_survives_continue_before_withdrawal()
+        (case.output/'chain.json').write_bytes((case.output/'result.json').read_bytes())
+    finally:
+        if not case.doCleanups():
+            raise RuntimeError('PC fixture cleanup failed')
 
 
 if __name__ == '__main__':

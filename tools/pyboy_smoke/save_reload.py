@@ -133,7 +133,8 @@ def settle(h: RedRogueHarness) -> bool:
     try:
         for _ in range(SETTLE_FRAMES):
             h.tick(1)
-            if len(polled) >= 2 and not h.read8("hJoyIgnore") and not h.read8("hSimulatedJoypadStatesIndex"):
+            if (len(polled) >= 2 and not h.read8("hJoyIgnore")
+                    and not h.read8("hSimulatedJoypadStatesIndex") and not h.read8("wWalkCounter")):
                 return True
         return False
     finally:

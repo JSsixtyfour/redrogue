@@ -14,6 +14,25 @@ from test_smoke import HarnessTestCase
 
 
 class NaturalSaveExposureTest(unittest.TestCase):
+    def test_overworld_polls_during_walk_do_not_authorize_save(self):
+        class WalkingHarness:
+            frame = 0
+            callback = None
+            def register_hook(self, label, callback): self.callback = callback
+            def unregister_hook(self, label, callback): self.callback = None
+            def tick(self, frames):
+                self.frame += frames
+                self.pyboy.frame_count = self.frame
+                self.callback(None)
+            def read8(self, label):
+                return int(self.frame < 5) * 15 if label == 'wWalkCounter' else 0
+        from types import SimpleNamespace
+        h = WalkingHarness()
+        h.pyboy = SimpleNamespace(frame_count=0)
+        self.assertTrue(save_reload.settle(h))
+        self.assertEqual(h.frame, 5)
+        self.assertIsNone(h.callback)
+
     def test_first_stage_blackout_still_retains_an_early_natural_save(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(autoplay, "ARTIFACTS", Path(tmp)):
             report = autoplay.play(1, new_game=True, save_checks=True, stages=1, max_frames=100000)

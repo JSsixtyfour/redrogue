@@ -196,7 +196,7 @@ def achieved_exposure(summary):
         raise ValueError("summary runs must be a list")
     counts = dict(completed_runs=0, stages=0, save_round_trips=0, power_cuts=0, purchase_cases=0, credit_cases=0, sram_fills=0, corpus_states=0)
     counts.update(directed_chains=0, directed_credit_chains=0, directed_trade_chains=0,
-                  directed_teaching_empty_chains=0, directed_teaching_full_chains=0)
+                  directed_teaching_empty_chains=0, directed_teaching_full_chains=0, directed_pc_chains=0)
     corpus_hashes = set()
     for row in summary.get("runs", []):
         if not isinstance(row, dict):
@@ -386,8 +386,8 @@ def validate_config(config):
             raise ValueError(f"unsafe or duplicate case id: {name}")
         ids.add(name)
         args = case_parser(case).parse_args(case["args"])
-        if case.get('scenario') == 'directed' and args.control_identity and args.case != 'trade':
-            raise ValueError('identity control requires trade fixture')
+        if case.get('scenario') == 'directed' and args.control_identity and args.case not in ('trade','pc_boxed'):
+            raise ValueError('identity control requires identity fixture')
         if case.get('scenario') == 'credit' and args.control_credit_balance and args.case != 'exact':
             raise ValueError('credit balance control requires exact fixture')
         expected_verdict = case.get("expected_verdict", "no_issue_detected")
@@ -396,7 +396,7 @@ def validate_config(config):
         if expected_verdict == "contract_violation" and not (
                 (case.get("scenario") == "purchase" and args.control_overcharge) or
                 (case.get("scenario") == "credit" and args.control_credit_balance and args.case == 'exact') or
-                (case.get('scenario') == 'directed' and args.control_identity and args.case == 'trade')):
+                (case.get('scenario') == 'directed' and args.control_identity and args.case in ('trade','pc_boxed'))):
             raise ValueError("an expected violation requires an isolated transaction detector control")
         if expected_verdict == "contract_violation":
             expected = case.get("expected_findings")

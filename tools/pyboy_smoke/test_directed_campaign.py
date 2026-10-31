@@ -24,6 +24,33 @@ def trade_data():
 
 
 class DirectedCampaignTest(unittest.TestCase):
+    def test_pc_oracle_rejects_identity_faults_and_missing_cold_boundary(self):
+        before=trade_data()['before']
+        deposited=copy.deepcopy(before);deposited['count']-=1
+        deposited['species']=before['species'][1:]
+        for field in ('mons','ot','names'):deposited[field]=before[field][1:]
+        stored=before['mons'][0][:33];stored[3]=before['mons'][0][33]
+        withdrawn=copy.deepcopy(before)
+        withdrawn['species']=before['species'][1:-1]+before['species'][:1]+[255]
+        for field in ('mons','ot','names'):withdrawn[field]=before[field][1:]+before[field][:1]
+        withdrawn['mons'][-1][:33]=stored
+        data={'before':before,'deposited':deposited,'withdrawn':withdrawn,
+              'restored':copy.deepcopy(withdrawn),'boxed':stored,'cold_continue_while_boxed':True,
+              'boxed_restored':{'party':deposited,'count':1,'species':[stored[0],255],
+                                'mon':stored,'ot':before['ot'][0],'name':before['names'][0]}}
+        with patch.object(directed,'layout',return_value=LAYOUT):
+            self.assertEqual(directed.semantic_findings('pc_boxed',data),[])
+            for field in ('boxed','restored'):
+                broken=copy.deepcopy(data)
+                if field=='boxed':broken['boxed'][7]^=0x20
+                else:broken['restored']['mons'][-1][29]^=0x80
+                self.assertTrue(directed.semantic_findings('pc_boxed',broken),field)
+            for value in (False,None):
+                broken=copy.deepcopy(data);broken['cold_continue_while_boxed']=value
+                with self.assertRaises(ValueError):directed.semantic_findings('pc_boxed',broken)
+            broken=copy.deepcopy(data);broken['boxed_restored']['count']=True
+            with self.assertRaises(ValueError):directed.semantic_findings('pc_boxed',broken)
+
     def test_directed_quotas_require_the_directed_auditor(self):
         case={'id':'wrong_lane','args':['--seeds','1'],'required_exposure':{'directed_chains':1}}
         with self.assertRaises(ValueError):campaign.validate_config({'cases':[case]})
