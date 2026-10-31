@@ -253,6 +253,8 @@ InGameTrade_CopyLegendaryMoves:
 	ld a, [wInGameTradeReceiveMonSpecies]
 	cp b
 	ret nz
+	ld hl, wWitchPrizesEarned + 1
+	set BIT_WITCH_UBER_RECEIVED, [hl]
 	ld hl, wPartyMon1Moves
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call InGameTrade_GetReceivedMonPointer

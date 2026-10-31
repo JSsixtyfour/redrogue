@@ -821,8 +821,9 @@ Witch challenge 11 (Legendary Boss) swaps a gym leader's ace for a legendary rol
 Giovanni, Falkner, Morty and Pryce. The species come from that table, not from here, so this
 block has no bands or lists. Challenge 11 keeps the normal slot's moveset source and
 difficulty rules, and its trade gives the original generated moves with full PP.
-Its pool excludes owned species and species disabled for the run; both offered gym
-doors must have an eligible option (one remaining gym occupies both door slots).
+Its pool excludes owned species and species disabled for the run. Either gym may
+qualify; accepting closes any nonlegendary door. Receiving the legendary uses the
+run's single pre-Endless legendary trade allowance. Endless permits further trades.
 
 ### LegendaryBoss (Challenge 11 ace)
 

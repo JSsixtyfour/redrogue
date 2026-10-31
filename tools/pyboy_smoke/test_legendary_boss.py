@@ -19,6 +19,7 @@ import re
 from source_constants import (
     parse_map_constants, parse_rgbds_constants, parse_trainer_class_indexes)
 from test_smoke import HarnessTestCase, REPO_ROOT
+from routine_session import isolated_routine_calls
 
 # Mirrors LegendaryBossTable in custom_functions/legendary_boss_helpers.asm.
 LEGENDARY_POOLS = {
@@ -208,7 +209,7 @@ class LegendaryBossGateSmokeTest(HarnessTestCase):
         self.harness.write8("wGymChoice", 0)  # nothing latched: a route visit
         self.assertEqual(self._call("LegendaryBossDoors")["E"], 0)
 
-    def test_offer_needs_four_badges_both_doors_and_a_masterball_mon(self):
+    def test_offer_needs_four_badges_either_door_and_a_masterball_mon(self):
         h = self.harness
         mewtwo, pidgey = self.species["MEWTWO"], self.species["PIDGEY"]
 
@@ -222,21 +223,52 @@ class LegendaryBossGateSmokeTest(HarnessTestCase):
         # Badges are lineup slots; door slots must be unbeaten, so leave 0-2 clear.
         self.assertTrue(offerable(0b11110000, 1, 2, [pidgey, mewtwo]))
         self.assertTrue(offerable(0b11111101, 1, 1, [pidgey, mewtwo]), "one gym left")
-        self.assertFalse(offerable(0b11110000, 0, 1, [mewtwo]), "only door 2 qualifies")
-        self.assertFalse(offerable(0b11110000, 1, 0, [mewtwo]), "only door 1 qualifies")
+        self.assertTrue(offerable(0b11110000, 0, 1, [mewtwo]), "only door 2 qualifies")
+        self.assertTrue(offerable(0b11110000, 1, 0, [mewtwo]), "only door 1 qualifies")
         self.assertFalse(offerable(0b01110000, 0, 1, [mewtwo]), "3 badges")
         self.assertFalse(offerable(0b11110000, 0, 3, [mewtwo]), "no eligible door")
         self.assertFalse(offerable(0b11110000, 1, 2, [pidgey]), "no masterball mon")
         self.assertFalse(offerable(0xFF, 1, 1, [mewtwo]), "finale")
 
-    def test_disabled_pool_closes_door_and_blocks_offer(self):
+    def test_disabled_pool_closes_only_its_door(self):
         h = self.harness
         h.write_sram_bytes("sRogueSpeciesGroupsEnabled", [1], bank=1)
         self._doors(1, 2)  # Sabrina has Kanto options; Morty has only Ho-Oh.
         self.assertEqual(self._call("LegendaryBossDoors")["E"], 0b01)
         h.write8("wObtainedBadges", 0b11110000)
         self._own([self.species["MEWTWO"]])
+        self.assertTrue(self._call("IsLegendaryBossOfferable")["F"] & CARRY)
+
+    def test_received_uber_blocks_another_offer_until_endless(self):
+        h = self.harness
+        h.write8("wObtainedBadges", 0b11110000)
+        self._doors(1, 1)
+        self._own([self.species["MEWTWO"]])
+        h.write8("wEndlessDepth", 0)
+        h.write8("wWitchPrizesEarned", 0, offset=1)
+        self.assertTrue(self._call("IsLegendaryBossOfferable")["F"] & CARRY)
+        h.write8("wWitchPrizesEarned", 1 << self.ram["BIT_WITCH_UBER_RECEIVED"], offset=1)
         self.assertFalse(self._call("IsLegendaryBossOfferable")["F"] & CARRY)
+        h.write8("wEndlessDepth", 1)
+        self.assertTrue(self._call("IsLegendaryBossOfferable")["F"] & CARRY)
+        # The new flag must not interfere with the ten-prize completion mask.
+        h.write8("wWitchPrizesEarned", 0xFF)
+        h.write8("wWitchPrizesEarned", 7, offset=1)
+        self.assertTrue(self._call("WitchAllPrizesEarned")["F"] & 0x80)
+
+    def test_only_nonlegendary_door_closes_after_acceptance(self):
+        h = self.harness
+        h.write8("wLegendaryBossSpecies", 0)
+        bit = 1 << self.ram["BIT_WITCH_ACCEPTED"]
+        h.write8("wWitchChallenge", self.ram["CHALLENGE_LEGENDARY_BOSS"])
+        for first, second, closed in ((0, 1, 1), (1, 0, 2), (1, 2, 0), (1, 1, 0), (0, 0, 0)):
+            self._doors(first, second)
+            eligible = self._call("LegendaryBossDoors")["E"]
+            h.write8("wWitchLevelBonus", eligible)  # cached on acceptance/map reload
+            h.write8("wRogueFlagsBitfield", h.read8("wRogueFlagsBitfield") & ~bit)
+            self.assertEqual(self._call("LegendaryBossClosedDoors")["E"], 0)
+            h.write8("wRogueFlagsBitfield", h.read8("wRogueFlagsBitfield") | bit)
+            self.assertEqual(self._call("LegendaryBossClosedDoors")["E"], closed)
 
     def test_wrong_door_breaks_the_bargain_and_right_door_keeps_it(self):
         h = self.harness
@@ -376,6 +408,7 @@ class LegendaryTradeMovesSmokeTest(HarnessTestCase):
         h.write8("wroguenpctradedialogue", script["TRADE_DIALOGSET_LEGENDARY"])
         h.write8("wLegendaryBossSpecies", species["MEW"])
         h.write8("wInGameTradeReceiveMonSpecies", species["MEW"])
+        h.write8("wWitchPrizesEarned", 3, offset=1)
         for i, move in enumerate(chosen):
             h.write8("wLegendaryBossMoves", move, offset=i)
         slot = h.read8("wPartyCount") - 1
@@ -386,8 +419,78 @@ class LegendaryTradeMovesSmokeTest(HarnessTestCase):
         h.call_routine("InGameTrade_CopyLegendaryMoves")
         self.assertEqual(h.read_bytes("wPartyMon1Moves", 4, offset=offset), chosen)
         self.assertEqual(h.read_bytes("wPartyMon1PP", 4, offset=offset), [15, 10, 20, 20])
+        ram = parse_rgbds_constants(REPO_ROOT / "constants/ram_constants.asm")
+        self.assertTrue(h.read8("wWitchPrizesEarned", offset=1) & (1 << ram["BIT_WITCH_UBER_RECEIVED"]))
+        self.assertEqual(h.read8("wWitchPrizesEarned", offset=1) & 3, 3)
         # A later ordinary random trade must not inherit the challenge set.
         h.write8("wroguenpctradedialogue", 0)
+        h.write8("wWitchPrizesEarned", 0, offset=1)
         h.write8("wPartyMon1Moves", moves["TACKLE"], offset=offset)
         h.call_routine("InGameTrade_CopyLegendaryMoves")
         self.assertEqual(h.read8("wPartyMon1Moves", offset=offset), moves["TACKLE"])
+        self.assertEqual(h.read8("wWitchPrizesEarned", offset=1), 0)
+
+
+class LegendaryLobbyDoorRuntimeTest(HarnessTestCase):
+    def test_wall_blocks_and_signs_follow_the_accepted_door(self):
+        h = self.harness
+        h.boot_to_lobby(battle_count=37)
+        classes = parse_trainer_class_indexes(REPO_ROOT / "constants/trainer_constants.asm")
+        ram = parse_rgbds_constants(REPO_ROOT / "constants/ram_constants.asm")
+        species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
+        maps = parse_map_constants(REPO_ROOT / "constants/map_constants.asm")
+        with isolated_routine_calls(h):
+            h.write8("wPartyCount", 1)
+            h.write8("wPartySpecies", species["PIDGEY"])
+            h.write8("wPartySpecies", 0xFF, offset=1)
+            h.write8("wBoxCount", 0)
+            h.write8("wLegendaryBossSpecies", 0)
+            h.write8("wObtainedBadges", 0xF0)
+            h.write8("wWitchChallenge", ram["CHALLENGE_LEGENDARY_BOSS"])
+            h.write8("wRogueFlagsBitfield", 1 | (1 << ram["BIT_WITCH_ACCEPTED"]))
+            h.write8("wLobbyDoor1StageMap", maps["PEWTER_GYM"])
+            h.write8("wLobbyDoor2StageMap", maps["SAFFRON_GYM"])
+            h.write8("wGymChoice", (1 << ram["BIT_GYM_CHOICE_LATCHED"]) | (1 << 3))
+            stride = h.read8("wCurMapWidth") + 6
+            for first, second, blocks, signs, first_y in (
+                ("BROCK", "SABRINA", [12, 8], 2, 255),
+                ("SABRINA", "BROCK", [8, 12], 1, 0),
+                ("SABRINA", "SABRINA", [8, 8], 2, 0),
+            ):
+                h.write8("wRunGymLineup", classes[first])
+                h.write8("wRunGymLineup", classes[second], offset=1)
+                h.write8("wWitchLevelBonus", 0xFF)  # stale accepted-save parameter
+                h.call_routine("Lobby_UpdateExitDoor")
+                got = [h.read8("wOverworldMap", offset=3 * stride + 3 + x) for x in (4, 5)]
+                self.assertEqual(got, blocks)
+                h.write8("wCurrentMapScriptFlags", 0)
+                h.call_routine("IndigoPlateauLobby_Script.normal")
+                self.assertEqual(h.read8("wNumSigns"), signs)
+                self.assertEqual(h.read8("wSignCoords"), first_y)
+
+    def test_five_byte_pad_survives_battle_build_and_postbattle_map_clear(self):
+        """Audit candidate only: no game data is assigned to this pad yet."""
+        h = self.harness
+        h.boot_to_lobby(battle_count=37)
+        classes = parse_trainer_class_indexes(REPO_ROOT / "constants/trainer_constants.asm")
+        start = h.address("wSavedSpriteMapX") + 1
+        self.assertEqual(h.address("wWhichPrize") - start, 5)
+        canary = [0xA5, 0x5A, 0x3C, 0xC3, 0x69]
+        with isolated_routine_calls(h):
+            h.pyboy.memory[start:start + 5] = canary
+            h.write8("wTrainerClass", classes["BLAINE"])
+            h.write8("wTrainerNo", TRAINER_NO)
+            for label in ("ReadTrainer", "ClearVariablesOnEnterMap"):
+                h.call_routine(label, limit=4000)
+                self.assertEqual(list(h.pyboy.memory[start:start + 5]), canary, label)
+            # The received-mon copy also leaves this candidate pad intact.
+            script = parse_rgbds_constants(REPO_ROOT / "constants/script_constants.asm")
+            species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
+            h.write8("wWhichTrade", script["TRADE_FOR_RANDOM"])
+            h.write8("wroguenpctradedialogue", script["TRADE_DIALOGSET_LEGENDARY"])
+            h.write8("wLegendaryBossSpecies", species["MEW"])
+            h.write8("wInGameTradeReceiveMonSpecies", species["MEW"])
+            for i in range(4):
+                h.write8("wLegendaryBossMoves", 1, offset=i)
+            h.call_routine("InGameTrade_CopyLegendaryMoves")
+            self.assertEqual(list(h.pyboy.memory[start:start + 5]), canary)

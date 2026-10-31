@@ -2870,12 +2870,14 @@ ASSERT wBridgeSelectedEffectsEnd - wBridgeSelectedEffects == BRIDGE_SELECTED_REC
 
 ; Which permanent witch prizes have been earned this run, one bit per prize id:
 ; bit (PRIZE_x - 1), so prizes 1-10 occupy bits 0-9 across these two bytes and
-; bits 10-15 are spare. Every permanent prize's effect hook tests THIS, never
+; bit 10 records a completed legendary trade; bits 11-15 are spare.
+; Every permanent prize's effect hook tests THIS, never
 ; wWitchPrize - that byte only says which prize is on OFFER this lobby visit.
 wWitchPrizesEarned:: dw
 
 UNION
-wWitchLevelBonus:: db     ; CHALLENGE_INCREASED_LEVELS: added to enemy levels
+wWitchLevelBonus:: db     ; CHALLENGE_INCREASED_LEVELS: added to enemy levels;
+                         ; CHALLENGE_LEGENDARY_BOSS: cached eligible-door mask
 NEXTU
 wPartyLimit:: db          ; CHALLENGE_PARTY_LIMIT: max party size (default PARTY_LENGTH)
 NEXTU

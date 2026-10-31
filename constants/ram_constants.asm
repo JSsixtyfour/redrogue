@@ -311,6 +311,8 @@ DEF PRIZE_RESIST_SUPER   EQU 8  ; h: incoming super-effective damage x3/4
 DEF PRIZE_MULTISTRIKE    EQU 9  ; i: your 2-5 hit moves always roll 4 or 5
 DEF PRIZE_CHEAP_ITEMS    EQU 10 ; j: 10% off at the money marts
 DEF NUM_WITCH_PRIZES     EQU 10
+; High byte of wWitchPrizesEarned: first bit beyond the ten prize flags.
+DEF BIT_WITCH_UBER_RECEIVED EQU 2
 
 ; wEarnedStatBoosts bits - which 1.125x stat boosts have been earned this run.
 ; BADGES NO LONGER GRANT THESE. Order must match wBattleMonAttack..Special:

@@ -262,10 +262,18 @@ SlotIsLegendaryBoss::
 
 ; IsLegendaryBossOfferable: the witch's gate for Challenge 11.
 ; Carry SET when: not the finale, at least 4 badges (so the next gym is gym 5-8,
-; whatever leaders those are), both doors lead to leaders with an eligible
-; legendary, and the party holds a masterball-class mon to trade.
+; whatever leaders those are), at least one door leads to a leader with an eligible
+; legendary, and the party holds a masterball-class mon to trade. A completed
+; legendary trade blocks another before Endless, even after trading it away.
 ; Clobbers: a, b, c, d, e, hl
 IsLegendaryBossOfferable::
+	ld a, [wEndlessDepth]
+	and a
+	jr nz, .badges
+	ld a, [wWitchPrizesEarned + 1]
+	bit BIT_WITCH_UBER_RECEIVED, a
+	jr nz, .no                   ; one received Uber before Endless
+.badges
 	ld a, [wObtainedBadges]
 	cp $FF
 	jr z, .no                    ; finale: no gym is next
@@ -283,8 +291,8 @@ IsLegendaryBossOfferable::
 	jr c, .no
 	call LegendaryBossDoors
 	ld a, e
-	cp %11
-	jr nz, .no                   ; the single remaining gym occupies both doors
+	and a
+	ret z
 	jp HasMasterballClassMon     ; carry = has one
 .no
 	and a
@@ -293,7 +301,7 @@ IsLegendaryBossOfferable::
 ; WitchLegendaryOfferCheck  (farcall, from PCWitchText's text_asm)
 ; Re-checks the doors LIVE when the player talks to her: the door dice can
 ; reroll the pair after PCWitchSetup rolled the offer. If Challenge 11 is on
-; offer and either door no longer qualifies, she withdraws: wWitchChallenge = 0
+; offer and neither door qualifies, she withdraws: wWitchChallenge = 0
 ; so nothing downstream sees an offer, and every later talk this visit lands
 ; on the same withdrawal (a visible witch with challenge 0 only happens here).
 ; Output: carry SET = carry on with the offer; CLEAR = she withdrew, end text.
@@ -305,9 +313,8 @@ WitchLegendaryOfferCheck::
 	jr nz, .go
 	call LegendaryBossDoors
 	ld a, e
-	cp %11
-	jr z, .go
-	xor a
+	and a
+	jr nz, .go
 	ld [wWitchChallenge], a      ; a = 0
 .withdrawn
 	ld hl, WitchLegendaryWithdrawText
@@ -316,6 +323,28 @@ WitchLegendaryOfferCheck::
 	ret
 .go
 	scf
+	ret
+
+; e bit 0/1 closes door 1/2 only while a legendary bargain is accepted.
+; Lobby_UpdateExitDoor caches eligibility in the challenge parameter UNION on
+; acceptance/map reload, avoiding pool scans every frame. Entry checks live.
+; No eligible doors returns zero so a stale offer cannot wall off both exits.
+LegendaryBossClosedDoors::
+	ld e, 0
+	ld a, [wLegendaryBossSpecies]
+	and a
+	ret nz                        ; returning from the gym: old bargain is settling
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	ret z
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_LEGENDARY_BOSS
+	ret nz
+	ld a, [wWitchLevelBonus]
+	and %11
+	ret z
+	xor %11
+	ld e, a
 	ret
 
 ; WitchLegendaryDoorLine  (farcall, from PCWitchText after the challenge text)

@@ -64,6 +64,13 @@ IndigoPlateauLobby_Script:
 	inc a
 .setSignCount
 	ld [wNumSigns], a
+	farcall LegendaryBossClosedDoors
+	bit 0, e
+	ld a, 0
+	jr z, .door1Sign
+	dec a                        ; move the closed door's sign off the map
+.door1Sign
+	ld [wSignCoords], a
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_2, [hl]
 	res BIT_CUR_MAP_LOADED_2, [hl]
@@ -273,11 +280,34 @@ LobbyDoor2SignText:
 ; OUTPUT: NZ - door 2 blocked (Elite Four phase, or the existing gym-next
 ;             case). Z - door 2 open (Victory Road phase, or a normal
 ;             route-next case).
-; CLOBBERS: a
+; CLOBBERS: a, bc, de, hl (legendary-door guard uses a farcall)
 ; update exit door tile based on whether gym or route is next (or, during the
 ; final sequence, the Elite Four - see Lobby_IsDoor2Blocked). ReplaceTileBlock
 ; returns early when the block already matches, so repeat calls are cheap.
 Lobby_UpdateExitDoor:
+	; Refresh on acceptance and map reload, including legacy accepted saves.
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .doorsCached
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_LEGENDARY_BOSS
+	jr nz, .doorsCached
+	ld a, [wLegendaryBossSpecies]
+	and a
+	jr nz, .doorsCached           ; previous gym's bargain has not settled yet
+	farcall LegendaryBossDoors
+	ld a, e
+	ld [wWitchLevelBonus], a       ; shared challenge parameters, no extra RAM
+.doorsCached
+	farcall LegendaryBossClosedDoors
+	bit 0, e
+	ld a, $08
+	jr z, .door1Block
+	ld a, $C
+.door1Block
+	ld [wNewTileBlockID], a
+	lb bc, 0, 4
+	predef ReplaceTileBlock
 	call Lobby_IsDoor2Blocked
 	jr nz, .blockExitToSecondDoor
 	ld a, $08 ; authored open door plus tile-based notepad
@@ -290,6 +320,9 @@ Lobby_UpdateExitDoor:
 	predef_jump ReplaceTileBlock
 
 Lobby_IsDoor2Blocked:
+	farcall LegendaryBossClosedDoors
+	bit 1, e
+	ret nz
 	ld a, [wObtainedBadges]
 	cp $FF
 	jr nz, .normalCheck
@@ -836,6 +869,7 @@ PCWitchText:
     ld a, TOGGLE_PC_WITCH
     ld [wToggleableObjectIndex], a
     predef HideObject
+    call Lobby_UpdateExitDoor
     call UpdateSprites
     call Delay3
     call GBFadeInFromBlack
