@@ -105,6 +105,29 @@ WALL, FLOOR, LEDGE, STAND, COUNTER = 0x01, 0x02, 0x37, 0x2C, 0x03
 
 
 class RevisitedExitTest(unittest.TestCase):
+    def test_one_exit_subroom_explores_before_returning_to_arrival_pad(self):
+        import autoplay
+        agent = object.__new__(autoplay.AutoplayAgent)
+        agent.h = SimpleNamespace(read8=lambda _: 224, pyboy=SimpleNamespace(frame_count=100))
+        sprites = {1:{'x':12, 'y':9}}
+        agent.sprites = lambda: sprites
+        agent.lobby_map, agent.credit_exchange = 174, 200
+        agent.profile = None
+        agent.hub_route = {}
+        agent.unbeaten_trainers = lambda: []
+        agent.special_trainers = lambda: []
+        agent.bridge_rooms = set()
+        agent.talked = set()
+        agent.last_progress_frame = 100
+        arrival = autoplay.Goal({(9,9):(None,'warp_back')}, warp=True)
+        interaction = autoplay.Goal({(11,9):('right','special:1')})
+        agent.exit_goals = lambda: [arrival]
+        agent.near_arrival = lambda step: step == (9,9)
+        agent.talk_goal = lambda *args: interaction
+        self.assertEqual(agent.goal_groups(None), [interaction, arrival])
+        agent.talked = {1}
+        self.assertEqual(agent.goal_groups(None), [arrival])
+
     def test_revisited_forward_exit_precedes_arrival_but_backtracking_remains(self):
         import autoplay
         agent = object.__new__(autoplay.AutoplayAgent)

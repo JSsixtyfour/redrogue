@@ -1739,9 +1739,14 @@ class AutoplayAgent:
                 rest = {slot: sprite for slot, sprite in rest.items()
                         if slot not in balls or slot == self.profile.starter}
         explore = [self.talk_goal(grid, rest, "special")] if rest else []
+        exits = self.exit_goals()
+        # A return pad underfoot must not prevent reachable local interactions.
+        # Keep it as a final fallback, including in one-exit subrooms.
+        arrival = [goal for goal in exits if all(self.near_arrival(step) for step in goal.spots)]
+        forward = [goal for goal in exits if goal not in arrival]
         if self.h.pyboy.frame_count - self.last_progress_frame > EXPLORE_AFTER_FRAMES:
-            return groups + explore + self.exit_goals()
-        return groups + self.exit_goals() + explore
+            return groups + explore + forward + arrival
+        return groups + forward + explore + arrival
 
     def talk_goal(self, grid: world.WalkGrid, targets: dict[int, dict[str, int]], kind: str) -> Goal:
         spots = {}

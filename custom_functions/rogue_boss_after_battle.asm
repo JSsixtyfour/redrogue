@@ -69,15 +69,34 @@ RogueBossAfterBattle::
 	ld d, BOSS_AFTER_DONE
 	ret
 
-; Placeholder lines - real quotes still to be authored.
+
 RivalMiniBossAfterBattleText:
-	text "INSERT RIVAL"
-	line "AFTER-BATTLE"
-	cont "QUOTE HERE"
+	text "I heard #MON"
+	line "LEAGUE has many"
+	cont "tough trainers!"
+
+	para "I have to figure"
+	line "out how to get"
+	cont "past them!"
+
+	para "You should quit"
+	line "dawdling and get"
+	cont "a move on!"
 	done
 
 GiovanniMiniBossAfterBattleText:
-	text "INSERT GIOVANNI"
-	line "AFTER-BATTLE"
-	cont "QUOTE HERE"
+	text "I see that you"
+	line "raise #MON"
+	cont "with utmost care."
+
+	para "A child like you"
+	line "would never"
+	cont "understand what I"
+	cont "hope to achieve."
+
+	para "I shall step"
+	line "aside this time!"
+
+	para "I hope we meet"
+	line "again..."
 	done

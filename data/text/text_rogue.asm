@@ -344,24 +344,36 @@ _NoSlotPullsLeftText::
 ; dialogue, callable from any route's 5th-trainer encounter, not tied to a
 ; specific map's text file.
 _RivalMiniBossBattleText::
-	text "Smell ya later!"
-	line "I'm gonna show"
-	cont "you how a real"
-	cont "trainer battles!"
+	text "<RIVAL>: Yo!"
+	line "<PLAYER>!"
+
+	para "You're still"
+	line "struggling along"
+	cont "back here?"
+
+	para "I'm doing great!"
+	line "I caught a bunch"
+	cont "of strong and"
+	cont "smart #MON!"
+
+	para "Here, let me see"
+	line "what you caught,"
+	cont "<PLAYER>!"
 	done
 
 _RivalMiniBossEndBattleText::
-	text "Feh!"
-	line "You got lucky"
-	cont "this time."
+	text "Awww!"
+	line "You just lucked"
+	cont "out!"
 	prompt
 
 ; Mini-boss framework: shared Giovanni mini-boss dialogue, callable from any
 ; of his 3 dungeon maps' 5th-trainer encounter. Placeholder text - user will
 ; author the real quotes.
 _GiovanniMiniBossBattleText::
-	text "INSERT GIOVANNI"
-	line "QUOTE HERE"
+	text "So! I must say, I"
+	line "am impressed you"
+	cont "got here!"
 	done
 
 ; Final sequence: shared "go to the Champion" dialogue, shown as the
@@ -381,8 +393,13 @@ _Elite4GoToChampionText::
 ; Lance was last and directs the player to the Champion, so it can't be reused
 ; here. Placeholder text - user will author the real quote.
 _LancesRoomLanceNormalAfterBattleText::
-	text "INSERT LANCE"
-	line "DIALOGUE HERE"
+	text "I still can't"
+	line "believe my"
+	cont "dragons lost to"
+	cont "you, <PLAYER>!"
+
+	para "Go forth and do"
+	line "not lose!"
 	done
 
 _GiovanniMiniBossEndBattleText::

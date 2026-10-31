@@ -216,5 +216,5 @@ AILairVictoryText:
 	prompt
 
 AILairPostBattleText:
-	text "INSERT TEST HERE"
+	text "ERROR47;'IX)42!dzP"
 	prompt
