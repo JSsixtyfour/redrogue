@@ -108,6 +108,19 @@ move-learning checks, the trainer event, battle count, and return to the route
 script. It also plays the first three stages of a seeded autoplay run (see
 below).
 
+The Route 1 integration now repeats that real-input battle in DMG and CGB with
+PyBoy sound sampling enabled. It captures short stereo WAV windows around map,
+battle, victory, and cry transitions, plus a JSON trace with ROM/symbol hashes,
+current song and SFX channel owners, active channel pointers, and NR50/NR51/NR52
+state. Each clip has up to 18 frames before and 42 after its event. Files are
+written to a unique directory under
+`tools/pyboy_smoke/artifacts/audio_transitions/`. The test checks that samples
+were produced, the trainer and victory tracks started, a cry overlapped the
+battle track on its SFX channel, and Route 1 music returned. PyBoy state and
+captures are diagnostic evidence; they do not establish perceived sound quality
+or replace BGB/SGB/hardware listening. This journey covers one run per hardware
+mode; later-run audio transitions remain open.
+
 ## AI scenarios
 
 `make ai_scenarios` loads declarative fixtures from `ai_scenarios.json`. Each
@@ -332,10 +345,47 @@ HP (a Revive on a fainted one), and once per lobby visit it buys healing items
 from the recovery clerk (stock is randomized) up to four, or a Revive. Both are
 menu errands driven by button presses and abandoned after `PLAN_STEP_LIMIT`.
 
-Limits: the agent never chooses rewards or doors on merit (both random), never
-buys key items on merit, and only picks up item balls as a last resort. Without
+Limits: the default `basic` player chooses rewards and gifts randomly; `merit`
+and `strong` evaluate those offers. Doors remain random. The agent does not
+buy key items on merit and only picks up item balls as a last resort. Without
 `--vary` it also never visits the lobby's other NPCs. Its `--new-game` balance
 numbers therefore describe this agent as much as the game.
+
+### Bounded targeted pilots
+
+Targeted follow-up modules exercise configured first-HOF save/reset boundaries
+(`integration_endless_save_boundaries`), all fourteen key items at all three
+live tiers through cold Continue (`integration_key_item_persistence`), and a
+natural three-run clerk/nurse/clerk service history with exact state deltas
+(`integration_service_history`). `integration_audio_sequences` captures authored
+credits and low-health/menu SFX in DMG/CGB; `integration_audio_later` plays a
+natural intervening Endless circuit in each mode from a configured first HOF.
+Audio pointer and music-channel ownership checks run on every sampled frame;
+short WAVs support later listening and do not establish hardware acceptance.
+
+`test_key_item_trigger_effects`, `test_key_item_charged_effects`, and
+`test_key_item_effects` distinguish real battle dispatch from isolated consumer
+transactions. The fixtures state controlled fields, presentation bypasses and
+random boundaries explicitly. Owned-but-inactive items are checked at both
+field and battle list producers. These are separate claims from acquisition,
+visual choreography, or naturally earning the first Champion/AI victory.
+
+The canonical operator guide is
+`K:\Other computers\My Laptop\Red Rogue Files\AUTOPLAY_OPERATOR_GUIDE.md`.
+`run_targeted_checks.py --help` describes serial smoke/integration selections
+in a dedicated native-Linux execution snapshot, with the existing supervisor's
+900-second, 128-MiB output and 1536-MiB aggregate RSS ceilings. It retains
+command logs, source/build identity, the unique test overlay, artifacts and
+per-test skip IDs/reasons. `run_smoke.py --report PATH` also retains per-test
+results for ordinary smoke commands.
+
+General events, end records and first-three-run natural save probes have
+one-based `run_index`; existing AI telemetry retains its zero-based convention.
+`lifecycle_exposure.py REPORT --output PATH` checks per-run progression and
+input-ready observations. A positive exposure result does not certify item
+effects, service histories, save boundaries, or Endless circuits. The explicit
+`integration_endless_journey.py` and `integration_autoplay.py` selections
+document fixture provenance and cold-Continue probe scope.
 
 ### Options that widen the hunt
 

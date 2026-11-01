@@ -285,6 +285,7 @@ class AutoplayAgent:
         self.h = harness
         self.disable_joypad_mask = 1 << parse_rgbds_constants(ROOT / 'constants/ram_constants.asm')['BIT_DISABLE_JOYPAD']
         self.active_save_pending = capture_active_save
+        self.capture_active_save = capture_active_save
         # --ai-telemetry: ai_telemetry.BattleAITelemetry, read-only; one record per trainer battle.
         self.ai_telemetry = ai_telemetry
         self.ai_battles: list[dict[str, object]] = []
@@ -463,6 +464,7 @@ class AutoplayAgent:
 
     def _on_overworld(self, _context) -> None:
         self.last_overworld_frame = self.h.pyboy.frame_count
+        self.last_overworld_map = self.h.read8('hCurMap')
 
     def _on_wait(self, _context) -> None:
         self.last_wait_frame = self.h.pyboy.frame_count
@@ -867,7 +869,8 @@ class AutoplayAgent:
     # ------------------------------------------------------------- reporting
 
     def event(self, kind: str, **data) -> None:
-        entry = {"frame": self.h.pyboy.frame_count, "kind": kind, **data}
+        entry = {"frame": self.h.pyboy.frame_count, "kind": kind,
+                 "run_index": len(self.report.runs) + 1, **data}
         self.report.events.append(entry)
         self.log(json.dumps(entry))
 
@@ -1168,6 +1171,7 @@ class AutoplayAgent:
     def end_run(self, outcome: str, detail: str) -> None:
         start = self.run_start
         record = {
+            "run_index": len(self.report.runs) + 1,
             "outcome": outcome,
             "detail": detail,
             "stages_cleared": self.report.stages_cleared - start["stages"],
@@ -1179,6 +1183,9 @@ class AutoplayAgent:
             record["lost_to"] = self.last_opponent
         self.report.runs.append(record)
         self.event("run_end", **record)
+        # Reserve one natural active-run save in each of the first three runs.
+        # Hub polls do not qualify: the capture below also requires a live clock.
+        self.active_save_pending = self.capture_active_save and len(self.report.runs) < 3
         self.run_start = {"frame": self.h.pyboy.frame_count, "stages": self.report.stages_cleared,
                           "battles_won": self.report.battles_won}
 
@@ -1227,7 +1234,8 @@ class AutoplayAgent:
         if (self.h.read8("hSimulatedJoypadStatesIndex") or self.h.read8("hJoyIgnore") & 0xF0 or
                 self.h.read8('wStatusFlags5') & self.disable_joypad_mask):
             return "busy"  # arrow tiles, scripted walks: the game has the d-pad
-        if self.last_overworld_frame >= 0 and self.h.pyboy.frame_count - self.last_overworld_frame <= 2:
+        if (self.last_overworld_frame >= 0 and self.h.pyboy.frame_count - self.last_overworld_frame <= 2
+                and getattr(self, 'last_overworld_map', None) == self.h.read8('hCurMap')):
             return "overworld"
         return "busy"
 
@@ -1249,17 +1257,36 @@ class AutoplayAgent:
             kind, self.snapshot_pending = self.snapshot_pending, None
             if self.snapshot is not None:
                 self.snapshot(kind, {"map": self.map_name(current_map), "stages": self.report.stages_cleared,
+                                     "run_index": len(self.report.runs) + 1,
+                                     "endless_depth": self.h.read8('wEndlessDepth'),
                                      "opponent": self.last_opponent if kind == "battle" else None})
         mode = self.mode()
         if (self.active_save_pending and self.snapshot is not None and mode == "overworld"
                 and self.h.read8("wRunTimerState") == 1 and not self.h.read8("hJoyIgnore")
                 and not self.h.read8("hSimulatedJoypadStatesIndex")):
             self.snapshot("save_overworld", {"map": self.map_name(current_map),
+                "run_index": len(self.report.runs) + 1,
+                "endless_depth": self.h.read8('wEndlessDepth'),
                 "provenance": "natural first active-run overworld", "clock_injected": False})
             self.active_save_pending = False
         if mode != "busy":
             self.busy_since = None
         if mode == "overworld":
+            if getattr(self, "lifecycle_visit", None) != (len(self.report.runs), current_map):
+                self.lifecycle_visit = (len(self.report.runs), current_map)
+                # Observe at an input poll, after map setup and scripted motion.
+                # WRAM reads only: the SRAM helper changes mapper state.
+                self.event("playable_visit", map=self.map_name(current_map),
+                           position=self.position(),
+                           state={label: self.h.read_bytes(label, length) for label, length in (
+                               ("wBattleCount", 1), ("wEndlessDepth", 1),
+                               ("wPartyCount", 1), ("wPartySpecies", 7),
+                               ("wObtainedBadges", 1), ("wPlayerCoins", 2),
+                               ("wKODefianceUsages", 1), ("wTurnRewindUsages", 1),
+                               ("wDiceCharges", 1), ("wHealAllItemLevel", 1),
+                               ("wRestorePPItemLevel", 1), ("wDayCareInUse", 1),
+                               ("wDayCareInUse2", 1), ("wRunTimerState", 1),
+                               ("wBagPocketsFlags", 1), ("hIsInBattle", 1))})
             self.party_menu_repeats = 0
             if self.errand is not None and self.errand["kind"] != "battle" and self.errand["presses"]:
                 self.end_errand("back in the overworld")
@@ -2141,7 +2168,7 @@ def play(
         import save_reload
 
         lobbies = [s for s in reel.select(SAVE_CHECK_LOBBIES) if s.kind == "lobby"]
-        save_snapshots = reel.kept.get("save_overworld", [])[:1] + lobbies
+        save_snapshots = reel.kept.get("save_overworld", [])[:3] + lobbies
         if heartbeat is not None:
             heartbeat.write_text(json.dumps({"frame": None, "mode": "save checks", "map": None,
                                              "position": None}) + "\n", encoding="utf-8")

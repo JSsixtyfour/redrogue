@@ -203,7 +203,6 @@ MoneyMatchAfterText:
 	done
 
 MoneyMatchDeclinedText:
-	text "No guts, no"
-	line "glory! I'll be"
-	cont "right here."
+	text "I'll be here if you"
+	line "change your mind."
 	done

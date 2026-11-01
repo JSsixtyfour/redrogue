@@ -1704,7 +1704,7 @@ RentalOfferText:
 	prompt
 RentalDeliveredText:
 	text "Rental is ready!"
-	line "Enjoy your zone!"
+	line "Enjoy!"
 	prompt
 RentalDeclinedText:
 	text "Come back later!"

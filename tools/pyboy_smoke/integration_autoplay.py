@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+import json
 
 import autoplay
 
@@ -35,6 +36,28 @@ class AutoplayIntegrationTest(unittest.TestCase):
         for run in data["runs"]:
             self.assertIn(run["outcome"], ("champion", "blackout"), summary)
             self.assertGreaterEqual(run["battles_won"], 1, summary)
+
+    def test_three_runs_retain_indexed_natural_cold_continue_checks(self) -> None:
+        """A separate save probe reboots each natural run-1/2/3 snapshot.
+
+        The primary journey is uninterrupted. These are cold-Continue probes
+        from that journey, not a claim that the main driver rebooted in place.
+        """
+        from lifecycle_exposure import evaluate
+        data = autoplay.play(1, new_game=True, runs=3, player='strong', difficulty='NORMAL',
+                             save_checks=True, max_frames=1_500_000)
+        path = autoplay.ARTIFACTS / 'targeted_three_run_save.json'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, indent=2) + '\n')
+        self.assertEqual(evaluate(data)['gaps'], [], evaluate(data))
+        trips = [trip for trip in data['save_checks']['round_trips']
+                 if trip.get('source_snapshot', {}).get('kind') == 'save_overworld']
+        self.assertEqual([trip['source_snapshot']['info']['run_index'] for trip in trips], [1, 2, 3])
+        for trip in trips:
+            self.assertEqual(trip['status'], 2, trip)
+            self.assertTrue(trip['overworld'], trip)
+            self.assertFalse(trip.get('differences') or trip.get('problem') or trip.get('after_load'), trip)
+        self.assertEqual(data['save_checks']['findings'], [])
 
 
 if __name__ == "__main__":

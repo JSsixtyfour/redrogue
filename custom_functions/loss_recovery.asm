@@ -209,7 +209,7 @@ LossRecoveryBoot::
 	and a ; NZ, carry clear: never load even a superficially valid old main
 	ret
 .damagedText
-	text "Recovery damaged."
+	text "Save File damaged."
 	line "Start NEW GAME."
 	prompt
 .recover

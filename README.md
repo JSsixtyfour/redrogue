@@ -293,6 +293,12 @@ matching `.sym`, stamped with date and git hash (`BUILD_KEEP=N` keeps the newest
 
 # Verification
 
+For bounded autoplay pilots, exact-build replay, targeted scenarios and nightly
+report interpretation, see the canonical [Autoplay operator guide](<K:/Other computers/My Laptop/Red Rogue Files/AUTOPLAY_OPERATOR_GUIDE.md>)
+and the [PyBoy tooling README](tools/pyboy_smoke/README.md). The targeted runner
+uses one worker and records resource limits and retained skip reasons; passing
+progression checks does not establish every item effect or Endless lifecycle.
+
 | Target | What it checks |
 | --- | --- |
 | `make smoke` | PyBoy smoke suite against `pokeblue_debug.gbc`. `make smoke TEST='*pattern*'` runs a subset; `python3 tools/pyboy_smoke/run_smoke.py --list` lists test IDs. See [tools/pyboy_smoke/README.md](tools/pyboy_smoke/README.md). |

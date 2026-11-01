@@ -516,7 +516,9 @@ RoguePrismRefreshCache::
 	add hl, de
 	ld b, [hl]                    ; b = percent bonus for this tier
 
+	push bc                       ; the type lookup clobbers the tier bonus in b
 	call RoguePrismGetTypeFresh   ; a = chosen type, or $ff
+	pop bc
 	cp $ff
 	ret z                         ; owned but no type picked yet - stays disabled
 	ld [wPrismType], a

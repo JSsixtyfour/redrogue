@@ -1,9 +1,5 @@
 _MoveRelearnerGreetingText::
-	text "I tutor children,"
-	line "but I also tutor"
-	cont "#MON."
-	
-	para "I teach them to"
+	text "I teach #MON to"
 	line "remember moves"
 	cont "they forgot."
 

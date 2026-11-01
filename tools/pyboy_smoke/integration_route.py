@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import unittest
 
+from audio_trace import PyBoyAudioTrace
 from harness import RedRogueHarness
 from source_constants import parse_map_constants, parse_rgbds_constants
 
@@ -13,11 +14,15 @@ ARTIFACTS = Path(__file__).resolve().parent / "artifacts"
 
 class RouteBattleIntegrationTest(unittest.TestCase):
     harness: RedRogueHarness | None = None
+    audio_trace = None
+    cgb_mode = False
 
     def setUp(self) -> None:
-        self.harness = RedRogueHarness(REPO_ROOT, ARTIFACTS, sound_emulated=True)
+        self.harness = RedRogueHarness(REPO_ROOT, ARTIFACTS, sound_emulated=True, cgb_mode=self.cgb_mode)
 
     def tearDown(self) -> None:
+        if self.audio_trace is not None:
+            self.audio_trace.close()
         if self.harness is not None:
             self.harness.close()
 
@@ -53,7 +58,21 @@ class RouteBattleIntegrationTest(unittest.TestCase):
         hud_drawn = self.harness.hook_flag("DrawHUDsAndHPBars")
         enemy_fainted = self.harness.hook_flag("HandleEnemyMonFainted")
         enemy_sent_out = self.harness.hook_flag("EnemySendOut")
-        faint_text = self.harness.hook_flag("EnemyMonFaintedText")
+        # EnemyMonFaintedText is text data, not executable code. Hooking that
+        # symbol replaces the first TX_FAR byte with PyBoy's DB breakpoint,
+        # which the text engine then mistakes for another text command. Observe
+        # the real code consumer and match the pointer instead.
+        faint_text = {"count": 0}
+        faint_text_bank, faint_text_address = self.harness.symbols.get("EnemyMonFaintedText")
+
+        def capture_enemy_faint_text(_context) -> None:
+            if (
+                int(self.harness.pyboy.register_file.HL) == faint_text_address
+                and self.harness.read8("hLoadedROMBank") == faint_text_bank
+            ):
+                faint_text["count"] += 1
+
+        self.harness.register_hook("PrintText", capture_enemy_faint_text)
         experience = self.harness.hook_flag("GainExperience")
         experience_done = self.harness.hook_flag("GainExperience.done")
         level_up = self.harness.hook_flag("GainExperience.printGrewLevelText")
@@ -64,9 +83,19 @@ class RouteBattleIntegrationTest(unittest.TestCase):
         screen_restored = self.harness.hook_flag("LoadScreenTilesFromBuffer1")
         party_menu = self.harness.hook_flag("DisplayPartyMenu")
 
+        text_offset = (faint_text_address if faint_text_bank == 0 else
+                       faint_text_bank * 0x4000 + faint_text_address - 0x4000)
+        expected_text = self.harness.rom_path.read_bytes()[text_offset:text_offset + 5]
+        self.assertEqual(bytes(self.harness.pyboy.memory[faint_text_bank, faint_text_address + i]
+                               for i in range(5)), expected_text,
+                         'instrumentation changed the faint-text command bytes')
+
         # Keep the journey at the earliest difficulty tier. This minimizes
         # unrelated level-up churn while still exercising a real trainer battle.
         self.harness.boot_to_lobby(battle_count=1)
+        trace = PyBoyAudioTrace(self.harness, ARTIFACTS, self.id())
+        self.audio_trace = trace
+        trace.mark('lobby_before_route', capture=False)
         starting_battle_count = self.harness.read8("wBattleCount")
         self.harness.enter_stage_door1(route_map, description="Route 1")
         self.assertEqual(
@@ -152,8 +181,10 @@ class RouteBattleIntegrationTest(unittest.TestCase):
                 f"moves={self.harness.read_bytes('wBattleMonMoves', 4)}"
             )
 
+        self.assertEqual(self.harness.hook_errors, [])
         self.assertEqual(battle_started["count"], 1)
         self.assertGreaterEqual(battle_ended["count"], 1)
+        self.assertGreater(faint_text["count"], 0)
         self.assertTrue(self.harness.event_is_set(trainer_event))
         self.assertGreaterEqual(experience["count"], 1)
         self.assertEqual(experience_done["count"], experience["count"])
@@ -164,6 +195,40 @@ class RouteBattleIntegrationTest(unittest.TestCase):
         self.assertEqual(
             self.harness.read8("wBattleCount"), (starting_battle_count + 1) & 0xFF
         )
+
+
+        # Audio is sampled between frames; optional call-chain diagnostics are
+        # enabled separately with REDROGUE_AUDIO_CALL_TRACE.
+        self.harness.tick(180)
+        trace.mark('route_restored', capture=True)
+        self.harness.tick(trace.POST_FRAMES)
+        music = parse_rgbds_constants(REPO_ROOT / 'constants/music_constants.asm')
+        observed = [event['details']['music_id'] for event in trace.events
+                    if event['label'] == 'music_observed']
+        self.assertIn(music['MUSIC_TRAINER_BATTLE'], observed)
+        self.assertIn(music['MUSIC_DEFEATED_TRAINER'], observed)
+        self.assertEqual(trace.state_snapshot()['music_id'], self.harness.read8('wMapMusicSoundID'))
+        self.assertGreater(trace._signal_frames, 0)
+        self.assertGreater(trace._active_cry_frames, 0)
+        cries = [event for event in trace.events if event['label'] == 'active_cry_channel_observed']
+        self.assertEqual(cries[0]['state']['music_id'], music['MUSIC_TRAINER_BATTLE'])
+        self.assertTrue(any(event['label'] == 'sfx_active_observed' for event in trace.events))
+        final = trace.state_snapshot()
+        self.assertFalse([row for row in final['channels'][4:] if row['on']],
+                         'temporary effects did not finish within the 222-frame settle')
+        captured_music = [trace.events[clip['event_index']]['details'].get('music_id')
+                          for clip in trace.clips if clip['label'] == 'music_observed' and clip['complete']]
+        self.assertIn(music['MUSIC_TRAINER_BATTLE'], captured_music)
+        self.assertIn(music['MUSIC_DEFEATED_TRAINER'], captured_music)
+        self.assertTrue(any(clip['label'] == 'route_restored' and clip['complete'] for clip in trace.clips))
+        errors = [(event['frame'], trace.active_pointer_errors(event['state'])) for event in trace.events]
+        self.assertFalse([row for row in errors if row[1]], 'active channel pointer outside ROM')
+        self.assertEqual(trace.pointer_error_frames, 0, trace.pointer_error_examples)
+        self.assertEqual(trace.music_sfx_frames, 0)
+
+
+class CGBRouteBattleIntegrationTest(RouteBattleIntegrationTest):
+    cgb_mode = True
 
 
 if __name__ == "__main__":

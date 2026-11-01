@@ -214,6 +214,7 @@ IronmanNewGameSRAMInit::
 ; TODO(user): placeholder wording. wNameBuffer holds the mon's nickname.
 IronmanReleasedText:
 	text_ram wNameBuffer
-	text " is"
-	line "gone for good..."
+	text "was"
+	line "removed from"
+    cont "the party"
 	prompt

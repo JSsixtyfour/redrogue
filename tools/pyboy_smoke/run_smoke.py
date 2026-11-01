@@ -59,9 +59,13 @@ class WorkerResult(unittest.TextTestResult):
 
     results_path: Path
     test_timeout_s: int
+    requested_ids = ()
+    _active_test_id = None
 
     def startTest(self, test):
         self._status = "ok"
+        self._skip_reasons = []
+        self._active_test_id = test.id()
         os.environ["REDROGUE_CURRENT_TEST"] = test.id()
         self._started_at = time.perf_counter()
         super().startTest(test)
@@ -74,7 +78,10 @@ class WorkerResult(unittest.TextTestResult):
         super().stopTest(test)
         record = {"id": test.id(), "status": self._status,
                   "seconds": time.perf_counter() - self._started_at}
+        if self._skip_reasons:
+            record["skip_reasons"] = self._skip_reasons
         self._status = None
+        self._active_test_id = None
         write_record(self.results_path, record)
 
     def addFailure(self, test, err):
@@ -94,7 +101,21 @@ class WorkerResult(unittest.TextTestResult):
         super().addSubTest(test, subtest, err)
 
     def addSkip(self, test, reason):
-        self._status = "skip"
+        if self._active_test_id is None:
+            # unittest reports setUpClass/setUpModule skips outside startTest.
+            # Expand that fixture result to its requested cases before the
+            # parent interprets missing worker records as fixture errors.
+            fixture = test.id()
+            if '(' in fixture and fixture.endswith(')'):
+                scope = fixture.split('(', 1)[1][:-1]
+                for test_id in self.requested_ids:
+                    if test_id.startswith(scope + '.'):
+                        write_record(self.results_path, {'id': test_id, 'status': 'skip',
+                            'seconds': 0.0, 'skip_reasons': [str(reason)], 'fixture': fixture})
+        else:
+            if self._status not in ('fail', 'error'):
+                self._status = "skip"
+            self._skip_reasons.append(str(reason))
         super().addSkip(test, reason)
 
     def addUnexpectedSuccess(self, test):
@@ -135,6 +156,7 @@ def run_worker(results_path: Path, test_timeout_s: int) -> int:
         for module, module_ids in by_module.items()
     )
     WorkerResult.results_path = results_path
+    WorkerResult.requested_ids = ids
     WorkerResult.test_timeout_s = test_timeout_s
     result = unittest.TextTestRunner(
         stream=sys.stdout, verbosity=2, resultclass=WorkerResult
@@ -306,6 +328,8 @@ def main() -> int:
     parser.add_argument("--source-only", action="store_true",
                         help="run only the source-only modules (make audit), "
                              "which a normal run skips")
+    parser.add_argument("--report", type=Path,
+                        help="retain per-test results, including skip IDs and reasons, as JSON")
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--results", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
@@ -366,6 +390,12 @@ def main() -> int:
     wall = time.perf_counter() - started
 
     records = [record for batch in batches for record in batch.records.values()]
+    if args.report is not None:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(json.dumps({"schema_version": 1, "requested_ids": ids,
+            "records": sorted(records, key=lambda row: row['id']),
+            "missing_ids": sorted(set(ids) - {row['id'] for row in records})}, indent=2) + "\n",
+            encoding="utf-8")
     save_durations(durations, records)
     counts: dict[str, int] = {}
     for record in records:
