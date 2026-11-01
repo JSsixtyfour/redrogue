@@ -207,11 +207,11 @@ Mansion1TrainerHeaders:
 Mansion1TrainerHeader0:
 	trainer EVENT_BEAT_MANSION_1_TRAINER_0, 3, PokemonMansion1FScientistBattleText, PokemonMansion1FScientistEndBattleText, PokemonMansion1FScientistAfterBattleText
 Mansion1TrainerHeader1:
-	trainer EVENT_BEAT_MANSION_1_TRAINER_1, 2, PokemonMansion1FBurglar1BattleText, PokemonMansion1FBurglar1EndBattleText, PokemonMansion1FBurglar1AfterBattleText
+	trainer EVENT_BEAT_MANSION_1_TRAINER_1, 3, PokemonMansion1FBurglar1BattleText, PokemonMansion1FBurglar1EndBattleText, PokemonMansion1FBurglar1AfterBattleText
 Mansion1TrainerHeader2:
-	trainer EVENT_BEAT_MANSION_1_TRAINER_2, 2, PokemonMansion1FBurglar2BattleText, PokemonMansion1FBurglar2EndBattleText, PokemonMansion1FBurglar2AfterBattleText
+	trainer EVENT_BEAT_MANSION_1_TRAINER_2, 3, PokemonMansion1FBurglar2BattleText, PokemonMansion1FBurglar2EndBattleText, PokemonMansion1FBurglar2AfterBattleText
 Mansion1TrainerHeader3:
-	trainer EVENT_BEAT_MANSION_1_TRAINER_3, 2, PokemonMansion1FScientist2BattleText, PokemonMansion1FScientist2EndBattleText, PokemonMansion1FScientist2AfterBattleText
+	trainer EVENT_BEAT_MANSION_1_TRAINER_3, 3, PokemonMansion1FScientist2BattleText, PokemonMansion1FScientist2EndBattleText, PokemonMansion1FScientist2AfterBattleText
 	db -1 ; end
 
 ; Slot 1's padding object: never drawn or reachable, so it says nothing.

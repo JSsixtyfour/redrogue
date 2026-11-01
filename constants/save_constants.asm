@@ -5,6 +5,9 @@
 ; 16-bit complement. Continue reads the header before any saved block; a save
 ; whose header is missing or names another schema is refused with a message
 ; pointing at the patch page's converter, and left untouched.
+; Writers hold the first magic byte at SAVE_HEADER_WRITING until payload and
+; checksum publication finish. An interrupted current header is refused as
+; damaged data, without conversion. Completed schema-16 headers are unchanged.
 ;
 ; SAVE_SCHEMA_ID names the save LAYOUT AND MEANING, not the release. Bump it
 ; whenever a stored field moves, resizes, appears or disappears, or a stored
@@ -76,6 +79,9 @@
 DEF SAVE_SCHEMA_ID EQU 16
 
 DEF SAVE_HEADER_SIZE EQU 8
+; Transient invalid magic while a writer owns the save. Completed headers and
+; the stored layout are unchanged; old ROMs also reject this non-"RRSG" magic.
+DEF SAVE_HEADER_WRITING EQU $ad
 ; "RRSG" as raw ASCII, not through the game's text charmap.
 DEF SAVE_HEADER_MAGIC_0 EQU $52 ; R
 DEF SAVE_HEADER_MAGIC_1 EQU $52 ; R

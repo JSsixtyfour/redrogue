@@ -5,8 +5,13 @@ TryLoadSaveFile:
 ; A save from another layout is refused before any of it is read, and is left
 ; exactly as it is so the patch page can convert it.
 	call SaveHeaderIsCurrent
+	jr c, .headerCurrent
 	ld hl, SaveNeedsConvertingText
-	jr nc, .refuse
+	ld a, b
+	and a
+	jr z, .refuse
+	jr .badsum ; interrupted current-schema write, not a conversion request
+.headerCurrent
 	call LoadMainData
 	jr c, .badsum
 	call LoadCurrentBoxData
@@ -58,7 +63,8 @@ SaveHeaderBytes:
 .end
 ASSERT SaveHeaderBytes.end - SaveHeaderBytes == SAVE_HEADER_SIZE
 
-; Carry set if SRAM holds a save in this build's layout. Opens and closes SRAM.
+; Carry set for a committed current header; b=1 for an interrupted current
+; header, b=0 otherwise. Opens and closes SRAM without changing its contents.
 SaveHeaderIsCurrent:
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
@@ -69,6 +75,14 @@ SaveHeaderIsCurrent:
 	ld hl, sSaveHeader
 	ld de, SaveHeaderBytes
 	ld c, SAVE_HEADER_SIZE
+	ld b, 0
+	ld a, [hl]
+	cp SAVE_HEADER_WRITING
+	jr nz, .loop
+	inc b
+	inc hl
+	inc de
+	dec c
 .loop
 	ld a, [de]
 	cp [hl]
@@ -77,19 +91,27 @@ SaveHeaderIsCurrent:
 	inc hl
 	dec c
 	jr nz, .loop
+	ld a, b
+	and a
+	jr nz, .close
 	scf
+.close
 	jp GoodCheckSum ; closes SRAM, keeping carry
 .different
+	ld b, 0
 	and a
 	jp GoodCheckSum
 
 ; Every Save* routine below calls this with SRAM open and bank 1 selected, so
-; whichever save path runs, the file it leaves says which layout it is in.
+; every path invalidates the header before touching a saved payload. Publish
+; the remaining schema bytes while invalid; StoreSaveChecksum commits last.
 ; Clobbers af, bc, de, hl.
 WriteSaveHeader:
-	ld hl, SaveHeaderBytes
-	ld de, sSaveHeader
-	ld bc, SAVE_HEADER_SIZE
+	ld a, SAVE_HEADER_WRITING
+	ld [sSaveHeaderMagic], a
+	ld hl, SaveHeaderBytes + 1
+	ld de, sSaveHeader + 1
+	ld bc, SAVE_HEADER_SIZE - 1
 	jp CopyData
 
 LoadMainData:
@@ -349,6 +371,10 @@ FinishSaveData:
 	call CalcCheckSum
 StoreSaveChecksum:
 	ld [sMainDataCheckSum], a
+	; Payload and checksum are complete before the one-byte commit becomes
+	; visible. No partial image can pass solely by colliding with the old sum.
+	ld a, SAVE_HEADER_MAGIC_0
+	ld [sSaveHeaderMagic], a
 	xor a
 	ld [rBMODE], a
 	ld [rRAMG], a
