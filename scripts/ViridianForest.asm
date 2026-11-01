@@ -85,7 +85,7 @@ ViridianForest_TextPointers:
 	dw_const ViridianForestYoungster2Text,      TEXT_VIRIDIANFOREST_YOUNGSTER2
 	dw_const ViridianForestYoungster3Text,      TEXT_VIRIDIANFOREST_YOUNGSTER3
 	dw_const ViridianForestYoungster4Text,      TEXT_VIRIDIANFOREST_YOUNGSTER4
-    dw_const ViridianForestCooltrainer_FText,   TEXT_VIRIDIANFOREST_COOLTRAINER_F
+    dw_const ViridianForestYoungster5Text,   TEXT_VIRIDIANFOREST_YOUNGSTER5
     dw_const RandomPickUpItemText,              TEXT_VIRIDIANFOREST_RANDOM
     dw_const ViridianForestRogue_Reward_Script_PokeballText_1, TEXT_VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_1
     dw_const ViridianForestRogue_Reward_Script_PokeballText_2, TEXT_VIRIDIANFOREST_ROGUE_REWARD_POKEBALL_2
@@ -116,7 +116,7 @@ ViridianForestTrainerHeader1:
 ViridianForestTrainerHeader2:
 	trainer EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_2, 4, ViridianForestYoungster4BattleText, ViridianForestYoungster4EndBattleText, ViridianForestYoungster4AfterBattleText
 ViridianForestTrainerHeader3:
-	trainer EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_3, 4, ViridianForestCooltrainer_FBattleText, ViridianForestCooltrainer_FEndBattleText, ViridianForestCooltrainer_FAfterBattleText
+	trainer EVENT_BEAT_VIRIDIAN_FOREST_TRAINER_3, 4, ViridianForestYoungster5BattleText,ViridianForestYoungster5EndBattleText, ViridianForestYoungster5AfterBattleText
 	db -1 ; end
 
 ; Slot 1's padding object: never drawn or reachable, so it says nothing.
@@ -181,10 +181,6 @@ ViridianForestYoungster4AfterBattleText:
 	text_far _ViridianForestYoungster4AfterBattleText
 	text_end
 
-ViridianForestYoungster6Text:
-	text_far _ViridianForestYoungster5Text
-	text_end
-
 ViridianForestTrainerTips1Text:
 	text_far _ViridianForestTrainerTips1Text
 	text_end
@@ -209,7 +205,7 @@ ViridianForestLeavingSignText:
 	text_far _ViridianForestLeavingSignText
 	text_end
     
-ViridianForestCooltrainer_FText:
+ViridianForestYoungster5Text:
 	text_asm
 	ld hl, ViridianForestTrainerHeader3
 	call TalkToTrainer
@@ -218,7 +214,7 @@ ViridianForestCooltrainer_FText:
 ; Conditional trainer text (vanilla Cooltrainer vs Giovanni mini-boss).
 ; text_asm handler: must not clobber bc (live print cursor), must return hl ->
 ; the chosen text (see Route1JrTrainerMBattleText for the established pattern).
-ViridianForestCooltrainer_FBattleText:
+ViridianForestYoungster5BattleText:
 	text_asm
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_MINIBOSS_ACTIVE, a
@@ -227,13 +223,13 @@ ViridianForestCooltrainer_FBattleText:
 	ld hl, .GiovanniMiniBoss
 	ret
 .Vanilla
-	text_far _ViridianForestCooltrainerFBattleText
+	text_far _ViridianForestYoungster5BattleText
 	text_end
 .GiovanniMiniBoss
 	text_far _GiovanniMiniBossBattleText
 	text_end
 
-ViridianForestCooltrainer_FEndBattleText:
+ViridianForestYoungster5EndBattleText:
 	text_asm
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_MINIBOSS_ACTIVE, a
@@ -242,13 +238,13 @@ ViridianForestCooltrainer_FEndBattleText:
 	ld hl, .GiovanniMiniBoss
 	ret
 .Vanilla
-	text_far _ViridianForestYoungster4EndBattleText
+	text_far _ViridianForestYoungster5EndBattleText
 	text_end
 .GiovanniMiniBoss
 	text_far _GiovanniMiniBossEndBattleText
 	text_end
 
-ViridianForestCooltrainer_FAfterBattleText:
+ViridianForestYoungster5AfterBattleText:
 	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
@@ -297,7 +293,7 @@ jp TextScriptEnd
 
 
 viridianforestBossAfterText:
-	text_far _ViridianForestYoungster4AfterBattleText
+	text_far _ViridianForestYoungster5AfterBattleText
 	text_end
 
 ViridianForestNoTurningBackText:

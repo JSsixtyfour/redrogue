@@ -29,15 +29,14 @@ class BattleVariantMarkerContractTest(unittest.TestCase):
         self.assertEqual(len(set(tiles)), 6)
         self.assertTrue(all(any(tile) for tile in tiles))
 
-    def test_evolution_preserves_type_variant_secondary_type(self) -> None:
-        source = (REPO_ROOT / "engine" / "pokemon" / "evos_moves.asm").read_text()
+    def test_evolution_type_preservation_is_owned_by_type_consumer(self) -> None:
+        evolution = (REPO_ROOT / "engine" / "pokemon" / "evos_moves.asm").read_text()
+        types = (REPO_ROOT / "engine" / "pokemon" / "set_types.asm").read_text()
 
-        self.assertIn("bit BIT_TYPE_VARIANT, [hl]", source)
-        self.assertIn("ld bc, MON_TYPE2", source)
-        self.assertIn("predef SetPartyMonTypes", source)
-        self.assertIn("ld [hl], a", source)
-        self.assertLess(source.index("push af"), source.index("predef SetPartyMonTypes"))
-        self.assertLess(source.index("pop af"), source.index(".evolutionTypesSet"))
+        self.assertIn("predef SetPartyMonTypes", evolution)
+        self.assertIn("BIT_TYPE_VARIANT", types)
+        # Runtime pair preservation, ordinary refresh and Ghost behavior are
+        # exercised directly in test_type_variant_lifecycle.py.
 
 
 class BattleVariantMarkerRuntimeTest(unittest.TestCase):

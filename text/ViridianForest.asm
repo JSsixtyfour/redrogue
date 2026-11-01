@@ -14,7 +14,7 @@ _ViridianForestYoungster2BattleText::
 
 _ViridianForestYoungster2EndBattleText::
 	text "No!"
-	line "CATERPIE can't"
+	line "My #MON can't"
 	cont "cut it!"
 	prompt
 
@@ -62,8 +62,24 @@ _ViridianForestYoungster4AfterBattleText::
 	cont "dropped!"
 	done
 
-_ViridianForestCooltrainerFBattleText::
-	text "INSERT TEXT HERE"
+_ViridianForestYoungster5BattleText::
+	text "Oh hey, want to"
+	line "battle?"
+	done
+
+_ViridianForestYoungster5EndBattleText::
+	text "Hmm."
+	line "I'm too"
+	cont "distracted with"
+	cont "catching BUG"
+	cont "#MON"
+	prompt
+
+_ViridianForestYoungster5AfterBattleText::
+	text "I've heard there's a"
+	line "forest where you"
+	cont "can find pink"
+	cont "BUTTERFREE."
 	done
 
 _ViridianForestYoungster5Text::

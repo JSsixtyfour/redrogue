@@ -2,6 +2,62 @@
 ; Every public entry is a farcall-safe leaf or restores the caller-visible
 ; result through de, the established Bankswitch-preserved register pair.
 
+; Accuracy modifiers share one entry point and one section. The intrinsic
+; special-form multiplier runs for either side, then player-only flat bonuses.
+; In/out: e = the already-scaled move accuracy threshold.
+BridgeAdjustAccuracyThreshold::
+	call AdjustPinkButterfreeAccuracy
+	ldh a, [hWhoseTurn]
+	and a
+	ret nz
+	ld a, [wWitchPrizesEarned]
+	and 1 << (PRIZE_ACC_BOOST - 1)
+	jr z, .bridge
+	call .addTenPoints
+.bridge
+	push de
+	ld e, BRIDGE_EFFECT_ACCURACY
+	farcall BridgeHasGlobalEffect
+	pop de
+	ret nc
+.addTenPoints
+	ld a, e
+	add 26
+	jr nc, .store
+	ld a, $ff
+.store
+	ld e, a
+.done
+	ret
+
+; In/out: e = post-accuracy/evasion threshold. Species-keyed bit-3 capability,
+; on either attacking side, before the existing player-only flat bonuses.
+AdjustPinkButterfreeAccuracy::
+	push de
+	ldh a, [hWhoseTurn]
+	and a
+	ld de, wBattleMon
+	jr z, .attacker
+	ld de, wEnemyMon
+.attacker
+	farcall GetSpecialFormCaps2
+	bit SF2_ACCURACY_BOOST, e
+	pop de
+	ret z
+	ld a, e
+	srl a
+	srl a
+	ld c, a
+	srl a
+	srl a
+	add c
+	add e
+	jr nc, .store
+	ld a, $ff
+.store
+	ld e, a
+	ret
+
 ; In/out: e = an ordinary major-status side-effect threshold.
 ; Spiked Drink increases player-inflicted status chances by 20 percent
 ; relatively, saturating at $ff.
@@ -289,7 +345,7 @@ BridgeMomSecondChanceEligibleFar::
 
 ; LoadEnemyMonData .copyTypes (TOUCH 2), after both types are written.
 ; OUTPUT: e = the byte to store at wEnemyMonCatchRate. For a variant, also
-;         overwrites wEnemyMonType2 with the struct's stored type.
+;         restores both stored types. Ghost retains its existing type-2 priority.
 ; CLOBBERS: af, bc, hl, e  (d preserved)
 GetEnemyCatchRateByte::
 	ldh a, [hIsInBattle]
@@ -301,6 +357,17 @@ GetEnemyCatchRateByte::
 	call AddNTimes
 	ld a, [hl]
 	ld e, a
+	bit BIT_TYPE_VARIANT, a
+	jr z, .primaryReady
+	push hl
+	dec hl                 ; stored MON_TYPE2
+	ld a, [hld]
+	ld [wEnemyMonType2], a
+	ld a, [hl]             ; stored MON_TYPE1
+	ld [wEnemyMonType1], a
+	pop hl
+.primaryReady
+	ld a, e
 	bit BIT_GHOST_VARIANT, a
 	ld a, GHOST
 	jr nz, .storeVariantType ; repair old evolved ghosts from the flag
@@ -343,4 +410,61 @@ PublishEnemyFormAndStatContext::
 	ret z
 	ld hl, wBridgeCalcEffectFlags
 	set BRIDGE_CALC_SWAP_ATK_SPC, [hl]
+	ret
+
+; Grant a species-keyed bit-3 special form to the completed party/box struct.
+; Authored type packages follow Dragon Charizard: bit 2 plus both stored types.
+; In: de = struct. Preserves a, bc and de; clobbers f, hl.
+ApplySpecialForm::
+	push af
+	push bc
+	ld hl, MON_CATCH_RATE
+	add hl, de
+	set BIT_SPECIAL_FORM, [hl]
+	ld a, [de]
+	ld b, a
+	ld hl, SpecialFormTypeOverrides
+.loop
+	ld a, [hli]
+	and a
+	jr z, .done
+	cp b
+	jr z, .types
+	inc hl
+	inc hl
+	jr .loop
+.types
+	ld a, [hli]
+	ld c, [hl]
+	ld hl, MON_CATCH_RATE
+	add hl, de
+	set BIT_TYPE_VARIANT, [hl]
+	dec hl
+	dec hl ; MON_TYPE1, following the Dragon gift's flag-then-pair order
+	ld [hli], a
+	ld [hl], c
+.done
+	pop bc
+	pop af
+	ret
+
+SpecialFormTypeOverrides:
+	db ONIX, ICE, GROUND
+	db SNORLAX, ICE, ICE
+	db 0
+
+; Restore an owned type variant's complete type pair after a species-header
+; reload. Same-species guard matches the loaded instance; no new RAM context.
+ApplyStoredTypeVariantToHeader::
+	ld a, [wLoadedMonSpecies]
+	ld hl, wCurSpecies
+	cp [hl]
+	ret nz
+	ld a, [wLoadedMon + MON_CATCH_RATE]
+	bit BIT_TYPE_VARIANT, a
+	ret z
+	ld a, [wLoadedMon + MON_TYPE1]
+	ld [wMonHType1], a
+	ld a, [wLoadedMon + MON_TYPE2]
+	ld [wMonHType2], a
 	ret

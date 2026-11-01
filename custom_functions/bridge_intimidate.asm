@@ -3,7 +3,8 @@
 ; reaches "rogue" (GetSpecialFormCaps) and battle core (BridgeRecalculateEnemyStat,
 ; PlaySelectedAnimation) only by farcall, so it can land in any bank.
 
-SECTION "Bridge Intimidate", ROMX
+; Keep the measured bank stable when map sections shrink (2026-10-31).
+SECTION "Bridge Intimidate", ROMX, BANK[$06]
 
 ; On each player send-out, lower the opposing active mon's Attack one stage
 ; when the player form is the special Growlithe family, with the LEER

@@ -714,9 +714,10 @@ FacSuperNerdOfferText:
 	done
 
 FacSuperNerdDeclinedText:
-	text "Scared? I'll be"
-	line "right here."
-	done
+	text "Oh? But I wanted"
+	line "to see your"
+	cont "#MON!"
+    done
 
 FacSuperNerdAfterText:
 	text "Enjoy the item,"
@@ -738,29 +739,28 @@ FacSuperNerdNoRoomText:
 
 ; In battle: he lost. Line 1 already holds "SUPER NERD: " (12 of 18).
 FacSuperNerdBeatenText:
-	text "Ugh!"
-	para "You win fair"
-	line "and square."
+	text "Wow!"
+	para "You have the"
+	line "coolest #MON!"
 	prompt
 
 ; In battle: he won.
 FacSuperNerdWonText:
-	text "My stash stays"
-	line "with me!"
+	text "Better luck next"
+	line "time!"
 	prompt
 
 ; The PokeManiac's placeholder lines (user, 2026-10-14).
 FacManiacOfferText:
-	text "Beat me and one"
-	line "of my #MON is"
-	cont "yours to keep!"
+	text "Best me and one my"
+	line "#MON is yours."
 
 	para "Ready?"
 	done
 
 FacManiacDeclinedText:
-	text "My #MON can"
-	line "wait. Can you?"
+	text "Too risky huh? I"
+	line "understand."
 	done
 
 FacManiacAfterText:
@@ -777,20 +777,20 @@ FacManiacGotMonText:
 	text_end
 
 FacManiacNoRoomText:
-	text "No room for it?"
-	line "Then it stays"
-	cont "with me."
+	text "I'll hold onto it"
+	line "until you make"
+	cont "room."
 	done
 
 ; In battle: he lost. Line 1 already holds "POKEMANIAC: " (12 of 18).
 FacManiacBeatenText:
-	text "No way!"
-	para "Pick... no, I'll"
-	line "pick one for you."
+	text "Alright"
+	text "Let me roll the"
+	line "dice to choose"
+	cont "which."
 	prompt
 
 ; In battle: he won.
 FacManiacWonText:
-	text "My collection"
-	line "stays whole!"
+	text "Oh, nice try!"
 	prompt

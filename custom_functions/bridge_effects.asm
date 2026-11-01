@@ -108,31 +108,6 @@ BridgeAdjustCriticalThreshold::
 	ld e, a
 	ret
 
-; In/out: e = the already-scaled move accuracy threshold.
-BridgeAdjustAccuracyThreshold::
-	ldh a, [hWhoseTurn]
-	and a
-	ret nz
-	ld a, [wWitchPrizesEarned]
-	and 1 << (PRIZE_ACC_BOOST - 1)
-	jr z, .bridge
-	call .addTenPoints
-.bridge
-	push de
-	ld e, BRIDGE_EFFECT_ACCURACY
-	call BridgeHasGlobalEffect
-	pop de
-	ret nc
-.addTenPoints
-	ld a, e
-	add 26
-	jr nc, .store
-	ld a, $ff
-.store
-	ld e, a
-.done
-	ret
-
 ; In/out: e = the move's ordinary flinch threshold.
 BridgeAdjustFlinchThreshold::
 	ldh a, [hWhoseTurn]
@@ -504,7 +479,9 @@ BridgeFinalizeGiftMonFar::
 	ld a, b
 	and a
 	ret z
-	call ApplySpecialForm
+	push bc                    ; finalizer id must survive the banked grant
+	farcall ApplySpecialForm
+	pop bc
 	ld a, b
 	cp BRIDGE_MON_FINALIZE_SPECIAL
 	ret z

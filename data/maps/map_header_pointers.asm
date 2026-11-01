@@ -72,7 +72,7 @@ MapHeaderPointers::
 	dw MtMoonPokecenter_h
 	dw CeruleanTrashedHouse_h ; CERULEAN_TRASHED_HOUSE_COPY
 	dw Route5Gate_h
-	dw UndergroundPathRoute5_h
+	dw UndergroundPathRoute6_h ; retired UNDERGROUND_PATH_ROUTE_5 slot
 	dw Daycare_h
 	dw Route6Gate_h
 	dw UndergroundPathRoute6_h

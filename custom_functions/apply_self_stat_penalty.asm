@@ -9,7 +9,8 @@
 ; path (AI Overhaul follow-up F4) and is not self-targeted. Kept as-is because
 ; ROM_BIBLE.md's 2026-08-26 floater-churn entry names this section by name.
 
-SECTION "Self-Target Stat Penalty", ROMX
+; Keep the measured bank stable when map sections shrink (2026-10-31).
+SECTION "Self-Target Stat Penalty", ROMX, BANK[$05]
 
 ; Stat-ups are always self-targeted in Gen 1, but
 ; QuarterSpeedDueToParalysis/HalveAttackDueToBurn (engine/battle/core.asm)

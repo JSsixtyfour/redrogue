@@ -4,14 +4,14 @@
 ; flags live in the otherwise-dead MON_CATCH_RATE byte, so they survive box
 ; deposits, trades, battle-loading and saves for free (the shared struct
 ; layout carries them). No new WRAM is used - the type of a variant is stored
-; in the mon's own MON_TYPE2 field, and the special-form capabilities are a
+; in the mon's own MON_TYPE1/MON_TYPE2 fields, and the special-form capabilities are a
 ; ROM table keyed on species.
 ;
 ;   bit 0 = ghost variant   (func_ghost_variant.asm)
 ;   bit 1 = fusion          (func_fusion.asm)
-;   bit 2 = type variant    (this file)  -- one bit for ALL secondary-type
-;                                           re-skins; the actual type is read
-;                                           back from the mon's stored MON_TYPE2
+;   bit 2 = type variant    (this file)  -- one bit for stored type-pair
+;                                           overrides; both types are read
+;                                           back from the mon's stored fields
 ;   bit 3 = special form    (this file)  -- one bit; the actual capability set
 ;                                           is looked up per-species in
 ;                                           SpecialFormCaps below
@@ -37,14 +37,13 @@ DEF SF_INTIMIDATE  EQU 7 ; lower enemy Attack on entry (C6 battle hook)
 ; Same species-keyed lookup, same BIT_SPECIAL_FORM gate.
 DEF SF2_NO_PARALYSIS EQU 0 ; can't be paralyzed            (Limber, Karate Dojo)
 DEF SF2_SWAP_ATK_SPC EQU 1 ; stored Attack/Special swapped (Mystic, Karate Dojo)
+DEF SF2_ACCURACY_BOOST EQU 2 ; roughly 1.3x accuracy (Pink Butterfree)
 
 ; ---------------------------------------------------------------------------
-; NOTE: applying a type variant (set BIT_TYPE_VARIANT + write MON_TYPE2) is done
-; INLINE by the caller (BridgeApplyTypeVariantGift in bridge_gift_menu.asm) - it's
-; pure WRAM work, and a farcall would clobber the type in `a` via Bankswitch
-; (project-farcall-home-clobbers-a). There is deliberately no ApplyTypeVariant
-; routine to avoid that landmine. IsTypeVariant / GetTypeVariantPalette below are
-; the read-side helpers used by the display hooks.
+; Type gifts write BIT_TYPE_VARIANT and the stored type fields. Secondary-only
+; gifts retain the existing primary; authored special packages supply both.
+; ApplySpecialForm and the shared header restoration live with the extended
+; effects, where there is room. Banked inputs use de, never a.
 
 ; ---------------------------------------------------------------------------
 ; IsTypeVariant
@@ -91,20 +90,6 @@ GetTypeVariantPalette::
 	ret
 .dragon
 	ld e, PAL_BLACK
-	ret
-
-; ---------------------------------------------------------------------------
-; ApplySpecialForm
-; Flags the mon at de as a special form. Its actual capabilities are looked
-; up per-species (SpecialFormCaps), so nothing species-specific is stored -
-; the gift routine just picks the right species and sets this one flag.
-; INPUT:  de = struct base
-; CLOBBERS: f, hl  (a, de preserved)
-; ---------------------------------------------------------------------------
-ApplySpecialForm::
-	ld hl, MON_CATCH_RATE
-	add hl, de
-	set BIT_SPECIAL_FORM, [hl]
 	ret
 
 ; ---------------------------------------------------------------------------
@@ -177,6 +162,7 @@ SpecialFormCaps:
 SpecialFormCaps2:
 	db HITMONLEE,  1 << SF2_NO_PARALYSIS
 	db HITMONCHAN, 1 << SF2_SWAP_ATK_SPC
+	db BUTTERFREE, 1 << SF2_ACCURACY_BOOST
 	db 0 ; terminator
 
 ; Return carry when the active player's special Nidoran female family form

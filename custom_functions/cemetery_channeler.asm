@@ -226,37 +226,35 @@ CemChannelerHeal::
 
 ; Placeholder lines (user, 2026-10-14).
 CemChannelerOfferText:
-	text "Ghhh... The spirit"
-	line "wants a battle..."
-
-	para "Will you face it?"
+	text "Free...me..."
+	line "battle..."
 	done
 
 CemChannelerDeclinedText:
-	text "Ohhh... it waits."
+	text "Urrg...Awaa..."
+	line "I...await..."
 	done
 
 CemChannelerAfterText:
-	text "The spirit is at"
-	line "peace now. Thank"
-	cont "you, trainer."
+	text "Sorry! I was"
+	line "possessed!"
 	done
 
 CemChannelerHealText:
-	text "The spirit left"
-	line "me! Let me tend"
-	cont "your #MON."
+	text "Please, let me"
+	line "heal the damage I"
+	cont "did to you."
 	prompt
 
 CemChannelerHealedText:
-	text "Your #MON look"
-	line "rested and ready!"
+	text "<PLAYER>'s #MON"
+	line "are fully healed!"
 	done
 
 ; In battle: he lost. Line 1 already holds "CHANNELER: " (11 of 18).
 CemChannelerBeatenText:
-	text "Gyaah!"
-	para "It's leaving me!"
+	text "Whew!"
+	line "The spirit left!"
 	prompt
 
 ; In battle: he won.

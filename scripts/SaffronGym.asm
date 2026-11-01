@@ -1,7 +1,14 @@
 SaffronGym_Script:
     call SabrinaShowOrHideExitBlock
 	CheckEvent EVENT_ENTER_ROOM
-	call z, .initial
+	jr nz, .loadGymNames
+	SetEvent EVENT_ENTER_ROOM
+    farcall GymLeaderRandomItem
+.loadGymNames
+	; Unsaved buffers must be rebuilt after Continue, as in Viridian Gym.
+	ld hl, SaffronGym_Script.CityName
+	ld de, SaffronGym_Script.LeaderName
+	call LoadGymLeaderAndCityName
 	call EnableAutoTextBoxDrawing
 	ld hl, SaffronGymTrainerHeaders
 	ld de, SaffronGym_ScriptPointers
@@ -10,12 +17,6 @@ SaffronGym_Script:
 	ld [wSaffronGymCurScript], a
 	ret
 
-.initial:
-	SetEvent EVENT_ENTER_ROOM
-    farcall GymLeaderRandomItem
-	ld hl, .CityName
-	ld de, .LeaderName
-	jp LoadGymLeaderAndCityName
 
 .CityName:
 	db "SAFFRON CITY@"

@@ -72,7 +72,7 @@ MapHeaderBanks::
 	db BANK(MtMoonPokecenter_h)
 	db BANK(CeruleanTrashedHouse_h)
 	db BANK(Route5Gate_h)
-	db BANK(UndergroundPathRoute5_h)
+	db BANK(UndergroundPathRoute6_h) ; retired UNDERGROUND_PATH_ROUTE_5 slot
 	db BANK(Daycare_h)
 	db BANK(Route6Gate_h)
 	db BANK(UndergroundPathRoute6_h)

@@ -372,11 +372,8 @@ class PCIdentityChainTest(unittest.TestCase):
             'rom_sha256':h.rom_sha256,'sym_sha256':h.sym_sha256}, indent=2))
 
 
-class CGBPCIdentityChainTest(PCIdentityChainTest):
-    cgb = True
-
-
 def run_campaign_chain(*, cgb, output):
+    from test_cgb_pc_identity_chain import CGBPCIdentityChainTest
     case = (CGBPCIdentityChainTest if cgb else PCIdentityChainTest)(
         'test_boxed_identity_survives_continue_before_withdrawal')
     try:

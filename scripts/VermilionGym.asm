@@ -6,7 +6,14 @@ VermilionGym_Script:
 	; instead of repeatedly - also avoids colliding with
 	; LTSurgeShowOrHideExitBlock's own use of BIT_CUR_MAP_LOADED_1 above
 	CheckEvent EVENT_ENTER_ROOM
-	call z, .initial
+	jr nz, .loadGymNames
+	SetEvent EVENT_ENTER_ROOM
+    farcall GymLeaderRandomItem
+.loadGymNames
+	; Unsaved buffers must be rebuilt after Continue, as in Viridian Gym.
+	ld hl, VermilionGym_Script.CityName
+	ld de, VermilionGym_Script.LeaderName
+	call LoadGymLeaderAndCityName
 	call EnableAutoTextBoxDrawing
 	ld hl, VermilionGymTrainerHeaders
 	ld de, VermilionGym_ScriptPointers
@@ -15,12 +22,6 @@ VermilionGym_Script:
 	ld [wVermilionGymCurScript], a
 	ret
 
-.initial:
-	SetEvent EVENT_ENTER_ROOM
-    farcall GymLeaderRandomItem
-	ld hl, .CityName
-	ld de, .LeaderName
-	jp LoadGymLeaderAndCityName
 
 .CityName:
 	db "VERMILION CITY@"

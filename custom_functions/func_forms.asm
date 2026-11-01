@@ -222,7 +222,8 @@ GetFormNameSource::
 ;           at +0, form in MON_CATCH_RATE bits 5-6 (battle_struct's CatchRate is
 ;           the same offset, which IsGhostVariant already relies on).
 ;         GetFormPalette: d = species (internal index), e = form index 0..3
-; OUTPUT: e = the form's palette, or 0 = no override (form 0, or no record)
+; OUTPUT: e = the palette, or 0 = no override. The struct entry also handles
+;         bit-3 Pink Butterfree; the d/e entry is indexed only.
 ; CLOBBERS: af, bc, d, hl
 ; Farcall-safe: input in d/e, result in e (only d/e cross Bankswitch).
 ; ---------------------------------------------------------------------------
@@ -233,6 +234,16 @@ GetFormPaletteForStruct::
 	ld bc, MON_CATCH_RATE
 	add hl, bc
 	ld a, [hl]
+	; Species-keyed special appearances use bit 3, independently of indexed
+	; forms. Apply these as the base palette, before shiny/ghost/type variants.
+	bit BIT_SPECIAL_FORM, a
+	jr z, .indexed
+	ld e, PAL_PINKMON
+	ld a, d
+	cp BUTTERFREE
+	ret z
+	ld a, [hl]
+.indexed
 	and FORM_MASK
 	rlca                         ; bits 5-6 -> 0..3, as PublishFormContext
 	rlca

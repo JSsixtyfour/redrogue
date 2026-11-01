@@ -1,7 +1,14 @@
 VioletGym_Script:
 	call FalknerShowOrHideExitBlock
 	CheckEvent EVENT_ENTER_ROOM
-	call z, initialViolet
+	jr nz, .loadGymNames
+	SetEvent EVENT_ENTER_ROOM
+	farcall GymLeaderRandomItem
+.loadGymNames
+	; Unsaved buffers must be rebuilt after Continue, as in Viridian Gym.
+	ld hl, VioletGymNames.CityName
+	ld de, VioletGymNames.LeaderName
+	call LoadGymLeaderAndCityName
 	call EnableAutoTextBoxDrawing
 	ld hl, VioletGymTrainerHeaders
 	ld de, VioletGym_ScriptPointers
@@ -27,12 +34,8 @@ FalknerShowOrHideExitBlock:
 	lb bc, 0, 3
 	predef_jump ReplaceTileBlock
 
-initialViolet:
-	SetEvent EVENT_ENTER_ROOM
-	farcall GymLeaderRandomItem
-	ld hl, .CityName
-	ld de, .LeaderName
-	jp LoadGymLeaderAndCityName
+; Authored names; one-time setup runs inline above.
+VioletGymNames:
 
 .CityName:
 	db "VIOLET CITY@"

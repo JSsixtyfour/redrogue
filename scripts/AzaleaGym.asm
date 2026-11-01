@@ -1,7 +1,14 @@
 AzaleaGym_Script:
 	call BugsyShowOrHideExitBlock
 	CheckEvent EVENT_ENTER_ROOM
-	call z, initialAzalea
+	jr nz, .loadGymNames
+	SetEvent EVENT_ENTER_ROOM
+	farcall GymLeaderRandomItem
+.loadGymNames
+	; Unsaved buffers must be rebuilt after Continue, as in Viridian Gym.
+	ld hl, AzaleaGymNames.CityName
+	ld de, AzaleaGymNames.LeaderName
+	call LoadGymLeaderAndCityName
 	call EnableAutoTextBoxDrawing
 	ld hl, AzaleaGymTrainerHeaders
 	ld de, AzaleaGym_ScriptPointers
@@ -27,12 +34,8 @@ BugsyShowOrHideExitBlock:
 	lb bc, 0, 2
 	predef_jump ReplaceTileBlock
 
-initialAzalea:
-	SetEvent EVENT_ENTER_ROOM
-	farcall GymLeaderRandomItem
-	ld hl, .CityName
-	ld de, .LeaderName
-	jp LoadGymLeaderAndCityName
+; Authored names; one-time setup runs inline above.
+AzaleaGymNames:
 
 .CityName:
 	db "AZALEA TOWN@"

@@ -1,7 +1,19 @@
 FuchsiaGym_Script:
     call KogaShowOrHideExitBlock
 	CheckEvent EVENT_ENTER_ROOM
-	call z, .initial
+	jr nz, .loadGymNames
+	SetEvent EVENT_ENTER_ROOM
+    farcall GymLeaderRandomItem
+	call FuchsiaGymHideUnusedLeader
+.loadGymNames
+	; Unsaved buffers must be rebuilt after Continue, as in Viridian Gym.
+	ld de, FuchsiaGym_Script.LeaderName
+	call FuchsiaGymIsJanine
+	jr nz, .nameChosen
+	ld de, FuchsiaGym_Script.JanineName
+.nameChosen
+	ld hl, FuchsiaGym_Script.CityName        ; loaded AFTER the call, which clobbers hl
+	call LoadGymLeaderAndCityName
 	call EnableAutoTextBoxDrawing
 	ld hl, FuchsiaGymTrainerHeaders
 	ld de, FuchsiaGym_ScriptPointers
@@ -10,17 +22,6 @@ FuchsiaGym_Script:
 	ld [wFuchsiaGymCurScript], a
 	ret
 
-.initial:
-	SetEvent EVENT_ENTER_ROOM
-    farcall GymLeaderRandomItem
-	call FuchsiaGymHideUnusedLeader
-	ld de, .LeaderName
-	call FuchsiaGymIsJanine
-	jr nz, .nameChosen
-	ld de, .JanineName
-.nameChosen
-	ld hl, .CityName        ; loaded AFTER the call, which clobbers hl
-	jp LoadGymLeaderAndCityName
 
 
 

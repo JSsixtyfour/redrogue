@@ -1,7 +1,14 @@
 CeladonGym_Script:
     call ErikaShowOrHideExitBlock
 	CheckEvent EVENT_ENTER_ROOM
-	call z, .initial
+	jr nz, .loadGymNames
+	SetEvent EVENT_ENTER_ROOM
+    farcall GymLeaderRandomItem
+.loadGymNames
+	; Unsaved buffers must be rebuilt after Continue, as in Viridian Gym.
+	ld hl, CeladonGym_Script.CityName
+	ld de, CeladonGym_Script.LeaderName
+	call LoadGymLeaderAndCityName
 	call EnableAutoTextBoxDrawing
 	ld hl, CeladonGymTrainerHeaders
 	ld de, CeladonGym_ScriptPointers
@@ -10,12 +17,6 @@ CeladonGym_Script:
 	ld [wCeladonGymCurScript], a
 	ret
 
-.initial:
-	SetEvent EVENT_ENTER_ROOM
-    farcall GymLeaderRandomItem
-	ld hl, .CityName
-	ld de, .LeaderName
-	jp LoadGymLeaderAndCityName
 
 .CityName:
 	db "CELADON CITY@"

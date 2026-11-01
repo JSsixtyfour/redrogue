@@ -915,7 +915,7 @@ PewterPokecenter_Blocks: INCBIN "maps/PewterPokecenter.blk"
 UndergroundPathRoute7_Blocks:
 UndergroundPathRoute7Copy_Blocks:
 UndergroundPathRoute6_Blocks:
-UndergroundPathRoute5_Blocks: INCBIN "maps/UndergroundPathRoute5.blk"
+INCBIN "maps/UndergroundPathRoute6.blk"
 
 Route2Gate_Blocks:
 ViridianForestSouthGate_Blocks:
@@ -1018,10 +1018,6 @@ INCLUDE "data/maps/objects/Route2Gate.asm"
 INCLUDE "data/maps/headers/ViridianForestSouthGate.asm"
 INCLUDE "scripts/ViridianForestSouthGate.asm"
 INCLUDE "data/maps/objects/ViridianForestSouthGate.asm"
-
-INCLUDE "data/maps/headers/UndergroundPathRoute5.asm"
-INCLUDE "scripts/UndergroundPathRoute5.asm"
-INCLUDE "data/maps/objects/UndergroundPathRoute5.asm"
 
 INCLUDE "data/maps/headers/UndergroundPathRoute6.asm"
 INCLUDE "scripts/UndergroundPathRoute6.asm"

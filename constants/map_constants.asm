@@ -118,7 +118,7 @@ DEF FIRST_INDOOR_MAP EQU const_value
 	end_indoor_group CERULEAN_CITY_2
 
 	map_const ROUTE_5_GATE,                   4,  3 ; $46
-	map_const UNDERGROUND_PATH_ROUTE_5,       4,  4 ; $47
+	map_const UNDERGROUND_PATH_ROUTE_5,       4,  4 ; $47 retired; keep IDs stable, aliases Route 6 header
 	map_const DAYCARE,                        4,  4 ; $48
 	end_indoor_group ROUTE_5
 
