@@ -428,6 +428,7 @@ class AutoplayAgent:
         h.register_hook("DisplayNamingScreen.submitNickname",
                         lambda _c: setattr(self, "naming_screen", False))
         h.register_hook("DisplayBattleMenu", self._on_battle_menu)
+        h.register_hook("DisplayBattleMenu.handleMenuSelection", self._on_battle_menu_selection)
         h.register_hook("MoveSelectionMenu", self._on_move_menu)
         h.register_hook("PartyMenuInit", self._on_party_menu)
         h.register_hook("AbandonLearning", self._on_abandon_learning)
@@ -504,6 +505,14 @@ class AutoplayAgent:
         else:
             self.set_menu_goal("battle_menu", ("DisplayBattleMenu",), choice,
                                self._battle_menu_button, chaos=("up", "down", "left", "right"))
+
+    def _on_battle_menu_selection(self, _context) -> None:
+        # The game can accept a held input during press() before the next
+        # goal step. Its last menu caller then survives into turn narration.
+        # Retire this goal at the game's acceptance boundary, while keeping
+        # redraw waits before selection visible to menu_text_wait.
+        if self.menu_goal is not None and self.menu_goal.kind == "battle_menu":
+            self.menu_goal = None
 
     def matchup_switch(self) -> int | None:
         """--player strong: once per enemy mon in a trainer battle, switch to
