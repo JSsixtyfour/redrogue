@@ -387,6 +387,7 @@ GetEnemyCatchRateByte::
 	rrca
 	ld e, a
 .done                      ; single exit (test_karate_dojo_forms hooks it)
+	farcall OptionalEncounterEnemyFlags
 	ret
 
 ; LoadEnemyMonData TOUCH 1: the usual form publish, then arm _CalcStats'

@@ -1148,9 +1148,6 @@ StageEventPrintRecoverLine::
 	jp PrintText
 .toBox
 	ld hl, StageEventRecoverToBoxBill
-	CheckEvent EVENT_MET_BILL
-	jr nz, .haveLine
-	ld hl, StageEventRecoverToBoxPC
 .haveLine
 	call PrintText
 	; The capture path's own follow-up, reused rather than reinvented. Its
@@ -1178,7 +1175,7 @@ StageEventRecoverTexts:
 	dw StageEventRecoverMon         ; STAGE_GIVEBACK_MON
 	dw StageEventRecoverItem        ; STAGE_GIVEBACK_ITEM
 	dw StageEventRecoverNoRoom      ; STAGE_GIVEBACK_NO_ROOM
-	dw StageEventRecoverToBoxPC     ; STAGE_GIVEBACK_TO_BOX
+	dw StageEventRecoverToBoxBill   ; STAGE_GIVEBACK_TO_BOX
 	ASSERT NUM_STAGE_GIVEBACK_RESULTS == 5, "StageEventRecoverTexts needs a row per give-back result"
 
 StageEventAfterJessieJames:
@@ -1210,9 +1207,6 @@ StageEventRecoverNoRoom:
 	text_end
 StageEventRecoverToBoxBill:
 	text_far _StageEventRecoverToBoxBillText
-	text_end
-StageEventRecoverToBoxPC:
-	text_far _StageEventRecoverToBoxPCText
 	text_end
 
 ; ============================================================

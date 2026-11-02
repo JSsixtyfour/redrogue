@@ -30,37 +30,31 @@
 ; --- ARRIVAL: spoken once, standing in front of the player on map load ----
 
 _StageEventArrivalJessieJamesText::
-	text "Hold it right"
-	line "there! Hand over"
-	cont "that #MON!@"
+	text "Stop right there!"
+	line "That #MON is"
+	cont "Team Rocket's!"
+    
+    para "Don't come looking"
+	line "for us because you"
+	cont "won't like the"
+	cont "result!@"
 	text_promptbutton
 	text_end
 
 _StageEventArrivalPsychicText::
-	text "I foresaw your"
-	line "arrival... and"
-	cont "your loss.@"
+	text "Look into my"
+	line "eyes..."
+
+	para "Give... me..."
+	line "the... # BALL@"
 	text_promptbutton
 	text_end
 
 _StageEventArrivalBurglarText::
-	text "Nice bag! I'll"
-	line "be taking"
-	cont "something.@"
-	text_promptbutton
-	text_end
-
-_StageEventArrivalJoyText::
-	text "Oh! A trainer"
-	line "way out here?"
-	cont "Let me help.@"
-	text_promptbutton
-	text_end
-
-_StageEventArrivalJennyText::
-	text "This area isn't"
-	line "safe. I'm on"
-	cont "patrol here.@"
+	text "Thanks! I'll be"
+	line "taking that!"
+    cont "Good luck finding"
+	cont "me.@"
 	text_promptbutton
 	text_end
 
@@ -74,8 +68,8 @@ _StageEventArrivalJennyText::
 ; has a different reason for taking it.
 
 _StageEventTookMonJessieJamesText::
-	text "They made off"
-	line "with @"
+	text "They stole"
+	line "@"
 	text_ram wNameBuffer
 	text "!@"
 	text_end
@@ -83,15 +77,16 @@ _StageEventTookMonJessieJamesText::
 _StageEventTookMonPsychicText::
 	text "@"
 	text_ram wNameBuffer
-	text " vanished"
-	line "from your party!@"
+	text " was"
+	line "stolen from your"
+	cont "party.@"
 	text_end
 
 _StageEventTookMonBurglarText::
-	text "He grabbed @"
+	text "He stole @"
 	text_ram wNameBuffer
 	text ""
-	line "and bolted!@"
+	line "and fled!@"
 	text_end
 
 _StageEventTookItemJessieJamesText::
@@ -105,7 +100,7 @@ _StageEventTookItemPsychicText::
 	text "Your @"
 	text_ram wNameBuffer
 	text ""
-	line "floated away!@"
+	line "was taken!@"
 	text_end
 
 _StageEventTookItemBurglarText::
@@ -117,37 +112,40 @@ _StageEventTookItemBurglarText::
 
 ; --- HIDEOUT: spoken when the player finds them again ---------------------
 
+; Good NPCs skip the arrival conversation. Keep the existing map-script
+; references valid without restoring the removed greeting dialogue.
+_StageEventArrivalJoyText::
+_StageEventArrivalJennyText::
+	text_end
+
 _StageEventHideoutJessieJamesText::
-	text "You followed us"
-	line "all the way out"
-	cont "here?@"
+	text "Alright twerp, you"
+	line "asked for it!@"
 	text_promptbutton
 	text_end
 
 _StageEventHideoutPsychicText::
-	text "Predictable. I"
-	line "knew you would"
-	cont "come.@"
+	text "Ah, so you did"
+	line "come. Just as I"
+	cont "predicted.@"
 	text_promptbutton
 	text_end
 
 _StageEventHideoutBurglarText::
-	text "Tch. You've got"
-	line "a good nose,"
-	cont "kid.@"
+	text "Tch. You caught me.@"
 	text_promptbutton
 	text_end
 
 _StageEventHideoutJoyText::
-	text "Your #MON look"
-	line "much better"
-	cont "now!@"
+	text "Surprised to see"
+	line "me out here?@"
 	text_promptbutton
 	text_end
 
 _StageEventHideoutJennyText::
-	text "Stay safe out"
-	line "here, trainer.@"
+	text "Wait, who is that?"
+	line "Stop! You're under"
+	cont "arrest!@"
 	text_promptbutton
 	text_end
 
@@ -169,9 +167,7 @@ _StageEventHideoutJennyText::
 ; Each ends `prompt`, not "@" + `text_end`. See the file header for why.
 
 _StageEventDefeatJessieJamesText::
-	text "No!"
-	line "We're blasting"
-	cont "off again!"
+	text "A brat beat us?"
 	prompt
 
 _StageEventDefeatPsychicText::
@@ -187,15 +183,17 @@ _StageEventDefeatBurglarText::
 	prompt
 
 _StageEventDefeatJoyText::
-	text "My my!"
-	line "You and your"
-	cont "team are strong!"
+	text "Wow!"
+	line "Looks like I need"
+	cont "to head back to"
+	cont "the #MON"
+	cont "center."
 	prompt
 
 _StageEventDefeatJennyText::
-	text "Whew!"
-	line "You can handle"
-	cont "yourself fine!"
+	text "Sorry!"
+	line "I mistook you for"
+	cont "the suspect."
 	prompt
 
 ; --- AFTER BATTLE: spoken when the player talks to them again ------------
@@ -210,30 +208,31 @@ _StageEventDefeatJennyText::
 ; need for a trailing `prompt` - AfterDisplayingTextID waits.
 
 _StageEventAfterJessieJamesText::
-	text "We'll get you"
+	text "JESSE: We'll get you"
 	line "next time,"
 	cont "twerp!@"
 	text_end
 
 _StageEventAfterPsychicText::
-	text "My mind is"
-	line "clouded. Just"
-	cont "go.@"
+	text "I should have seen"
+	line "this coming.@"
 	text_end
 
 _StageEventAfterBurglarText::
-	text "Beat it, kid."
-	line "I'm done here.@"
+	text "Quit asking for"
+	line "trouble and go,"
+	cont "kid.@"
 	text_end
 
 _StageEventAfterJoyText::
-	text "Take care of"
-	line "your #MON!@"
+	text "I'll see you again"
+	line "soon!@"
 	text_end
 
 _StageEventAfterJennyText::
-	text "I'll keep watch"
-	line "here. Go on.@"
+	text "Be vigilant!"
+	line "Thieves have been"
+	cont "reported here.@"
 	text_end
 
 ; --- RECOVERY: what the player is told after beating the villain ---------
@@ -256,9 +255,8 @@ _StageEventRecoverItemText::
 ; The villain's guards refused the theft, so there was never anything to win
 ; back. Reached when the player had one mon and an empty bag.
 _StageEventRecoverNothingText::
-	text "They didn't get"
-	line "away with"
-	cont "anything!@"
+	text "They didn't steal"
+	line "anything.@"
 	text_end
 
 ; Party full at recovery time - the player caught something in here after
@@ -273,7 +271,7 @@ _StageEventRecoverNothingText::
 ; is box slot 0. The give-back APPENDS at wBoxCount, so slot 0 is somebody
 ; else; wNameBuffer, filled by StageEventNameLoot, is the right source here.
 ;
-; Ends `prompt`, not "@", and that is load-bearing: StageEventPrintRecoverLine
+; Ends `prompt`, not "@": StageEventPrintRecoverLine
 ; may print the box-full reminder straight afterwards, and PrintText redraws
 ; the box, so without a wait the second line would erase this one unread.
 _StageEventRecoverToBoxBillText::
@@ -283,18 +281,11 @@ _StageEventRecoverToBoxBillText::
 	cont "BILL's PC!"
 	prompt
 
-_StageEventRecoverToBoxPCText::
-	text_ram wNameBuffer
-	text " was"
-	line "transferred to"
-	cont "someone's PC!"
-	prompt
-
 ; Party AND box both full, or the bag pocket full for a stolen item. The only
 ; outcome that does not end the event: the villain stays put and the record
 ; stays live, so the player can make space and talk to them again.
 _StageEventRecoverNoRoomText::
-	text "There's no room"
-	line "for it anywhere!"
-	cont "Come back for it!@"
+	text "You don't have room"
+	line "for it so get"
+	cont "lost@!"
 	text_end

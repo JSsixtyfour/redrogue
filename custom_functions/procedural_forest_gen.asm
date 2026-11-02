@@ -2307,6 +2307,7 @@ PFRollBoss:
 ; previous run's layout.
 ; ============================================================
 PFPreloadForest::
+    farcall OptionalForestFixture
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
     ld a, BMODE_ADVANCED
@@ -2317,7 +2318,9 @@ PFPreloadForest::
     ld [sProcForestBaked], a        ; 0 = needs fresh generation
     ld [sProcForestItemGot], a      ; clear all ball-collected bits
     ld [sProcForestAlgoForce], a    ; 0 = random; set in BGB after this runs to force an algo
-    ld [sProcForestExitEdge], a     ; 0 = N (default); set in BGB to 1=W/2=E to test
+    ld c, 3
+    call Rangerandom              ; uniform N/W/E, latched once for this stage
+    ld [sProcForestExitEdge], a    ; 0=N, 1=W, 2=E; never the south entrance wall
     ld a, $FF
     ld [sProcForestRiverSide], a    ; sentinel: no river carved yet this run
 
@@ -2500,8 +2503,8 @@ PFinalizeForest::
     dec a                   ; 1→0, 2→1, 3→2, 4→3
     cp 4
     jr z, .useRooms          ; algoForce 5 -> dec -> 4 = Rooms/Dungeon
-    cp 5
-    jr z, .useRiver          ; algoForce 6 -> dec -> 5 = River+Maze
+    jr c, .algoDispatch
+    xor a                   ; retired river force 6 (and invalid values): Sidewinder
 .algoDispatch
     and 3                   ; clamp
     jr z, .useAlgoA
@@ -2520,9 +2523,6 @@ PFinalizeForest::
     jr .algosDone
 .useAlgoC
     call PFBacktracker
-    jr .algosDone
-.useRiver
-    call PFGenerateRiverMaze
     jr .algosDone
 .useRooms
     call PFGenerateRoomsDungeon
@@ -2722,6 +2722,10 @@ PFinalizeForest::
     inc de
     dec b
     jr nz, .pfbItemCopy
+
+    ; Encounter-gated geometry, after placement/items and before bake.
+    ; Helper returns with SRAM still open on bank 0, no wBuffer/RNG use.
+    farcall FGPrototypeCarve
 
     ; The SRAM copy is COMPACT (20x20 = 400 bytes, row after row), while
     ; wOverworldMap keeps its 26-byte stride. Until 2026-10-08 the SRAM copy
@@ -2947,12 +2951,10 @@ PFinalizeForest::
     ; whether the step is even legal. The authored object direction is DOWN.
     ; Slot 1's entry is wMapSpriteData + (slot - 1) * 2 = offset 0.
     ;
-    ; This changes nothing in normal play, and that is the point: PFPreloadForest
-    ; zeroes sProcForestExitEdge every run, so the exit is always north and the
-    ; intended facing is DOWN either way. It is the debug W/E path the
-    ; sProcForestExitEdge comment advertises that was broken - a west exit's boss
-    ; snapped back to DOWN on its first visible frame. Same two-write fix the
-    ; Facility already carries at its .bossFacing.
+    ; Preserve both representations for all three normally rolled walls.
+    ; Before wall randomization, only the debug W/E paths exercised this:
+    ; a west boss used to snap back to DOWN on its first visible frame.
+    ; Same two-write fix the Facility carries at its .bossFacing.
     ld a, c
     ld [wSprite01StateData1FacingDirection], a
     ld a, b
@@ -3570,6 +3572,9 @@ PFPlaceHouse:
     ld de, PF_HOUSE_LIST
     ld c, 0                     ; site index
 .site
+    ld a, c
+    cp FOREST_GROTTO_RESERVED_HOUSE_SITE
+    jr z, .next                ; reserve one old door slot, without renumbering saves
     push bc
     push de
     ld a, c

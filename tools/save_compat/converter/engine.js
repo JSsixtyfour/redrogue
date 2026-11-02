@@ -413,9 +413,29 @@
       return null;
     },
 
-    // Schema 13 -> 14: Endless mode's depth and flags took the last two bytes of the saved pad
-    // after wroguenpctradeform. Nothing moved. Zeroed: an ordinary run with no continuation
-    // pending, so an old save can never acquire active Endless state.
+    // Schema 16 -> 17: seven unused saved follower bytes become independent
+    // encounter state. Nothing moves; old runs receive no optional encounter.
+    optionalEncounterAdded: function (bytes, from, to) {
+      var names = ["wOptionalEncounterSpecies", "wOptionalEncounterPackage", "wOptionalEncounterLevel",
+        "wOptionalEncounterState", "wOptionalEncounterMap", "wOptionalEncounterScript", "wOptionalEncounterBattle"];
+      var start = wramOffset(to, names[0]), pad = wramOffset(from, "wFollowerLedgeLatch");
+      if (pad < 0 || start !== pad + 1 || wramOffset(to, "wFollowerDataEnd") !== wramOffset(from, "wFollowerDataEnd"))
+        return "optional encounter padding layout not recognised";
+      for (var i = 0; i < names.length; i++) {
+        if (wramField(from, names[i]) || wramOffset(to, names[i]) !== start + i)
+          return "optional encounter fields not recognised";
+        bytes[start + i] = 0;
+      }
+      // The immutable direct-loss record includes its schema in the CRC'd
+      // header. Invalidate the old snapshot, as with the prior state additions.
+      var error = STEPS.lossRecoveryAdded(bytes, from, to);
+      if (error) return error;
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
+    // Schema 13 -> 14: Endless depth/flags take the final two saved pad bytes.
+    // Zero initializes an ordinary run, with no continuation pending.
     endlessAdded: function (bytes, from, to) {
       if (wramField(from, "wEndlessDepth")) return "this save already has Endless state";
       var form = wramOffset(from, "wroguenpctradeform");

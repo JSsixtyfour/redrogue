@@ -423,6 +423,8 @@ BattleKeyItemGate::
 	ld a, [wBattleType]
 	and a
 	ret nz                     ; old man / Safari items are their own paths
+	farcall OptionalEncounterCaptureGate
+	ret c
 	farcall IsKeyPocketItem    ; carry = key pocket item; reads wCurItem
 	ret nc
 	xor a

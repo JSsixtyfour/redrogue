@@ -97,6 +97,8 @@ class ForestWalk:
         h = self.h
         out = set()
         for slot in range(1, 16):
+            if not h.read8('wSprite01StateData1',offset=16*(slot-1)):
+                continue
             y = h.read8("wSprite01StateData2MapY", offset=16 * (slot - 1)) - 4
             x = h.read8("wSprite01StateData2MapX", offset=16 * (slot - 1)) - 4
             out.add((x, y))
@@ -203,6 +205,10 @@ class ForestRestHouseTest(ForestWalk, unittest.TestCase):
         warps = h.warp_entries()
         for n in range(len(self.sites)):
             entry = warps[3 + n]
+            if n == 0 and warps[31][0] != 0xFF:
+                top=warps[31]
+                self.assertEqual(entry,[top[0]+(top[0]!=0),top[1]+(top[0]==0),top[2]+1,self.maps['PROCEDURAL_FOREST_GROTTO']])
+                continue
             if n == site:
                 self.assertEqual(entry[:2], [2 * y + 1, 2 * x + 1], "this forest's door is not armed")
                 self.assertEqual(entry[3], house)

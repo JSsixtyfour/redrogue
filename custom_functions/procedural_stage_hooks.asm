@@ -28,6 +28,8 @@ ProcBossPatchStageSprite::
 	jr z, .aiLair
 	cp PROCEDURAL_CAVE_SUBROOM
 	jr z, .caveSubroom
+	cp PROCEDURAL_FOREST_GROTTO
+	jr z, .grotto
 	cp PROCEDURAL_CEMETERY_1
 	jp z, .cemetery
 	cp PROCEDURAL_CEMETERY_2
@@ -39,6 +41,9 @@ ProcBossPatchStageSprite::
 	ret
 .dorm
 	farcall RoomPatchSprites
+	ret
+.grotto
+	farcall OptionalEncounterPatchSprite
 	ret
 .caveSubroom
 	farcall CaveSubroomPatchSprites ; the lake and mountain Pokemon
@@ -241,10 +246,16 @@ ProcStageLoadDispatch::
 	call ProcGenerationBeginDoubleSpeed
 	push af
 	farcall PFinalizeForest
+	farcall FGArmForestWarp
 	pop af
 	call ProcGenerationEndDoubleSpeed
 	ret
 .notForest
+	cp PROCEDURAL_FOREST_GROTTO
+	jr nz, .notGrotto
+	farcall FGLoadGrotto
+	ret
+.notGrotto
 	cp PROCEDURAL_FOREST_REST_HOUSE
 	jr nz, .notForestRestHouse
 	farcall PFRestHouseLoad         ; its way out leads to this forest's door

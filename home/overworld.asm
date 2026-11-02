@@ -2692,4 +2692,15 @@ LoadDestinationWarpPosition::
 	pop af
 	ldh [hLoadedROMBank], a
 	ld [rROMB], a
+	; All four arrival bytes are final BEFORE LoadTilesetHeader derives parity.
+	; Preserve the legacy return registers on normal and special-warp callers.
+	push af
+	push bc
+	push de
+	push hl
+	farcall FGResolveArrival
+	pop hl
+	pop de
+	pop bc
+	pop af
 	ret

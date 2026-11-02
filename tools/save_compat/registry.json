@@ -127,6 +127,12 @@
    "to": "16",
    "steps": ["flagsRenumbered"],
    "verified": "NOT YET (2026-10-30, Claude): the eight Johto gym-guide toggles removed (guides no longer hide on victory); the eleven toggles after them moved down 8. Table computed by name by build_package.py. Real-save gate not run."
+  },
+  {
+   "from": "16",
+   "to": "17",
+   "steps": ["optionalEncounterAdded"],
+   "verified": "2026-11-02: seven unused saved follower-padding bytes initialize inactive, old direct-loss records invalidate; no existing RAM/SRAM address moves. All three ROMs build, schema17 and converter tests pass (25 pass/1 legacy-fixture skip). Six pinned schema16 saves plus two old DMG/CGB grove fixtures convert and cold Continue/save/Continue; unconverted16 is refused. Focused lifecycle/geometry tests pass. BGB/hardware acceptance pending; no release publication. Evidence builds/procedural_updates/checkpoint4/."
   }
  ]
 }

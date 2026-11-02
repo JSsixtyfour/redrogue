@@ -549,7 +549,11 @@ ResolveEnhancedBasePalSet::
 	ld a, [hCurMap]
 	cp PROCEDURAL_CAVE_1
 	jr z, .procCave
+	cp PROCEDURAL_CAVE_SUBROOM
+	jr z, .procCave ; same latched parent theme, including reloads and Continue
 	cp PROCEDURAL_FOREST
+	jr z, .procForest
+	cp PROCEDURAL_FOREST_GROTTO
 	jr z, .procForest
 	cp PROCEDURAL_FACILITY
 	jr z, .procFacility
@@ -712,7 +716,10 @@ LoadEnhancedOverworldPaletteCommand::
 GetOverworldTilePalPointer:
 	ld a, [w2CurMap]
 	cp PROCEDURAL_FOREST
+	jr z, .forest
+	cp PROCEDURAL_FOREST_GROTTO
 	jr nz, .normal
+.forest
 	ld a, BANK(sProcForestPalette)
 	ld hl, sProcForestPalette
 	call ReadProcPaletteVariant

@@ -76,7 +76,7 @@
 ; guides no longer hide), so TOGGLE_SILPH_CO_B1F_SCIENTIST through
 ; TOGGLE_CAVESUB_BALL moved down 8 ($F5-$FF -> $ED-$F7). No field moved;
 ; migration flagsRenumbered translates the toggle bits by name.
-DEF SAVE_SCHEMA_ID EQU 16
+DEF SAVE_SCHEMA_ID EQU 17
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; Transient invalid magic while a writer owns the save. Completed headers and

@@ -58,7 +58,10 @@ ENGINE_WRAM = {"wPlayerName", "wPartyCount", "wPartySpecies", "wBoxCount", "wCur
                # migration endlessAdded (schema 13 -> 14)
                "wEndlessDepth", "wEndlessFlags",
                # migration followerPadTrimmed (schema 14 -> 15)
-               "wFollowerLedgeLatch", "wFollowerDataEnd"}
+               "wFollowerLedgeLatch", "wFollowerDataEnd",
+               # migration optionalEncounterAdded (schema 16 -> 17)
+               "wOptionalEncounterSpecies", "wOptionalEncounterPackage", "wOptionalEncounterLevel",
+               "wOptionalEncounterState", "wOptionalEncounterMap", "wOptionalEncounterScript", "wOptionalEncounterBattle"}
 
 # Steps whose per-migration table flag_translation() computes and attaches to the target schema.
 FLAG_STEP = "flagsRenumbered"

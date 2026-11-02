@@ -118,7 +118,7 @@ DEF FIRST_INDOOR_MAP EQU const_value
 	end_indoor_group CERULEAN_CITY_2
 
 	map_const ROUTE_5_GATE,                   4,  3 ; $46
-	map_const UNDERGROUND_PATH_ROUTE_5,       4,  4 ; $47 retired; keep IDs stable, aliases Route 6 header
+	map_const PROCEDURAL_FOREST_GROTTO,       7,  6 ; $47, retired Route 5 underground entrance
 	map_const DAYCARE,                        4,  4 ; $48
 	end_indoor_group ROUTE_5
 
@@ -414,6 +414,12 @@ DEF FIRST_INDOOR_MAP EQU const_value
 	map_const PALMS_ROOM,                     4,  4 ; $FB
 	end_indoor_group POKEMON_LEAGUE_3
 DEF NUM_MAPS EQU const_value
+
+; Retired, unreachable identity retained for stored-constant compatibility.
+; Its old dimensions do not describe the new map header.
+DEF UNDERGROUND_PATH_ROUTE_5 EQU PROCEDURAL_FOREST_GROTTO
+DEF UNDERGROUND_PATH_ROUTE_5_WIDTH EQU 4
+DEF UNDERGROUND_PATH_ROUTE_5_HEIGHT EQU 4
 
 ; Indoor maps, such as houses, use this as the Map ID in their exit warps
 ; This map ID takes the player back to the last outdoor map they were on, stored in wLastMap

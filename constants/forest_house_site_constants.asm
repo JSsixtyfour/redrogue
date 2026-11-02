@@ -20,6 +20,10 @@ DEF FOREST_FIRST_HOUSE_WARP EQU 3 ; after the entrance and the two exit tiles
 DEF FOREST_HOUSE_LEFT_BLOCK EQU $19
 DEF FOREST_HOUSE_RIGHT_BLOCK EQU $1C
 DEF FOREST_HOUSE_NONE EQU $FF ; a disarmed door warp's Y
+; Retain all saved site numbers and the old ROM arrival record. Fresh forests
+; no longer select site 0; a saved forest already using it keeps its house.
+DEF FOREST_GROTTO_RESERVED_HOUSE_SITE EQU 0
+DEF FOREST_GROTTO_SECOND_WARP EQU FOREST_FIRST_HOUSE_WARP + FOREST_GROTTO_RESERVED_HOUSE_SITE
 
 DEF NUM_FOREST_HOUSE_SITES = 0
 MACRO house_site

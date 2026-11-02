@@ -415,7 +415,11 @@ GetOverworldPalette:
 MapPaletteFunctions:
 	db PROCEDURAL_CAVE_1
 	dw ProcCaveOverworldPalette
+	db PROCEDURAL_CAVE_SUBROOM
+	dw ProcCaveOverworldPalette ; inherit the parent's range-checked saved theme
 	db PROCEDURAL_FOREST
+	dw ProcForestOverworldPalette
+	db PROCEDURAL_FOREST_GROTTO
 	dw ProcForestOverworldPalette
 	db PROCEDURAL_FACILITY
 	dw ProcFacilityOverworldPalette

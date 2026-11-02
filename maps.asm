@@ -1444,3 +1444,14 @@ INCLUDE "scripts/ProceduralCave1.asm"
 INCLUDE "data/maps/objects/ProceduralCave1.asm"
 ; Same bank as the header (map_header ASSERTs it).
 ProceduralCave1_Blocks: INCBIN "maps/ProceduralCave1.blk"
+
+; Header, bankless map pointers and helper-local pointers all share $26.
+; The one-side prototype is generated only in Debug 2; reload/return readers
+; exist in every variant so a Debug-created save can still return safely.
+SECTION "Procedural Forest Grotto", ROMX, BANK[$26]
+INCLUDE "custom_functions/optional_encounter.asm"
+INCLUDE "data/maps/headers/ProceduralForestGrotto.asm"
+INCLUDE "scripts/ProceduralForestGrotto.asm"
+INCLUDE "data/maps/objects/ProceduralForestGrotto.asm"
+ProceduralForestGrotto_Blocks: INCBIN "maps/ProceduralForestGrotto.blk"
+INCLUDE "custom_functions/forest_grotto.asm"

@@ -387,6 +387,8 @@ EngageMapTrainer::
 	xor a
 	ld [wIsTrainerBattle], a
 ; Phase 2R increment 8f: republish the staged boss's form. 17 bytes of HOME.
+	farcall OptionalEncounterEngage
+	jp c, PlayTrainerMusic
 ;
 ; The procedural boss is rolled at PRELOAD and not built until the player walks
 ; into its sprite, so wSpawnForm has long since been overwritten by whatever wild

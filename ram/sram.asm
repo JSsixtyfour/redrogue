@@ -70,11 +70,8 @@ sProcCaveBaked:: db                ; non-zero = staging buffer holds FINISHED ti
 sProcForestExitI:: db              ; 0-8: which cell (col for N, row for W/E) is
                                    ; the exit, along whichever edge sProcForestExitEdge
                                    ; selects
-sProcForestExitEdge:: db           ; 0=N (default), 1=W, 2=E. Debug: set in BGB
-                                   ; after Pallet Town entry, before warping in.
-                                   ; Zeroed (0=N) every Pallet Town entry by
-                                   ; PFPreloadForest — W/E are debug-only, never
-                                   ; part of normal random generation.
+sProcForestExitEdge:: db           ; 0=N, 1=W, 2=E, uniform at PFPreloadForest;
+                                   ; stable through the complete stage visit.
 sProcForestRiverSide:: db          ; 0=left, 1=right, $FF=not a river run (exit
                                    ; roll then uses the normal unconstrained pick)
 sProcForestBaked:: db              ; non-zero = buffer holds finished baked maze

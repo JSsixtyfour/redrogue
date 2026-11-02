@@ -67,6 +67,18 @@ def flood(cells, start):
     return seen
 
 
+def exit_block(edge, index, *, boss=False):
+    along=2*index+1
+    return ((along,1 if boss else 0) if edge==0 else
+            ((1 if boss else 0),along) if edge==1 else
+            ((18 if boss else 19),along))
+
+
+def exit_event_tiles(edge,index):
+    x,y=exit_block(edge,index)
+    return {(2*x+qx,2*y+qy) for qx in range(2) for qy in range(2)}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seeds", type=int, default=200)
@@ -104,6 +116,7 @@ def main() -> int:
         rec = h.read_sram_bytes("sProcForestGenScratch", 81, bank=0)[72:79]
         balls = h.read_sram_bytes("sProcForestBallXY", 8, bank=0)
         exit_i = h.read_sram_bytes("sProcForestExitI", 1, bank=0)[0]
+        exit_edge = h.read_sram_bytes('sProcForestExitEdge',1,bank=0)[0]
         hideout = h.read_sram_bytes("sStageEventHideoutX", 2, bank=0)
         found = []
         ball_tiles = [(balls[2 * i + 1] - 4, balls[2 * i] - 4) for i in range(4)]
@@ -124,7 +137,7 @@ def main() -> int:
             def inside(block):
                 return x <= block[0] < x + w and y <= block[1] < y + hh
 
-            for block in ((9, 17), (9, 16), (2 * exit_i + 1, 1)):
+            for block in ((9, 17), (9, 16), exit_block(exit_edge,exit_i,boss=True)):
                 if inside(block):
                     found.append(f"clearing covers {block}")
             if (bbx, bby) != (x + piece.ball[0], y + piece.ball[1]):
@@ -146,7 +159,7 @@ def main() -> int:
         for i, (bx, by) in enumerate(ball_tiles):
             if not any((bx + dx, by + dy) in reach for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
                 found.append(f"ball {i} at {(bx, by)} unreachable")
-        exit_tiles = {(2 * (2 * exit_i + 1) + qx, qy) for qx in range(2) for qy in range(2)}
+        exit_tiles = exit_event_tiles(exit_edge,exit_i)
         if not exit_tiles & reach:
             found.append("exit unreachable")
         h.close()

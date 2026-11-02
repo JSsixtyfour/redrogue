@@ -22,6 +22,7 @@
 
 DEF BIT_TYPE_VARIANT EQU 2 ; bit within MON_CATCH_RATE
 DEF BIT_SPECIAL_FORM EQU 3 ; bit within MON_CATCH_RATE
+EXPORT BIT_SPECIAL_FORM
 
 ; capability bits returned by GetSpecialFormCaps (a bitfield)
 DEF SF_DOUBLE_ATK  EQU 0 ; double the physical offensive stat (Thick Club)

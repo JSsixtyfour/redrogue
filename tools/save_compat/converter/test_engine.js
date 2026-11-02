@@ -199,6 +199,38 @@ test("schema 13 to 14: Endless state initializes inactive without moving existin
   assert.equal(api.checksumStatus(out.bytes, to).main, true);
 });
 
+test("schema 16 to 17: optional encounter padding initializes inactive, all other bytes survive", () => {
+  const from = PKG.schemas["16"], to = PKG.schemas["17"];
+  const save = syntheticSave("16"), pkg = packageTargeting("17");
+  const names = ["wOptionalEncounterSpecies", "wOptionalEncounterPackage", "wOptionalEncounterLevel",
+    "wOptionalEncounterState", "wOptionalEncounterMap", "wOptionalEncounterScript", "wOptionalEncounterBattle"];
+  const changed = new Set();
+  for (const name of names) {
+    const at = wramOffset(to, name);
+    save[at] = 0xa5;
+    changed.add(at);
+  }
+  recomputeChecksums(save, from);
+  const out = api.convert(save, pkg, { mode: "continue" });
+  assert.equal(out.ok, true, out.reason);
+  for (const name of names) assert.equal(out.bytes[wramOffset(to, name)], 0, name);
+  for (const f of from.saved_wram)
+    assert.equal(wramOffset(to, f.label), wramOffset(from, f.label), f.label);
+  const sum = to.checksums.find(c => c.name === "main");
+  for (const f of to.sram.filter(f => /^sLossRecovery/.test(f.label))) {
+    const start = offsetOf(f.bank, f.address);
+    for (let i = 0; i < f.size; i++) {
+      changed.add(start + i);
+      assert.equal(out.bytes[start+i],0,`${f.label}+${i}`);
+    }
+  }
+  changed.add(offsetOf(sum.at_bank, sum.at));
+  for (let i = 0; i < 8; i++) changed.add(0x2040 + i);
+  for (let i = 0; i < save.length; i++)
+    if (!changed.has(i)) assert.equal(out.bytes[i], save[i], `unrelated byte ${i}`);
+  assert.equal(api.checksumStatus(out.bytes, to).main, true);
+});
+
 test("schema 12 to 13: run records initialize empty without moving existing fields", () => {
   const from = PKG.schemas["12"], to = PKG.schemas["13"];
   const save = syntheticSave("12"), pkg = packageTargeting("13");

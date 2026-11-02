@@ -16,46 +16,49 @@ _UndergroundPathWestEastBiker1AfterBattleText::
 	done
 
 _UndergroundPathWestEastJugglerBattleText::
-	text "Every step has to"
-	line "Perfect timing!"
+	text "What are you doing"
+	line "here?"
 	done
 
 _UndergroundPathWestEastJugglerEndBattleText::
 	text "Dropped"
-	line "the whole act!"
+	line "the ball!"
 	prompt
 
 _UndergroundPathWestEastJugglerAfterBattleText::
-	text "You never lost"
-	line "your balance."
+	text "These guys can"
+	line "really toss you"
+	cont "around here."
 	done
 
 _UndergroundPathWestEastBurglarBattleText::
-	text "No witnesses in"
-	line "an empty tunnel!"
+	text "So, carrying"
+	line "anything valuable?"
 	done
 
 _UndergroundPathWestEastBurglarEndBattleText::
-	text "Caught"
-	line "red-handed!"
+	text "What?"
+	line "I was only asking!"
 	prompt
 
 _UndergroundPathWestEastBurglarAfterBattleText::
-	text "Fine! I wasn't"
-	line "taking anything."
+	text "I'm not who you"
+	line "should be worrying"
+	cont "about down here."
 	done
 
 _UndergroundPathWestEastCueBallBattleText::
 	text "End of the line!"
-	line "Nobody passes me!"
+	line "Noone gets by me!"
 	done
 
 _UndergroundPathWestEastCueBallEndBattleText::
-	text "You..."
-	line "broke through!"
+	text "Err..."
+	line "I oughta!"
 	prompt
 
 _UndergroundPathWestEastCueBallAfterBattleText::
-	text "The path is yours"
-	line "Keep moving."
+	text "Get out of my face"
+	line "kid or you'll"
+	cont "regret it."
 	done

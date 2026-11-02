@@ -4,7 +4,10 @@
 LoadProcForestTreeTiles:
 	ldh a, [hCurMap]
 	cp PROCEDURAL_FOREST
+	jr z, .forest
+	cp PROCEDURAL_FOREST_GROTTO
 	ret nz
+.forest
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	ld a, BMODE_ADVANCED

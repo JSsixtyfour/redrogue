@@ -1858,6 +1858,8 @@ TryRunningFromBattle:
 	dec a
 	jp nz, .trainerBattle ; jump if it's a trainer battle
 	ldh a, [hCurMap]      ; procedural areas: wild battles can't run
+	cp PROCEDURAL_FOREST_GROTTO
+	jp z, .procBattle
 	cp PROCEDURAL_CAVE_1
 	jp z, .procBattle
 	cp PROCEDURAL_FOREST

@@ -22,6 +22,11 @@ ProceduralForest_Object:
 	FOR n, NUM_FOREST_HOUSE_SITES
 		warp_event 2 * FOREST_HOUSE_SITE_{d:n}_X + 1, 2 * FOREST_HOUSE_SITE_{d:n}_Y + 1, PROCEDURAL_FOREST_REST_HOUSE, 1
 	ENDR
+	; Last slot, index 31. The default arrival is the ordinary entrance, a
+	; safe fallback for a damaged/missing marker. Runtime departure and the
+	; grove -> forest arrival record use this forest's baked east opening.
+	ASSERT FOREST_FIRST_HOUSE_WARP + NUM_FOREST_HOUSE_SITES == 31
+	warp_event 18, 35, PROCEDURAL_FOREST_GROTTO, 1
 
 	def_bg_events
 	bg_event 18, 33, TEXT_PROCEDURALFOREST_SIGN ; x,y runtime-patched in PFinalizeForest per placed block (21 vs 22)

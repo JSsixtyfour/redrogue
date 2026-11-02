@@ -26,7 +26,7 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from audit_forest_clearings import ENTRANCE_TILE, fc, flood, walkable_cells
+from audit_forest_clearings import ENTRANCE_TILE, fc, flood, walkable_cells, exit_event_tiles
 from harness import RedRogueHarness
 from source_constants import parse_map_constants
 
@@ -71,6 +71,7 @@ def main() -> int:
         got = h.read_sram_bytes("sProcForestItemGot", 1, bank=0)[0]
         balls = h.read_sram_bytes("sProcForestBallXY", 8, bank=0)
         exit_i = h.read_sram_bytes("sProcForestExitI", 1, bank=0)[0]
+        exit_edge = h.read_sram_bytes('sProcForestExitEdge',1,bank=0)[0]
         warps = h.warp_entries()
         objects = set()
         for slot in range(1, 16):
@@ -101,12 +102,18 @@ def main() -> int:
                 found.append(f"an object stands on the door front {front}")
         for n in range(len(sites)):
             armed = warps[FIRST_HOUSE_WARP + n][0] != 0xFF
+            if n == 0 and warps[31][0] != 0xFF:
+                top=warps[31]
+                expected=[top[0]+(top[0]!=0),top[1]+(top[0]==0),top[2]+1,top[3]]
+                if warps[FIRST_HOUSE_WARP] != expected:
+                    found.append('reserved house slot does not match the grotto bottom row')
+                continue
             if armed != (n == site):
                 found.append(f"door warp {n} armed={armed}")
         for i, (bx, by) in enumerate(ball_tiles):
             if not any((bx + dx, by + dy) in reach for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
                 found.append(f"ball {i} at {(bx, by)} unreachable")
-        exit_tiles = {(2 * (2 * exit_i + 1) + qx, qy) for qx in range(2) for qy in range(2)}
+        exit_tiles = exit_event_tiles(exit_edge,exit_i)
         if not exit_tiles & reach:
             found.append("exit unreachable")
         for line in found:

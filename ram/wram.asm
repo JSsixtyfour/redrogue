@@ -2327,7 +2327,17 @@ wFollowerSpawnState:: db
 ; step seam twice; the first call queues a two-tile command and the second
 ; clears this latch without queuing another command.
 wFollowerLedgeLatch:: db
-	ds 28 - 19 ; was 128 - 19: 100 B moved out of saved Main Data for the Crystal audio port
+; Optional encounter owns seven formerly unused saved bytes. Follower accesses
+; stop at wFollowerLedgeLatch; the reservation and every later address stay put.
+wOptionalEncounterSpecies:: db
+wOptionalEncounterPackage:: db ; 1 = species-keyed special package, NOT form index
+wOptionalEncounterLevel:: db
+wOptionalEncounterState:: db ; bit 0 auto offer shown, bit 1 defeated, bit 2 resolved
+wOptionalEncounterMap:: db
+wOptionalEncounterScript:: db
+wOptionalEncounterBattle:: db ; one-shot enemy creation request, guarded at consumer
+ASSERT wOptionalEncounterBattle - wOptionalEncounterSpecies == 6
+	ds 28 - 19 - 7
 wFollowerDataEnd::
 ASSERT wFollowerDataEnd - wFollowerDataStart == 28
 

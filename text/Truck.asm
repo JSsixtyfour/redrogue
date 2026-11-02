@@ -1,7 +1,7 @@
 _TruckProfPalmText::
-	text "PROF PALM: We've"
+    text "PROF PALM: You've"
 	line "arrived!"
 
 	para "Come on out, and"
-	line "mind the step."
+	line "watch your step."
 	done
