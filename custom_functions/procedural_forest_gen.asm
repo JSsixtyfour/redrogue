@@ -2349,6 +2349,7 @@ PFPreloadForest::
     cp PROC_FOREST_PAL_COUNT
     jr nc, .rollPalette
     ld [sProcForestPalette], a
+    farcall OptionalForestSeasonFixture ; SRAM0 remains open
 
     ; Set the forest's wild-battle budget for this run: WILD_BUDGET_BASE +
     ; wBattleCount/WILD_BUDGET_DIVISOR, capped at WILD_BUDGET_MAX (identical formula

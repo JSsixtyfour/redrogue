@@ -731,6 +731,7 @@ ENDC
 .palVariantSet
 	ld a, b
 	ld [sProcCavePalette], a
+	farcall OptionalCaveFixture ; SRAM0 remains open; debug cold fixture only
 	; new cave preloaded: invalidate ball staging AND the baked-tiles flag so
 	; the first entry re-runs the full pipeline and re-rolls item positions.
 	; Also clear boss events so the new cave's boss actually appears.

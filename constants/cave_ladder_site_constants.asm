@@ -17,6 +17,12 @@ DEF CAVE_FIRST_LADDER_WARP EQU 2 ; after the entrance and the exit
 DEF CAVE_LADDER_MIN_DISTANCE EQU 8 ; blocks, Manhattan, between the two ladders
 DEF CAVE_LADDER_BLOCK EQU 40
 DEF CAVE_LADDER_NONE EQU $FF
+; A=ordinary site, B=$FE: entrance BR supplies the second connection, returning
+; via ROM entrance warp0 (BL). Its departure reuses site0's slot, or site1's
+; if A occupies site0. Legacy A=$FE,B=$FF saves retain their old entrance return.
+DEF CAVESUB_ENTRANCE_LADDER EQU $FE
+DEF CAVESUB_ENTRANCE_X EQU 9
+DEF CAVESUB_ENTRANCE_Y EQU 19
 
 DEF NUM_CAVE_LADDER_SITES = 0
 MACRO ladder_site

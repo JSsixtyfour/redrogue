@@ -3,30 +3,26 @@
 DEF FG_PARENT_BASE EQU 81
 DEF FG_PARENT_STRIDE EQU 26
 DEF FG_WARP EQU 31
-DEF FG_FIRST_ROW EQU 5
-DEF FG_LAST_ROW EQU 13
+DEF FG_FIRST_ROW EQU 1
+DEF FG_LAST_ROW EQU 17
 
 ; Assignment means the stage was given a Pokemon, not that its sprite is
 ; still visible after a resolved reward. Checkpoint 4 owns independent saved
-; identity; Debug 2 forces Pink Butterfree, release occurrence remains disabled.
+; identity; Debug 2 forces Pink or winter Snowlax, release odds stay disabled.
 ; Geometry-only tests can force this predicate at .return.
 FGHasAssignedEncounter::
 	ld a, [wOptionalEncounterMap]
 	cp PROCEDURAL_FOREST_GROTTO
 	jr nz, .none
-	ld a, [wOptionalEncounterPackage]
-	cp 1
-	jr nz, .none
-	ld a, [wOptionalEncounterSpecies]
-	cp BUTTERFREE
-	jr z, .return
+	call OptionalEncounterAssigned
+	jr .return
 .none
 	xor a
 .return
 	ret
 
 ; SRAM0 open throughout this generation hook. No wBuffer use. Pick one of
-; the two eligible walls, then try its five sites and the other wall once.
+; the two eligible walls, then try its nine sites and the other wall once.
 ; No rare-outcome writer exists yet, so production never drops a winning roll.
 FGPrototypeCarve::
 	call FGHasAssignedEncounter
@@ -143,17 +139,37 @@ FGBlockAddress:
 	add hl, de
 	ret
 
-; D/E=wall/site. Reject objects, houses, water and clearing bounds around
-; the candidate before any block is changed. No scratch survives the call.
+; All four quadrants of these existing maze floors are walkable and have
+; no elevation barrier against the exit blocks. Keep marker reads in sync.
+FGIsFloor:
+	cp 1
+	ret z
+	cp 27
+	ret z
+	cp 41
+	ret z
+	cp $20
+	ret z
+	cp $22
+	ret z
+	cp $23
+	ret z
+	cp $24
+	ret z
+	cp $25
+	ret
+
+; D/E=wall/site. Only boundary trees (and the east connector) are written.
+; Odd inner cells never overlap the even-row house. Clearing art is kept
+; intact: accept only its fully walkable floors, with no surrounding margin.
+; Preserve the hideout's sight distance and the main boss's approach.
 FGSiteFree:
 	call FGCellXY
 	push de
 	call FGBlockAddress
 	pop de
 	ld a, [hl]
-	cp 1
-	jr z, .floor
-	cp 27
+	call FGIsFloor
 	jp nz, .no
 .floor
 	push bc ; inner cell for the persistent placement checks
@@ -163,62 +179,39 @@ FGSiteFree:
 	pop hl
 	pop de
 	jp nc, .badCell
-	ld a, d
-	ld de, -FG_PARENT_STRIDE - 1
-	cp 2
-	jr nz, .region
-	inc de ; east region spans x17..19, not x16..18
-.region
-	add hl, de
-	ld b, 3
-.row
-	push hl
-	ld e, 3
-.col
-	ld a, [hli]
-	cp 2
-	jr z, .next
-	cp 1
-	jr z, .next
-	cp 27
-	jp nz, .badRow
-.next
-	dec e
-	jr nz, .col
-	pop hl
-	ld de, FG_PARENT_STRIDE
-	add hl, de
-	dec b
-	jr nz, .row
 	pop bc
-	; Conservative two-block margin around persistent clearing bounds.
-	ld a, [sProcForestGenScratch + 72]
-	bit 7, a
-	jr z, .objects
-	ld a, [sProcForestGenScratch + 73]
-	ld d, a
-	ld a, b
-	add 2
-	cp d
-	jr c, .objects
-	ld a, [sProcForestGenScratch + 75]
-	add d
+	; Main boss block: N=(2*i+1,1), W=(1,2*i+1), E=(18,2*i+1).
+	; Reject a one-block square, including shared corner approaches.
+	ld a, [sProcForestExitI]
+	add a
 	inc a
-	cp b
-	jr c, .objects
-	ld a, [sProcForestGenScratch + 74]
-	ld d, a
-	ld a, c
-	add 2
-	cp d
-	jr c, .objects
-	ld a, [sProcForestGenScratch + 76]
-	add d
+	ld e, a
+	ld d, 1
+	ld a, [sProcForestExitEdge]
+	and a
+	jr z, .northBoss
+	cp 1
+	jr z, .boss
+	ld d, 18
+	jr .boss
+.northBoss
+	ld d, e
+	ld e, 1
+.boss
+	ld a, d
+	sub b
 	inc a
-	cp c
-	jr nc, .no
+	cp 3
+	jr nc, .objects
+	ld a, e
+	sub c
+	inc a
+	cp 3
+	jr c, .no
 .objects
 	ld a, [sStageEventHideoutX]
+	cp STAGE_EVENT_NO_HIDEOUT
+	jr z, .balls
 	sub b
 	add 2
 	cp 5
@@ -237,20 +230,18 @@ FGSiteFree:
 	ld a, [hli]
 	sub b
 	sub b
-	cp 9 ; stored +4 centers the +/-2 block interval on 0..8
-	jr nc, .nextBall
+	cp 4 ; only the actual occupied cell, not neighboring maze cells
+	jr nz, .nextBall
 	ld a, d
 	sub c
 	sub c
-	cp 9
-	jr c, .no
+	cp 4
+	jr z, .no
 .nextBall
 	dec e
 	jr nz, .ball
 	scf
 	ret
-.badRow
-	pop hl
 .badCell
 	pop bc
 .no
@@ -397,9 +388,7 @@ FGMarkerMatches:
 	add hl, bc
 .cell
 	ld a, [hl]
-	cp 1
-	jr z, .yes
-	cp 27
+	call FGIsFloor
 	jr nz, .no
 .yes
 	scf

@@ -92,8 +92,7 @@ class ForestWalk:
         h.tick(200)
 
     def objects(self) -> set[tuple[int, int]]:
-        """Every object slot's tile, and the tiles beside the boss (its flank
-        guard starts the fight)."""
+        """Objects and the boss's scripted flank trigger."""
         h = self.h
         out = set()
         for slot in range(1, 16):
@@ -103,7 +102,12 @@ class ForestWalk:
             x = h.read8("wSprite01StateData2MapX", offset=16 * (slot - 1)) - 4
             out.add((x, y))
             if slot == 1:
-                out |= {(x + dx, y + dy) for dx, dy in STEPS.values()}
+                if h.read8('hCurMap') == self.maps['PROCEDURAL_FOREST']:
+                    edge=h.read_sram_bytes('sProcForestExitEdge',1,bank=0)[0]
+                    dx,dy=(1,0) if edge==0 else (0,1)
+                    out.add((x+dx,y+dy))
+                else:
+                    out |= {(x + dx, y + dy) for dx, dy in STEPS.values()}
         return out
 
     def walk_to(self, goal: tuple[int, int]) -> None:

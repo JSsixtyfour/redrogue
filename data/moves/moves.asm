@@ -8,7 +8,7 @@ MACRO move
 	ASSERT \6 <= 40, "PP must be 40 or less"
 ENDM
 
-Moves:
+Moves::
 ; Characteristics of each move.
 	table_width MOVE_LENGTH
 	move POUND,        NO_ADDITIONAL_EFFECT,        40, NORMAL,       100, 35

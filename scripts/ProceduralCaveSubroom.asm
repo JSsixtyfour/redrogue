@@ -10,12 +10,15 @@ ProceduralCaveSubroom_Script:
 	; A resident's battle, if one just ended: record a win; the Super Nerd then
 	; hands over his prize (the Gambler paid in the battle).
 	farcall FacSuperNerdSettle
-	ret nc
+	jr nc, .optional
 	farcall CaveSubroomResidentIsNerd
-	ret nc
+	jr nc, .optional
 	ld a, TEXT_CAVESUB_PRIZE
 	ldh [hTextID], a
-	jp DisplayTextID
+	call DisplayTextID
+.optional
+	farcall OptionalEncounterMapScript
+	ret
 
 ProceduralCaveSubroom_TextPointers:
 	def_text_pointers
@@ -25,7 +28,16 @@ ProceduralCaveSubroom_TextPointers:
 	dw_const CaveSubBallText,      TEXT_CAVESUB_BALL
 	dw_const CaveSubSceneryText,   TEXT_CAVESUB_WATER_MON
 	dw_const CaveSubSceneryText,   TEXT_CAVESUB_LAND_MON
+	dw_const CaveSubOptionalText, TEXT_CAVESUB_OPTIONAL
 	dw_const CaveSubPrizeText,     TEXT_CAVESUB_PRIZE
+	dw_const CaveSubOptionalOffer, TEXT_CAVESUB_OPTIONAL_OFFER
+
+CaveSubOptionalText:
+	text_far FGEncounterText
+	text_end
+CaveSubOptionalOffer:
+	text_far FGEncounterOffer
+	text_end
 
 ; Money Match (custom_functions/money_match.asm), started here as the forest
 ; rest house starts it; the win is settled by FacSuperNerdSettle, which records

@@ -4,6 +4,7 @@
 	const_export CAVESUB_BALL
 	const_export CAVESUB_WATER_MON
 	const_export CAVESUB_LAND_MON
+	const_export CAVESUB_OPTIONAL_MON
 
 ProceduralCaveSubroom_Object:
 	db $3 ; border block: solid rock
@@ -35,6 +36,7 @@ ProceduralCaveSubroom_Object:
 	; mountain, each rolled per cave (its picture is patched; none = 0).
 	object_event 12,  8, SPRITE_LAPRAS, STAY, DOWN, TEXT_CAVESUB_WATER_MON
 	object_event  4,  6, SPRITE_CLEFAIRY, STAY, DOWN, TEXT_CAVESUB_LAND_MON
+	object_event 14,  1, SPRITE_MONSTER, STAY, DOWN, TEXT_CAVESUB_OPTIONAL, ONIX, 1 | OW_POKEMON
 
 	ASSERT CAVESUB_GAMBLER == CAVESUB_SLOT_GAMBLER
 	ASSERT CAVESUB_SUPER_NERD == CAVESUB_SLOT_SUPER_NERD

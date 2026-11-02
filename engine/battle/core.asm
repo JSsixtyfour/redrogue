@@ -1860,6 +1860,8 @@ TryRunningFromBattle:
 	ldh a, [hCurMap]      ; procedural areas: wild battles can't run
 	cp PROCEDURAL_FOREST_GROTTO
 	jp z, .procBattle
+	cp PROCEDURAL_CAVE_SUBROOM
+	jp z, .procBattle
 	cp PROCEDURAL_CAVE_1
 	jp z, .procBattle
 	cp PROCEDURAL_FOREST
@@ -7497,9 +7499,9 @@ LoadEnemyMonData:
 	ld [hli], a
 	dec b
 	jr nz, .statModLoop
-	; Cemetery ghost boss: if this enemy load is the flagged cemetery boss battle,
-	; make the enemy a ghost variant with the rolled ghost move (no-op otherwise).
-	farcall PCemMaybeApplyGhostBoss
+	; Scripted special packages: preserve the cemetery hook first, then finish
+	; the optional encounter's package after ordinary moves and PP are loaded.
+	farcall OptionalEncounterAfterEnemyLoad ; includes original cemetery hook first
 	ret
 
 ; calls BattleTransition to show the battle transition animation and initializes some battle variables

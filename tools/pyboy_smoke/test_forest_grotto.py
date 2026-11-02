@@ -204,7 +204,7 @@ class ForestGrottoContractTest(unittest.TestCase):
             h.boot_to_lobby();h.park_before_hijack();maps=parse_map_constants(ROOT/'constants/map_constants.asm')
             start=io.BytesIO();h.save_state(start)
             for side in range(3):
-                for site in (5,7,9,11,13):
+                for site in range(1,18,2):
                     for second in (0,1):
                         h.load_state(start)
                         packed=[2]*400

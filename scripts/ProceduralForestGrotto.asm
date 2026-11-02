@@ -1,11 +1,11 @@
 ProceduralForestGrotto_Script:
+OptionalEncounterMapScript::
+	call OptionalEncounterIsCurrent
+	ret nc
 	ld a, [wOptionalEncounterState]
 	bit 2, a
 	jr z, .offer
-	xor a
-	ld [wSprite01StateData1 + SPRITESTATEDATA1_PICTUREID], a
-	dec a
-	ld [wSprite01StateData1ImageIndex], a
+	call OptionalEncounterHide
 .offer
 	ld a, [wOptionalEncounterState]
 	and %111
@@ -18,10 +18,22 @@ ProceduralForestGrotto_Script:
 	set 0, [hl] ; full storage retry is by talking, not every script tick
 	call Delay3
 	ld a, TEXT_PROCEDURALFORESTGROTTO_OFFER
+	ld b, a
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_SUBROOM
+	ld a, b
+	jr nz, .offerID
+	ld a, TEXT_CAVESUB_OPTIONAL_OFFER
+.offerID
 	ldh [hTextID], a
 	call DisplayTextID
 	call DisableWaitingAfterTextDisplay
 .scripts
+	; The resident owns the ordinary cave script while our battle is idle.
+	; Dispatching index0 here would overwrite its pending reward index.
+	ld a, [wOptionalEncounterScript]
+	and a
+	ret z
 	call EnableAutoTextBoxDrawing
 	ld hl, FGEncounterHeader
 	ld de, .pointers
@@ -30,9 +42,12 @@ ProceduralForestGrotto_Script:
 	ld [wOptionalEncounterScript], a
 	ret
 .pointers
-	dw CheckFightingMapTrainers
+	dw OptionalEncounterIdle
 	dw DisplayEnemyTrainerTextAndStartBattle
 	dw FGEndEncounterBattle
+
+OptionalEncounterIdle:
+	ret ; explicit talk-only header, never scan cave resident slots
 
 FGEndEncounterBattle:
 	; Preserve object until the offer resolves, including no-room retry.
@@ -41,7 +56,7 @@ FGEndEncounterBattle:
 	jp EndTrainerBattle
 
 FGEncounterHeader:
-	db 1, 0 ; object 1, talk-only
+	db 1, 0 ; private defeated bit1, talk-only; explicitly used by slots1 or6
 	dw wOptionalEncounterState
 	dw FGEncounterCry, FGEncounterOffer ; before, after
 	dw FGEncounterEndText, FGEncounterEndText ; win, loss
@@ -106,10 +121,7 @@ FGEncounterOffer:
 .resolve
 	ld hl, wOptionalEncounterState
 	set 2, [hl]
-	xor a
-	ld [wSprite01StateData1 + SPRITESTATEDATA1_PICTUREID], a
-	dec a
-	ld [wSprite01StateData1ImageIndex], a
+	call OptionalEncounterHide
 .done
 	pop bc
 	jp TextScriptEnd

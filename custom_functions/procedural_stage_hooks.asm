@@ -21,7 +21,7 @@ ProcBossPatchStageSprite::
 	cp PROCEDURAL_FOREST
 	jr z, .forest
 	cp PROCEDURAL_FACILITY
-	jr z, .facility
+	jp z, .facility
 	cp SILPH_CO_DORM
 	jr z, .dorm
 	cp AI_LAIR
@@ -47,6 +47,7 @@ ProcBossPatchStageSprite::
 	ret
 .caveSubroom
 	farcall CaveSubroomPatchSprites ; the lake and mountain Pokemon
+	farcall OptionalEncounterPatchSprite
 	ret
 .aiLair
 	farcall AILairPatchMirrorSprite
@@ -264,6 +265,7 @@ ProcStageLoadDispatch::
 	cp PROCEDURAL_CAVE_SUBROOM
 	jr nz, .notCaveSubroom
 	farcall CaveSubroomLoad         ; its ladders climb back onto the cave's
+	farcall OptionalEncounterPlaceCave
 	ret
 .notCaveSubroom
 	cp PROCEDURAL_FACILITY_SUBROOM

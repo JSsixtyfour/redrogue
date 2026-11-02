@@ -1450,6 +1450,8 @@ ProceduralCave1_Blocks: INCBIN "maps/ProceduralCave1.blk"
 ; exist in every variant so a Debug-created save can still return safely.
 SECTION "Procedural Forest Grotto", ROMX, BANK[$26]
 INCLUDE "custom_functions/optional_encounter.asm"
+INCLUDE "custom_functions/optional_encounter_moves.asm"
+INCLUDE "custom_functions/cave_subroom_fallback.asm"
 INCLUDE "data/maps/headers/ProceduralForestGrotto.asm"
 INCLUDE "scripts/ProceduralForestGrotto.asm"
 INCLUDE "data/maps/objects/ProceduralForestGrotto.asm"

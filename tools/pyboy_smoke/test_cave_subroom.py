@@ -165,9 +165,8 @@ class CaveSubroomTest(unittest.TestCase):
         toggles = parse_rgbds_constants(ROOT / "constants/toggle_constants.asm")
         h.boot_to_lobby(battle_count=11, encounter_kind=4)
         h.write8("wStageEvent", 0)
-        # One ladder is an intentional generator outcome when no distant partner
-        # site fits. This fixture exercises BOTH return warps, so obtain a real
-        # two-ladder cave rather than depending on unrelated ROM/RNG timing.
+        # Exercise two ordinary sites here; the entrance-assisted second
+        # connection is covered separately by test_cave_optional_fallback.
         lobby = io.BytesIO()
         h.save_state(lobby)
         attempts = []
@@ -181,7 +180,7 @@ class CaveSubroomTest(unittest.TestCase):
             a, b, state = raw[TAIL], raw[TAIL + 1], raw[TAIL + 2]
             attempts.append((seed, a, b))
             self.assertLess(a, len(SITES), "no ladder this cave")
-            if b != 0xFF:
+            if b < len(SITES):
                 break
         self.assertLess(b, len(SITES), f"no two-ladder fixture found: {attempts}")
         h.write8("wProcCaveWildBudget", 0)

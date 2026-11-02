@@ -16,6 +16,98 @@ IF DEF(_DEBUG)
 ENDC
 	ret
 
+; SRAM0 is already open; use after the stage's season/theme has been latched.
+OptionalForestSeasonFixture::
+IF DEF(_DEBUG)
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG2_MODE, a
+	ret z
+	ld a, [sProcForestPalette]
+	cp 3
+	ret nz
+	call OptionalForceSnorlax
+	call FGOpenParentSRAM
+ENDC
+	ret
+
+OptionalCaveFixture::
+	call OptionalEncounterClear
+IF DEF(_DEBUG)
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG2_MODE, a
+	ret z
+	ld a, [sProcCavePalette]
+	cp 1
+	ret nz
+	call Random
+	and 1
+	jr z, .onix
+	call OptionalForceSnorlax
+	jr .map
+.onix
+	call OptionalForceOnix
+.map
+	ld a, PROCEDURAL_CAVE_SUBROOM
+	ld [wOptionalEncounterMap], a
+	call FGOpenParentSRAM
+ENDC
+	ret
+
+OptionalForceSnorlax::
+	call OptionalForcePink ; shared reset and reduced-level calculation
+	ld a, SNORLAX
+	ld [wOptionalEncounterSpecies], a
+	jr OptionalRollColdPackage
+
+OptionalForceOnix::
+	call OptionalForcePink
+	ld a, ONIX
+	ld [wOptionalEncounterSpecies], a
+	ld a, PROCEDURAL_CAVE_SUBROOM
+	ld [wOptionalEncounterMap], a
+OptionalRollColdPackage:
+	call Random
+	and 1
+	add 2 ; appended package ids: 2=Mist, 3=Haze. Pink remains 1.
+	ld [wOptionalEncounterPackage], a
+	ret
+
+; Nonzero species only for a complete valid assigned identity.
+OptionalEncounterAssigned::
+	ld a, [wOptionalEncounterPackage]
+	cp 1
+	jr z, .pink
+	sub 2
+	cp 2
+	jr nc, .no
+	ld a, [wOptionalEncounterSpecies]
+	cp SNORLAX
+	ret z
+	cp ONIX
+	ret z
+	jr .no
+.pink
+	ld a, [wOptionalEncounterSpecies]
+	cp BUTTERFREE
+	ret z
+.no
+	xor a
+	ret
+
+OptionalEncounterIsCurrent:
+	ldh a, [hCurMap]
+	ld hl, wOptionalEncounterMap
+	cp [hl]
+	jr nz, .no
+	call OptionalEncounterAssigned
+	and a
+	ret z
+	scf
+	ret
+.no
+	xor a
+	ret
+
 OptionalForcePink::
 	call OptionalEncounterClear
 	farcall PCGetBossLevel
@@ -46,7 +138,7 @@ OptionalForcePink::
 	ret
 
 OptionalEncounterPatchSprite::
-	call FGHasAssignedEncounter
+	call OptionalEncounterIsCurrent
 	and a
 	ld a, 0
 	jr z, .store
@@ -56,17 +148,33 @@ OptionalEncounterPatchSprite::
 	jr nz, .store
 	ld a, SPRITE_MONSTER
 .store
-	ld [wSprite01StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	push af
+	call OptionalSpriteAddress
+	pop af
+	ld [hl], a
+	ret
+
+OptionalSpriteAddress:
+	ld hl, wSprite01StateData1
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_SUBROOM
+	ret nz
+	ld hl, wSprite06StateData1
+	ret
+
+OptionalEncounterHide::
+	call OptionalSpriteAddress
+	xor a
+	ld [hli], a
+	inc hl ; ImageIndex
+	dec a
+	ld [hl], a
 	ret
 
 ; EngageMapTrainer OW_POKEMON seam. Carry means this owns the request.
 OptionalEncounterEngage::
-	ldh a, [hCurMap]
-	cp PROCEDURAL_FOREST_GROTTO
-	jr nz, .no
-	call FGHasAssignedEncounter
-	and a
-	jr z, .no
+	call OptionalEncounterIsCurrent
+	jr nc, .no
 	ld a, [wOptionalEncounterState]
 	and %110
 	jr nz, .no
@@ -91,25 +199,36 @@ OptionalEncounterEnemyFlags::
 	push hl
 	ld a, [wOptionalEncounterBattle]
 	ld b, a
-	xor a
-	ld [wOptionalEncounterBattle], a
 	ld a, b
 	and a
 	jr z, .done
 	ldh a, [hIsInBattle]
 	cp 1
-	jr nz, .done
-	ldh a, [hCurMap]
-	cp PROCEDURAL_FOREST_GROTTO
-	jr nz, .done
-	call FGHasAssignedEncounter
-	and a
-	jr z, .done
+	jr nz, .reject
+	call OptionalEncounterIsCurrent
+	jr nc, .reject
 	ld a, [wEnemyMonSpecies]
 	ld hl, wOptionalEncounterSpecies
 	cp [hl]
-	jr nz, .done
+	jr nz, .reject
 	set BIT_SPECIAL_FORM, e
+	ld a, [wOptionalEncounterPackage]
+	cp 2
+	jr c, .done
+	set 2, e ; type variant; cold packages have no special stat capability
+	ld a, ICE
+	ld [wEnemyMonType1], a
+	ld a, [wOptionalEncounterSpecies]
+	cp ONIX
+	ld a, ICE
+	jr nz, .type2
+	ld a, GROUND
+.type2
+	ld [wEnemyMonType2], a
+	jr .done
+.reject
+	xor a
+	ld [wOptionalEncounterBattle], a
 .done
 	pop hl
 	pop bc
@@ -119,14 +238,39 @@ OptionalEncounterEnemyFlags::
 OptionalEncounterFinalizeGift::
 	ld e, BRIDGE_MON_FINALIZE_SPECIAL
 	farcall BridgeFinalizeGiftMonFar
-	ret
+	ld b, MON_PP - MON_MOVES
+	jp OptionalGrantColdMoves
+
+; Replaces the existing tail hook without growing the crowded Battle Core.
+; Preserve the cemetery hook's original order and behavior before our grant.
+OptionalEncounterAfterEnemyLoad::
+	farcall PCemMaybeApplyGhostBoss
+	ld a, [wOptionalEncounterBattle]
+	ld b, a
+	xor a
+	ld [wOptionalEncounterBattle], a
+	ld a, b
+	and a
+	ret z
+	call OptionalEncounterIsCurrent
+	ret nc
+	ldh a, [hIsInBattle]
+	cp 1
+	ret nz
+	ld a, [wEnemyMonSpecies]
+	ld hl, wOptionalEncounterSpecies
+	cp [hl]
+	ret nz
+	ld de, wEnemyMon
+	farcall ApplySpecialForm
+	ld b, wEnemyMonPP - wEnemyMonMoves
+	jp OptionalGrantColdMoves
 
 ; Existing battle-item gate calls here only in an ordinary active battle.
 ; A failed capture request consumes neither the ball nor the player's turn.
 OptionalEncounterCaptureGate::
-	ldh a, [hCurMap]
-	cp PROCEDURAL_FOREST_GROTTO
-	jr nz, .no
+	call OptionalEncounterIsCurrent
+	jr nc, .no
 	ld a, [wCurItem]
 	cp SAFARI_BALL
 	jr z, .reject

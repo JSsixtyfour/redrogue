@@ -3,8 +3,9 @@
 ; The cave's subroom (PROCEDURAL_SUBROOMS_PLAN Phase 4). Two ladders down,
 ; placed at generation on fixed sites (constants/cave_ladder_site_constants.asm)
 ; at least CAVE_LADDER_MIN_DISTANCE apart, lead into PROCEDURAL_CAVE_SUBROOM;
-; each of its two ladders up climbs back onto its own. When only one site fits,
-; that one ladder serves both of the subroom's.
+; each of its two ladders up climbs back onto its own. When no distant second
+; site fits, an entrance ladder supplies the second connection. Zero ordinary
+; sites retain the resident-only fallback and have no basement access.
 ;
 ; Opens its own section, pinned to $3F in layout.link; farcall-only.
 
@@ -92,7 +93,10 @@ CaveSubroomPlaceLadders::
 	ld b, 0
 	call CaveLadderWalk             ; sites far enough from it
 	and a
-	jr z, .stamp                    ; none: one ladder serves both
+	jr nz, .partner
+	farcall CaveAddEntranceLadder
+	jr .stamp
+.partner
 	ld c, a
 	call Rangerandom
 	inc a
@@ -483,10 +487,23 @@ CaveSubroomArm::
 
 ; In: a = site (or NONE / an old save's fill byte), c = the subroom warp.
 .arm
+	cp CAVESUB_ENTRANCE_LADDER
+	jr nz, .ordinary
+	ld b, 0                         ; use a slot not already armed for ladder A
+	ld a, [wWarpEntries + CAVE_FIRST_LADDER_WARP * 4]
+	cp CAVE_LADDER_NONE
+	jr z, .entranceSlot
+	inc b                           ; A used site0; reuse site1 for the entrance
+.entranceSlot
+	ld d, CAVESUB_ENTRANCE_X
+	ld e, CAVESUB_ENTRANCE_Y
+	jr .checkBlock
+.ordinary
 	cp NUM_CAVE_LADDER_SITES
 	ret nc
 	ld b, a
 	call CaveLadderSiteXY
+.checkBlock
 	call CaveLadderBlockAddr
 	ld a, [hl]
 	cp CAVE_LADDER_BLOCK
@@ -685,6 +702,8 @@ CaveSubroomLoad::
 	; disarmed (a departure Y of $FF matches no player position).
 	pop bc                          ; b = A, c = B
 	ld a, c
+	cp CAVESUB_ENTRANCE_LADDER
+	jr z, .two                      ; keep the second ladder's distinct return
 	cp NUM_CAVE_LADDER_SITES
 	jr c, .two
 	ld c, b                         ; one ladder serves both (or neither)
@@ -703,9 +722,15 @@ CaveSubroomLoad::
 	ld [hl], $ff                    ; departure Y
 	jr .nextWarp
 .armed
+	cp CAVESUB_ENTRANCE_LADDER
+	jr nz, .ordinaryReturn
+	xor a                           ; both ladders return to ROM entrance warp0
+	jr .writeReturn
+.ordinaryReturn
 	cp NUM_CAVE_LADDER_SITES
 	jr nc, .nextWarp                ; no ladder (an old save): the ROM one stays
 	add CAVE_FIRST_LADDER_WARP
+.writeReturn
 	inc hl
 	inc hl
 	ld [hld], a                     ; destination warp (0-based)

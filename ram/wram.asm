@@ -2330,7 +2330,7 @@ wFollowerLedgeLatch:: db
 ; Optional encounter owns seven formerly unused saved bytes. Follower accesses
 ; stop at wFollowerLedgeLatch; the reservation and every later address stay put.
 wOptionalEncounterSpecies:: db
-wOptionalEncounterPackage:: db ; 1 = species-keyed special package, NOT form index
+wOptionalEncounterPackage:: db ; 1 Pink; 2 cold+Mist; 3 cold+Haze; NOT form index
 wOptionalEncounterLevel:: db
 wOptionalEncounterState:: db ; bit 0 auto offer shown, bit 1 defeated, bit 2 resolved
 wOptionalEncounterMap:: db

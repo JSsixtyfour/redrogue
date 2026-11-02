@@ -8,6 +8,7 @@ from test_forest_rest_house import ForestWalk
 import test_forest_grotto as geometry
 from source_constants import parse_rgbds_constants
 import save_reload
+SNORLAX=parse_rgbds_constants(geometry.ROOT/'constants/pokemon_constants.asm')['SNORLAX']
 
 
 class OptionalEncounterTest(ForestWalk, unittest.TestCase):
@@ -22,6 +23,15 @@ class OptionalEncounterTest(ForestWalk, unittest.TestCase):
             h.pyboy.memory[h.address('sProcForestAlgoForce')]=1
         h.register_hook('PFRollBoss',force_geometry)
         h.register_hook('FGChooseWall.return',lambda _:setattr(h.pyboy.register_file,'A',1))
+        # This suite specifically exercises the accepted Pink fixture, even
+        # when the normal Debug 2 season fixture would select Snowlax.
+        def fixture(_):
+            h.pyboy.memory[h.address('sProcForestPalette')]=0
+            if getattr(self,'cold_fixture',False):
+                h.write8('wOptionalEncounterSpecies',SNORLAX)
+                h.write8('wOptionalEncounterPackage',2)
+                h.write8('wOptionalEncounterLevel',35)
+        h.register_hook('OptionalForestSeasonFixture',fixture)
         initial = io.BytesIO(); h.save_state(initial)
         for seed in (17,31,53,91,137,203,251):
             h.load_state(initial); h.seed_rng((seed,seed ^ 0xa5,1,1))
@@ -30,7 +40,7 @@ class OptionalEncounterTest(ForestWalk, unittest.TestCase):
             if entry[0] != 255: break
         self.assertNotEqual(entry[0],255)
         self.assertGreater(h.read8('wOptionalEncounterLevel'),0)
-        self.assertEqual(h.read8('wOptionalEncounterPackage'),1)
+        self.assertEqual(h.read8('wOptionalEncounterPackage'),2 if getattr(self,'cold_fixture',False) else 1)
         self.parent_state = (h.read8('wBattleCount'),h.read8('wRoguePokemon1'),h.read8('wRoguePokemonForm1'),
                              h.read8('wProcForestWildBudget'),self.hidden('TOGGLE_WILD_AREA_BOSS'))
         self.parent_grid = h.read_sram_bytes('sProcForestStagingBuffer',400,bank=0)
@@ -79,7 +89,7 @@ class OptionalEncounterTest(ForestWalk, unittest.TestCase):
         h.register_hook('FGEncounterOffer.choiceMade',lambda _:offer_entries.append((h.read8('wOptionalEncounterState'),h.read8('wStatusFlags3'))))
         self.mash_until(lambda:h.read8('hIsInBattle')==1 and h.read8('wEnemyMonCatchRate') & 8,'start Pink battle')
         self.assertEqual(h.read8('wEnemyMonSpecies'),h.read8('wOptionalEncounterSpecies'))
-        self.assertEqual(h.read8('wEnemyMonCatchRate') & 0x6c,8)
+        self.assertEqual(h.read8('wEnemyMonCatchRate') & 0x6c,12 if getattr(self,'cold_fixture',False) else 8)
         self.assertEqual(h.read8('wEnemyMonLevel'),h.read8('wOptionalEncounterLevel'))
         self.assertEqual(h.read8('wOptionalEncounterBattle'),0)
         # Bounded combat fixture: give player a safe advantage and let the actual
@@ -89,7 +99,7 @@ class OptionalEncounterTest(ForestWalk, unittest.TestCase):
         self.assertEqual(h.read8('wPartyCount'),before+1)
         mon=h.address('wPartyMons')+before*44
         self.assertEqual(h.pyboy.memory[mon],h.read8('wOptionalEncounterSpecies'))
-        self.assertEqual(h.pyboy.memory[mon+7]&0x6c,8)
+        self.assertEqual(h.pyboy.memory[mon+7]&0x6c,12 if getattr(self,'cold_fixture',False) else 8)
         self.assertEqual(h.pyboy.memory[mon+33],h.read8('wOptionalEncounterLevel'))
         self.assertEqual(len(offer_entries),1)
         self.assertTrue(offer_entries[0][0]&2)
@@ -126,7 +136,14 @@ class OptionalEncounterTest(ForestWalk, unittest.TestCase):
             h.call_routine('OptionalEncounterEnemyFlags')
             h.unregister_hook('OptionalEncounterEnemyFlags',inject);h.unregister_hook('OptionalEncounterEnemyFlags.done',capture)
             self.assertEqual(flags[-1],expected,(map_id,species,battle))
-            self.assertEqual(h.read8('wOptionalEncounterBattle'),0)
+            # A valid flags request stays armed until the COMPLETE enemy load.
+            # Its positive consumption is exercised by real battle tests; this
+            # synthetic context has no initialized enemy stats/moves or speed.
+            self.assertEqual(h.read8('wOptionalEncounterBattle'),1 if expected else 0)
+        h.load_state(state) # actual overworld, not a fabricated battle context
+        h.write8('wOptionalEncounterBattle',1)
+        h.call_routine('OptionalEncounterAfterEnemyLoad')
+        self.assertEqual(h.read8('wOptionalEncounterBattle'),0,'invalid request must be consumed')
 
     def defeat(self):
         h=self.h
@@ -167,8 +184,8 @@ class OptionalEncounterTest(ForestWalk, unittest.TestCase):
         h.tap('up');h.tick(20)
         self.mash_until(lambda:len(offers)==2,'retry gives boxed special Pokemon')
         self.assertEqual(h.read8('wBoxCount'),20)
-        self.assertEqual(h.read8('wBoxMon1Species'),125)
-        self.assertEqual(h.read8('wBoxMon1CatchRate')&0x6c,8)
+        self.assertEqual(h.read8('wBoxMon1Species'),h.read8('wOptionalEncounterSpecies'))
+        self.assertEqual(h.read8('wBoxMon1CatchRate')&0x6c,12 if getattr(self,'cold_fixture',False) else 8)
         self.assertEqual(h.read_bytes('wBoxMon1',33,offset=33),before[:33])
         self.assertEqual(h.read8('wOptionalEncounterState')&7,7)
         self.assertEqual(h.read8('wBattleCount'),self.parent_state[0])

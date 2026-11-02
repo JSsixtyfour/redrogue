@@ -19,6 +19,7 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--seeds',type=int,default=4,help='per allowed wall pair and force value, 30 normal/fallback groups')
     p.add_argument('--include-rooms',action='store_true',help='include dormant force5, which has a preserved pre-grotto connectivity failure')
+    p.add_argument('--require-placement',action='store_true',help='fail if an assigned encounter has no opening')
     p.add_argument('--out',type=Path,default=ROOT/'builds/procedural_updates/three_edges/corpus.json')
     args=p.parse_args()
     h=RedRogueHarness(ROOT,ROOT/'tools/pyboy_smoke/artifacts')
@@ -30,6 +31,9 @@ def main():
         h.register_hook('PFRollBoss',lambda _:h.pyboy.memory.__setitem__(h.address('sProcForestExitEdge'),context['main']))
         h.register_hook('FGChooseWall.return',lambda _:setattr(h.pyboy.register_file,'A',context['preferred']))
         h.register_hook('PFinalizeForest',lambda _:h.write_sram_bytes('sProcForestAlgoForce',[context['algorithm']],bank=0))
+        def before_carve(_):
+            context['before']=[h.read8('wOverworldMap',offset=81+y*26+x) for y in range(20) for x in range(20)]
+        h.register_hook('FGPrototypeCarve',before_carve)
         forest=parse_map_constants(ROOT/'constants/map_constants.asm')['PROCEDURAL_FOREST']
         for main in range(3):
             for preferred in range(3):
@@ -42,6 +46,7 @@ def main():
                         packed=h.read_sram_bytes('sProcForestStagingBuffer',400,bank=0)
                         live=[h.read8('wOverworldMap',offset=81+y*26+x) for y in range(20) for x in range(20)]
                         assert packed==live,(context,seed,'bake mismatch')
+                        before=context.pop('before')
                         assert h.read_sram_bytes('sProcForestExitEdge',1,bank=0)==[main]
                         assert h.read_sram_bytes('sProcForestRiverSide',1,bank=0)==[255]
                         assert h.read_sram_bytes('sProcForestItemGot',1,bank=0)[0]&31!=1
@@ -58,6 +63,12 @@ def main():
                             side=top[2]//2
                             assert side in (0,1,2) and side!=main
                             x,y=top[1],top[0]
+                            site=(x if side==0 else y)//2
+                            expected=({site:88} if side==0 else
+                                      {20*site:86} if side==1 else
+                                      {20*site+18:27,20*site+19:87})
+                            changed={i:v for i,v in enumerate(packed) if v!=before[i]}
+                            assert changed==expected,(dict(context),seed,'unexpected terrain overwrite',changed,expected)
                             assert (y==0 if side==0 else x==(0 if side==1 else 39))
                             bottom=[y+(side!=0),x+(side==0),2*side+1,top[3]]
                             assert h.warp_entries()[3]==bottom
@@ -68,7 +79,9 @@ def main():
                                 sy=h.read8('wSprite01StateData2MapY',offset=16*(slot-1))-4
                                 cells.pop((sx,sy),None)
                                 if slot==1:
-                                    for dx,dy in ((1,0),(-1,0),(0,1),(0,-1)):cells.pop((sx+dx,sy+dy),None)
+                                    # The live forest script guards exactly one flank.
+                                    dx,dy=(1,0) if main==0 else (0,1)
+                                    cells.pop((sx+dx,sy+dy),None)
                             reach=flood(cells,(18,35))
                             for goal in ((x,y),(bottom[1],bottom[0])):
                                 if goal not in reach:
@@ -76,6 +89,8 @@ def main():
                                     with args.out.with_suffix('.failure.pyboy').open('wb') as f:h.save_state(f)
                                     args.out.with_suffix('.failure.json').write_text(json.dumps({'context':context,'seed':seed,'goal':goal,'packed':packed,'tilemap':h.read_bytes('wTileMap',360),'rom':h.rom_sha256,'sym':h.sym_sha256},indent=2))
                                     raise AssertionError((dict(context),seed,'grotto not reachable',goal))
+                        if args.require_placement:
+                            assert side is not None,(dict(context),seed,'assigned grotto missing')
                         records.append(dict(context,seed=seed,actual=side))
         assert not h.hook_errors,h.hook_errors
         summary={f'{a}->{b}':dict(Counter(str(r['actual']) for r in records if r['main']==a and r['preferred']==b))
