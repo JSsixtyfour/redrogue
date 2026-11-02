@@ -100,6 +100,17 @@ PalSettings_FOREST:
 ;	50	51	52	53	54	55	56	57	58	59	5A	5B	5C	5D	5E	5F
 	db	6,	6,	6,	6,	4,	4,	4,	4,	6,	6,	6,	6,	6,	6,	4,	4
 
+; Procedural spring/winter only. Palette 2 is unused by ordinary FOREST.
+; Isolate tree/trunk/small-tree colors from grass (4) and buildings (6).
+PalSettings_SeasonalForest:
+	db 4,3,6,6,2,2,2,2,6,6,3,3,6,6,6,6
+	db 0,0,6,6,7,2,2,2,6,6,3,3,6,6,6,6
+	db 4,6,6,2,2,2,2,2,6,6,6,6,6,6,6,6
+	db 4,6,6,3,4,2,2,3,6,4,6,6,6,6,6,6
+	db 3,3,3,3,6,6,6,6,6,6,6,3,3,6,6,6
+	db 6,6,6,6,2,2,2,2,6,6,6,6,6,6,4,4
+ASSERT @ - PalSettings_SeasonalForest == NUM_TILESET_TILES
+
 PalSettings_MART:
 PalSettings_POKECENTER:
     ;	00	01	02	03	04	05	06	07	08	09	0A	0B	0C	0D	0E	0F

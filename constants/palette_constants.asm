@@ -64,16 +64,17 @@ DEF SET_PAL_DEFAULT EQU $ff
 	; PAL_26 had no callers; Yume uses this slot for the Bill's PC icon palette.
 	const PAL_BILLS_PC  ; $26
 	const PAL_27        ; $27
+	const PAL_FOREST_WINTER ; $28; appended SGB row, existing season values stay fixed
 DEF NUM_SGB_PALS EQU const_value
-	const PAL_BW        ; $28, CGB only
-	const PAL_UBALL     ; $29, CGB only
+	const PAL_BW        ; $29, CGB only
+	const PAL_UBALL     ; $2A, CGB only
 	; Rarity-colored overworld Poke Balls (custom_functions/ball_rarity.asm).
 	; SetPal_Overworld installs these three in palette slots 1-3 on CGB, so a
 	; ball whose cached class is N draws with OBJ palette N. Order is the class
 	; order and must stay matched to data/gfx/ball_rarity_palettes.asm.
-	const PAL_BALL_GREAT  ; $2A, CGB only
-	const PAL_BALL_ULTRA  ; $2B, CGB only
-	const PAL_BALL_MASTER ; $2C, CGB only
+	const PAL_BALL_GREAT  ; $2B, CGB only
+	const PAL_BALL_ULTRA  ; $2C, CGB only
+	const PAL_BALL_MASTER ; $2D, CGB only
 
 ; --- Phase 4 (procedural stage palette variants) ---------------------------
 ; Readable aliases for two spare rows claimed by the procedural cave, rather
@@ -109,7 +110,7 @@ DEF PROC_CAVE_PAL_COUNT EQU 2
 ; 2026-09-22). Same reasoning as PROC_CAVE_PAL_COUNT: fresh SRAM powers up
 ; $ff, so both the CGB enhanced path (func_enhancedcolor.asm) and the
 ; SGB/DMG path range-check against these before indexing a table.
-DEF PROC_FOREST_PAL_COUNT   EQU 3 ; sProcForestPalette: 0 spring, 1 fall, 2 default green
+DEF PROC_FOREST_PAL_COUNT   EQU 4 ; sProcForestPalette: 0 spring, 1 fall, 2 green, 3 winter
 DEF PROC_FACILITY_PAL_COUNT EQU 2 ; sProcFacilityPalette: 0 PowerPlant, 1 Mansion
 
 ; SHINY CHARM adds NO palettes here. Shin Red's system (which this is ported

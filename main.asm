@@ -793,6 +793,7 @@ INCLUDE "custom_functions/room_decor.asm"
 INCLUDE "custom_functions/room_pc.asm"
 INCLUDE "custom_functions/run_records.asm"
 INCLUDE "custom_functions/room_vendor.asm"
+INCLUDE "custom_functions/map_graphics_reload.asm"
 INCLUDE "custom_functions/relocated_home.asm"
 INCLUDE "engine/items/item_rarity.asm"
 ; Same section as the item tier tables and BufferAllEnhancedColorsGBC: it reads

@@ -24,8 +24,8 @@ _SchoolGift1Desc::
 	done
 
 _SchoolGift2Desc::
-	text "Raises Special"
-	line "stat!"
+	text "Ups SPC stat of"
+	line "one #MON."
 	done
 
 _SchoolGift3Desc::

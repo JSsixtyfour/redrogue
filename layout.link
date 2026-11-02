@@ -179,6 +179,9 @@ ROMX $19
 	"Tilesets 1"
 ROMX $1A
 	"Tilesets 2"
+	; Argument-free font/map reload unit and sparse forest tree patches.
+	; Public callers use HOME far-jump stubs; all data copies are bank-aware.
+	"Map Graphics Reload"
 ROMX $1B
 	"Tilesets 3"
 ROMX $1C

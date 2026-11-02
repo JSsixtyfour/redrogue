@@ -1714,8 +1714,7 @@ RentalUnavailableText:
 	line "available now."
 	prompt
 RentalUsedText:
-	text "You've rented for"
-	line "this opportunity."
+	text "Enjoy your rental!"
 	prompt
 RentalPartyFullText:
 	text "Make room in your"

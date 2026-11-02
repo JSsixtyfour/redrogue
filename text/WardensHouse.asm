@@ -51,23 +51,13 @@ _WardensHouseWardenReceivedHM04Text::
 	text_end
 
 _WardensHouseWardenHM04ExplanationText::
-	text "WARDEN: HM04"
-	line "teaches STRENGTH!"
-
-	para "It lets #MON"
-	line "move boulders"
-	cont "when you're out-"
-	cont "side of battle."
-
-	para "Oh yes, did you"
+	text "Oh yes, did you"
 	line "find SECRET HOUSE"
-	cont "in SAFARI ZONE?"
+	cont "in the FOREST?"
 
-	para "If you do, you"
-	line "win an HM!"
-
-	para "I hear it's the"
-	line "rare SURF HM."
+	para "I hear its got"
+	line "some interesting"
+	cont "visitors."
 	done
 
 _WardensHouseWardenHM04NoRoomText::
@@ -86,23 +76,22 @@ _WardensHouseDisplayMerchandiseText::
 	done
 
 _WardenGift1Desc::
-	text "Teaches #MON"
-	line "to learn STRENGTH"
+	text "The STRENGTH"
+	line "Hidden Machine"
 	done
 
 _WardenGift2Desc::
-	text "A Safari Zone"
-	line "rarity!"
+	text "The Parent #MON"
 	done
 
 _WardenGift3Desc::
-	text "Teaches #MON"
-	line "to learn SURF"
+	text "The SURF technical"
+	line "machine"
 	done
 
 _WardenGift4Desc::
-	text "A Safari Zone"
-	line "rarity!"
+	text "The Wild Bull"
+	line "#MON"
 	done
     
 _WardenGift5Desc::

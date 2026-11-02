@@ -67,22 +67,6 @@ _VioletGymTMNoRoomText::
 	line "for this!"
 	done
 
-_VioletGymCooltrainerMBattleText::
-	text "My birds will"
-	line "peck you apart!"
-	done
-
-_VioletGymCooltrainerMEndBattleText::
-	text "Ugh!"
-	line "Grounded!"
-	prompt
-
-_VioletGymCooltrainerMAfterBattleText::
-	text "A FLYING #MON"
-	line "hates rocks and"
-	cont "sparks alike."
-	done
-
 _VioletGymTrainer1BattleText::
 	text "The keyword is"
 	line "guts!"
@@ -125,6 +109,26 @@ _VioletGymTrainer2AfterBattleText::
 	line "losing to some"
 	cont "rookie trainer…"
 	done
+    
+_VioletGymTrainer3BattleText::
+    text "I'm the final test"
+	line "before FALKNER,"
+	cont "show me what you've"
+	cont "got!"
+	done
+
+_VioletGymTrainer3EndBattleText::
+	text "Well"
+	line "FALKNER will have"
+	cont "his hands full"
+	cont "with you."
+	prompt
+
+_VioletGymTrainer3AfterBattleText::
+	text "Beware, Ground"
+	line "types can't even"
+	cont "touch a flying"
+	cont "#MON"
 
 _VioletGymGuideAdviceText::
 	text "Hey! I'm no train-"

@@ -259,15 +259,15 @@ VioletGymCooltrainerM4Text:
 	jp TextScriptEnd
 
 VioletGymCooltrainerM4BattleText:
-	text_far _VioletGymCooltrainerMBattleText
+	text_far _VioletGymTrainer3BattleText
 	text_end
 
 VioletGymCooltrainerM4EndBattleText:
-	text_far _VioletGymCooltrainerMEndBattleText
+	text_far _VioletGymTrainer3EndBattleText
 	text_end
 
 VioletGymCooltrainerM4AfterBattleText:
-	text_far _VioletGymCooltrainerMAfterBattleText
+	text_far _VioletGymTrainer3AfterBattleText
 	text_end
 
 VioletGymGuideText:

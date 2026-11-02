@@ -26,8 +26,8 @@ SGB_PALETTES = REPO_ROOT / "data" / "sgb" / "sgb_palettes.asm"
 CGB_PALETTES = REPO_ROOT / "data" / "gfx" / "cgb_palettes.asm"
 SGB_PATH = REPO_ROOT / "engine" / "gfx" / "palettes.asm"
 
-# Retuned by the user in 8edf8621 (2026-10-29); no longer the .pal files' day rows.
-SPRING_ROW = [(28, 31, 26), (24, 24, 12), (27, 11, 18), (6, 0, 0)]
+# Approved cherry art (2026-11-01); fall retains the user's previous row.
+SPRING_ROW = [(31, 31, 31), (31, 18, 24), (19, 8, 12), (3, 3, 3)]
 FALL_ROW = [(28, 31, 26), (25, 25, 0), (29, 11, 3), (6, 0, 0)]
 
 

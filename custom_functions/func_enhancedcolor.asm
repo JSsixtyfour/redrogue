@@ -237,8 +237,8 @@ GBCEnhancedOverworldPalettes_ForestSpring:
 
 	; PAL_ENH_OVW_PURPLE 	; $02
 	GBCEnh_White
-	RGB 25, 15, 31
-	RGB 19,  0, 22
+	RGB 31, 18, 24 ; private tree palette, source cherry middle shades
+	RGB 19,  8, 12
 	GBCEnh_Black
 
 	; PAL_ENH_OVW_GRAY   	; $03
@@ -247,10 +247,10 @@ GBCEnhancedOverworldPalettes_ForestSpring:
 	RGB 11, 11,  5
 	GBCEnh_Black
 
-	; PAL_ENH_OVW_GREEN    	; $04 - spring trees, pink blossom (2026-10-06, was maps/springtrees2.pal's day row)
+	; PAL_ENH_OVW_GREEN $04 - grass stays green; trees now use private slot 2
 	GBCEnh_White
 	RGB 17, 31, 11
-	RGB 31, 0, 17
+	RGB  1, 22,  6
 	; Colour 3 was the .pal file's RGB 6,0,0 (dark red). Every screen-black hold
 	; (rBGP = $FF) shows each palette's colour 3, so the trees - most of the
 	; Forest - flashed dark red for ~6 frames before every reveal (measured
@@ -330,6 +330,41 @@ GBCEnhancedOverworldPalettes_ForestFall:
 ; floor) and PAL_ENH_OVW_BROWN (register 6)). Recolours those two registers red
 ; (2026-10-06, tuned in tools/palette_preview.py's editor); everything else is
 ; DEFAULT verbatim, same minimal-diff shape as the Cave's ColdCavern set above.
+; Default environmental colors with only unused FOREST slot 2 recolored.
+GBCEnhancedOverworldPalettes_ForestWinter:
+	GBCEnh_White
+	RGB 31, 10,  0
+	RGB 21,  0,  0
+	GBCEnh_Black
+	GBCEnh_White
+	RGB 31, 15, 18
+	RGB 31,  0,  6
+	GBCEnh_Black
+	GBCEnh_White
+	RGB 10, 23, 22 ; source evergreen middle shades
+	RGB  1, 10,  9
+	GBCEnh_Black
+	GBCEnh_White
+	RGB 20, 23, 10
+	RGB 11, 11,  5
+	GBCEnh_Black
+	GBCEnh_White
+	RGB 17, 31, 11
+	RGB  1, 22,  6
+	GBCEnh_Black
+	GBCEnh_White
+	RGB 31, 31,  0
+	RGB 28, 14,  0
+	GBCEnh_Black
+	GBCEnh_White
+	RGB 22, 16,  5
+	RGB 15,  7,  3
+	GBCEnh_Black
+	GBCEnh_White
+	RGB 12, 14, 31
+	RGB  0,  1, 25
+	GBCEnh_Black
+
 GBCEnhancedOverworldPalettes_FacilityRed:
 	; PAL_ENH_OVW_RED     	; $00
 	GBCEnh_White
@@ -422,6 +457,7 @@ EnhBasePalSetPointers:
 	dw GBCEnhancedOverworldPalettes_ForestSpring ; ENH_BASE_FOREST_SPRING
 	dw GBCEnhancedOverworldPalettes_ForestFall   ; ENH_BASE_FOREST_FALL
 	dw GBCEnhancedOverworldPalettes_FacilityRed  ; ENH_BASE_FACILITY_RED
+	dw GBCEnhancedOverworldPalettes_ForestWinter ; ENH_BASE_FOREST_WINTER
 EnhBasePalSetPointers_End:
 
 DEF ENH_BASE_DEFAULT       EQU 0
@@ -430,7 +466,8 @@ DEF ENH_BASE_DARK          EQU 2
 DEF ENH_BASE_FOREST_SPRING EQU 3
 DEF ENH_BASE_FOREST_FALL   EQU 4
 DEF ENH_BASE_FACILITY_RED  EQU 5
-DEF ENH_BASE_SET_COUNT EQU 6
+DEF ENH_BASE_FOREST_WINTER EQU 6
+DEF ENH_BASE_SET_COUNT EQU 7
 
 ASSERT (EnhBasePalSetPointers_End - EnhBasePalSetPointers) / 2 == ENH_BASE_SET_COUNT, \
 	"ENH_BASE_SET_COUNT does not match EnhBasePalSetPointers; .ReadMasterPals would index past the table"
@@ -465,6 +502,7 @@ ProcForestPalSets:
 	db ENH_BASE_FOREST_SPRING ; sProcForestPalette 0
 	db ENH_BASE_FOREST_FALL   ; 1
 	db ENH_BASE_DEFAULT       ; 2 - ordinary green trees
+	db ENH_BASE_FOREST_WINTER ; 3 - appended winter
 ProcForestPalSets_End:
 
 ASSERT ProcForestPalSets_End - ProcForestPalSets == PROC_FOREST_PAL_COUNT, \
@@ -668,6 +706,36 @@ LoadEnhancedOverworldPaletteCommand::
 	call TransferGBCEnhancedBGMapAttributes
 	ret
 
+; Both full redraw and scrolling select the same map/season-scoped table.
+; Initial map attributes precede the palette command, so wEnhBasePalSet still
+; names the previous map here. Read the latched season, not that stale cache.
+GetOverworldTilePalPointer:
+	ld a, [w2CurMap]
+	cp PROCEDURAL_FOREST
+	jr nz, .normal
+	ld a, BANK(sProcForestPalette)
+	ld hl, sProcForestPalette
+	call ReadProcPaletteVariant
+	and a
+	jr z, .trees
+	cp 3 ; appended winter
+	jr nz, .normal
+.trees
+	ld hl, PalSettings_SeasonalForest
+	ret
+.normal
+	ld a, [w2CurMapTileset]
+	ld c, a
+	ld b, 0
+	ld hl, OverworldTilePalPointers
+	add hl, bc
+	add hl, bc
+	ld a, [hli]
+	ld b, a
+	ld h, [hl]
+	ld l, b
+	ret
+
 MakeOverworldBGMapAttributes::
 ;only do the attributes when walking around, not during a menu or text since that will mess up the settings
 	ld a, [hAutoBGTransferEnabled]
@@ -778,20 +846,8 @@ MakeOverworldBGMapAttributes::
 	ld l, a
 	ld sp, hl
 
-;get the current map tileset
-;based on the tileset, point HL to the correct list of BG map attributes for its tiles
-	ld a, [w2CurMapTileset]
-	ld c, a
-	ld b, 0
-	ld hl, OverworldTilePalPointers	
-	add hl, bc
-	add hl, bc
-	ld a, [hli]   
-	ld b, a       
-	ld a, [hl]    
-	ld h, a
-	ld a, b
-	ld l, a
+; Select the ordinary or private seasonal tile palette table.
+	call GetOverworldTilePalPointer
 
 ;backup this HL pointer
 	ld a, h
@@ -1148,16 +1204,11 @@ MakeOverworldBGMapAttributes_RolColUpdate:
 	ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
 .getTileset
-;get the current map tileset
-	ld a, [w2CurMapTileset]
-	ld c, a
-	ld b, 0
-	ld hl, OverworldTilePalPointers	
-	add hl, bc
-	add hl, bc
-	ld a, [hli]   
+; Match full redraws, including the seasonal tree palette on new rows/columns.
+	call GetOverworldTilePalPointer
+	ld a, l
 	ld [hSPTemp+1], a
-	ld a, [hl]    
+	ld a, h
 	ld [hSPTemp], a
 	ret
 	

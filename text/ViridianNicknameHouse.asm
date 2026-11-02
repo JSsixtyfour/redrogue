@@ -1,7 +1,7 @@
 _ViridianNicknameHouseBaldingGuyText::
-	text "Ah, a young"
-	line "TRAINER! Let me"
-	cont "share my wisdom."
+	text "A new trainer! Let"
+	line "me help you on"
+	cont "your way."
 	prompt
 
 _ViridianNicknameHouseLittleGirlText::
@@ -19,19 +19,19 @@ _ViridianNicknameHouseSpearySignText::
 	done
 
 _ViridianNicknameHouseBaldingGuyAlreadyGotText::
-	text "Put that wisdom"
-	line "to good use!"
+	text "Come back sometime"
+	line "and I'll teach you"
+	cont "had to catch a"
+	cont "#MON"
 	done
 
 _OldManGift1Desc::
-	text "A level-matched"
-	line "@"
+	text "@"
 	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
 	text_end
 
 _OldManGift2Desc::
-	text "A level-matched"
-	line "@"
+	text "@"
 	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
 	text_end
 

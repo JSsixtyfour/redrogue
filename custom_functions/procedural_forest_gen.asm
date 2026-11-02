@@ -2339,7 +2339,7 @@ PFPreloadForest::
     ; above. PROC_FOREST_PAL_COUNT is what both colour paths range-check
     ; against - see ProcForestPalSets in func_enhancedcolor.asm and
     ; ProcForestOverworldPalette in engine/gfx/palettes.asm. Rejection sampling
-    ; keeps the three variants equally likely.
+    ; keeps all four variants equally likely (winter appended as 3).
 .rollPalette
     call Random
     and 3

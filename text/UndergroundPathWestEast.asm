@@ -1,16 +1,18 @@
 _UndergroundPathWestEastBiker1BattleText::
-	text "This tunnel's our"
-	line "Pay the toll!"
+	text "Welcome to our"
+	line "turf, kid!"
 	done
 
 _UndergroundPathWestEastBiker1EndBattleText::
-	text "You rode"
-	line "right over me!"
+	text "Guess it's"
+	line "your turf now."
 	prompt
 
 _UndergroundPathWestEastBiker1AfterBattleText::
-	text "The crew ahead"
-	line "won't go so easy."
+	text "Watch your step"
+	line "around here kid,"
+	cont "it's a tough crowd."
+	done
 	done
 
 _UndergroundPathWestEastJugglerBattleText::

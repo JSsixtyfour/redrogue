@@ -10,7 +10,7 @@ _CaptainGift9Desc::
 
 _FossilGift8Desc::
 	text "One #MON: SPEED,"
-	line "evade up; ATK down"
+	line "EVADE up; ATK down"
 	done
 
 _FossilGift9Desc::
@@ -24,13 +24,13 @@ _FanClubGift6Desc::
 	done
 
 _FanClubGift7Desc::
-	text "Improves gifted"
+	text "Improves reward"
 	line "#MON rarity"
 	done
 
 _WardenGift6Desc::
-	text "Raises all party"
-	line "ATTACK by 12.5%"
+	text "Raises all #MON"
+	line "ATK by 12.5%"
 	done
 
 _WardenGift7Desc::
@@ -39,7 +39,7 @@ _WardenGift7Desc::
 	done
 
 _SchoolGift4Desc::
-	text "A level-matched"
+	text "A"
 	line "@"
 	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
 	text_end
@@ -62,8 +62,8 @@ _SchoolGift7Desc::
 _SchoolGift8Desc::
 	text "@"
 	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
-	text " with"
-	line "QUICK CLAW"
+	text "that"
+	line "randomly outspeeds"
 	done
 
 _OldManGift4Desc::
@@ -72,8 +72,8 @@ _OldManGift4Desc::
 	done
 
 _OldManGift5Desc::
-	text "Stops normal move"
-	line "recoil damage"
+	text "Stops all recoil"
+	line "damage"
 	done
 
 _OldManGift6Desc::
@@ -97,8 +97,8 @@ _TrashedGift4Desc::
 	done
 
 _TrashedGift5Desc::
-	text "All moves gain 10"
-	line "accuracy points"
+	text "All #MON become"
+	line "10% more accurate"
 	done
 
 _TrashedGift6Desc::
@@ -118,12 +118,12 @@ _TrashedGift8Desc::
 	text_end
 
 _MomGift7Desc::
-	text "Healing recovers"
+	text "Healing moves give"
 	line "10% more HP"
 	done
 
 _MomGift8Desc::
-	text "A level-matched"
+	text "A"
 	line "@"
 	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
 	text_end
@@ -146,7 +146,7 @@ _FanClubGift8Desc::
 	done
 
 _IgaGift4Desc::
-	text "Your poison will"
+	text "All poison will"
 	line "become toxic"
 	done
 
@@ -162,7 +162,7 @@ _IgaGift6Desc::
 
 _IgaGift7Desc::
 	text "All party #MON"
-	line "start 1 evade up"
+	line "start 1 EVADE up"
 	done
 
 _IgaGift8Desc::
@@ -171,13 +171,13 @@ _IgaGift8Desc::
 	done
 
 _FloraGift4Desc::
-	text "Drain heals 30%"
-	line "more HP"
+	text "Draining Moves"
+	line "heal 30% more"
 	done
 
 _FloraGift5Desc::
-	text "One #MON resists"
-	line "all major status"
+	text "One #MON immune"
+	line "to all statuses"
 	done
 
 _FloraGift6Desc::
@@ -196,15 +196,17 @@ _FloraGift8Desc::
 	done
 
 _FloraGift9Desc::
-	text "A LEAF STONE"
+	text "Evolves certain"
+	line "#MON"
 	done
 
 _OaksLabGift5Desc::
-	text "A rare EEVEE"
+	text "The evolution"
+	line "#MON"
 	done
-
+    
 _OaksLabGift6Desc::
-	text "Get 20% more cash"
+	text "Get 20% more money"
 	line "from battles"
 	done
 
