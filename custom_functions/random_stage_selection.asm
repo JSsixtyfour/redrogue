@@ -1145,14 +1145,14 @@ SelectAndPatchRewardRoomExit::
 	ld a, [wRogueMap]
 	ld [wLobbyDoor1StageMap], a
 	ld [wLobbyDoor2StageMap], a
-	; Patch door 1 (warp_event $6,$1 → Y=1,X=6).
-	ld b, 1
-	ld c, $6
+	; Patch door 1 (warp_event $3,$0 -> Y=0,X=3).
+	ld b, 0
+	ld c, $3
 	call PatchWarpEntry
-	; Patch door 2 (warp_event $A,$1 → Y=1,X=$A).
+	; Patch door 2 (warp_event $7,$0 -> Y=0,X=7).
 	ld a, [wLobbyDoor2StageMap]
-	ld b, 1
-	ld c, $A
+	ld b, 0
+	ld c, $7
 	call PatchWarpEntry
 	ret
 

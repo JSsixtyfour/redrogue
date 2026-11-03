@@ -408,7 +408,8 @@ SECTION "Dex Forms", ROMX
 INCLUDE "custom_functions/dex_forms.asm"
 
 
-; Pokedex Forms list and form data page (Checkpoint D), pinned to $27 in layout.link.
+; The Pokedex menu (species + forms, "split by kind") and the form data page,
+; pinned to $27 in layout.link.
 SECTION "Form Dex", ROMX
 
 INCLUDE "custom_functions/form_dex.asm"

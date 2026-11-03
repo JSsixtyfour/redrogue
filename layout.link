@@ -252,8 +252,9 @@ ROMX $26
 	"Text 7"
 ROMX $27
 	"Text 8"
-	; Pokedex Forms list + form data page + form entries (2026-11-03). Reached
-	; only by `predef FormDexMenu`; everything else in it is local.
+	; The Pokedex menu (every identity, 303 rows), the form data page and form
+	; entries (2026-11-03). Reached only by `predef ShowPokedexMenu`; it calls
+	; back into bank $10 only by predef (ShowPokedexData, PokedexToIndex).
 	"Form Dex"
 ROMX $28
 	"Text 9"

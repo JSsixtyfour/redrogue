@@ -78,6 +78,9 @@ DEF wPFNRow         EQU 16  ; chosen neighbor row
 DEF wPFAlgoForce    EQU 17  ; saved from sProcForestAlgoForce (read while SRAM open)
 DEF wPFPassCount    EQU 18  ; braid pass: passage count for current cell
 DEF wPFBraidCol     EQU 19  ; braid pass: column counter (0-8)
+DEF wPFHuntRow      EQU 19  ; reuses wPFBraidCol (braid/ball passes set it before
+                            ; use, after the maze): PFHuntAndKill's first row that
+                            ; may still hold an unvisited cell
 DEF wPFBallIdx      EQU 20  ; PFScanForBall Phase 2: current ball index (0-3)
 ; PFScanForBall Phase 2 scratch — all alias offsets confirmed UNTOUCHED by
 ; PFScanWallPassOnly during Phase 1's per-cell scan (verified: that function
@@ -723,6 +726,8 @@ PFBacktracker:
 ; No stack needed. Visited = block != PF_TREE.
 ; ============================================================
 PFHuntAndKill:
+    xor a
+    ld [wBuffer + wPFHuntRow], a
     ld a, 4
     ld [wBuffer + wPFCellCol], a
     ld a, 8
@@ -776,8 +781,18 @@ PFHuntAndKill:
     jp .hkWalk
 
 .hkHunt
-    ; Scan row=0..8, col=0..8 for visited cell with unvisited neighbor
-    xor a
+    ; Scan row-major for a visited cell with an unvisited neighbor, starting
+    ; at the row above the first one that still holds an unvisited cell
+    ; (2026-11-03, PROCEDURAL_REVIEW item 6). Every row above that is fully
+    ; visited, so no cell there can border an unvisited one; the order is
+    ; unchanged, so the hunt finds the same cell it always did. It used to
+    ; rescan from row 0 after every dead end (19-25 frames per forest).
+    call PFHuntAdvanceRow
+    ld a, [wBuffer + wPFHuntRow]
+    and a
+    jr z, .hkHuntStart
+    dec a
+.hkHuntStart
     ld [wBuffer + wPFCellRow], a
 .hkHuntRow
     xor a
@@ -851,6 +866,34 @@ PFHuntAndKill:
 .hkHuntFound
     call PFCarveToNeighbor
     jp .hkWalk
+
+; Moves wPFHuntRow past every row whose 9 cells are all visited (not PF_TREE,
+; the hunt's own unvisited test). Monotonic: a visited cell never reverts.
+; Clobbers a/c/de/hl and wPFCurX/Y.
+PFHuntAdvanceRow:
+    ld a, [wBuffer + wPFHuntRow]
+    cp PF_CELL_H
+    ret nc
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurY], a
+    ld c, 0
+.col
+    ld a, c
+    add a, a
+    inc a
+    ld [wBuffer + wPFCurX], a
+    call PFReadBlock                ; keeps bc
+    cp PF_TREE
+    ret z                           ; this row still holds an unvisited cell
+    inc c
+    ld a, c
+    cp PF_CELL_W
+    jr c, .col
+    ld a, [wBuffer + wPFHuntRow]
+    inc a
+    ld [wBuffer + wPFHuntRow], a
+    jr PFHuntAdvanceRow
 
 ; ============================================================
 ; PFPlaceRooms

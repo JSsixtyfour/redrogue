@@ -36,10 +36,14 @@ def main():
         h.boot_to_lobby(battle_count=11,encounter_kind=4);h.write8('wStageEvent',0)
         base=io.BytesIO();h.save_state(base)
         h.register_hook('OptionalCaveAssignEncounter',lambda _:h.pyboy.memory.__setitem__(h.address('sProcCavePalette'),context['cold']))
-        def exhaust(_):
-            if context['mode']=='zero' or (context['mode']=='single' and h.pyboy.register_file.C!=255):
-                h.pyboy.register_file.HL&=0xff00
-        h.register_hook('CaveLadderWalk.end',exhaust)
+        # Dynamic ladders (2026-11-03): zero forces CaveDynMark's count, single
+        # forces only the partner counts (CaveDynWalk with PARTNER | COUNT).
+        def no_marks(_):
+            if context['mode']=='zero':h.pyboy.register_file.C=0
+        def no_partner(_):
+            if context['mode']=='single' and h.pyboy.register_file.C&0x82==0x82:h.pyboy.register_file.B=0
+        h.register_hook('CaveDynMark.end',no_marks)
+        h.register_hook('CaveDynWalk.end',no_partner)
         def before(_):
             context['grid']=[h.read8('wOverworldMap',offset=81+y*26+x) for y in range(20) for x in range(20)]
             context['actors']=[h.read_bytes('wSprite01StateData2MapY',2,16*i) for i in range(7)]
@@ -58,29 +62,27 @@ def main():
                 assert [h.read_bytes('wSprite01StateData2MapY',2,16*i) for i in range(7)]==context['actors'],(seed,'actor moved')
                 fallback=b==254
                 expected={};armed=set();blocked=set()
-                if a<len(cave.SITES):
-                    ax,ay=cave.SITES[a];expected[ay*20+ax]=40;armed.add(2+a);blocked.add((2*ax+1,2*ay+1))
-                    assert b<len(cave.SITES) or fallback,(seed,'one site has no second connection',a,b)
-                    if b<len(cave.SITES):
-                        bx,by=cave.SITES[b];expected[by*20+bx]=40;armed.add(2+b);blocked.add((2*bx+1,2*by+1))
-                    else:
-                        expected[389]=40
-                        if context['grid'][390] in (14,19):expected[390]=1
-                        slot=3 if a==0 else 2;armed.add(slot);blocked.add((19,39))
-                        assert h.warp_entries()[slot][:2]==[39,19]
-                        old=reach(context['grid']);new=reach(grid,blocked)
-                        assert old-blocked<=new,(seed,'ladder cuts cave',sorted(old-new-blocked))
+                ladders=cave.cave_ladders(h)
+                for ladder in ladders:
+                    x,y=ladder['block'];expected[y*20+x]=40;armed.add(ladder['slot']);blocked.add(ladder['tile'])
+                    assert h.warp_entries()[ladder['slot']][:2]==[ladder['tile'][1],ladder['tile'][0]],(seed,ladder)
+                if ladders:
+                    assert a==cave.DYN_1,(seed,'fresh cave not dynamic',a,b)
+                    assert b==cave.DYN_2 or fallback,(seed,'one ladder has no second connection',a,b)
+                    if fallback and context['grid'][390] in (14,19):expected[390]=1
+                    old=reach(context['grid']);new=reach(grid,blocked)
+                    assert old-blocked<=new,(seed,'ladder cuts cave',sorted(old-new-blocked))
                 else:
                     assert not fallback and grid[389]==36,(seed,'zero sites added a basement',a,b)
                 if mode=='single':assert fallback,(seed,'forced single missing entrance',a,b)
-                if mode=='zero':assert a>=len(cave.SITES),(seed,'zero sites got an ordinary ladder')
+                if mode=='zero':assert not ladders,(seed,'zero sites got a ladder')
                 assert {i:v for i,v in enumerate(grid) if v!=context['grid'][i]}==expected,(seed,mode,'unexpected terrain edit')
                 assert {i for i,w in enumerate(h.warp_entries()[2:32],2) if w[0]!=255}==armed,(seed,mode,'wrong armed slots')
                 records.append(dict(seed=seed,cold=cold,mode=mode,a=a,b=b,fallback=fallback,assigned=assigned))
         assert not h.hook_errors,h.hook_errors
         report={'rom':h.rom_sha256,'sym':h.sym_sha256,'records':records,
                 'layouts':len(records),'entrance_fallbacks':sum(r['fallback'] for r in records),
-                'accepted_zero_site_cases':sum(r['a']>=len(cave.SITES) for r in records)}
+                'accepted_zero_site_cases':sum(r['a']!=cave.DYN_1 for r in records)}
         args.out.parent.mkdir(parents=True,exist_ok=True);args.out.write_text(json.dumps(report,indent=2)+'\n')
         print(json.dumps({k:v for k,v in report.items() if k!='records'},indent=2))
     finally:h.close()

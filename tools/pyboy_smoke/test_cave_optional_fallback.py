@@ -38,10 +38,11 @@ class FallbackEntry:
     def enter_subroom_as(self,kind,index):
         h=self.h;self.room=cave.ROOMS[index]
         parent=self.maps['PROCEDURAL_CAVE_1'];roommap=self.maps['PROCEDURAL_CAVE_SUBROOM']
-        # Keep the first ordinary site. Only exhaust the distant-partner scan.
+        # Keep the first dynamic ladder. Only exhaust the distant-partner counts
+        # (CaveDynWalk with CAVE_DYN_PARTNER and CAVE_DYN_COUNT; b = the count).
         def no_partner(_):
-            if h.pyboy.register_file.C!=255:h.pyboy.register_file.HL&=0xff00
-        h.register_hook('CaveLadderWalk.end',no_partner)
+            if h.pyboy.register_file.C&0x82==0x82:h.pyboy.register_file.B=0
+        h.register_hook('CaveDynWalk.end',no_partner)
         before={}
         def snapshot(_):
             before['map']=h.read_bytes('wOverworldMap',601)
@@ -50,9 +51,12 @@ class FallbackEntry:
         h.boot_to_lobby(battle_count=11,encounter_kind=4);h.write8('wStageEvent',getattr(self,'stage_event',0))
         h.preload_and_enter_wild_area(parent,'cave');h.write8('wProcCaveWildBudget',0)
         raw=h.read_sram_bytes('sProcCaveStagingBuffer',cave.TAIL+4,bank=0)
-        self.site=raw[cave.TAIL];self.assertLess(self.site,len(cave.SITES))
+        self.assertEqual(raw[cave.TAIL],cave.DYN_1)
         self.assertEqual(raw[cave.TAIL+1],254)
-        ax,ay=cave.SITES[self.site]
+        ladders=cave.cave_ladders(h);self.assertEqual(len(ladders),2,ladders)
+        self.ladder,entrance=ladders
+        self.assertEqual(entrance['block'],cave.ENTRANCE_BLOCK)
+        ax,ay=self.ladder['block']
         after=h.read_bytes('wOverworldMap',601)
         expected={81+19*26+9:40,81+ay*26+ax:40}
         if before['map'][81+19*26+10] in (14,19):expected[81+19*26+10]=1
@@ -72,10 +76,10 @@ class FallbackEntry:
         h.park_before_hijack();h.write_sram_bytes('sProcCaveStagingBuffer',raw,bank=0)
         h.call_routine('CaveSubroomArm');h.tick(30)
         warps=h.warp_entries()
-        self.entrance_slot=3 if self.site==0 else 2
+        self.entrance_slot=entrance['slot']
         self.assertEqual(warps[self.entrance_slot],[39,19,self.room['warps'][1],roommap])
-        self.assertEqual(warps[2+self.site],[2*ay+1,2*ax+1,self.room['warps'][0],roommap])
-        self.assertTrue(all(entry[0]==255 for i,entry in enumerate(warps[2:32],2) if i not in (self.entrance_slot,2+self.site)))
+        self.assertEqual(warps[self.ladder['slot']],[2*ay+1,2*ax+1,self.room['warps'][0],roommap])
+        self.assertTrue(all(entry[0]==255 for i,entry in enumerate(warps[2:32],2) if i not in (self.entrance_slot,self.ladder['slot'])))
         self.assertEqual(warps[0][0],255) # the normal one-way entrance remains disarmed
         self.assertEqual((h.read8('wXCoord'),h.read8('wYCoord')),(18,39))
         self.parent_layout=h.read_bytes('wOverworldMap',601)
@@ -86,14 +90,14 @@ class FallbackEntry:
         self.press_until('right',lambda:h.read8('hCurMap')==roommap,'entrance ladder into basement')
         self.assertEqual((h.read8('wXCoord'),h.read8('wYCoord')),self.room['ladders'][1])
         for i,n in enumerate(self.room['warps']):
-            self.assertEqual(h.warp_entries()[n][2:],[2+self.site if i==0 else 0,parent])
+            self.assertEqual(h.warp_entries()[n][2:],[self.ladder['back'] if i==0 else 0,parent])
 
     def return_trip(self,ladder):
         h=self.h;parent=self.maps['PROCEDURAL_CAVE_1'];roommap=self.maps['PROCEDURAL_CAVE_SUBROOM']
         lx,ly=self.room['ladders'][ladder]
         self.walk_in_room((lx-1,ly))
         self.press_until('right',lambda:h.read8('hCurMap')==parent,'basement ladder to its own return')
-        ax,ay=cave.SITES[self.site]
+        ax,ay=self.ladder['block']
         x,y=(2*ax+1,2*ay+1) if ladder==0 else (18,39)
         self.assertEqual((h.read8('wXCoord'),h.read8('wYCoord')),(x,y))
         self.assertEqual((h.read8('wXBlockCoord'),h.read8('wYBlockCoord')),(x%2,y%2))
@@ -158,6 +162,63 @@ class EntranceCollisionTest(unittest.TestCase):
                 h.call_routine('CaveSubroomLoad')
                 for i,warp in enumerate(cave.ROOMS[0]['warps']):
                     self.assertEqual(h.warp_entries()[warp][2:],[(2+a) if a<30 and i==0 else 0,maps['PROCEDURAL_CAVE_1']],(a,b,i))
+        finally:h.close()
+
+    def test_dynamic_ladders_arm_return_and_arrive(self):
+        """Dynamic pairs: row-order ladders, the exit's own block 40 skipped,
+        departures in warps 2/3, room returns to 2/3 (or the entrance), and
+        CaveResolveArrival landing warps 2/3 on the drawn ladders only."""
+        import io
+        h=RedRogueHarness(cave.ROOT,cave.ARTIFACTS)
+        try:
+            h.boot_to_lobby();h.park_before_hijack();base=io.BytesIO();h.save_state(base)
+            maps=parse_map_constants(cave.ROOT/'constants/map_constants.asm')
+            sub,parent=maps['PROCEDURAL_CAVE_SUBROOM'],maps['PROCEDURAL_CAVE_1']
+            exit_,first,second=(2,2),(5,4),(14,12)   # the exit comes first in row order
+            room=cave.ROOMS[0]['warps']
+            for a,b in ((cave.DYN_1,cave.DYN_2),(cave.DYN_1,254),(7,254)):
+                h.load_state(base)
+                h.write8('wNumberOfWarps',32)
+                raw=[0]*600;raw[cave.TAIL:cave.TAIL+4]=[a,b,0,0]
+                drawn=[exit_,first]+([second] if b==cave.DYN_2 else [])
+                if a<len(cave.SITES):drawn=[exit_,cave.SITES[a]]
+                for x,y in drawn:
+                    raw[81+y*26+x]=40;h.write8('wOverworldMap',40,offset=81+y*26+x)
+                h.write8('wOverworldMap',40,offset=81+19*26+9)
+                h.write_sram_bytes('sProcCaveStagingBuffer',raw,bank=0)
+                h.write_sram_bytes('sProcCaveStagingExitY',[exit_[1],exit_[0]],bank=0)
+                h.call_routine('CaveSubroomArm')
+                slots={i:w for i,w in enumerate(h.warp_entries()[2:32],2) if w[0]!=255}
+                if a==cave.DYN_1:
+                    expected={2:[2*first[1]+1,2*first[0]+1,room[0],sub]}
+                    expected[3]=([2*second[1]+1,2*second[0]+1,room[1],sub] if b==cave.DYN_2
+                                 else [39,19,room[1],sub])
+                else:
+                    x,y=cave.SITES[a];expected={2+a:[2*y+1,2*x+1,room[0],sub],2:[39,19,room[1],sub]}
+                self.assertEqual(slots,expected,(a,b))
+                h.write8('wNumberOfWarps',len(cave.WARPS))
+                for i,(x,y) in enumerate(cave.WARPS):
+                    for j,v in enumerate((y,x,0,parent)):h.write8('wWarpEntries',v,offset=4*i+j)
+                h.call_routine('CaveSubroomLoad')
+                back=[2 if a==cave.DYN_1 else 2+a, 3 if b==cave.DYN_2 else 0]
+                for i,warp in enumerate(room):
+                    self.assertEqual(h.warp_entries()[warp][2:],[back[i],parent],(a,b,i))
+                # The arrival: warps 2/3 land on the drawn ladders; others untouched.
+                for dest in (0,1,2,3):
+                    h.write8('wDestinationWarpID',dest)
+                    h.write8('wYCoord',0x77);h.write8('wXCoord',0x66)
+                    h.write8('wCurrentTileBlockMapViewPointer',0x55);h.write8('wCurrentTileBlockMapViewPointer',0x44,offset=1)
+                    h.call_routine('CaveResolveArrival')
+                    got=(h.read8('wXCoord'),h.read8('wYCoord'),h.read_bytes('wCurrentTileBlockMapViewPointer',2))
+                    target=None
+                    if a==cave.DYN_1 and dest==2:target=first
+                    if a==cave.DYN_1 and dest==3 and b==cave.DYN_2:target=second
+                    if target:
+                        tx,ty=2*target[0]+1,2*target[1]+1
+                        ptr=h.address('wOverworldMap')+27+ty//2*26+tx//2
+                        self.assertEqual(got,(tx,ty,[ptr&255,ptr>>8]),(a,b,dest))
+                    elif not(a==cave.DYN_1 and dest==3):
+                        self.assertEqual(got,(0x66,0x77,[0x55,0x44]),('arrival changed',a,b,dest))
         finally:h.close()
 
     def test_east_floor_decor_cannot_cut_the_cave(self):

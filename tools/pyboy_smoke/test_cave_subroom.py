@@ -33,6 +33,43 @@ SITES = [(int(x), int(y)) for x, y in re.findall(r"^\tladder_site\s+(\d+),\s*(\d
 FIRST_LADDER_WARP = int(re.search(r"CAVE_FIRST_LADDER_WARP EQU (\d+)", _SITES).group(1))
 LADDER_BLOCK = int(re.search(r"CAVE_LADDER_BLOCK EQU (\d+)", _SITES).group(1))
 TAIL = 81 + 19 * 26 + 20                # CAVESUB_TAIL: ladder A, ladder B, state, room
+DYN_1 = int(re.search(r"CAVESUB_DYN_LADDER_1 EQU \$([0-9A-Fa-f]+)", _SITES).group(1), 16)
+DYN_2 = int(re.search(r"CAVESUB_DYN_LADDER_2 EQU \$([0-9A-Fa-f]+)", _SITES).group(1), 16)
+DYN_MIN_DISTANCE = int(re.search(r"CAVE_DYN_MIN_DISTANCE EQU (\d+)", _SITES).group(1))
+ENTRANCE_LADDER = 0xFE
+ENTRANCE_BLOCK = (9, 19)
+
+
+def cave_ladders(h) -> list[dict]:
+    """The cave's ladders down as the ROM arms them, from the saved A/B and the
+    loaded map: per ladder its departure warp slot, block, departure tile, the
+    cave warp its room ladder returns to and the tile that return lands on.
+
+    A/B hold an old fixed site (0-29), the dynamic tags (fresh caves since
+    2026-11-03: block 40 in rows/columns 1-18, row order, exit skipped) or the
+    entrance ladder. Empty when the cave has no ladder."""
+    raw = h.read_sram_bytes("sProcCaveStagingBuffer", TAIL + 2, bank=0)
+    a, b = raw[TAIL], raw[TAIL + 1]
+    exit_y, exit_x = h.read_sram_bytes("sProcCaveStagingExitY", 2, bank=0)
+    layout = h.read_bytes("wOverworldMap", 601)
+    dynamic = [(x, y) for y in range(1, 19) for x in range(1, 19)
+               if layout[81 + y * 26 + x] == LADDER_BLOCK and (x, y) != (exit_x, exit_y)]
+    out = []
+    for n, value in enumerate((a, b)):
+        if value < len(SITES):
+            slot, block, back = FIRST_LADDER_WARP + value, SITES[value], FIRST_LADDER_WARP + value
+        elif value in (DYN_1, DYN_2) and len(dynamic) > (value == DYN_2):
+            k = 0 if value == DYN_1 else 1
+            slot, block, back = FIRST_LADDER_WARP + k, dynamic[k], FIRST_LADDER_WARP + k
+        elif value == ENTRANCE_LADDER and n == 1:
+            slot = FIRST_LADDER_WARP + (1 if out and out[0]["slot"] == FIRST_LADDER_WARP else 0)
+            block, back = ENTRANCE_BLOCK, 0
+        else:
+            continue
+        tile = (2 * block[0] + 1, 2 * block[1] + 1)
+        arrival = (18, 39) if back == 0 else tile
+        out.append({"slot": slot, "block": block, "tile": tile, "back": back, "arrival": arrival})
+    return out
 _RAM = parse_rgbds_constants(ROOT / "constants/ram_constants.asm",
                              parse_rgbds_constants(ROOT / "constants/round_constants.asm"))
 STEP = _RAM["MONEY_MATCH_STEP"]
@@ -179,10 +216,13 @@ class CaveSubroomTest(unittest.TestCase):
             raw = h.read_sram_bytes("sProcCaveStagingBuffer", TAIL + 4, bank=0)
             a, b, state = raw[TAIL], raw[TAIL + 1], raw[TAIL + 2]
             attempts.append((seed, a, b))
-            self.assertLess(a, len(SITES), "no ladder this cave")
-            if b < len(SITES):
+            self.assertEqual(a, DYN_1, "a fresh cave's first ladder is not dynamic")
+            if b == DYN_2:
                 break
-        self.assertLess(b, len(SITES), f"no two-ladder fixture found: {attempts}")
+        self.assertEqual(b, DYN_2, f"no two-ladder fixture found: {attempts}")
+        ladders = cave_ladders(h)
+        self.assertEqual(len(ladders), 2, f"two ladders recorded, drawn: {ladders}")
+        one, two = ladders
         h.write8("wProcCaveWildBudget", 0)
         self.assertTrue(state & 0x80, "the cave's objects were not marked shown")
         self.assertLess(raw[TAIL + 3] & 3, len(ROOMS), "rolled a room past the table")
@@ -197,10 +237,10 @@ class CaveSubroomTest(unittest.TestCase):
         i = toggles["TOGGLE_CAVESUB_BALL"]
         self.assertFalse(h.read8("wToggleableObjectFlags", offset=i // 8) & 1 << i % 8,
                          "the subroom's ball was not put back for the new cave")
-        (ax, ay), (bx, by) = SITES[a], SITES[b]
-        self.assertGreaterEqual(abs(ax - bx) + abs(ay - by), 8, "the ladders are too close")
+        (ax, ay), (bx, by) = one["block"], two["block"]
+        self.assertGreaterEqual(abs(ax - bx) + abs(ay - by), DYN_MIN_DISTANCE, "the ladders are too close")
         layout = h.read_bytes("wOverworldMap", 601)
-        for x, y in (SITES[a], SITES[b]):
+        for x, y in (one["block"], two["block"]):
             self.assertEqual(layout[81 + y * 26 + x], LADDER_BLOCK, f"no ladder drawn at {(x, y)}")
         # This test's room and Pokemon; the reload onto ladder A arms for them.
         raw[TAIL + 3] = room_byte(index, water, land)
@@ -210,22 +250,24 @@ class CaveSubroomTest(unittest.TestCase):
         byte = h.read8("wToggleableObjectFlags", offset=ball // 8)
         h.write8("wToggleableObjectFlags", byte | 1 << ball % 8, offset=ball // 8)
 
-        # Onto ladder A: arrive on it through the retargeted entrance warp.
+        # Onto ladder A: arrive on it through the retargeted entrance warp (the
+        # dynamic arrival lands any warp into cave warp 2/3 on the drawn ladder).
         h.wait_until(lambda: h.read8("wYCoord") == 39, "on the cave entrance", 600)
         h.write8("wWarpEntries", 39, offset=0)  # re-arm: entry maps disarm their entrance on load
-        h.write8("wWarpEntries", FIRST_LADDER_WARP + a, offset=2)
+        h.write8("wWarpEntries", one["back"], offset=2)
         h.write8("wWarpEntries", cave, offset=3)
-        self.press_until("down", lambda: (h.read8("wXCoord"), h.read8("wYCoord")) == (2 * ax + 1, 2 * ay + 1),
+        self.press_until("down", lambda: (h.read8("wXCoord"), h.read8("wYCoord")) == one["tile"],
                          "onto ladder A")
         warps = h.warp_entries()
-        for n, (x, y) in enumerate(SITES):
+        armed = {one["slot"]: [one["tile"][1], one["tile"][0], room["warps"][0], subroom],
+                 two["slot"]: [two["tile"][1], two["tile"][0], room["warps"][1], subroom]}
+        for n in range(len(SITES)):
             entry = warps[FIRST_LADDER_WARP + n]
-            if n in (a, b):
-                self.assertEqual(entry, [2 * y + 1, 2 * x + 1, room["warps"][0 if n == a else 1], subroom],
-                                 f"ladder site {n} armed wrong")
+            if FIRST_LADDER_WARP + n in armed:
+                self.assertEqual(entry, armed[FIRST_LADDER_WARP + n], f"ladder warp {FIRST_LADDER_WARP + n} armed wrong")
             else:
                 self.assertEqual(entry[0], 0xFF, f"site {n} not disarmed")
-        for site, ladder, (sx, sy) in ((a, 0, (ax, ay)), (b, 1, (bx, by))):
+        for site, ladder, (sx, sy) in ((one, 0, (ax, ay)), (two, 1, (bx, by))):
             with self.subTest(ladder=ladder):
                 lx, ly = room["ladders"][ladder]
                 tile = (2 * sx + 1, 2 * sy + 1)
@@ -240,9 +282,9 @@ class CaveSubroomTest(unittest.TestCase):
                                      f"block row {y}")
                 for n, entry in enumerate(h.warp_entries()[:len(WARPS)]):
                     if n == room["warps"][0]:
-                        self.assertEqual(entry[2:], [FIRST_LADDER_WARP + a, cave], "ladder 0's way back")
+                        self.assertEqual(entry[2:], [one["back"], cave], "ladder 0's way back")
                     elif n == room["warps"][1]:
-                        self.assertEqual(entry[2:], [FIRST_LADDER_WARP + b, cave], "ladder 1's way back")
+                        self.assertEqual(entry[2:], [two["back"], cave], "ladder 1's way back")
                     else:
                         self.assertEqual(entry[0], 0xFF, f"subroom warp {n} not disarmed")
                 for slot, kind, table, value in ((4, "water", WATER_SPRITES, water),
@@ -260,12 +302,19 @@ class CaveSubroomTest(unittest.TestCase):
                 self.press_until("right", lambda: h.read8("hCurMap") == cave, "climb back up")
                 self.assertEqual((h.read8("wXCoord"), h.read8("wYCoord")), tile,
                                  "did not climb out onto the same ladder")
+                # The dynamic arrival's camera: the pointer and block parity the
+                # ROM record would give (event_displacement, 20-wide map).
+                self.assertEqual((h.read8("wXBlockCoord"), h.read8("wYBlockCoord")), (tile[0] % 2, tile[1] % 2),
+                                 "arrival block parity")
+                ptr = h.address("wOverworldMap") + 27 + (tile[1] // 2) * 26 + tile[0] // 2
+                self.assertEqual(h.read_bytes("wCurrentTileBlockMapViewPointer", 2), [ptr & 255, ptr >> 8],
+                                 "arrival view pointer")
                 byte = h.read8("wToggleableObjectFlags", offset=ball // 8)
                 self.assertTrue(byte & 1 << ball % 8, "a collected ball came back")
                 if ladder == 0:
                     # Over to ladder B: retarget ladder A's warp at it, as a pad pair would.
-                    h.write8("wWarpEntries", FIRST_LADDER_WARP + b, offset=4 * (FIRST_LADDER_WARP + a) + 2)
-                    h.write8("wWarpEntries", cave, offset=4 * (FIRST_LADDER_WARP + a) + 3)
+                    h.write8("wWarpEntries", two["back"], offset=4 * one["slot"] + 2)
+                    h.write8("wWarpEntries", cave, offset=4 * one["slot"] + 3)
                     self.press_until("left", lambda: h.read8("wXCoord") == tile[0] - 1, "off ladder A")
                     self.press_until("right", lambda: (h.read8("wXCoord"), h.read8("wYCoord"))
                                      == (2 * bx + 1, 2 * by + 1), "onto ladder B")
@@ -312,8 +361,9 @@ class CaveSubroomResidentTest(CaveSubroomTest):
         h.preload_and_enter_wild_area(cave, "cave")
         h.write8("wProcCaveWildBudget", 0)
         raw = h.read_sram_bytes("sProcCaveStagingBuffer", TAIL + 4, bank=0)
-        a = raw[TAIL]
-        self.assertLess(a, len(SITES), "no ladder this cave")
+        ladders = cave_ladders(h)
+        self.assertTrue(ladders, "no ladder this cave")
+        one = ladders[0]
         # Force the resident and the room: the state bits and the two flags.
         nerd = kind != "gambler"
         raw[TAIL + 2] = (raw[TAIL + 2] & ~0x0F) | {"gambler": 0, "nerd": NERD, "maniac": NERD | MANIAC}[kind]
@@ -324,14 +374,13 @@ class CaveSubroomResidentTest(CaveSubroomTest):
             byte = h.read8("wToggleableObjectFlags", offset=i // 8)
             byte = byte & ~(1 << i % 8) if shown else byte | 1 << i % 8
             h.write8("wToggleableObjectFlags", byte, offset=i // 8)
-        ax, ay = SITES[a]
         h.wait_until(lambda: h.read8("wYCoord") == 39, "on the cave entrance", 600)
         h.write8("wWarpEntries", 39, offset=0)  # re-arm: entry maps disarm their entrance on load
-        h.write8("wWarpEntries", FIRST_LADDER_WARP + a, offset=2)
+        h.write8("wWarpEntries", one["back"], offset=2)
         h.write8("wWarpEntries", cave, offset=3)
-        self.press_until("down", lambda: (h.read8("wXCoord"), h.read8("wYCoord")) == (2 * ax + 1, 2 * ay + 1),
+        self.press_until("down", lambda: (h.read8("wXCoord"), h.read8("wYCoord")) == one["tile"],
                          "onto ladder A")
-        self.press_until("left", lambda: h.read8("wXCoord") == 2 * ax, "off the cave ladder")
+        self.press_until("left", lambda: h.read8("wXCoord") == one["tile"][0] - 1, "off the cave ladder")
         self.press_until("right", lambda: h.read8("hCurMap") == subroom, "down into the subroom")
         rx, ry = self.room["resident"]
         self.walk_in_room((rx, ry + 1))

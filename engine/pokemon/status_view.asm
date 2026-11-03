@@ -540,7 +540,14 @@ StatusScreen2WaitView:
 ; Pokedex MOVE replacement. Unlike the status-page loop, this omits only the
 ; loaded-mon CURRENT view. Input travels in e because a
 ; farcall cannot carry it in a. No new persistent menu state is required.
+; PokedexFormMoveViewer (2026-11-03, the Pokedex Forms page): d = form 1-3.
+; It leaves wMonHForm/wMonHFormSpecies naming that form instead of zeroing
+; them, so every GetMonHeader reload in the views below re-applies the form
+; (ApplyFormOverride's refresh path): the form's own level-up list and TM/HM
+; compatibility. TUTOR stays species-keyed, as for a party mon of that form.
 PokedexMoveViewer::
+	ld d, 0
+PokedexFormMoveViewer::
 	ld a, e
 	ld [wMonHIndex], a
 	ld [wNamedObjectIndex], a
@@ -561,7 +568,14 @@ PokedexMoveViewer::
 	ld [wFormContextSpecies], a
 	ld [wFormContextForm], a
 	ld [wMonHForm], a
-	ld [wMonHFormSpecies], a ; Pokedex MOVE always describes the base species
+	ld [wMonHFormSpecies], a ; the base species, unless d names a form
+	ld a, d
+	and a
+	jr z, .baseSpecies
+	ld [wMonHForm], a
+	ld a, e
+	ld [wMonHFormSpecies], a
+.baseSpecies
 	ldh a, [hTileAnimations]
 	push af
 	xor a
@@ -570,7 +584,16 @@ PokedexMoveViewer::
 	call ClearScreen
 	call LoadHpBarAndStatusTilePatterns ; Pokedex graphics overwrite <LV>
 	call LoadStatusViewGraphics
+	ld a, [wMonHForm] ; a form: name it as the form (one-shot context)
+	and a
+	jr z, .name
+	ld [wFormContextForm], a
+	ld a, [wMonHFormSpecies]
+	ld [wFormContextSpecies], a
+.name
 	call GetMonName
+	xor a
+	ld [wFormContextSpecies], a
 	hlcoord 1, 1
 	call PlaceString
 	hlcoord 1, 3

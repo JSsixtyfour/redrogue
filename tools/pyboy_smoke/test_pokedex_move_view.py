@@ -7,7 +7,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 class PokedexMoveViewContractTest(unittest.TestCase):
     def test_area_is_replaced_by_banked_move_viewer(self) -> None:
-        source = (REPO_ROOT / "engine" / "menus" / "pokedex.asm").read_text()
+        # The Pokedex list and its side menu moved to custom_functions/form_dex.asm
+        # on 2026-11-03 (every identity in one list); the species page stays in
+        # engine/menus/pokedex.asm. Check the menu wherever it lives.
+        source = "".join((REPO_ROOT / path).read_text(encoding="utf-8") for path in (
+            "engine/menus/pokedex.asm", "custom_functions/form_dex.asm"))
 
         self.assertIn('next "MOVE"', source)
         self.assertNotIn('next "AREA"', source)

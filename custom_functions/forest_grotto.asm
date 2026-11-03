@@ -70,22 +70,24 @@ FGChooseWall:
 	ret
 
 ; A=wall 0N/1W/2E. Carry set only if one opening was carved.
+; The opening is drawn uniformly from the wall's free sites (2026-11-03,
+; PROCEDURAL_REVIEW item 3). Taking the first free one put it on site 1 in
+; 60 of 80 measured forests although a median of 8 sites were free.
 FGTryWall:
 	ld d, a
 	ld a, [sProcForestExitEdge]
 	cp d
 	jr z, .none
-	ld e, FG_FIRST_ROW
-.site
-	push de
-	call FGSiteFree
-	pop de
-	jr c, .carve
-	inc e
-	inc e
-	ld a, e
-	cp FG_LAST_ROW + 1
-	jr c, .site
+	ld b, 0
+	call FGWalkSites                ; a = how many sites are free
+	and a
+	jr z, .none
+	ld c, a
+	call Rangerandom                ; keeps bc/de
+	inc a
+	ld b, a
+	call FGWalkSites                ; e = the b-th free site
+	jr .carve
 .none
 	and a
 	ret
@@ -114,6 +116,32 @@ FGTryWall:
 	ld [hl], 88
 .done
 	scf
+	ret
+
+; Walks wall D's sites FG_FIRST_ROW, +2, .. FG_LAST_ROW through FGSiteFree.
+; In: b = k >= 1: stop on the k-th free one, e = it; b = 0: a = how many.
+; Keeps b/d. Clobbers a/c/e/hl.
+FGWalkSites:
+	ld e, FG_FIRST_ROW
+	ld c, 0
+.site
+	push bc
+	push de
+	call FGSiteFree
+	pop de
+	pop bc
+	jr nc, .next
+	inc c
+	ld a, b
+	cp c
+	ret z                           ; the b-th (never when counting: c >= 1)
+.next
+	inc e
+	inc e
+	ld a, e
+	cp FG_LAST_ROW + 1
+	jr c, .site
+	ld a, c
 	ret
 
 ; D=wall, E=odd block site. B/C=adjacent inner cell X/Y.
@@ -481,6 +509,11 @@ FGArmForestWarp::
 ; assignment gate here: a legacy or resolved room must always have a way out.
 FGResolveArrival::
 	ldh a, [hCurMap]
+	cp PROCEDURAL_CAVE_1
+	jr nz, .notCave
+	; The cave's dynamic ladders (FOLLOWUPS #93) land through the same seam.
+	jp CaveResolveArrival
+.notCave
 	cp PROCEDURAL_FOREST
 	ret nz
 	ld a, [wWarpedFromWhichMap]

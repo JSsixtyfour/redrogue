@@ -26,6 +26,29 @@ DisplayListMenuID::
 	ld h, a ; hl = address of the list
 	ld a, [hl] ; the first byte is the number of entries in the list
 	ld [wListCount], a
+	; Item pockets are rebuilt, but the shared scroll/cursor can belong to a
+	; longer list. Validate before descriptions or names can read past $ff.
+	; Keep valid positions, including CANCEL at index count; reset stale ones.
+	ld a, [wListMenuID]
+	cp ITEMLISTMENU
+	jr nz, .positionReady
+	ld a, [wListScrollOffset]
+	ld b, a
+	ld a, [wListCount]
+	sub b
+	jr c, .resetPosition
+	ld b, a ; entries remaining before CANCEL, without an overflowing sum
+	ldh a, [hCurrentMenuItem]
+	cp 3 ; the list cursor has rows 0..2
+	jr nc, .resetPosition
+	cp b
+	jr c, .positionReady
+	jr z, .positionReady
+.resetPosition
+	xor a
+	ld [wListScrollOffset], a
+	ldh [hCurrentMenuItem], a
+.positionReady
 	ld a, LIST_MENU_BOX
 	ld [wTextBoxID], a
 	call DisplayTextBoxID ; draw the menu text box

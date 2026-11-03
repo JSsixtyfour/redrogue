@@ -304,14 +304,15 @@ class PairRewardRoomTest(HarnessTestCase):
         self.assert_rewards_shown()
         self.assertFalse(h.read8("wToggleableObjectFlags", STAGE_ITEM_TOGGLE // 8) & 1 << STAGE_ITEM_TOGGLE % 8,
                          "the skipped route's item ball is not shown")
-        self.assertEqual(h.read8("wNumSprites"), 5)        # 3 balls, item ball, trade NPC
+        self.assertEqual(h.read8("wNumSprites"), 7)        # 3 balls, item, trade NPC, 2 posters
         # The vendor's menu opens once the entry walk ends (EVENT_STEP_FORWARD,
         # re-armed on entry, is set when it closes); the balls stay as a second way.
         self.assertFalse(h.read8("wEventFlags", EVENT_STEP_FORWARD // 8) & 1 << EVENT_STEP_FORWARD % 8)
         h.wait_until(lambda: menu["count"], "the reward vendor's menu", 600)
         exits = [e for e in h.warp_entries() if e[3] == 0xFE]  # ROGUE_MAP: via wLobbyDoorNStageMap
-        self.assertEqual(len(exits), 2)
-        # Decline the vendor, then take ball 2 (straight above the walk's end):
+        self.assertEqual(len(exits), 1)
+        self.assertEqual(exits[0][:2], [0, 5])
+        # Decline the vendor, then step below ball 2 and take it:
         # it joins at the stage reward level, not the run-start one.
         for _ in range(8):
             h.tap("b", 4)
@@ -339,9 +340,11 @@ class PairRewardRoomTest(HarnessTestCase):
         self.assertGreater(got, START_LEVEL)
         # The trade NPC runs the route's trade dialogue (the ball already taken is
         # cleared so the NPC offers the trade rather than "greedy").
+        self.assertEqual((h.read8("wXCoord"), h.read8("wYCoord")), (5, 5))
         for _ in range(3):                                  # below ball 1 / the trade NPC
-            h.move_tile("left")
-        self.assertEqual((h.read8("wXCoord"), h.read8("wYCoord")), (5, 6))
+            h.tap("left", 4)
+            h.tick(20)
+        self.assertEqual((h.read8("wXCoord"), h.read8("wYCoord")), (2, 5))
         h.write8("wEventFlags", h.read8("wEventFlags", EVENT_GOT_ROGUE_POKEMON // 8)
                  & ~(1 << EVENT_GOT_ROGUE_POKEMON % 8), offset=EVENT_GOT_ROGUE_POKEMON // 8)
         trade = h.hook_flag("RogueDoInGameTradeDialogue")

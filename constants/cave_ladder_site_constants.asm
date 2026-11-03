@@ -14,16 +14,37 @@
 ; The warp_event index of site n is CAVE_FIRST_LADDER_WARP + n.
 
 DEF CAVE_FIRST_LADDER_WARP EQU 2 ; after the entrance and the exit
+; The cave's block-map geometry, shared by the subroom code in $3F and its
+; helpers in $26 (different assembly units). Mirrors PC_* in procedural_cave_gen.
+DEF CAVESUB_STRIDE EQU 26 ; PC_STRIDE
+DEF CAVESUB_BASE   EQU 81 ; PC_BASE
+DEF CAVESUB_FLOOR  EQU 1  ; PC_BLOCK_FLOOR
+DEF CAVESUB_SIZE   EQU 20 ; PC_SIZE
 DEF CAVE_LADDER_MIN_DISTANCE EQU 8 ; blocks, Manhattan, between the two ladders
-; Sites within this many blocks (Manhattan) of the entrance block are a
-; fallback tier: each ladder is drawn from the farther sites first, and from all
-; valid sites only when none of those fit. Measured 2026-11-03 over 600 caves
-; (PROCEDURAL_REVIEW_2026-11-03.md): two-ladder rate unchanged at 93.4%, a
-; ladder within 10 steps of the door 66% -> 23%. Only sites 1, 4 and 27 are
-; this close; no site index changes, so saved caves keep their meaning.
-DEF CAVE_LADDER_ENTRANCE_CLEARANCE EQU 4
-; CaveLadderWalk's b bit 7: skip the near-entrance tier.
-DEF CAVE_LADDER_FAR_TIER EQU $80
+; DYNAMIC LADDERS (2026-11-03, FOLLOWUPS #93). Fresh caves no longer use the
+; sites below: a ladder may stand on ANY block passing CaveLadderSiteValid.
+; Its departure is armed at runtime in warp slot 2 (first ladder) or 3
+; (second), and its return arrival is resolved at load time by
+; CaveResolveArrival (through the forest grotto's FGResolveArrival seam), so
+; no ROM-declared arrival is needed. The ladders are found again by scanning
+; the baked map for CAVE_LADDER_BLOCK in rows/columns 1-18, skipping the exit
+; (PCLadderTable can draw the exit as block 40 too). No coordinates are saved:
+; A = CAVESUB_DYN_LADDER_1, B = CAVESUB_DYN_LADDER_2 (or the entrance ladder).
+; The 30 sites and their warp_events stay for caves saved before this change.
+; Simulated over 600 caves (PROCEDURAL_REVIEW_2026-11-03.md): two ordinary
+; ladders 93.4% -> 100%, a ladder within 10 steps of the door 23% -> 0.4%.
+DEF CAVESUB_DYN_LADDER_1 EQU $FD ; in A: the first ladder is dynamic (warp 2)
+DEF CAVESUB_DYN_LADDER_2 EQU $FC ; in B: the second ladder is dynamic (warp 3)
+DEF CAVE_DYN_MIN_DISTANCE EQU 10      ; blocks, Manhattan, between the two
+DEF CAVE_DYN_ENTRANCE_CLEARANCE EQU 6 ; preferred: more than this from the entrance
+DEF CAVE_LADDER_CANDIDATE EQU $FE     ; generation only: a block marked valid
+; CaveDynWalk's c flags.
+DEF BIT_CAVE_DYN_FAR     EQU 0 ; only blocks clear of the entrance
+DEF BIT_CAVE_DYN_PARTNER EQU 1 ; only blocks CAVE_DYN_MIN_DISTANCE from CAVESUB_TMP_X/Y
+DEF BIT_CAVE_DYN_COUNT   EQU 7 ; count them (b = 0) rather than stop on the b-th
+DEF CAVE_DYN_FAR     EQU 1 << BIT_CAVE_DYN_FAR
+DEF CAVE_DYN_PARTNER EQU 1 << BIT_CAVE_DYN_PARTNER
+DEF CAVE_DYN_COUNT   EQU 1 << BIT_CAVE_DYN_COUNT
 DEF CAVE_LADDER_BLOCK EQU 40
 DEF CAVE_LADDER_NONE EQU $FF
 ; A=ordinary site, B=$FE: entrance BR supplies the second connection, returning
@@ -121,5 +142,13 @@ DEF CAVESUB_LAND_MASK  EQU %01110000
 ; ladder" to every reader). Objects 8 and 9 of ProceduralCave1, only one shown.
 DEF CAVESUB_FALLBACK     EQU $80
 DEF CAVESUB_FALLBACK_ROW EQU $40
+; The dynamic tags must not read as a fallback block (A = $80 | 1..18) or as a
+; site, and must differ from the entrance ladder and NONE.
+	ASSERT CAVESUB_DYN_LADDER_2 > (CAVESUB_FALLBACK | 18)
+	ASSERT CAVESUB_DYN_LADDER_1 < CAVESUB_ENTRANCE_LADDER
+	ASSERT CAVESUB_DYN_LADDER_2 != CAVESUB_DYN_LADDER_1
+; The marker must not be a real CAVERN block (128 of them) or the generator's
+; own PC_BLOCK_PENDING_FLOOR ($FF).
+	ASSERT CAVE_LADDER_CANDIDATE >= 128 && CAVE_LADDER_CANDIDATE != $FF
 DEF CAVE_GAMBLER         EQU 8  ; object slot (ProceduralCave1's 8th object_event)
 DEF CAVE_SUPER_NERD      EQU 9

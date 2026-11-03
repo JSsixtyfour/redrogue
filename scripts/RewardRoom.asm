@@ -1,6 +1,7 @@
 
 
 RewardRoom_Script:
+    call RewardRoom_UpdateExitLayout
     CheckEvent EVENT_ENTER_ROOM
     jr nz, .step_forward
     
@@ -62,6 +63,9 @@ RewardRoom_Script:
     jr nz, .default
     
     call Delay3
+    ; The entry step can bring the item ball on screen. Refresh its position
+    ; before DisplayTextID freezes sprite positions for the reward menu.
+    call UpdateSprites
     xor a
     ld a, LOW(TEXT_REWARDROOM_REWARD_VENDOR_1)
 	ldh [hTextID], a
@@ -71,6 +75,41 @@ RewardRoom_Script:
     .default
 	jp EnableAutoTextBoxDrawing
 
+; Reapply after every map load, including Continue. The authored blocks and
+; object/warp records remain the two-choice layout used after Oak's Lab.
+RewardRoom_UpdateExitLayout:
+    ld hl, wCurrentMapScriptFlags
+    bit BIT_CUR_MAP_LOADED_2, [hl]
+    res BIT_CUR_MAP_LOADED_2, [hl]
+    ret z
+    ld a, [wObtainedBadges]
+    and a
+    ret z
+    ld a, $5f
+    ld [wNewTileBlockID], a
+    lb bc, 0, 1
+    predef ReplaceTileBlock
+    ld a, $73
+    ld [wNewTileBlockID], a
+    lb bc, 0, 2
+    predef ReplaceTileBlock
+    ld a, $5f
+    ld [wNewTileBlockID], a
+    lb bc, 0, 3
+    predef ReplaceTileBlock
+    ; Keep the arrival warps and door 1's index, used by WarpFound2 to select
+    ; the destination. Door 2 is outside the active warp count for this visit.
+    ld a, 3
+    ld [wNumberOfWarps], a
+    ld a, 5
+    ld [wWarpEntries + 2 * 4 + 1], a
+    ; One clipboard to the left of the centered door; keep its lobby text.
+    ld a, 4 + 4
+    ld [wSprite06StateData2MapX], a
+    ld a, $ff
+    ld [wSprite07StateData2MapY], a
+    ret
+
 RewardRoom_TextPointers:
 	def_text_pointers
 	;dw_const Route2SignText,             TEXT_ROUTE2_OPTION_1
@@ -78,7 +117,8 @@ RewardRoom_TextPointers:
     dw_const Rogue_RewardRoom_Script_PokeballText_1, TEXT_ROGUE_REWARD_POKEBALL_1
     dw_const Rogue_RewardRoom_Script_PokeballText_2, TEXT_ROGUE_REWARD_POKEBALL_2
     dw_const Rogue_RewardRoom_Script_PokeballText_3, TEXT_ROGUE_REWARD_POKEBALL_3
-    ; Objects 4-5 (the mid-run item ball, the trade NPC). Objects' texts come first, in slot order:
+    ; Objects 4-7: item ball, trade NPC, and the two door posters.
+    ; Objects' texts come first, in slot order:
     ; DisplayTextID reroutes any script-fired id <= wNumSprites through a slot.
     dw_const RandomPickUpItemText,                   TEXT_REWARDROOM_RANDOM_ITEM
     dw_const RewardRoomTradeNPCText,                 TEXT_REWARDROOM_TRADE_NPC

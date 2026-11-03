@@ -15,9 +15,6 @@ SECTION "Cave Subroom", ROMX
 
 ; State: CAVESUB_* in constants/cave_ladder_site_constants.asm.
 
-DEF CAVESUB_STRIDE EQU 26           ; PC_STRIDE (procedural_cave_gen.asm)
-DEF CAVESUB_BASE   EQU 81           ; PC_BASE
-DEF CAVESUB_FLOOR  EQU 1            ; PC_BLOCK_FLOOR
 
 ASSERT CAVE_FIRST_LADDER_WARP + NUM_CAVE_LADDER_SITES <= MAX_WARP_EVENTS
 ASSERT NUM_CAVE_LADDER_SITES < CAVE_LADDER_NONE
@@ -74,63 +71,51 @@ CaveSubroomPlaceLadders::
 	ld a, CAVE_LADDER_NONE
 	ld [CAVESUB_LADDER_A], a
 	ld [CAVESUB_LADDER_B], a
-	; Ladder A: from the sites clear of the entrance, else from all of them.
-	ld bc, (CAVE_LADDER_FAR_TIER << 8) | CAVE_LADDER_NONE ; count, far tier
-	call CaveLadderWalk             ; keeps bc
+	; Dynamic ladders (FOLLOWUPS #93): mark every block a ladder may stand on,
+	; then draw both from the marks. Each prefers blocks clear of the entrance;
+	; the second must be CAVE_DYN_MIN_DISTANCE from the first.
+	call CaveDynMark                ; a = how many blocks were marked
+	and a
+	jr z, .fallback                 ; no block at all: no subroom this cave
+	ld bc, CAVE_DYN_COUNT | CAVE_DYN_FAR ; b = 0
+	call CaveDynWalk                ; a = how many; keeps bc
 	and a
 	jr nz, .firstTier
-	ld b, 0                         ; count, every tier
-	call CaveLadderWalk
-	and a
-	jr z, .fallback                 ; no site at all: no subroom this cave
+	ld c, CAVE_DYN_COUNT            ; every mark: a nonzero count
+	call CaveDynWalk
 .firstTier
-	ld c, a                         ; b = the tier that has sites
-	call Rangerandom                ; keeps bc
-	inc a
-	or b
-	ld b, a                         ; the k-th site of that tier
-	ld c, CAVE_LADDER_NONE
-	call CaveLadderWalk             ; a = the first ladder's site
-	ld [CAVESUB_LADDER_A], a
-	ld c, a
-	ld a, b
-	and CAVE_LADDER_FAR_TIER
-	ld b, a                         ; b = that tier, counting; c = A
-	ld a, c
-	call CaveLadderSiteXY           ; keeps bc
+	call .pick                      ; d/e = the first ladder's block
 	ld a, d
 	ld [CAVESUB_TMP_X], a
 	ld a, e
 	ld [CAVESUB_TMP_Y], a
-	; Ladder B: sites far enough from A, same tier preference.
-	call CaveLadderWalk
+	ld a, CAVESUB_DYN_LADDER_1
+	ld [CAVESUB_LADDER_A], a
+	ld bc, CAVE_DYN_COUNT | CAVE_DYN_FAR | CAVE_DYN_PARTNER
+	call CaveDynWalk
 	and a
-	jr nz, .partner
-	ld a, b
+	jr nz, .secondTier
+	ld c, CAVE_DYN_COUNT | CAVE_DYN_PARTNER
+	call CaveDynWalk
 	and a
-	jr z, .noPartner                ; already counted every tier
-	ld b, 0
-	call CaveLadderWalk
-	and a
-	jr nz, .partner
-.noPartner
-	farcall CaveAddEntranceLadder
-	jr .stamp
-.partner
-	ld e, c                         ; e = A (Rangerandom keeps de)
-	ld c, a
-	call Rangerandom                ; keeps bc
-	inc a
-	or b
-	ld b, a
-	ld c, e
-	call CaveLadderWalk
+	jr z, .noPartner
+.secondTier
+	call .pick                      ; d/e = the second ladder's block
+	call CaveLadderBlockAddr        ; keeps de
+	ld [hl], CAVE_LADDER_BLOCK
+	ld a, CAVESUB_DYN_LADDER_2
 	ld [CAVESUB_LADDER_B], a
-.stamp
-	ld a, [CAVESUB_LADDER_A]
-	call .stampSite
-	ld a, [CAVESUB_LADDER_B]
-	call .stampSite
+	jr .stampFirst
+.noPartner
+	farcall CaveAddEntranceLadder   ; B = the entrance ladder (row 19: never marked)
+.stampFirst
+	ld a, [CAVESUB_TMP_X]
+	ld d, a
+	ld a, [CAVESUB_TMP_Y]
+	ld e, a
+	call CaveLadderBlockAddr
+	ld [hl], CAVE_LADDER_BLOCK
+	call CaveDynUnmark
 .done
 	; Last, as CAVESUB_ROOM reuses CAVESUB_TMP_X: the subroom's room and the
 	; Pokemon on its lake and mountain (0 = none for either).
@@ -152,7 +137,9 @@ CaveSubroomPlaceLadders::
 
 .fallback
 	; The resident stands in the cave instead: a block picked uniformly from
-	; every one passing the ladder rule (rows/columns 1-18).
+	; every one passing the ladder rule (rows/columns 1-18). No marks exist
+	; with a zero count, but clear them anyway so a forced count cannot leave any.
+	call CaveDynUnmark
 	call CaveFallbackScan           ; b = how many
 	ld a, b
 	and a
@@ -170,91 +157,173 @@ CaveSubroomPlaceLadders::
 	ld [CAVESUB_LADDER_B], a
 	jr .done
 
-.stampSite
-	cp NUM_CAVE_LADDER_SITES
-	ret nc
-	call CaveLadderSiteXY
-	call CaveLadderBlockAddr
-	ld [hl], CAVE_LADDER_BLOCK
-	ret
+; In: a = how many marks pass the flags in c (nonzero). Out: d/e = one of them,
+; uniformly. Keeps c.
+.pick
+	ld b, c
+	ld c, a
+	call Rangerandom                ; keeps bc
+	inc a
+	ld c, b
+	ld b, a                         ; the k-th, flags without CAVE_DYN_COUNT
+	res BIT_CAVE_DYN_COUNT, c
+	jp CaveDynWalk
 
-; Walks the sites that pass CaveLadderSiteValid and, when c names a partner
-; site (its block in CAVESUB_TMP_X/Y), lie at least CAVE_LADDER_MIN_DISTANCE
-; blocks from it. In: b = k >= 1: stop on the k-th, a = its site; b = 0: count,
-; a = how many. b | CAVE_LADDER_FAR_TIER: the same, skipping every site within
-; CAVE_LADDER_ENTRANCE_CLEARANCE of the entrance. SRAM bank 0 open. Clobbers
-; a/de/hl, keeps bc.
-	ASSERT NUM_CAVE_LADDER_SITES < CAVE_LADDER_FAR_TIER
-CaveLadderWalk:
-	ld hl, 0                        ; h = site, l = passes so far
-.site
-	ld a, h
-	cp NUM_CAVE_LADDER_SITES
-	jr nc, .end
+; Marks, in place in wOverworldMap, every block (rows/columns 1-18) passing
+; CaveLadderSiteValid with CAVE_LADDER_CANDIDATE. Row order makes this safe:
+; the rule reads only the block itself and its E, S and SE neighbours, none of
+; which a row-order walk has reached yet, so no mark is ever read back as a
+; block. CaveDynUnmark must run before anything else reads the map.
+; Out: a = how many (saturating at 255). SRAM bank 0 open. Clobbers everything.
+CaveDynMark:
+	ld hl, wOverworldMap + CAVESUB_BASE + CAVESUB_STRIDE + 1 ; block (1, 1)
+	ld c, 0
+	ld e, 1
+.row
+	ld d, 1
+.block
+	ld a, [hl]
+	cp CAVESUB_FLOOR                ; the rule's first test, inline: most blocks stop here
+	jr nz, .next
 	push hl
 	push bc
-	call CaveLadderSiteXY
-	bit 7, b                        ; CAVE_LADDER_FAR_TIER
-	jr z, .anyTier
-	call CaveLadderNearEntrance     ; carry = too near; keeps de
-	ccf
-	jr nc, .judged
-.anyTier
-	call CaveLadderSiteValid        ; carry = a ladder may go here; keeps de
-.judged
+	call CaveLadderSiteValidAt      ; carry = a ladder may go here; keeps de
 	pop bc
 	pop hl
 	jr nc, .next
-	ld a, c
-	cp CAVE_LADDER_NONE
-	jr z, .take
-	ld a, [CAVESUB_TMP_X]
-	sub d
-	jr nc, .dx
-	cpl
-	inc a
-.dx
-	ld d, a
-	ld a, [CAVESUB_TMP_Y]
-	sub e
-	jr nc, .dy
-	cpl
-	inc a
-.dy
-	add d
-	cp CAVE_LADDER_MIN_DISTANCE
-	jr c, .next                     ; also rejects the partner itself
-.take
-	inc l
-	ld a, b
-	and ~CAVE_LADDER_FAR_TIER & $ff
-	cp l                            ; never 0 = l, so a count runs to the end
+	ld [hl], CAVE_LADDER_CANDIDATE
+	inc c
 	jr nz, .next
-	ld a, h
-	ret
+	dec c                           ; saturate
 .next
+	inc hl
+	inc d
+	ld a, d
+	cp CAVESUB_SIZE - 1
+	jr c, .block
+	ld a, l                         ; column 19 -> the next row's column 1
+	add CAVESUB_STRIDE - (CAVESUB_SIZE - 2)
+	ld l, a
+	jr nc, .noCarry
 	inc h
-	jr .site
-.end
-	ld a, l
+.noCarry
+	inc e
+	ld a, e
+	cp CAVESUB_SIZE - 1
+	jr c, .row
+.end                                ; hookable: c = the count (tests force 0)
+	ld a, c
 	ret
 
-; In: d/e = a site's block. Out: carry = within CAVE_LADDER_ENTRANCE_CLEARANCE
-; blocks (Manhattan) of the entrance block. Every site's Y is above the
-; entrance row. Keeps de. Clobbers a/c.
-	ASSERT CAVESUB_ENTRANCE_Y == 19 ; sites are asserted Y <= 18
-CaveLadderNearEntrance:
+; Walks the marks in row order. In: c = CAVE_DYN_* flags (FAR: more than
+; CAVE_DYN_ENTRANCE_CLEARANCE blocks from the entrance; PARTNER: at least
+; CAVE_DYN_MIN_DISTANCE blocks from CAVESUB_TMP_X/Y, Manhattan). With
+; CAVE_DYN_COUNT and b = 0: a = how many pass (saturating at 255). Without it,
+; b = k >= 1: d/e = the k-th that passes. SRAM bank 0 open (CAVESUB_TMP_X/Y).
+; Keeps bc. Clobbers a/de/hl.
+	ASSERT CAVESUB_ENTRANCE_Y == CAVESUB_SIZE - 1 ; marks lie above it: Y distance >= 1
+CaveDynWalk:
+	push bc
+	ld hl, wOverworldMap + CAVESUB_BASE + CAVESUB_STRIDE + 1 ; block (1, 1)
+	ld e, 1
+.row
+	ld d, 1
+.block
+	ld a, [hli]
+	cp CAVE_LADDER_CANDIDATE
+	jr nz, .next
+	bit BIT_CAVE_DYN_FAR, c
+	jr z, .anyTier
+	push hl
 	ld a, d
 	sub CAVESUB_ENTRANCE_X
-	jr nc, .dx
+	jr nc, .ex
 	cpl
 	inc a
-.dx
-	ld c, a
+.ex
+	ld l, a
 	ld a, CAVESUB_ENTRANCE_Y
 	sub e
-	add c
-	cp CAVE_LADDER_ENTRANCE_CLEARANCE + 1
+	add l
+	pop hl
+	cp CAVE_DYN_ENTRANCE_CLEARANCE + 1
+	jr c, .next
+.anyTier
+	bit BIT_CAVE_DYN_PARTNER, c
+	jr z, .take
+	push hl
+	ld a, [CAVESUB_TMP_X]
+	sub d
+	jr nc, .px
+	cpl
+	inc a
+.px
+	ld l, a
+	ld a, [CAVESUB_TMP_Y]
+	sub e
+	jr nc, .py
+	cpl
+	inc a
+.py
+	add l
+	pop hl
+	cp CAVE_DYN_MIN_DISTANCE
+	jr c, .next                     ; also rejects the first ladder itself
+.take
+	bit BIT_CAVE_DYN_COUNT, c
+	jr z, .pickOne
+	inc b
+	jr nz, .next
+	dec b                           ; saturate
+	jr .next
+.pickOne
+	dec b
+	jr nz, .next
+	pop bc
+	ret                             ; d/e = the k-th
+.next
+	inc d
+	ld a, d
+	cp CAVESUB_SIZE - 1
+	jr c, .block
+	ld a, l                         ; column 19 -> the next row's column 1
+	add CAVESUB_STRIDE - (CAVESUB_SIZE - 2)
+	ld l, a
+	jr nc, .noCarry
+	inc h
+.noCarry
+	inc e
+	ld a, e
+	cp CAVESUB_SIZE - 1
+	jr c, .row
+.end                                ; hookable: b = the count (tests force 0)
+	ld a, b
+	pop bc
+	ret
+
+; Every remaining mark back to plain floor (rows/columns 1-18). Clobbers a/bc/hl.
+CaveDynUnmark:
+	ld hl, wOverworldMap + CAVESUB_BASE + CAVESUB_STRIDE + 1 ; block (1, 1)
+	ld b, CAVESUB_SIZE - 2
+.row
+	ld c, CAVESUB_SIZE - 2
+.block
+	ld a, [hl]
+	cp CAVE_LADDER_CANDIDATE
+	jr nz, .keep
+	ld [hl], CAVESUB_FLOOR
+.keep
+	inc hl
+	dec c
+	jr nz, .block
+	ld a, l
+	add CAVESUB_STRIDE - (CAVESUB_SIZE - 2)
+	ld l, a
+	jr nc, .noCarry
+	inc h
+.noCarry
+	dec b
+	jr nz, .row
 	ret
 
 ; Walks every block (rows/columns 1-18) in row order through the ladder rule.
@@ -376,6 +445,8 @@ CaveLadderBlockAddr:
 ; flood found it never strands anything. SRAM bank 0 open. Keeps de.
 CaveLadderSiteValid:
 	call CaveLadderBlockAddr
+; The same with hl = that block in wOverworldMap already (CaveDynMark).
+CaveLadderSiteValidAt:
 	ld a, [hl]
 	cp CAVESUB_FLOOR
 	jr nz, .no
@@ -537,6 +608,10 @@ CaveSubroomArm::
 
 ; In: a = site (or NONE / an old save's fill byte), c = the subroom warp.
 .arm
+	cp CAVESUB_DYN_LADDER_1
+	jr z, .dynamic
+	cp CAVESUB_DYN_LADDER_2
+	jr z, .dynamic
 	cp CAVESUB_ENTRANCE_LADDER
 	jr nz, .ordinary
 	ld b, 0                         ; use a slot not already armed for ladder A
@@ -553,6 +628,17 @@ CaveSubroomArm::
 	ret nc
 	ld b, a
 	call CaveLadderSiteXY
+	jr .checkBlock
+.dynamic
+	; CaveDynArmSlot ($26) finds the drawn ladder and arms its warp: the first
+	; dynamic ladder in site 0's slot (warp 2), the second in site 1's (warp 3).
+	ASSERT CAVESUB_DYN_LADDER_1 == CAVESUB_DYN_LADDER_2 + 1
+	cpl
+	add CAVESUB_DYN_LADDER_1 + 2    ; DYN_1 -> 1, DYN_2 -> 2
+	ld d, a                         ; d/e survive Bankswitch going in
+	ld e, c
+	farcall CaveDynArmSlot
+	ret
 .checkBlock
 	call CaveLadderBlockAddr
 	ld a, [hl]
@@ -754,6 +840,8 @@ CaveSubroomLoad::
 	ld a, c
 	cp CAVESUB_ENTRANCE_LADDER
 	jr z, .two                      ; keep the second ladder's distinct return
+	cp CAVESUB_DYN_LADDER_2
+	jr z, .two
 	cp NUM_CAVE_LADDER_SITES
 	jr c, .two
 	ld c, b                         ; one ladder serves both (or neither)
@@ -773,8 +861,20 @@ CaveSubroomLoad::
 	jr .nextWarp
 .armed
 	cp CAVESUB_ENTRANCE_LADDER
-	jr nz, .ordinaryReturn
+	jr nz, .notEntrance
 	xor a                           ; both ladders return to ROM entrance warp0
+	jr .writeReturn
+.notEntrance
+	; Dynamic ladders return to cave warps 2 / 3, which CaveResolveArrival
+	; lands on the drawn ladders.
+	cp CAVESUB_DYN_LADDER_1
+	jr nz, .notDynamic1
+	ld a, CAVE_FIRST_LADDER_WARP
+	jr .writeReturn
+.notDynamic1
+	cp CAVESUB_DYN_LADDER_2
+	jr nz, .ordinaryReturn
+	ld a, CAVE_FIRST_LADDER_WARP + 1
 	jr .writeReturn
 .ordinaryReturn
 	cp NUM_CAVE_LADDER_SITES

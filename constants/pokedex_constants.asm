@@ -357,3 +357,8 @@ DEF DEX_REG_BOTH    EQU DEX_REG_OWNED | DEX_REG_SEEN
 ; mon is not caught. _AddPartyMon reads the low nybble (party) and zero-ness
 ; (naming) only, so this behaves as $10 everywhere else.
 DEF ADD_MON_DEX_SEEN_ONLY EQU $20
+
+; Pokedex list row kinds (data/pokemon/dex_display_rows.asm, high byte of each dw).
+DEF DEX_ROW_SPECIES  EQU $0000 ; low byte = Pokedex number
+DEF DEX_ROW_REGIONAL EQU $0100 ; low byte = DEX_FORM_* id, unnumbered under its base
+DEF DEX_ROW_NUMBERED EQU $0200 ; low byte = DEX_FORM_* id, numbered NUM_POKEMON + 1..

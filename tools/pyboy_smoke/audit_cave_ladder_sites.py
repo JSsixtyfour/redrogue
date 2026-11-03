@@ -25,11 +25,13 @@ the sample and on a held-out set.
 
     python3 tools/pyboy_smoke/audit_cave_ladder_sites.py --layouts 200 --held-out 100
 
---runtime checks what the ROM actually did against this model, per layout: each
-drawn ladder is a shipped site the model accepts (judged on the map before the
-ladders were stamped), the two are CAVE_LADDER_MIN_DISTANCE apart, a single
-ladder only when no far partner exists, none only when no site exists, and
-exactly their warps are armed. It exits non-zero on any problem.
+--runtime checks what the ROM actually did, per layout. Fresh caves have used
+DYNAMIC ladders since 2026-11-03 (any block the model accepts; FOLLOWUPS #93):
+each drawn ladder passes the model (judged with the ladders removed), two are
+CAVE_DYN_MIN_DISTANCE apart, the entrance ladder only when no block is that far
+from the one ladder, the entrance preference holds, no generation mark is left,
+and exactly warps 2/3 are armed, in row order. It exits non-zero on any problem.
+(The fixed-site picker below is kept for the sites old saved caves still use.)
 
     python3 tools/pyboy_smoke/audit_cave_ladder_sites.py --runtime --layouts 300
 """
@@ -63,13 +65,24 @@ _SITE_TEXT = (REPO_ROOT / "constants" / "cave_ladder_site_constants.asm").read_t
 SITES = [(int(x), int(y)) for x, y in re.findall(r"^\tladder_site\s+(\d+),\s*(\d+)", _SITE_TEXT, re.M)]
 FIRST_WARP = int(re.search(r"CAVE_FIRST_LADDER_WARP EQU (\d+)", _SITE_TEXT).group(1))
 MIN_DISTANCE = int(re.search(r"CAVE_LADDER_MIN_DISTANCE EQU (\d+)", _SITE_TEXT).group(1))
-CLEARANCE = int(re.search(r"CAVE_LADDER_ENTRANCE_CLEARANCE EQU (\d+)", _SITE_TEXT).group(1))
+DYN_1, DYN_2 = 0xFD, 0xFC   # CAVESUB_DYN_LADDER_1/2: ladders on any valid block
+DYN_MIN_DISTANCE = int(re.search(r"CAVE_DYN_MIN_DISTANCE EQU (\d+)", _SITE_TEXT).group(1))
+DYN_CLEARANCE = int(re.search(r"CAVE_DYN_ENTRANCE_CLEARANCE EQU (\d+)", _SITE_TEXT).group(1))
+CANDIDATE = int(re.search(r"CAVE_LADDER_CANDIDATE EQU \$([0-9A-Fa-f]+)", _SITE_TEXT).group(1), 16)
 ENTRANCE_LADDER = 0xFE
 
 
-def near_entrance(n: int) -> bool:
-    x, y = SITES[n]
-    return abs(x - ENTRANCE_BLOCK[0]) + abs(y - ENTRANCE_BLOCK[1]) <= CLEARANCE
+def far_from_entrance(block) -> bool:
+    return abs(block[0] - ENTRANCE_BLOCK[0]) + abs(block[1] - ENTRANCE_BLOCK[1]) > DYN_CLEARANCE
+
+
+def dynamic_ladders(grid, exit_block) -> list:
+    """The drawn ladders down, in the ROM's order (CaveDynFindLadder): block 40
+    in rows/columns 1-18, row order, the exit skipped."""
+    return [(x, y) for y in range(1, PC_SIZE - 1) for x in range(1, PC_SIZE - 1)
+            if grid[y][x] == LADDER and (x, y) != tuple(exit_block)]
+
+
 NONE = 0xFF
 UNREACHED = [0]   # sites a walkable-only rule would accept but the flood rejects
 QUADRANT = (4, 6, 12, 14)   # bottom-left tile of TL, TR, BL, BR
@@ -165,76 +178,75 @@ def has_pair(sites, distance) -> bool:
 
 
 def check_runtime(seed, grid, player, sprites, exit_block, hideout, blockset, passable, map_ids, tally) -> int:
+    """Dynamic ladders (fresh caves since 2026-11-03): placement, saved tags and armed warps."""
     (a, b, _state, room_byte), warps = RUNTIME
-    # The subroom room this cave rolled names the two warps its ladders lead to
-    # (CaveSubRooms in custom_functions/cave_subroom.asm; past the table = the first).
     room_warps = ROOM_WARPS[room_byte & 3] if room_byte & 3 < len(ROOM_WARPS) else ROOM_WARPS[0]
-    unstamped = [row[:] for row in grid]
-    for site in (a, b):
-        if site < len(SITES):
-            x, y = SITES[site]
-            if unstamped[y][x] == LADDER:
-                unstamped[y][x] = FLOOR
-    model, _ = valid_sites(unstamped, player, sprites, exit_block, hideout, blockset, passable)
-    shipped = [n for n, s in enumerate(SITES) if s in model]
+    subroom = map_ids["PROCEDURAL_CAVE_SUBROOM"]
     problems = []
-    def far(m, n):
-        (x1, y1), (x2, y2) = SITES[m], SITES[n]
-        return abs(x1 - x2) + abs(y1 - y2) >= MIN_DISTANCE
-    if a >= len(SITES):
-        if shipped:
-            problems.append(f"no ladder although {len(shipped)} sites were valid")
-        # The resident's fallback: a block of the model's (all blocks, not only
-        # the sites), stored as $80 | X, $40 | Y; $FF in both when none.
-        if a == NONE and b == NONE:
-            if model:
-                problems.append(f"no fallback although {len(model)} blocks were valid")
-        else:
-            tally["fallback"] = tally.get("fallback", 0) + 1
-            spot = (a & 0x7F, b & 0x3F)
-            if a & 0x80 == 0 or b & 0xC0 != 0x40 or spot not in model:
-                problems.append(f"fallback {a:#x}/{b:#x} fails the model")
-        a = b = NONE                  # no ladder: every site warp must be disarmed
-    else:
+    marks = sum(row.count(CANDIDATE) for row in grid)
+    if marks:
+        problems.append(f"{marks} generation marks left in the map")
+    ladders = dynamic_ladders(grid, exit_block)
+    unstamped = [row[:] for row in grid]
+    for x, y in ladders:
+        unstamped[y][x] = FLOOR
+    if b == ENTRANCE_LADDER and unstamped[ENTRANCE_BLOCK[1]][ENTRANCE_BLOCK[0]] == LADDER:
+        unstamped[ENTRANCE_BLOCK[1]][ENTRANCE_BLOCK[0]] = 36     # PC_BLOCK_ENTRANCE
+    model, _ = valid_sites(unstamped, player, sprites, exit_block, hideout, blockset, passable)
+    far_model = [m for m in model if far_from_entrance(m)]
+    expected = {}                                 # warp slot -> entry
+    if a == DYN_1:
         tally["one"] += 1
-        if a not in shipped:
-            problems.append(f"ladder A {SITES[a]} fails the model")
-        # The tier rule: a near-entrance site only when no farther one fits.
-        far_tier = [n for n in shipped if not near_entrance(n)]
-        if near_entrance(a) and far_tier:
-            problems.append(f"ladder A {SITES[a]} near the entrance although {len(far_tier)} farther sites were valid")
-        if b < len(SITES) and near_entrance(b) and any(far(a, n) for n in far_tier):
-            problems.append(f"ladder B {SITES[b]} near the entrance although a farther partner was valid")
-        if b in (NONE, ENTRANCE_LADDER):
-            if any(far(a, n) for n in shipped):
-                problems.append("no ordinary partner although a far partner was valid")
-            if b == ENTRANCE_LADDER:
-                tally["entrance"] = tally.get("entrance", 0) + 1
-        else:
+        for blk in ladders:
+            if blk not in model:
+                problems.append(f"ladder {blk} fails the model")
+        if b == DYN_2:
             tally["two"] += 1
-            if b not in shipped or not far(a, b):
-                problems.append(f"ladder B {SITES[b]} fails the model or is too close")
-        for site in (a, b):
-            if site < len(SITES):
-                x, y = SITES[site]
-                if grid[y][x] != LADDER:
-                    problems.append(f"no ladder drawn at {SITES[site]}")
-    # The entrance ladder borrows site 0's slot, or site 1's when A is site 0
-    # (CaveSubroomArm), and departs from the entrance block's bottom-right.
-    entrance_slot = (1 if a == 0 else 0) if b == ENTRANCE_LADDER else None
-    if entrance_slot is not None and grid[ENTRANCE_BLOCK[1]][ENTRANCE_BLOCK[0]] != LADDER:
-        problems.append("entrance ladder recorded but not drawn")
-    for n, (x, y) in enumerate(SITES):
-        entry = warps[FIRST_WARP + n]
-        if n == entrance_slot:
+            if len(ladders) != 2:
+                problems.append(f"two dynamic ladders recorded, {len(ladders)} drawn: {ladders}")
+            else:
+                (x1, y1), (x2, y2) = ladders
+                if abs(x1 - x2) + abs(y1 - y2) < DYN_MIN_DISTANCE:
+                    problems.append(f"ladders {ladders} closer than {DYN_MIN_DISTANCE}")
+                if far_model and not any(far_from_entrance(l) for l in ladders):
+                    problems.append(f"both ladders near the entrance although {len(far_model)} far blocks were valid")
+                for n, (x, y) in enumerate(ladders):
+                    expected[FIRST_WARP + n] = [2 * y + 1, 2 * x + 1, room_warps[n], subroom]
+        elif b == ENTRANCE_LADDER:
+            tally["entrance"] = tally.get("entrance", 0) + 1
+            if len(ladders) != 1:
+                problems.append(f"one dynamic ladder recorded, {len(ladders)} drawn: {ladders}")
+            else:
+                (x1, y1), = ladders
+                if far_model and not far_from_entrance(ladders[0]):
+                    problems.append(f"ladder {ladders[0]} near the entrance although far blocks were valid")
+                if any(abs(x1 - x) + abs(y1 - y) >= DYN_MIN_DISTANCE for x, y in model):
+                    problems.append("entrance second ladder although a far partner was valid")
+                expected[FIRST_WARP] = [2 * y1 + 1, 2 * x1 + 1, room_warps[0], subroom]
+            if grid[ENTRANCE_BLOCK[1]][ENTRANCE_BLOCK[0]] != LADDER:
+                problems.append("entrance ladder recorded but not drawn")
             ex, ey = ENTRANCE_BLOCK
-            if entry != [2 * ey + 1, 2 * ex + 1, room_warps[1], map_ids["PROCEDURAL_CAVE_SUBROOM"]]:
-                problems.append(f"entrance ladder slot {n} armed as {entry}")
-        elif n == a or n == b:
-            if entry != [2 * y + 1, 2 * x + 1, room_warps[0 if n == a else 1], map_ids["PROCEDURAL_CAVE_SUBROOM"]]:
-                problems.append(f"site {n} armed as {entry}")
-        elif entry[0] != NONE:
-            problems.append(f"site {n} not disarmed: {entry}")
+            expected[FIRST_WARP + 1] = [2 * ey + 1, 2 * ex + 1, room_warps[1], subroom]
+        else:
+            problems.append(f"dynamic A with B {b:#x}")
+    elif a == NONE and b == NONE:
+        if model:
+            problems.append(f"no ladder and no fallback although {len(model)} blocks were valid")
+    elif a & 0x80 and a < 0x93:
+        tally["fallback"] = tally.get("fallback", 0) + 1
+        if model:
+            problems.append(f"resident fallback although {len(model)} blocks were valid")
+        if ladders:
+            problems.append(f"fallback cave draws ladders {ladders}")
+    else:
+        problems.append(f"fresh cave saved A/B {a:#x}/{b:#x}")
+    for n in range(len(SITES)):
+        slot = FIRST_WARP + n
+        if slot in expected:
+            if warps[slot] != expected[slot]:
+                problems.append(f"warp {slot} armed as {warps[slot]}, expected {expected[slot]}")
+        elif warps[slot][0] != NONE:
+            problems.append(f"warp {slot} not disarmed: {warps[slot]}")
     for line in problems:
         print(f"seed {seed}: {line}")
     return len(problems)

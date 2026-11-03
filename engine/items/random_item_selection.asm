@@ -2,7 +2,20 @@
 ; The code outputs an item ID
 ; a = Specific type of item: HEALING, STAT, TM, MONEY
 DEF MAX_ITEM_SELECTION_RETRIES EQU 20
+; wItemSelectionRetryCount: bits 0-5 count retries, bits 6-7 cache the Rare Lens
+; tier for the rest of the call (ItemSelectionRarityBonus). Zero between calls.
+DEF ITEM_RETRY_COUNT_MASK EQU %00111111
+	ASSERT MAX_ITEM_SELECTION_RETRIES <= ITEM_RETRY_COUNT_MASK
 Random_Item_Selection::
+; A fresh call starts its retry count (and cached Rare Lens tier) at zero.
+; It used to trust the previous call's ItemSelectionAccept to leave 0, but the
+; wild-area ball writers store items at wRogueItem + 0/2/4/6 and offset 2 IS
+; this byte (wram.asm: it sits between wRogueItem and wRogueItem2), so every
+; fresh forest/cave left ball 2's item ID here (measured: 79) and the next
+; call's first owned-TM hit skipped straight to the exhaustive fallback.
+xor a
+ld [wItemSelectionRetryCount], a
+.retry
 call Random
 ld a, [wRogueDoorSelection]
 ld b, HEALING
@@ -205,10 +218,11 @@ ItemSelectionCheck:
     and a
     jr z, ItemSelectionAccept
     ld hl, wItemSelectionRetryCount
-    inc [hl]
+    inc [hl]                    ; the count's bits; the tier above it is untouched
     ld a, [hl]
+    and ITEM_RETRY_COUNT_MASK
     cp MAX_ITEM_SELECTION_RETRIES
-    jp c, Random_Item_Selection
+    jp c, Random_Item_Selection.retry
     jp ItemSelectionFindUnownedTM
 
 ItemSelectionAccept:
@@ -344,12 +358,35 @@ ld b, a
 ; key_item_pocket.asm: relocated_home.asm, INCLUDEd just above it in main.asm,
 ; opens its own SECTION, so this lands in a different bank. It used to be a plain
 ; call, which ran whatever was mapped at that address here (fixed 2026-09-24).
-push bc
+;
+; CACHED PER CALL (2026-11-03, PROCEDURAL_REVIEW item 5). The lookup was ~65% of
+; every roll (it walks and repairs the key-item bitfield), and an owned-TM
+; rejection re-enters Random_Item_Selection up to MAX_ITEM_SELECTION_RETRIES
+; times. Nothing between those rolls can change the Rare Lens, so the first roll
+; of a call (retry count 0) looks it up and parks the tier in the count byte's
+; top two bits (the count itself never exceeds 20); retries and the exhaustive
+; fallback read it back. wCurItem still ends as RARE_LENS on every roll, and SRAM
+; ends disabled on bank 1 either way (this lookup and HasTMHM both leave it so).
 ld a, RARE_LENS
 ld [wCurItem], a
+ld a, [wItemSelectionRetryCount]
+and ITEM_RETRY_COUNT_MASK
+jr z, .lookUpLens
+ld a, [wItemSelectionRetryCount]
+rlca
+rlca
+and %11                        ; the tier the first roll found
+jr .haveLens
+.lookUpLens
+push bc
 farcall GetKeyItemPowerInE     ; e = 0 (not active) or 1-3 (displayed tier)
 ld a, e                        ; not a: Bankswitch returns the caller's bank in a
+rrca
+rrca                           ; tier -> bits 6-7; the count is 0 here
+ld [wItemSelectionRetryCount], a
+ld a, e
 pop bc
+.haveLens
 and a
 jr z, .no_overflow
 dec a

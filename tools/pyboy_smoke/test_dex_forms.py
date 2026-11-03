@@ -81,7 +81,7 @@ class DexFormsTest(unittest.TestCase):
                     break
             self.assertEqual(regs.PC, stub, f"{label} did not return (PC ${regs.PC:04X})")
             self.assertEqual(regs.SP, (sp + 2) & 0xFFFF, f"{label} unbalanced the stack")
-            return {name: getattr(regs, name) for name in ("A", "D", "E", "F")}
+            return {name: getattr(regs, name) for name in ("A", "D", "E", "F", "HL")}
         finally:
             memory[0xFFFF] = saved_ie
             memory[stub], memory[stub + 1] = saved_stub
@@ -323,22 +323,112 @@ class DexFormsTest(unittest.TestCase):
     def text_tiles(self, text: str) -> list[int]:
         return [CHAR_TO_BYTE[c] for c in text]
 
-    def test_forms_list_row_shows_number_ball_and_form_name(self) -> None:
-        ident = DEX["DEX_FORM_A_MEOWTH"]
+    # --- the Pokedex list: every identity, split by kind -------------------
+
+    def display_rows(self) -> list[tuple[str, str]]:
+        """(kind, name) per list row, from the generated table."""
+        text = (REPO_ROOT / "data" / "pokemon" / "dex_display_rows.asm").read_text(encoding="utf-8")
+        return re.findall(r"^\s*dw DEX_ROW_(SPECIES|REGIONAL|NUMBERED) \| (\w+)", text, re.M)
+
+    def test_display_rows_cover_every_identity_once_in_split_order(self) -> None:
+        rows = self.display_rows()
+        self.assertEqual(len(rows), 252 + len(CATALOG))
+        names = [n for _, n in rows]
+        self.assertEqual(len(set(names)), len(names), "an identity appears twice")
+        species = [n for k, n in rows if k == "SPECIES"]
+        self.assertEqual([DEX[n] for n in species], list(range(1, 253)), "species keep their numbers")
+        numbered = [n for k, n in rows if k == "NUMBERED"]
+        self.assertEqual(len(numbered), 13)
+        self.assertEqual([k for k, _ in rows[-13:]], ["NUMBERED"] * 13, "numbered species come last")
+        for name in ("DEX_FORM_ESPEON", "DEX_FORM_UMBREON", "DEX_FORM_CLODSIRE", "DEX_FORM_PERRSERKER"):
+            self.assertIn(name, numbered)
+        # each regional form directly follows its base species (or a sibling form)
+        for i, (kind, name) in enumerate(rows):
+            if kind != "REGIONAL":
+                continue
+            _, base, _ = CATALOG[DEX[name]]
+            j = i - 1
+            while rows[j][0] == "REGIONAL":
+                j -= 1
+            self.assertEqual(SPECIES[rows[j][1][len("DEX_"):]], base, name)
+
+    def test_display_rows_file_is_generated_and_current(self) -> None:
+        import subprocess, sys
+        result = subprocess.run([sys.executable, str(REPO_ROOT / "tools" / "gen_dex_display_rows.py"), "--check"],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def draw_row(self, row: int) -> None:
+        for i in range(40):
+            self.h.write8("wTileMap", 0x7F, offset=2 * 20 + i)  # rows 2-3 blank
         hl = self.h.address("wTileMap") + 3 * 20 + 1  # hlcoord 1, 3
-        number = self.text_tiles(f"{DEX['DEX_MEOWTH']:03d}")
-        for owned, seen in ((False, False), (False, True), (True, True)):
-            self.clear_dex()
-            if seen:
-                self.register(SPECIES["MEOWTH"], 1, BOTH if owned else SEEN)
-            for i in range(40):
-                self.h.write8("wTileMap", 0x7F, offset=2 * 20 + i)  # rows 2-3 blank
-            self.run_routine("FormDexDrawRow", C=ident, HL=hl)
-            self.assertEqual(self.tiles(1, 2, 3), number, "base species number above the row")
-            self.assertEqual(self.tiles(3, 3, 1), [0x72 if owned else 0x7F], (owned, seen))
-            name = "A-MEOWTH" if seen else "--------"
-            self.assertEqual(self.tiles(4, 3, len(name)), self.text_tiles(name), (owned, seen))
-            self.assertEqual(self.h.read8("wFormContextSpecies"), 0, "no form context left pending")
+        self.run_routine("DexListDrawRow", D=row >> 8, E=row & 0xFF, HL=hl)
+
+    def test_list_rows_by_kind(self) -> None:
+        rows = [n for _, n in self.display_rows()]
+        blank = [0x7F] * 3
+        cases = [  # (row name, registration, number tiles above, name)
+            ("DEX_MEOWTH", (SPECIES["MEOWTH"], 0), self.text_tiles(f"{DEX['DEX_MEOWTH']:03d}"), "MEOWTH"),
+            ("DEX_FORM_A_MEOWTH", (SPECIES["MEOWTH"], 1), blank, "A-MEOWTH"),
+            ("DEX_FORM_ESPEON", (SPECIES["JOLTEON"], 1),
+             self.text_tiles(f"{253 + rows[-13:].index('DEX_FORM_ESPEON'):03d}"), "ESPEON"),
+        ]
+        for name, (species, form), number, label in cases:
+            row = rows.index(name)
+            for owned, seen in ((False, False), (False, True), (True, True)):
+                with self.subTest(row=name, owned=owned, seen=seen):
+                    self.clear_dex()
+                    if seen:
+                        self.register(species, form, BOTH if owned else SEEN)
+                    self.draw_row(row)
+                    self.assertEqual(self.tiles(1, 2, 3), number, "number row")
+                    self.assertEqual(self.tiles(3, 3, 1), [0x72 if owned else 0x7F], "owned ball")
+                    shown = label if seen else "-" * len(label)
+                    self.assertEqual(self.tiles(4, 3, len(shown)), self.text_tiles(shown), "name")
+                    self.assertEqual(self.h.read8("wFormContextSpecies"), 0, "no form context left pending")
+
+    def test_list_length_follows_the_last_seen_row(self) -> None:
+        rows = [n for _, n in self.display_rows()]
+        def count() -> int:
+            return self.run_routine("DexListRowCount")["HL"]
+        self.clear_dex()
+        self.assertEqual(count(), 1, "nothing seen: one row of dashes")
+        self.register(SPECIES["MEOWTH"], 2, SEEN)
+        self.assertEqual(count(), rows.index("DEX_FORM_G_MEOWTH") + 1)
+        self.register(SPECIES["QUAGSIRE"], 1, SEEN)  # Clodsire, the last numbered row
+        self.assertEqual(count(), len(rows))
+
+    def load_header(self, species: int, form: int) -> list[int]:
+        """GetMonHeader with an explicit context (form 0 = base); returns the TM/HM learnset."""
+        h = self.h
+        h.write8("wMonHFormSpecies", 0)
+        h.write8("wMonHForm", 0)
+        h.write8("wFormContextSpecies", species)
+        h.write8("wFormContextForm", form)
+        h.write8("wCurSpecies", species)
+        self.run_routine("GetMonHeader")
+        return h.read_bytes("wMonHLearnset", 7)
+
+    def test_form_move_page_tm_list_is_the_form_s(self) -> None:
+        """PokedexFormMoveViewer leaves wMonHForm/wMonHFormSpecies naming the form, so
+        the TMHM view's own GetMonHeader reloads (LearndexTMHMBitSet) keep the form."""
+        h = self.h
+        h.pyboy.memory[h.address("wLoadedMon") + 7] = 0  # no fusion/variant instance flags
+        differing = 0
+        for name, species, form in CATALOG:
+            base = self.load_header(species, 0)
+            own = self.load_header(species, form)   # leaves the viewer's state behind
+            self.assertEqual(h.read8("wMonHForm"), form, name)
+            self.assertEqual(h.read8("wMonHFormSpecies"), species, name)
+            if own == base:
+                continue
+            differing += 1
+            for index in range(55):  # NUM_TM_HM
+                expect = own[index >> 3] >> (index & 7) & 1
+                got = not (self.run_routine("LearndexTMHMBitSet", A=index)["F"] & 0x80)  # nz = can learn
+                self.assertEqual(int(got), expect, f"{name} TM/HM #{index}")
+            self.assertEqual(h.read8("wMonHForm"), form, f"{name}: the reloads kept the form")
+        self.assertGreater(differing, 10, "most forms have their own TM/HM list")
 
 
 if __name__ == "__main__":
