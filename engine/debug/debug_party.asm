@@ -182,6 +182,7 @@ IF DEF(_DEBUG)
 	call DebugSetPokedexEntries
 	ld hl, wPokedexSeen
 	call DebugSetPokedexEntries
+	farcall DexDebugFillForms
 	SetEvent EVENT_GOT_POKEDEX
 
 	; Rival chose Squirtle,

@@ -317,8 +317,10 @@ hGymGateIndex:: db
 hGymGateAnswer:: db
 
 NEXTU
-hDexRatingNumMonsSeen:: db
-hDexRatingNumMonsOwned:: db
+; Pokedex rating band 0-6 (DisplayDexRating -> PlayPokedexRatingSfx). The counts
+; are 16-bit now and live in wDexRatingNumMonsSeen/Owned (WRAM), 2026-11-03.
+hDexRatingBand:: db
+	ds 1 ; was hDexRatingNumMonsOwned; keeps this UNION member's size unchanged
 
 NEXTU
 hItemToRemoveID:: db

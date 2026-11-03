@@ -1,14 +1,8 @@
 PlayPokedexRatingSfx::
-	ldh a, [hDexRatingNumMonsOwned]
-	ld c, $0
-	ld hl, OwnedMonValues
-.getSfxPointer
-	cp [hl]
-	jr c, .gotSfxPointer
-	inc c
-	inc hl
-	jr .getSfxPointer
-.gotSfxPointer
+; One jingle per rating band (DisplayDexRating's hDexRatingBand, 0-6). The
+; vanilla owned-count steps (10, 40, 60, 90, 120, 150) were retired 2026-11-03.
+	ldh a, [hDexRatingBand]
+	ld c, a
 	push bc
 	ld a, SFX_STOP_ALL_MUSIC
 ;	ld [wNewSoundID], a
@@ -31,6 +25,3 @@ PokedexRatingSfxPointers:
 	db SFX_LEVEL_UP,       0 ; BANK(SFX_Level_Up)
 	db SFX_GET_KEY_ITEM,   0 ; BANK(SFX_Get_Key_Item_1)
 	db SFX_GET_ITEM_2,     0 ; BANK(SFX_Get_Item2_1)
-
-OwnedMonValues:
-	db 10, 40, 60, 90, 120, 150, $ff

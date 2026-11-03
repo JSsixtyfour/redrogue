@@ -4,8 +4,10 @@
 ; credits EXACTLY the identity that was caught/seen:
 ;   - form 0                -> the base species' bit in wPokedexOwned/Seen
 ;   - a cataloged form      -> its DEX_FORM_* bit in wPokedexFormOwned/Seen
-;   - any other form record -> nothing (Armored Mewtwo, the fossil ghosts: not
-;                              Pokedex entries by design, user 2026-11-03)
+;   - any other form        -> its BASE species (Armored Mewtwo, the fossil
+;                              ghosts: not Pokedex entries of their own, but
+;                              they credit Mewtwo/Aerodactyl/Kabutops; user
+;                              2026-11-03). Same for a selector with no record.
 ; Owning Alolan Meowth therefore never credits ordinary Meowth, and vice versa.
 ;
 ; Pinned to bank $30 beside "Species Forms" (layout.link) so GetEnemySpawnForm
@@ -22,7 +24,6 @@
 ;      e = form in FORM_MASK position (bits 5-6) | DEX_REG_OWNED / DEX_REG_SEEN
 ; OUT: e = 0             the identity was NOT owned before this call
 ;      e = 1             it was already owned
-;      e = $FF           (species, form) is not a Pokedex identity; nothing set
 ;      Newly owned forms are reported as 0 like base species; a caller that must
 ;      tell them apart (the catch page) uses DexRegisterCaught.
 ; CLOBBERS: all
@@ -41,7 +42,7 @@ DexRegisterMon::
 	rlca
 	ld e, a
 	call DexFormIdentity       ; preserves b
-	jr nc, .notIdentity
+	jr nc, .base               ; not an identity of its own: base species credit
 	ld c, a
 	ld hl, wPokedexFormOwned
 	ld de, wPokedexFormSeen
@@ -87,10 +88,6 @@ DexRegisterMon::
 	inc e
 	ret
 
-.notIdentity
-	ld e, $FF
-	ret
-
 ; ---------------------------------------------------------------------------
 ; DexRegisterEnemySeen: the battle's "this enemy is now seen" registration
 ; (LoadEnemyMonData). Resolves the enemy's form itself, so Battle Core pays
@@ -106,7 +103,9 @@ DexRegisterEnemySeen::
 ; IN:  none
 ; OUT: e = 0          new base species: show its Pokedex page
 ;      e = $80 | id   new form identity id (no form page yet: the caller skips)
-;      e = 1 / $FF    already owned / not an identity: no page
+;      e = 1          already owned: no page
+;      A new non-identity form (Armored Mewtwo...) credited its base species and
+;      reports e = 0: it gets the base species' page.
 ; CLOBBERS: all
 ; ---------------------------------------------------------------------------
 DexRegisterCaught::
@@ -114,14 +113,16 @@ DexRegisterCaught::
 	call DexRegisterEnemy
 	ld a, e
 	and a
-	ret nz                     ; owned before, or not an identity
+	ret nz                     ; owned before
 	ld a, [wEnemyMonSpecies2]
 	ld d, a
 	call GetEnemySpawnForm     ; e = form 0..3
 	ld a, e
 	and a
 	ret z                      ; e = 0: new base species
-	call DexFormIdentity       ; it registered, so it is cataloged
+	call DexFormIdentity
+	ld e, 0
+	ret nc                     ; credited as its base species: base page
 	or $80
 	ld e, a
 	ret
@@ -140,6 +141,127 @@ DexRegisterEnemy:
 	ld a, [wEnemyMonSpecies2]
 	ld d, a
 	jp DexRegisterMon
+
+; ---------------------------------------------------------------------------
+; DexCountCollection: the whole collection's seen and owned totals, base species
+; plus form identities. Only real identity bits count: the 4 pad bits after
+; NUM_POKEMON (old debug saves set them) and the spare form slots are ignored.
+; IN:  none
+; OUT: wDexRatingNumMonsSeen / wDexRatingNumMonsOwned = totals, 16-bit BIG-endian
+;      (PrintNumber / text_decimal order); de = owned total
+; CLOBBERS: all
+; ---------------------------------------------------------------------------
+DexCountCollection::
+	ASSERT NUM_POKEMON <= 255 && NUM_DEX_FORMS <= 255
+	ld hl, wPokedexSeen
+	ld de, wPokedexFormSeen
+	call .total
+	ld hl, wDexRatingNumMonsSeen
+	ld [hl], b
+	inc hl
+	ld [hl], c
+	ld hl, wPokedexOwned
+	ld de, wPokedexFormOwned
+	call .total
+	ld hl, wDexRatingNumMonsOwned
+	ld [hl], b
+	inc hl
+	ld [hl], c
+	ld d, b
+	ld e, c
+	ret
+
+; hl = base array, de = form array -> bc = set bits in both (identity bits only)
+.total
+	push de
+	ld c, NUM_POKEMON
+	call DexCountBits
+	pop hl
+	push af
+	ld c, NUM_DEX_FORMS
+	call DexCountBits
+	pop bc                     ; b = base count
+	add b
+	ld c, a
+	ld a, 0
+	adc a
+	ld b, a
+	ret
+
+; IN: hl = flag array, c = number of leading bits to count (1-255)
+; OUT: a = how many of them are set. CLOBBERS: af, c, de, hl
+DexCountBits:
+	ld d, 0
+.byte
+	ld a, [hli]
+	ld e, 8
+.bit
+	srl a
+	jr nc, .clear
+	inc d
+.clear
+	dec c
+	jr z, .done
+	dec e
+	jr nz, .bit
+	jr .byte
+.done
+	ld a, d
+	ret
+
+; ---------------------------------------------------------------------------
+; DexFormKeyOf: identity -> its (species, form) key, for the Forms list/page.
+; IN: e = DEX_FORM_* id (< NUM_DEX_FORMS). OUT: d = species, e = form 1..3.
+; CLOBBERS: af, hl
+; ---------------------------------------------------------------------------
+DexFormKeyOf::
+	ld d, 0
+	ld hl, DexFormKeys
+	add hl, de
+	add hl, de
+	ld a, [hli]
+	ld d, a
+	ld e, [hl]
+	ret
+
+; ---------------------------------------------------------------------------
+; DexFormCounts: form identities only (the Forms list header).
+; OUT: d = seen, e = owned. CLOBBERS: all
+; ---------------------------------------------------------------------------
+DexFormCounts::
+	ld hl, wPokedexFormSeen
+	ld c, NUM_DEX_FORMS
+	call DexCountBits
+	push af
+	ld hl, wPokedexFormOwned
+	ld c, NUM_DEX_FORMS
+	call DexCountBits
+	ld e, a
+	pop af
+	ld d, a
+	ret
+
+; ---------------------------------------------------------------------------
+; DexDebugFillForms: debug "complete the Pokedex" for the form arrays. Sets
+; exactly the NUM_DEX_FORMS identity bits, never the spare slots.
+; CLOBBERS: all
+; ---------------------------------------------------------------------------
+DexDebugFillForms::
+	ld c, 0
+.loop
+	ld hl, wPokedexFormOwned
+	call DexBitAddr
+	or [hl]
+	ld [hl], a
+	ld hl, wPokedexFormSeen
+	call DexBitAddr
+	or [hl]
+	ld [hl], a
+	inc c
+	ld a, c
+	cp NUM_DEX_FORMS
+	jr c, .loop
+	ret
 
 ; ---------------------------------------------------------------------------
 ; DexFormIdentity

@@ -38,6 +38,10 @@ class HallOfFameDexRatingTest(HarnessTestCase):
         for offset, value in enumerate(invalid_debug_dex):
             h.pyboy.memory[owned + offset] = value
             h.pyboy.memory[seen + offset] = value
+        # No form identities, so the whole-collection total is the base count alone.
+        for label in ("wPokedexFormOwned", "wPokedexFormSeen"):
+            for offset in range(7):
+                h.pyboy.memory[h.address(label) + offset] = 0
 
         events = parse_rgbds_constants(EVENT_CONSTANTS)
         event = events["EVENT_HALL_OF_FAME_DEX_RATING"]
@@ -47,6 +51,9 @@ class HallOfFameDexRatingTest(HarnessTestCase):
         h.park_before_hijack()
         h.call_routine("DisplayDexRating")
 
-        self.assertEqual(h.read8("hDexRatingNumMonsSeen"), 252)
-        self.assertEqual(h.read8("hDexRatingNumMonsOwned"), 252)
+        # 16-bit big-endian totals since the Pokedex forms rewrite (2026-11-03): the
+        # three bits past NUM_POKEMON are masked, not clamped, so 252 either way.
+        self.assertEqual(h.read_bytes("wDexRatingNumMonsSeen", 2), [0, 252])
+        self.assertEqual(h.read_bytes("wDexRatingNumMonsOwned", 2), [0, 252])
+        self.assertEqual(h.read8("hDexRatingBand"), 4)  # 252 of 303 = 83%: 75-89% band
         self.assertEqual(h.pyboy.memory[flags] & (1 << (event % 8)), 0)

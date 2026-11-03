@@ -376,7 +376,7 @@ RentalDeliverOffer::
 .partyCreation
 	ld a, [wMonDataLocation]
 	push af
-	ld a, $10                     ; player party, no blocking naming screen
+	ld a, ADD_MON_DEX_SEEN_ONLY    ; player party, no naming screen, Dex seen only
 	ld [wMonDataLocation], a
 	ld a, [wRentalOfferSpecies]
 	ld [wCurPartySpecies], a
@@ -1804,7 +1804,7 @@ RentalCreateBoxOffer:
 	push af
 	ld a, 5
 	ld [wPartyCount], a
-	ld a, $10
+	ld a, ADD_MON_DEX_SEEN_ONLY   ; Dex seen only: a rental is borrowed, not caught
 	ld [wMonDataLocation], a
 	ld a, [wRentalOfferSpecies]
 	ld [wCurPartySpecies], a

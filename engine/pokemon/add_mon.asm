@@ -105,7 +105,15 @@ _AddPartyMon::
 ; If the mon is being added to the player's party, update the pokedex: the
 ; exact identity (base species or its cataloged form), custom_functions/dex_forms.asm.
 ; wSpawnForm is still unconsumed here (.done clears it). de = live struct cursor.
+; ADD_MON_DEX_SEEN_ONLY (rentals) records the mon as seen, not owned.
 	push de
+	ld a, [wMonDataLocation]
+	and ADD_MON_DEX_SEEN_ONLY
+	ld a, DEX_REG_SEEN
+	jr nz, .dexActionsReady
+	ld a, DEX_REG_BOTH
+.dexActionsReady
+	ld e, a
 	ld a, [wCurPartySpecies]
 	ld d, a
 	ld a, [wSpawnForm]
@@ -113,7 +121,7 @@ _AddPartyMon::
 	rrca                    ; 0..3 -> bits 5-6
 	rrca
 	rrca
-	or DEX_REG_BOTH
+	or e
 	ld e, a
 	farcall DexRegisterMon
 	pop de

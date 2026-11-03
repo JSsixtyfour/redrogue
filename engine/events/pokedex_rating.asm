@@ -1,27 +1,45 @@
+; Prof. Oak's Pokedex rating (Oak's PC, Oak in person, the Hall of Fame).
+;
+; 2026-11-03 (Pokedex forms Checkpoint C): counts are the whole collection, base
+; species plus form identities, 16-bit (DexCountCollection, dex_forms.asm). The
+; seven bands are percentages of NUM_DEX_IDENTITIES computed at assembly time, so
+; adding species or forms re-scales them; the old table was 15 vanilla 10-mon
+; steps that called 150 owned "complete". The band index (0-6) also picks the
+; jingle (PlayPokedexRatingSfx), through hDexRatingBand.
+
+; owned < threshold -> this band. Ceiling division, so "below 25%" is exact.
+MACRO dex_rating_percent
+	DEF \1 EQU (NUM_DEX_IDENTITIES * (\2) + 99) / 100
+ENDM
+	dex_rating_percent DEX_RATING_25, 25
+	dex_rating_percent DEX_RATING_50, 50
+	dex_rating_percent DEX_RATING_75, 75
+	dex_rating_percent DEX_RATING_90, 90
+	ASSERT 1 < DEX_RATING_25 && DEX_RATING_25 < DEX_RATING_50 && DEX_RATING_50 < DEX_RATING_75 \
+	    && DEX_RATING_75 < DEX_RATING_90 && DEX_RATING_90 < NUM_DEX_IDENTITIES, \
+	    "Pokedex rating bands collapsed; NUM_DEX_IDENTITIES is too small"
+
 DisplayDexRating:
-	ld hl, wPokedexSeen
-	ld b, wPokedexSeenEnd - wPokedexSeen
-	call CountSetBits
-	ld a, [wNumSetBits]
-	call .ClampDexCount
-	ldh [hDexRatingNumMonsSeen], a
-	ld hl, wPokedexOwned
-	ld b, wPokedexOwnedEnd - wPokedexOwned
-	call CountSetBits
-	ld a, [wNumSetBits]
-	call .ClampDexCount
-	ldh [hDexRatingNumMonsOwned], a
+	farcall DexCountCollection ; wDexRatingNumMonsSeen/Owned (big-endian), de = owned
 	ld hl, DexRatingsTable
+	ld b, -1
 .findRating
+	inc b                      ; b = band index
 	ld a, [hli]
-	ld b, a
-	ldh a, [hDexRatingNumMonsOwned]
-	cp b
-	jr c, .foundRating
+	ld c, a
+	ld a, e
+	sub c
+	ld a, [hli]                ; threshold high byte
+	ld c, a
+	ld a, d
+	sbc c
+	jr c, .foundRating         ; owned < threshold
 	inc hl
 	inc hl
 	jr .findRating
 .foundRating
+	ld a, b
+	ldh [hDexRatingBand], a
 	ld a, [hli]
 	ld h, [hl]
 	ld l, a ; load text pointer into hl
@@ -35,13 +53,8 @@ DisplayDexRating:
 	farcall PlayPokedexRatingSfx
 	jp WaitForTextScrollButtonPress
 .hallOfFame
-	ld de, wDexRatingNumMonsSeen
-	ldh a, [hDexRatingNumMonsSeen]
-	ld [de], a
-	inc de
-	ldh a, [hDexRatingNumMonsOwned]
-	ld [de], a
-	inc de
+	; The counts are already in wDexRatingNumMonsSeen/Owned; append the text.
+	ld de, wDexRatingText
 .copyRatingTextLoop
 	ld a, [hli]
 	cp '@'
@@ -53,98 +66,46 @@ DisplayDexRating:
 	ld [de], a
 	ret
 
-.ClampDexCount:
-; Older debug saves set three unused bits above DEX_PORYGON_Z, producing a
-; count of 255. The rating table's final boundary is NUM_POKEMON + 1, so such
-; a count would walk beyond the table forever. Clamp both displayed counts and
-; the lookup input to the real dex size so those saves remain usable.
-	cp NUM_POKEMON + 1
-	ret c
-	ld a, NUM_POKEMON
-	ret
-
 DexCompletionText:
 	text_far _DexCompletionText
 	text_end
 
+; dw owned-below threshold, text. Seven bands = the seven rating jingles.
 DexRatingsTable:
-	dbw 10, DexRatingText_Own0To9
-	dbw 20, DexRatingText_Own10To19
-	dbw 30, DexRatingText_Own20To29
-	dbw 40, DexRatingText_Own30To39
-	dbw 50, DexRatingText_Own40To49
-	dbw 60, DexRatingText_Own50To59
-	dbw 70, DexRatingText_Own60To69
-	dbw 80, DexRatingText_Own70To79
-	dbw 90, DexRatingText_Own80To89
-	dbw 100, DexRatingText_Own90To99
-	dbw 110, DexRatingText_Own100To109
-	dbw 120, DexRatingText_Own110To119
-	dbw 130, DexRatingText_Own120To129
-	dbw 140, DexRatingText_Own130To139
-	dbw 150, DexRatingText_Own140To149
-	dbw NUM_POKEMON + 1, DexRatingText_Own150To151
+	dw 1,                  DexRatingText_None
+	dw DEX_RATING_25,      DexRatingText_Started
+	dw DEX_RATING_50,      DexRatingText_Quarter
+	dw DEX_RATING_75,      DexRatingText_Half
+	dw DEX_RATING_90,      DexRatingText_ThreeQuarters
+	dw NUM_DEX_IDENTITIES, DexRatingText_Nearly
+	dw $FFFF,              DexRatingText_Complete ; terminal: always matches
+DexRatingsTableEnd:
+	ASSERT (DexRatingsTableEnd - DexRatingsTable) / 4 == 7, "PlayPokedexRatingSfx has 7 jingles"
 
-DexRatingText_Own0To9:
-	text_far _DexRatingText_Own0To9
+DexRatingText_None:
+	text_far _DexRatingText_None
 	text_end
 
-DexRatingText_Own10To19:
-	text_far _DexRatingText_Own10To19
+DexRatingText_Started:
+	text_far _DexRatingText_Started
 	text_end
 
-DexRatingText_Own20To29:
-	text_far _DexRatingText_Own20To29
+DexRatingText_Quarter:
+	text_far _DexRatingText_Quarter
 	text_end
 
-DexRatingText_Own30To39:
-	text_far _DexRatingText_Own30To39
+DexRatingText_Half:
+	text_far _DexRatingText_Half
 	text_end
 
-DexRatingText_Own40To49:
-	text_far _DexRatingText_Own40To49
+DexRatingText_ThreeQuarters:
+	text_far _DexRatingText_ThreeQuarters
 	text_end
 
-DexRatingText_Own50To59:
-	text_far _DexRatingText_Own50To59
+DexRatingText_Nearly:
+	text_far _DexRatingText_Nearly
 	text_end
 
-DexRatingText_Own60To69:
-	text_far _DexRatingText_Own60To69
-	text_end
-
-DexRatingText_Own70To79:
-	text_far _DexRatingText_Own70To79
-	text_end
-
-DexRatingText_Own80To89:
-	text_far _DexRatingText_Own80To89
-	text_end
-
-DexRatingText_Own90To99:
-	text_far _DexRatingText_Own90To99
-	text_end
-
-DexRatingText_Own100To109:
-	text_far _DexRatingText_Own100To109
-	text_end
-
-DexRatingText_Own110To119:
-	text_far _DexRatingText_Own110To119
-	text_end
-
-DexRatingText_Own120To129:
-	text_far _DexRatingText_Own120To129
-	text_end
-
-DexRatingText_Own130To139:
-	text_far _DexRatingText_Own130To139
-	text_end
-
-DexRatingText_Own140To149:
-	text_far _DexRatingText_Own140To149
-	text_end
-
-DexRatingText_Own150To151:
-	text_far _DexRatingText_Own150To151
+DexRatingText_Complete:
+	text_far _DexRatingText_Complete
 	text_end

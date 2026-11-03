@@ -8,14 +8,36 @@ from pyboy import PyBoy
 
 
 ROOT = Path(__file__).resolve().parents[2]
+HM01 = 0xC4  # constants/item_constants.asm; HMs then TMs, one price run
+FISSURE = HM01 + 5 + 26  # TM27, the machine the original bug was reported on
+
+
+def machine_sale_cases():
+    """(item, sale price) for the first machine of every price tier, plus Fissure.
+
+    Read from data/items/tm_prices.asm and the TM_PRICE_*_BCD knobs, so retuning a
+    price (842ca220 did) cannot break the test. Sale = half the buy price; each
+    knob is the buy price in thousands, in BCD.
+    """
+    import re
+    knobs = (ROOT / "constants" / "balance_constants.asm").read_text(encoding="utf-8")
+    buy = {t: int(v) * 1000 for t, v in
+           re.findall(r"DEF TM_PRICE_([FDCBAS])_BCD EQU \$([0-9]+)", knobs)}
+    table = (ROOT / "data" / "items" / "tm_prices.asm").read_text(encoding="utf-8")
+    table = table[table.index("TechnicalMachinePrices:"):]
+    tiers = re.findall(r"^\s*nybble TM_PRICE_TIER_([FDCBAS])\b", table, re.M)
+    assert len(tiers) == 55 and len(buy) == 6, (len(tiers), buy)
+    cases = {}
+    for index, tier in enumerate(tiers):
+        if index + HM01 == FISSURE or tier not in {tiers[i] for i in range(index)}:
+            cases[HM01 + index] = buy[tier] // 2
+    return tuple(cases.items())
 
 
 class MartTMSalePriceTest(unittest.TestCase):
     def test_tm_offer_replaces_stale_money_in_all_roms(self):
-        # One machine from every price tier, including the reported Fissure.
-        # Half the buy price: F-S 1/2/4/5/9/12 thousand.
-        cases = ((0xC4, 500), (0xC9, 1000), (0xE3, 2000),
-                 (0xCC, 2500), (0xC6, 4500), (0xD0, 6000))
+        cases = machine_sale_cases()
+        self.assertEqual(len({price for _, price in cases}), 6, "one machine per price tier")
         for variant in ("pokered", "pokeblue", "pokeblue_debug"):
             self.check_rom(variant, cases)
 

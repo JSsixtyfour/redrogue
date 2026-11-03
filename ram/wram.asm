@@ -463,8 +463,12 @@ NEXTU
 wNPCMovementDirections:: ds 180
 
 NEXTU
-wDexRatingNumMonsSeen:: db
-wDexRatingNumMonsOwned:: db
+; 16-bit big-endian collection totals (base + forms), written by
+; DexCountCollection (dex_forms.asm) for Oak's rating, the Hall of Fame and the
+; Continue/save screens; printed straight away. 2026-11-03: widened from db.
+; This member is far below the union's 180-byte maximum: Actual 0 B.
+wDexRatingNumMonsSeen:: dw
+wDexRatingNumMonsOwned:: dw
 wDexRatingText:: db
 
 NEXTU
@@ -2013,6 +2017,8 @@ wSpawnDVSlot:: db
 ; 1-3 while ShowRewardOfferInfo has the Pokedex page up for that reward offer
 ; slot, 0 otherwise. Turns on ShowPokedexDataInternal's preview hooks (offer's
 ; form, page 2 always, DVs). Carved from the same pad, which is now used up.
+; $80 | DEX_FORM_* id while the Pokedex Forms page (form_dex.asm) is up: only
+; RewardInfoFormPalette reads that value (the form's palette). 2026-11-03.
 wRewardInfoSlot:: db
 
 wDamage:: dw

@@ -351,3 +351,9 @@ DEF DEX_REG_SEEN_F  EQU 1
 DEF DEX_REG_OWNED   EQU 1 << DEX_REG_OWNED_F
 DEF DEX_REG_SEEN    EQU 1 << DEX_REG_SEEN_F
 DEF DEX_REG_BOTH    EQU DEX_REG_OWNED | DEX_REG_SEEN
+
+; wMonDataLocation value for _AddPartyMon: player party, no naming screen (like
+; $10), and the Pokedex records the mon as SEEN only. Rentals use it: a borrowed
+; mon is not caught. _AddPartyMon reads the low nybble (party) and zero-ness
+; (naming) only, so this behaves as $10 everywhere else.
+DEF ADD_MON_DEX_SEEN_ONLY EQU $20

@@ -408,6 +408,12 @@ SECTION "Dex Forms", ROMX
 INCLUDE "custom_functions/dex_forms.asm"
 
 
+; Pokedex Forms list and form data page (Checkpoint D), pinned to $27 in layout.link.
+SECTION "Form Dex", ROMX
+
+INCLUDE "custom_functions/form_dex.asm"
+
+
 SECTION "Battle Engine 7", ROMX
 
 INCLUDE "data/moves/moves.asm"

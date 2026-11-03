@@ -120,6 +120,7 @@ PredefPointers::
     add_predef RogueAwardCurrentGymBadge
 	add_predef BattleRoundStartFixups ; Shin Red import Phase 13
 	add_predef DisableCounterFixup    ; Shin Red import Phase 13
+	add_predef FormDexMenu            ; Pokedex forms list (SELECT on the Pokedex list)
 
 ; GetPredefPointer (engine/predefs.asm) computes offset = 3 * wPredefID using an 8-bit multiply
 ; that discards the carry out of the doubling step, so it silently wraps for IDs >= 128 instead of

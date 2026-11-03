@@ -26,9 +26,10 @@ ShowPokedexMenu:
 	inc hl ; wTileBehindCursor
 	ld a, 6
 	ld [hli], a ; max menu item ID
-	ld [hl], PAD_LEFT | PAD_RIGHT | PAD_B | PAD_A
+	ld [hl], PAD_LEFT | PAD_RIGHT | PAD_B | PAD_A | PAD_SELECT
 	call HandlePokedexListMenu
 	jr c, .goToSideMenu ; if the player chose a pokemon from the list
+	jr z, .doPokemonListMenu ; back from the Forms list (SELECT)
 .exitPokedex
 	xor a
 	ld [wMenuWatchMovingOutOfBounds], a
@@ -297,6 +298,8 @@ HandlePokedexListMenu:
 	call HandleMenuInput
 	bit B_PAD_B, a
 	jp nz, .buttonBPressed
+	bit B_PAD_SELECT, a
+	jr nz, .selectPressed
 ; check if Up pressed
 	bit B_PAD_UP, a
 	jr z, .checkIfDownPressed
@@ -355,7 +358,11 @@ HandlePokedexListMenu:
 	scf
 	ret
 .buttonBPressed
-	and a
+	and a ; nc, nz
+	ret
+.selectPressed
+	predef FormDexMenu ; custom_functions/form_dex.asm
+	xor a ; nc, z: redraw this list
 	ret
 
 DrawPokedexVerticalLine:
@@ -377,7 +384,7 @@ PokedexOwnText:
 	db "OWN@"
 
 PokedexContentsText:
-	db "CONTENTS@"
+	db "SELECT:FORMS@" ; was "CONTENTS"; the Forms list's only signpost
 
 PokedexMenuItemsText:
 	db   "DATA"
@@ -745,10 +752,6 @@ PokedexStatsText:
 	next "DEFENSE"
 	next "SPEED"
 	next "SPECIAL@"
-
-; leftover from JPN Pokedex, where species have the suffix "Pokemon"
-PokeText: ; unreferenced
-	db "#@"
 
 ; horizontal line that divides the pokedex text description from the rest of the data
 PokedexDataDividerLine:

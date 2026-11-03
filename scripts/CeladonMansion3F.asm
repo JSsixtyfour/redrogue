@@ -26,11 +26,12 @@ CeladonMansion3FWriterText:
 
 CeladonMansion3FGameDesignerText:
 	text_asm
-	ld hl, wPokedexOwned
-	ld b, wPokedexOwnedEnd - wPokedexOwned
-	call CountSetBits
-	ld a, [wNumSetBits]
-	cp NUM_POKEMON - 1 ; discount Mew
+	; whole collection, base + forms (DexCountCollection); de = owned
+	farcall DexCountCollection
+	ld a, e
+	sub LOW(NUM_DEX_IDENTITIES - 1) ; discount Mew
+	ld a, d
+	sbc HIGH(NUM_DEX_IDENTITIES - 1)
 	jr nc, .completed_dex
 	ld hl, .Text
 	jr .done

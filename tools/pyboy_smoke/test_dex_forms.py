@@ -11,12 +11,15 @@ from pathlib import Path
 import re
 import unittest
 
+from test_eevee_form_gate import CHAR_TO_BYTE
+
 from harness import RedRogueHarness
 from source_constants import parse_rgbds_constants
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SPECIES = parse_rgbds_constants(REPO_ROOT / "constants" / "pokemon_constants.asm")
 DEX = parse_rgbds_constants(REPO_ROOT / "constants" / "pokedex_constants.asm")
+EVENTS = parse_rgbds_constants(REPO_ROOT / "constants" / "event_constants.asm")
 
 CATALOG = [(name, SPECIES[species], int(form)) for name, species, form in re.findall(
     r"^\s*dex_form\s+(DEX_FORM_\w+),\s*(\w+),\s*(\d)",
@@ -25,7 +28,6 @@ SLOTS = 56          # NUM_DEX_FORM_SLOTS
 FORM_BYTES = SLOTS // 8
 BASE_BYTES = 32     # flag_array NUM_POKEMON (252)
 OWNED, SEEN, BOTH = 1, 2, 3
-NOT_IDENTITY = 0xFF
 EXCLUDED = [("MEWTWO", 1), ("AERODACTYL", 1), ("KABUTOPS", 1)]
 FLAG_C = 0x10
 FORM_REC_SIZE = 2 + 28 + 10 + 1  # FORM_REC_* (an _RS block the constant parser can't evaluate)
@@ -175,14 +177,21 @@ class DexFormsTest(unittest.TestCase):
         self.assertEqual(self.bits("wPokedexFormSeen", FORM_BYTES), expected)
         self.assertEqual(self.bits("wPokedexOwned", BASE_BYTES), [])
 
-    def test_excluded_and_invalid_selectors_register_nothing(self) -> None:
+    def test_non_identity_forms_credit_their_base_species(self) -> None:
+        """Armored Mewtwo, the fossil ghosts, and selectors with no record (user 2026-11-03)."""
+        cases = EXCLUDED + [("MEOWTH", 3), ("PIKACHU", 1)]
+        for species, form in cases:
+            self.clear_dex()
+            self.assertEqual(self.register(SPECIES[species], form, BOTH), 0, (species, form))
+            self.assertEqual(self.bits("wPokedexOwned", BASE_BYTES), [self.base_bit(species)])
+            self.assertEqual(self.bits("wPokedexSeen", BASE_BYTES), [self.base_bit(species)])
+            self.assertEqual(self.bits("wPokedexFormOwned", FORM_BYTES), [], (species, form))
+            self.assertEqual(self.bits("wPokedexFormSeen", FORM_BYTES), [])
+            self.assertEqual(self.register(SPECIES[species], form, BOTH), 1, "duplicate")
+        # base Mewtwo already owned -> Armored Mewtwo is not new
         self.clear_dex()
-        # the three excluded records, a selector past Meowth's two forms, a species with no forms
-        for species, form in EXCLUDED + [("MEOWTH", 3), ("PIKACHU", 1)]:
-            self.assertEqual(self.register(SPECIES[species], form, BOTH), NOT_IDENTITY, (species, form))
-        for label, size in (("wPokedexOwned", BASE_BYTES), ("wPokedexSeen", BASE_BYTES),
-                            ("wPokedexFormOwned", FORM_BYTES), ("wPokedexFormSeen", FORM_BYTES)):
-            self.assertEqual(self.bits(label, size), [], label)
+        self.register(SPECIES["MEWTWO"], 0, BOTH)
+        self.assertEqual(self.register(SPECIES["MEWTWO"], 1, BOTH), 1)
 
     def test_add_party_mon_registers_the_spawned_form(self) -> None:
         """The real gift/catch party path: _AddPartyMon reads wSpawnForm."""
@@ -203,6 +212,133 @@ class DexFormsTest(unittest.TestCase):
         self.assertEqual(self.bits("wPokedexFormOwned", FORM_BYTES), [DEX["DEX_FORM_WUGTRIO"]])
         self.assertEqual(self.bits("wPokedexOwned", BASE_BYTES), [], "Dugtrio itself not credited")
         self.assertEqual(h.read8("wSpawnForm"), 0, "one-shot form request consumed")
+
+
+    def test_rental_add_is_seen_only(self) -> None:
+        """Rentals create through _AddPartyMon with ADD_MON_DEX_SEEN_ONLY ($20)."""
+        h = self.h
+        for form, seen_label, bit in ((0, "wPokedexSeen", self.base_bit("RATTATA")),
+                                      (1, "wPokedexFormSeen", DEX["DEX_FORM_A_RATTATA"])):
+            self.clear_dex()
+            h.write8("wPartyCount", 5)
+            h.write8("wPartySpecies", 0xFF, offset=5)
+            h.write8("wCurPartySpecies", SPECIES["RATTATA"])
+            h.write8("wCurEnemyLevel", 10)
+            h.write8("wSpawnForm", form)
+            h.write8("wMonDataLocation", 0x20)
+            h.write8("hIsInBattle", 0)
+            out = self.run_routine("_AddPartyMon")
+            self.assertTrue(out["F"] & FLAG_C)
+            self.assertEqual(h.read8("wPartyCount"), 6, "the rental is still delivered")
+            self.assertEqual(self.bits(seen_label, BASE_BYTES if form == 0 else FORM_BYTES), [bit])
+            for label, size in (("wPokedexOwned", BASE_BYTES), ("wPokedexFormOwned", FORM_BYTES)):
+                self.assertEqual(self.bits(label, size), [], f"{label} form {form}")
+
+
+    # --- Checkpoint C: counts and Oak's rating --------------------------------
+
+    def set_owned_total(self, owned: int, seen: int, pad_noise: bool = True) -> None:
+        """First `owned` identities owned (base species first, then forms), first `seen` seen.
+        With pad_noise, the 4 bits past NUM_POKEMON and the spare form slots are SET:
+        they must never be counted."""
+        self.clear_dex()
+        base = DEX["NUM_POKEMON"] if "NUM_POKEMON" in DEX else 252
+        for label, form_label, n in (("wPokedexOwned", "wPokedexFormOwned", owned),
+                                     ("wPokedexSeen", "wPokedexFormSeen", seen)):
+            data = [0] * BASE_BYTES
+            forms = [0] * FORM_BYTES
+            for i in range(n):
+                if i < base:
+                    data[i >> 3] |= 1 << (i & 7)
+                else:
+                    j = i - base
+                    forms[j >> 3] |= 1 << (j & 7)
+            if pad_noise:
+                data[-1] |= 0xF0                      # bits 252-255
+                forms[-1] |= 0xFF << (len(CATALOG) & 7) & 0xFF  # slots 51-55
+            for i, v in enumerate(data):
+                self.h.write8(label, v, offset=i)
+            for i, v in enumerate(forms):
+                self.h.write8(form_label, v, offset=i)
+
+    def be16(self, label: str) -> int:
+        hi, lo = self.h.read_bytes(label, 2)
+        return hi << 8 | lo
+
+    def test_collection_counts_are_16_bit_and_ignore_padding_bits(self) -> None:
+        total = 252 + len(CATALOG)
+        for owned, seen in ((0, 0), (1, 3), (254, 255), (255, 256), (256, 300), (total, total)):
+            self.set_owned_total(owned, seen)
+            out = self.run_routine("DexCountCollection")
+            self.assertEqual(self.be16("wDexRatingNumMonsOwned"), owned)
+            self.assertEqual(self.be16("wDexRatingNumMonsSeen"), seen)
+            self.assertEqual(out["D"] << 8 | out["E"], owned, "de = owned")
+
+    def rating_band(self, owned: int) -> int:
+        """Run the real DisplayDexRating down its Hall of Fame branch (no printing)."""
+        self.set_owned_total(owned, owned)
+        self.h.set_event(EVENTS["EVENT_HALL_OF_FAME_DEX_RATING"])
+        self.run_routine("DisplayDexRating")
+        band = self.h.read8("hDexRatingBand")
+        texts = ["DexRatingText_None", "DexRatingText_Started", "DexRatingText_Quarter",
+                 "DexRatingText_Half", "DexRatingText_ThreeQuarters", "DexRatingText_Nearly",
+                 "DexRatingText_Complete"]
+        self.assertEqual(self.h.read_bytes("wDexRatingText", 4), list(self.rom_bytes(texts[band], 4)),
+                         f"HoF copy of band {band}'s text")
+        self.assertEqual(self.be16("wDexRatingNumMonsOwned"), owned)
+        return band
+
+    def test_rating_bands_at_every_threshold(self) -> None:
+        total = 252 + len(CATALOG)
+        ceil = lambda pct: (total * pct + 99) // 100
+        edges = [(0, 0), (1, 1)]
+        for band, pct in ((2, 25), (3, 50), (4, 75), (5, 90)):
+            edges += [(ceil(pct) - 1, band - 1), (ceil(pct), band)]
+        edges += [(total - 1, 5), (total, 6), (254, 4), (255, 4), (256, 4)]
+        for owned, band in edges:
+            with self.subTest(owned=owned):
+                self.assertEqual(self.rating_band(owned), band)
+
+
+    # --- Checkpoint D: Forms list / page pieces that need no screen ----------
+
+    def test_forms_page_palette_hook_uses_the_identity_s_form_palette(self) -> None:
+        h = self.h
+        for name in ("DEX_FORM_A_MEOWTH", "DEX_FORM_P_TAUROS_AQUA", "DEX_FORM_CLODSIRE"):
+            ident = DEX[name]
+            _, species, form = CATALOG[ident]
+            expected = self.run_routine("GetFormPalette", D=species, E=form)["E"]
+            h.write8("wRewardInfoSlot", 0x80 | ident)
+            try:
+                got = self.run_routine("RewardInfoFormPalette")["E"]
+            finally:
+                h.write8("wRewardInfoSlot", 0)
+            self.assertEqual(got, expected, name)
+            self.assertNotEqual(got, 0, f"{name} has a palette of its own")
+        self.assertEqual(self.run_routine("RewardInfoFormPalette")["E"], 0, "no page up: no override")
+
+    def tiles(self, col: int, row: int, length: int) -> list[int]:
+        return self.h.read_bytes("wTileMap", length, offset=row * 20 + col)
+
+    def text_tiles(self, text: str) -> list[int]:
+        return [CHAR_TO_BYTE[c] for c in text]
+
+    def test_forms_list_row_shows_number_ball_and_form_name(self) -> None:
+        ident = DEX["DEX_FORM_A_MEOWTH"]
+        hl = self.h.address("wTileMap") + 3 * 20 + 1  # hlcoord 1, 3
+        number = self.text_tiles(f"{DEX['DEX_MEOWTH']:03d}")
+        for owned, seen in ((False, False), (False, True), (True, True)):
+            self.clear_dex()
+            if seen:
+                self.register(SPECIES["MEOWTH"], 1, BOTH if owned else SEEN)
+            for i in range(40):
+                self.h.write8("wTileMap", 0x7F, offset=2 * 20 + i)  # rows 2-3 blank
+            self.run_routine("FormDexDrawRow", C=ident, HL=hl)
+            self.assertEqual(self.tiles(1, 2, 3), number, "base species number above the row")
+            self.assertEqual(self.tiles(3, 3, 1), [0x72 if owned else 0x7F], (owned, seen))
+            name = "A-MEOWTH" if seen else "--------"
+            self.assertEqual(self.tiles(4, 3, len(name)), self.text_tiles(name), (owned, seen))
+            self.assertEqual(self.h.read8("wFormContextSpecies"), 0, "no form context left pending")
 
 
 if __name__ == "__main__":

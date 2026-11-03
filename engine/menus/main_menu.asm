@@ -438,13 +438,12 @@ PrintNumBadges:
 	jp PrintNumber
 
 PrintNumOwnedMons:
+; Whole collection (base species + forms), 16-bit: DexCountCollection.
 	push hl
-	ld hl, wPokedexOwned
-	ld b, wPokedexOwnedEnd - wPokedexOwned
-	call CountSetBits
+	farcall DexCountCollection
 	pop hl
-	ld de, wNumSetBits
-	lb bc, 1, 3
+	ld de, wDexRatingNumMonsOwned
+	lb bc, 2, 3
 	jp PrintNumber
 
 PrintPlayTime:

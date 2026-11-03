@@ -48,6 +48,11 @@ ROMX $6
 	"Maps 1"
 	"Maps 2"
 	"Doors and Ledges"
+	; Pinned 2026-11-03: the Pokédex forms rewrite shrank it to 150 B and
+	; first-fit then dropped it into bank $01's last 37 bytes (perpetually near
+	; full). $06 is where it floated before. Reached only by predef, so any
+	; bank works; this one just keeps it out of the tight ones.
+	"Pokédex Rating"
 ROMX $7
 	"Maps 3"
 	; "Pokémon Names" split and relocated 2026-09-08 (Species Groups Phase 2
@@ -247,6 +252,9 @@ ROMX $26
 	"Text 7"
 ROMX $27
 	"Text 8"
+	; Pokedex Forms list + form data page + form entries (2026-11-03). Reached
+	; only by `predef FormDexMenu`; everything else in it is local.
+	"Form Dex"
 ROMX $28
 	"Text 9"
 ROMX $29

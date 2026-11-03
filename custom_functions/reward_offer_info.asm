@@ -334,6 +334,15 @@ RewardInfoFormPalette::
 	ld e, a
 	and a
 	ret z
+	; $80 | id: the Pokedex Forms page (custom_functions/form_dex.asm) shows
+	; DEX_FORM_* identity id. 1-3 remain the reward INFO preview's offer slots.
+	bit 7, a
+	jr z, .rewardSlot
+	and $7f
+	ld e, a
+	farcall DexFormKeyOf ; d = species, e = form
+	jr .palette
+.rewardSlot
 	dec a
 	ld c, a
 	ld b, 0
@@ -343,6 +352,7 @@ RewardInfoFormPalette::
 	ld hl, wRoguePokemon1
 	add hl, bc
 	ld d, [hl]
+.palette
 	farcall GetFormPalette
 	ret
 

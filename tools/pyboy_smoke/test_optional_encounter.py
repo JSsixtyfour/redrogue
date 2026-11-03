@@ -11,6 +11,40 @@ import save_reload
 SNORLAX=parse_rgbds_constants(geometry.ROOT/'constants/pokemon_constants.asm')['SNORLAX']
 
 
+def direct_call(h, label):
+    """Run one routine with a jr-@ return stub and IE masked (test_item_descriptions'
+    run_routine). Unlike call_routine, no game frame resumes before the caller reads
+    the result: measured 2026-11-03, the lobby's GetRewardMonLevel ran in that frame
+    and overwrote PCGetBossLevel's wCurEnemyLevel once boot timing shifted."""
+    regs, mem = h.pyboy.register_file, h.pyboy.memory
+    saved = {n: getattr(regs, n) for n in ("A", "B", "C", "D", "E", "F", "HL", "PC", "SP")}
+    saved_bank, saved_ie = h.read8("hLoadedROMBank"), mem[0xFFFF]
+    stub = h.address("wStringBuffer") + 16
+    saved_stub = [mem[stub], mem[stub + 1]]
+    bank, address = h.symbols.get(label)
+    mem[stub], mem[stub + 1] = 0x18, 0xFE  # jr @
+    mem[0xFFFF] = 0
+    if bank:
+        h.write8("hLoadedROMBank", bank)
+        mem[0x2000] = bank
+    sp = (saved["SP"] - 2) & 0xFFFF
+    mem[sp], mem[sp + 1] = stub & 0xFF, stub >> 8
+    regs.SP, regs.PC = sp, address
+    try:
+        for _ in range(60):
+            h.pyboy.tick()
+            if regs.PC == stub:
+                break
+        assert regs.PC == stub, f"{label} did not return"
+    finally:
+        mem[0xFFFF] = saved_ie
+        mem[stub], mem[stub + 1] = saved_stub
+        h.write8("hLoadedROMBank", saved_bank)
+        mem[0x2000] = saved_bank
+        for n, v in saved.items():
+            setattr(regs, n, v)
+
+
 class OptionalEncounterTest(ForestWalk, unittest.TestCase):
     walk_room = geometry.ForestGrottoTripTest.walk_room
 
@@ -203,7 +237,7 @@ class OptionalEncounterTest(ForestWalk, unittest.TestCase):
         snapshot=io.BytesIO();h.save_state(snapshot)
         for count in (1,8,9,70,250):
             h.load_state(snapshot);h.write8('wBattleCount',count)
-            h.call_routine('PCGetBossLevel');level=h.read8('wCurEnemyLevel')
+            direct_call(h,'PCGetBossLevel');level=h.read8('wCurEnemyLevel')
             follower=h.read_bytes('wFollowerDataStart',19)
             boss=h.read8('wRoguePokemon1')
             h.call_routine('OptionalForcePink')
