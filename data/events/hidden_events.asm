@@ -153,8 +153,7 @@ DEF ANY_FACING EQU $d0
 	db -1 ; end
 
 	hidden_events_for OAKS_LAB
-	hidden_event  4,  0, DisplayOakLabLeftPoster, SPRITE_FACING_UP
-	hidden_event  5,  0, DisplayOakLabRightPoster, SPRITE_FACING_UP
+	; The former poster tiles (4,0)/(5,0) are now the north doorway.
 	hidden_event  0,  1, DisplayOakLabEmailText, SPRITE_FACING_UP
 	hidden_event  1,  1, DisplayOakLabEmailText, SPRITE_FACING_UP
 	hidden_event  2,  1, OpenBridgeBillsPC, SPRITE_FACING_UP ; the drawn PC at (0,1)/(1,1) is the email above, so I added another one!
