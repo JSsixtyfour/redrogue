@@ -26,7 +26,7 @@ Pokemon & Items are awarded based on a rarity system
 - Pokémon Followers
 - Randomized Trainers, which can have custom designed movesets
 - The most advanced RBY AI
-- Custom Room
+- Customizable Dorm Room with dolls, decor, and furniture
 - Character Class Select
 - 100+ Pokémon from Johto and Future Kanto Variants/Evolutions when playing in Johto/Time Warp Modes
 - Five Pocket Bag
