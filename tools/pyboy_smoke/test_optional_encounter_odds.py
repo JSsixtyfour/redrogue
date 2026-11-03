@@ -82,9 +82,9 @@ class OptionalEncounterOddsTest(unittest.TestCase):
             def warm(_):
                 h.pyboy.memory[0x0000]=10;h.pyboy.memory[0x4000]=0
                 h.pyboy.memory[h.address('sProcCavePalette')]=0
-            h.register_hook('OptionalCaveFixture',warm)
+            h.register_hook('OptionalCaveAssignEncounter',warm)
             rolls=h.hook_flag('OptionalCaveOutcome')
-            h.call_routine('OptionalCaveFixture')
+            h.call_routine('OptionalCaveAssignEncounter')
             self.assertEqual(h.read_bytes('wOptionalEncounterSpecies',7),[0]*7)
             self.assertEqual(rolls['count'],0)
         finally:h.close()

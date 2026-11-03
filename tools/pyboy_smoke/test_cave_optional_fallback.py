@@ -200,7 +200,7 @@ class CaveFallbackStageEventTest(FallbackEntry,unittest.TestCase):
 
     def run_event(self,kind):
         self.stage_event=kind;self.position=(14,1)
-        self.h.register_hook('OptionalCaveFixture',lambda _:self.h.pyboy.memory.__setitem__(self.h.address('sProcCavePalette'),1))
+        self.h.register_hook('OptionalCaveAssignEncounter',lambda _:self.h.pyboy.memory.__setitem__(self.h.address('sProcCavePalette'),1))
         self.enter_subroom_as('gambler',0)
         self.assertEqual(self.h.read8('wStageEvent')&7,kind)
         self.return_trip(0);self.return_trip(1)

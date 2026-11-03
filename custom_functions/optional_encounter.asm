@@ -6,7 +6,7 @@ OptionalEncounterClear::
 	jp FillMemory
 
 ; Fresh-stage reset; Debug 2 retains its forced fixture for quick testing.
-OptionalForestFixture::
+OptionalForestResetEncounter::
 	call OptionalEncounterClear
 IF DEF(_DEBUG)
 	ld a, [wStatusFlags6]
@@ -17,7 +17,7 @@ ENDC
 	ret
 
 ; SRAM0 is already open; use after the stage's season/theme has been latched.
-OptionalForestSeasonFixture::
+OptionalForestAssignEncounter::
 IF DEF(_DEBUG)
 	ld a, [wStatusFlags6]
 	bit BIT_DEBUG2_MODE, a
@@ -56,7 +56,7 @@ OptionalForestOutcome::
 	db 24, 4, 12, 20 ; saved IDs: spring, fall, summer, winter
 	ASSERT PROC_FOREST_PAL_COUNT == 4
 
-OptionalCaveFixture::
+OptionalCaveAssignEncounter::
 	call OptionalEncounterClear
 IF DEF(_DEBUG)
 	ld a, [wStatusFlags6]
@@ -189,7 +189,7 @@ OptionalEncounterPatchSprite::
 	ld a, 0
 	jr z, .store
 	ld a, [wOptionalEncounterState]
-	bit 2, a
+	bit BIT_OPTIONAL_RESOLVED, a
 	ld a, 0
 	jr nz, .store
 	ld a, SPRITE_MONSTER
@@ -222,7 +222,7 @@ OptionalEncounterEngage::
 	call OptionalEncounterIsCurrent
 	jr nc, .no
 	ld a, [wOptionalEncounterState]
-	and %110
+	and (1 << BIT_OPTIONAL_DEFEATED) | (1 << BIT_OPTIONAL_RESOLVED)
 	jr nz, .no
 	xor a
 	ld [wSpawnForm], a
@@ -244,8 +244,6 @@ OptionalEncounterEnemyFlags::
 	push bc
 	push hl
 	ld a, [wOptionalEncounterBattle]
-	ld b, a
-	ld a, b
 	and a
 	jr z, .done
 	ldh a, [hIsInBattle]
@@ -261,7 +259,7 @@ OptionalEncounterEnemyFlags::
 	ld a, [wOptionalEncounterPackage]
 	cp 2
 	jr c, .done
-	set 2, e ; type variant; cold packages have no special stat capability
+	set BIT_TYPE_VARIANT, e ; cold packages have no special stat capability
 	ld a, ICE
 	ld [wEnemyMonType1], a
 	ld a, [wOptionalEncounterSpecies]

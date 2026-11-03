@@ -2307,7 +2307,7 @@ PFRollBoss:
 ; previous run's layout.
 ; ============================================================
 PFPreloadForest::
-    farcall OptionalForestFixture
+    farcall OptionalForestResetEncounter
     ld a, RAMG_SRAM_ENABLE
     ld [rRAMG], a
     ld a, BMODE_ADVANCED
@@ -2349,7 +2349,7 @@ PFPreloadForest::
     cp PROC_FOREST_PAL_COUNT
     jr nc, .rollPalette
     ld [sProcForestPalette], a
-    farcall OptionalForestSeasonFixture ; SRAM0 remains open
+    farcall OptionalForestAssignEncounter ; SRAM0 remains open
 
     ; Set the forest's wild-battle budget for this run: WILD_BUDGET_BASE +
     ; wBattleCount/WILD_BUDGET_DIVISOR, capped at WILD_BUDGET_MAX (identical formula
@@ -2726,7 +2726,7 @@ PFinalizeForest::
 
     ; Encounter-gated geometry, after placement/items and before bake.
     ; Helper returns with SRAM still open on bank 0, no wBuffer/RNG use.
-    farcall FGPrototypeCarve
+    farcall FGCarveOpening
 
     ; The SRAM copy is COMPACT (20x20 = 400 bytes, row after row), while
     ; wOverworldMap keeps its 26-byte stride. Until 2026-10-08 the SRAM copy

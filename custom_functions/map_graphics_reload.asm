@@ -24,6 +24,8 @@ LoadFontTilePatterns_::
 ; it copies NUM_EXTENDED_TILESET_TILES; that is why every path that reloads the
 ; tileset also restores the Dorm's extra art.
 LoadTilesetTilePatternData_::
+	call LoadProcForestTreeTiles
+	ret c ; seasonal path copied the complete sheet once
 	ld a, [wTilesetGfxPtr]
 	ld l, a
 	ld a, [wTilesetGfxPtr + 1]
@@ -36,8 +38,7 @@ LoadTilesetTilePatternData_::
 	ld bc, NUM_EXTENDED_TILESET_TILES tiles
 .copy
 	ld a, [wTilesetBank]
-	call FarCopyData2
-	jp LoadProcForestTreeTiles
+	jp FarCopyData2
 
 LoadTextBoxTilePatterns_::
 	; In the Dorm, $60-$78 are map tiles: load only the borders ($79-$7F) and

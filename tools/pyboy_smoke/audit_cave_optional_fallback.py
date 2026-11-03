@@ -35,7 +35,7 @@ def main():
     try:
         h.boot_to_lobby(battle_count=11,encounter_kind=4);h.write8('wStageEvent',0)
         base=io.BytesIO();h.save_state(base)
-        h.register_hook('OptionalCaveFixture',lambda _:h.pyboy.memory.__setitem__(h.address('sProcCavePalette'),context['cold']))
+        h.register_hook('OptionalCaveAssignEncounter',lambda _:h.pyboy.memory.__setitem__(h.address('sProcCavePalette'),context['cold']))
         def exhaust(_):
             if context['mode']=='zero' or (context['mode']=='single' and h.pyboy.register_file.C!=255):
                 h.pyboy.register_file.HL&=0xff00

@@ -3,19 +3,19 @@ OptionalEncounterMapScript::
 	call OptionalEncounterIsCurrent
 	ret nc
 	ld a, [wOptionalEncounterState]
-	bit 2, a
+	bit BIT_OPTIONAL_RESOLVED, a
 	jr z, .offer
 	call OptionalEncounterHide
 .offer
 	ld a, [wOptionalEncounterState]
-	and %111
-	cp %010 ; defeated, automatic offer not shown, unresolved
+	and OPTIONAL_ENCOUNTER_STATE_MASK
+	cp 1 << BIT_OPTIONAL_DEFEATED ; automatic offer not shown, unresolved
 	jr nz, .scripts
 	ld a, [wStatusFlags3]
 	bit BIT_PRINT_END_BATTLE_TEXT, a
 	jr nz, .scripts
 	ld hl, wOptionalEncounterState
-	set 0, [hl] ; full storage retry is by talking, not every script tick
+	set BIT_OPTIONAL_OFFER_SHOWN, [hl] ; full storage retry is by talking
 	call Delay3
 	ld a, TEXT_PROCEDURALFORESTGROTTO_OFFER
 	ld b, a
@@ -56,7 +56,7 @@ FGEndEncounterBattle:
 	jp EndTrainerBattle
 
 FGEncounterHeader:
-	db 1, 0 ; private defeated bit1, talk-only; explicitly used by slots1 or6
+	db BIT_OPTIONAL_DEFEATED, 0 ; talk-only; explicitly used by slots1 or6
 	dw wOptionalEncounterState
 	dw FGEncounterCry, FGEncounterOffer ; before, after
 	dw FGEncounterEndText, FGEncounterEndText ; win, loss
@@ -120,7 +120,7 @@ FGEncounterOffer:
 	call OptionalEncounterFinalizeGift
 .resolve
 	ld hl, wOptionalEncounterState
-	set 2, [hl]
+	set BIT_OPTIONAL_RESOLVED, [hl]
 	call OptionalEncounterHide
 .done
 	pop bc

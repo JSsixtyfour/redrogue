@@ -25,7 +25,7 @@ def settle_before_trial(test):
 class ProductionPinkTest(pink.OptionalEncounterTest):
     def setUp(self):
         super().setUp()
-        self.h.register_hook('OptionalForestFixture',lambda _:clear_debug_fixture(self.h) if self.production_active else None)
+        self.h.register_hook('OptionalForestResetEncounter',lambda _:clear_debug_fixture(self.h) if self.production_active else None)
         self.h.register_hook('OptionalForestOutcome',lambda _:setattr(self.h.pyboy.register_file,'A',0))
         self.rolls=self.h.hook_flag('OptionalForestOutcome')
         settle_before_trial(self)
@@ -39,7 +39,7 @@ class ProductionPinkTest(pink.OptionalEncounterTest):
 class ProductionColdCaveTest(cold.CaveColdEncounterTest):
     def setUp(self):
         super().setUp()
-        self.h.register_hook('OptionalCaveFixture',lambda _:clear_debug_fixture(self.h) if self.production_active else None)
+        self.h.register_hook('OptionalCaveAssignEncounter',lambda _:clear_debug_fixture(self.h) if self.production_active else None)
         self.h.register_hook('OptionalCaveOutcome',lambda _:setattr(self.h.pyboy.register_file,'A',self.bin))
         self.rolls=self.h.hook_flag('OptionalCaveOutcome')
         settle_before_trial(self)

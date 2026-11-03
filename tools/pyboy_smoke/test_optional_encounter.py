@@ -31,7 +31,7 @@ class OptionalEncounterTest(ForestWalk, unittest.TestCase):
                 h.write8('wOptionalEncounterSpecies',SNORLAX)
                 h.write8('wOptionalEncounterPackage',2)
                 h.write8('wOptionalEncounterLevel',35)
-        h.register_hook('OptionalForestSeasonFixture',fixture)
+        h.register_hook('OptionalForestAssignEncounter',fixture)
         initial = io.BytesIO(); h.save_state(initial)
         for seed in (17,31,53,91,137,203,251):
             h.load_state(initial); h.seed_rng((seed,seed ^ 0xa5,1,1))

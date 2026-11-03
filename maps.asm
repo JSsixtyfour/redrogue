@@ -1446,8 +1446,8 @@ INCLUDE "data/maps/objects/ProceduralCave1.asm"
 ProceduralCave1_Blocks: INCBIN "maps/ProceduralCave1.blk"
 
 ; Header, bankless map pointers and helper-local pointers all share $26.
-; The one-side prototype is generated only in Debug 2; reload/return readers
-; exist in every variant so a Debug-created save can still return safely.
+; Production encounter assignment and N/W/E geometry run in every variant.
+; Debug 2 forces encounters; reload/return readers also support legacy saves.
 SECTION "Procedural Forest Grotto", ROMX, BANK[$26]
 INCLUDE "custom_functions/optional_encounter.asm"
 INCLUDE "custom_functions/optional_encounter_moves.asm"

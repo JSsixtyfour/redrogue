@@ -1,10 +1,18 @@
 ; Map/helpers share $26. Markers are existing N/W/E exit blocks on a wall
 ; OTHER than the main exit. Geometry uses no saved scratch aliases.
-DEF FG_PARENT_BASE EQU 81
-DEF FG_PARENT_STRIDE EQU 26
+DEF FG_BAKED_STRIDE EQU PROCEDURAL_FOREST_WIDTH
+DEF FG_PARENT_STRIDE EQU FG_BAKED_STRIDE + 6
+DEF FG_PARENT_BASE EQU 3 * FG_PARENT_STRIDE + 3
+DEF FG_PARENT_VIEW_BASE EQU FG_PARENT_STRIDE + 1
+DEF FG_GROVE_STRIDE EQU PROCEDURAL_FOREST_GROTTO_WIDTH + 6
+DEF FG_GROVE_BASE EQU 3 * FG_GROVE_STRIDE + 3
 DEF FG_WARP EQU 31
 DEF FG_FIRST_ROW EQU 1
-DEF FG_LAST_ROW EQU 17
+DEF FG_LAST_ROW EQU PROCEDURAL_FOREST_HEIGHT - 3
+ASSERT PROCEDURAL_FOREST_WIDTH == 20 && PROCEDURAL_FOREST_HEIGHT == 20
+ASSERT PROCEDURAL_FOREST_GROTTO_WIDTH == 7 && PROCEDURAL_FOREST_GROTTO_HEIGHT == 6
+ASSERT FG_PARENT_BASE == 81 && FG_PARENT_VIEW_BASE == 27
+ASSERT FG_GROVE_BASE == 42 && FG_GROVE_STRIDE == 13
 
 ; Assignment means the stage was given a Pokemon, not that its sprite is
 ; still visible after a resolved reward. Checkpoint 4 owns independent saved
@@ -24,7 +32,7 @@ FGHasAssignedEncounter::
 ; SRAM0 open throughout this generation hook. No wBuffer use. Pick one of
 ; the two eligible walls, then try its nine sites and the other wall once.
 ; Normal maze invariants leave a legal site for each assigned outcome.
-FGPrototypeCarve::
+FGCarveOpening::
 	call FGHasAssignedEncounter
 	and a
 	ret z
@@ -311,12 +319,24 @@ FGFindOpening:
 	cp d
 	jr z, .nextWall
 	ld e, FG_FIRST_ROW
+	; Walk the compact baked perimeter once. HL always points to a boundary
+	; marker, never a padded wOverworldMap row. No saved cache is introduced.
+	ld hl, sProcForestStagingBuffer + FG_FIRST_ROW
+	ld a, d
+	and a
+	jr z, .site
+	ld hl, sProcForestStagingBuffer + FG_BAKED_STRIDE * FG_FIRST_ROW
+	cp 1
+	jr z, .site
+	ld hl, sProcForestStagingBuffer + FG_BAKED_STRIDE * FG_FIRST_ROW + FG_BAKED_STRIDE - 1
 .site
+	push hl
 	push bc
 	push de
-	call FGMarkerMatches
+	call FGMarkerAtBoundary
 	pop de
 	pop bc
+	pop hl
 	jr nc, .nextSite
 	ld a, b
 	cp $ff
@@ -328,7 +348,17 @@ FGFindOpening:
 	inc e
 	ld a, e
 	cp FG_LAST_ROW + 1
-	jr c, .site
+	jr nc, .nextWall
+	push bc
+	ld bc, 2
+	ld a, d
+	and a
+	jr z, .advance
+	ld bc, 2 * FG_BAKED_STRIDE
+.advance
+	add hl, bc
+	pop bc
+	jr .site
 .nextWall
 	inc d
 	ld a, d
@@ -345,24 +375,13 @@ FGFindOpening:
 	and a
 	ret
 
-FGMarkerMatches:
-	push de
-	ld hl, sProcForestStagingBuffer
+; HL=compact boundary address, D=wall. BC/HL clobbered, DE preserved.
+FGMarkerAtBoundary:
 	ld a, d
 	and a
-	jr z, .northAddress
-	ld b, e
-	ld de, 20
-.row
-	add hl, de
-	dec b
-	jr nz, .row
-	pop de
-	ld a, d
+	jr z, .north
 	cp 1
 	jr z, .west
-	ld bc, 19
-	add hl, bc
 	ld a, [hl]
 	cp 87
 	jr nz, .no
@@ -377,14 +396,11 @@ FGMarkerMatches:
 	cp 86
 	jr nz, .no
 	jr .cell
-.northAddress
-	ld d, 0
-	add hl, de
-	pop de
+.north
 	ld a, [hl]
 	cp 88
 	jr nz, .no
-	ld bc, 20
+	ld bc, FG_BAKED_STRIDE
 	add hl, bc
 .cell
 	ld a, [hl]
@@ -505,7 +521,7 @@ FGResolveArrival::
 	srl a
 	ld b, a
 	call FGBlockAddress
-	ld de, -54 ; event_displacement uses base27, not playable block base81
+	ld de, FG_PARENT_VIEW_BASE - FG_PARENT_BASE
 	add hl, de
 .storePointer
 	ld a, l
@@ -518,13 +534,13 @@ FGResolveArrival::
 	ld [wYCoord], a
 	ld a, 18
 	ld [wXCoord], a
-	ld hl, wOverworldMap + 27 + 26 * 17 + 9
+	ld hl, wOverworldMap + FG_PARENT_VIEW_BASE + FG_PARENT_STRIDE * 17 + 9
 	jr .storePointer
 
 ; Rebuild all six departure records even on Continue from a two-warp legacy
 ; grove. Only the opposite side is opened; authored blocks remain unchanged.
 FGLoadGrotto::
-	ld hl, wOverworldMap + 42
+	ld hl, wOverworldMap + FG_GROVE_BASE
 	ld b, PROCEDURAL_FOREST_GROTTO_HEIGHT
 .row
 	ld c, PROCEDURAL_FOREST_GROTTO_WIDTH
@@ -590,13 +606,13 @@ FGLoadGrotto::
 	ld b, 0
 	ld c, 6
 	ld a, 86
-	ld [wOverworldMap + 42 + 3 * 13], a
+	ld [wOverworldMap + FG_GROVE_BASE + 3 * FG_GROVE_STRIDE], a
 	jr .vertical
 .east
 	ld b, 13
 	ld c, 6
 	ld a, 87
-	ld [wOverworldMap + 42 + 3 * 13 + 6], a
+	ld [wOverworldMap + FG_GROVE_BASE + 3 * FG_GROVE_STRIDE + 6], a
 .vertical
 	ld [hl], c
 	inc hl
@@ -612,7 +628,7 @@ FGLoadGrotto::
 	ld b, 6
 	ld c, 11
 	ld a, 89
-	ld [wOverworldMap + 42 + 5 * 13 + 3], a
+	ld [wOverworldMap + FG_GROVE_BASE + 5 * FG_GROVE_STRIDE + 3], a
 	ld [hl], c
 	inc hl
 	ld [hl], b

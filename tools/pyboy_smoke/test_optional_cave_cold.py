@@ -38,7 +38,7 @@ class CaveColdEncounterTest(unittest.TestCase):
     def run_encounter(self,species,room,level,boxed,resident_after=False):
         h=self.h
         self.position=((14,1),(17,15),(3,8))[room]
-        h.register_hook('OptionalCaveFixture',lambda _:h.pyboy.memory.__setitem__(h.address('sProcCavePalette'),1))
+        h.register_hook('OptionalCaveAssignEncounter',lambda _:h.pyboy.memory.__setitem__(h.address('sProcCavePalette'),1))
         def force(_):
             h.write8('wOptionalEncounterSpecies',SPECIES[species]);h.write8('wOptionalEncounterLevel',level)
         h.register_hook('OptionalRollColdPackage',force)

@@ -33,7 +33,7 @@ def main():
         h.register_hook('PFinalizeForest',lambda _:h.write_sram_bytes('sProcForestAlgoForce',[context['algorithm']],bank=0))
         def before_carve(_):
             context['before']=[h.read8('wOverworldMap',offset=81+y*26+x) for y in range(20) for x in range(20)]
-        h.register_hook('FGPrototypeCarve',before_carve)
+        h.register_hook('FGCarveOpening',before_carve)
         forest=parse_map_constants(ROOT/'constants/map_constants.asm')['PROCEDURAL_FOREST']
         for main in range(3):
             for preferred in range(3):
