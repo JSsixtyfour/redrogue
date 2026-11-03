@@ -555,25 +555,13 @@ ItemUseBall:
 	ld hl, ItemUseBallText05
 	call PrintText
 
-; Add the caught Pokémon to the Pokédex.
-	predef IndexToPokedex
-	ld a, [wPokedexNum]
-	dec a
-	ld c, a
-	ld b, FLAG_TEST
-	ld hl, wPokedexOwned
-	predef FlagActionPredef
-	ld a, c
-	push af
-	ld a, [wPokedexNum]
-	dec a
-	ld c, a
-	ld b, FLAG_SET
-	predef FlagActionPredef
-	pop af
-
-	and a ; was the Pokémon already in the Pokédex?
-	jr nz, .skipShowingPokedexData ; if so, don't show the Pokédex data
+; Add the caught Pokémon's exact identity to the Pokédex (dex_forms.asm).
+; e = 0 only for a new BASE species; a new form reports $80|id and, until the
+; Forms page exists, skips the page rather than show the base entry for it.
+	farcall DexRegisterCaught
+	ld a, e
+	and a ; new base species?
+	jr nz, .skipShowingPokedexData ; if not, don't show the Pokédex data
 
 	ld hl, ItemUseBallText06
 	call PrintText

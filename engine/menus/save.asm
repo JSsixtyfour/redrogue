@@ -243,7 +243,7 @@ LoadPartyAndDexData:
 	call CopyData
 	ld hl, sMainData
 	ld de, wPokedexOwned
-	ld bc, wPokedexSeenEnd - wPokedexOwned
+	ld bc, wPokedexDataEnd - wPokedexOwned ; base + form owned/seen
 	call CopyData
 	and a
 	jp GoodCheckSum
@@ -396,7 +396,7 @@ SavePartyAndDexData:
 	call CopyPartySaveData
 	ld hl, wPokedexOwned ; pokédex only
 	ld de, sMainData
-	ld bc, wPokedexSeenEnd - wPokedexOwned
+	ld bc, wPokedexDataEnd - wPokedexOwned ; base + form owned/seen
 	call CopyData
 	jp FinishSaveData
 

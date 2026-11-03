@@ -4,7 +4,7 @@ DEF LOSS_RECOVERY_FORMAT EQU 1
 ; Body = name + Main Data up to wGameProgressFlags + the tail after it + gyms + credits,
 ; packed densely across the three SRAM spans; the slack sits at the end of span 3.
 ; Label differences are link-time values, so the split is literal and the ASSERTs pin it.
-DEF LOSS_MAIN_HEAD EQU 596 ; 696 before the Crystal audio port took 100 B of follower pad
+DEF LOSS_MAIN_HEAD EQU 595 ; 696 before the Crystal audio port took 100 B of follower pad; 596 before the form Dex flags (+14) and dead-pad removal (-15), 2026-11-03
 DEF LOSS_MAIN_TAIL EQU 790
 DEF LOSS_RECOVERY_BODY EQU NAME_LENGTH + LOSS_MAIN_HEAD + LOSS_MAIN_TAIL + 2 + 1
 DEF LOSS_SPAN1_MAIN EQU 512 - 27 ; span 1: 16 B header + name + this much Main Data

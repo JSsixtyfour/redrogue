@@ -3,7 +3,9 @@
 ; The cave's subroom (PROCEDURAL_SUBROOMS_PLAN Phase 4). Two ladders down,
 ; placed at generation on fixed sites (constants/cave_ladder_site_constants.asm)
 ; at least CAVE_LADDER_MIN_DISTANCE apart, lead into PROCEDURAL_CAVE_SUBROOM;
-; each of its two ladders up climbs back onto its own. When no distant second
+; each of its two ladders up climbs back onto its own. Sites near the entrance
+; are drawn only when no farther one fits (CAVE_LADDER_ENTRANCE_CLEARANCE).
+; When no distant second
 ; site fits, an entrance ladder supplies the second connection. Zero ordinary
 ; sites retain the resident-only fallback and have no basement access.
 ;
@@ -72,37 +74,56 @@ CaveSubroomPlaceLadders::
 	ld a, CAVE_LADDER_NONE
 	ld [CAVESUB_LADDER_A], a
 	ld [CAVESUB_LADDER_B], a
-	ld bc, CAVE_LADDER_NONE         ; b = 0: count; c = no partner
+	; Ladder A: from the sites clear of the entrance, else from all of them.
+	ld bc, (CAVE_LADDER_FAR_TIER << 8) | CAVE_LADDER_NONE ; count, far tier
+	call CaveLadderWalk             ; keeps bc
+	and a
+	jr nz, .firstTier
+	ld b, 0                         ; count, every tier
 	call CaveLadderWalk
 	and a
 	jr z, .fallback                 ; no site at all: no subroom this cave
-	ld c, a
-	call Rangerandom
+.firstTier
+	ld c, a                         ; b = the tier that has sites
+	call Rangerandom                ; keeps bc
 	inc a
-	ld b, a
+	or b
+	ld b, a                         ; the k-th site of that tier
 	ld c, CAVE_LADDER_NONE
 	call CaveLadderWalk             ; a = the first ladder's site
 	ld [CAVESUB_LADDER_A], a
-	call CaveLadderSiteXY
+	ld c, a
+	ld a, b
+	and CAVE_LADDER_FAR_TIER
+	ld b, a                         ; b = that tier, counting; c = A
+	ld a, c
+	call CaveLadderSiteXY           ; keeps bc
 	ld a, d
 	ld [CAVESUB_TMP_X], a
 	ld a, e
 	ld [CAVESUB_TMP_Y], a
-	ld a, [CAVESUB_LADDER_A]
-	ld c, a
-	ld b, 0
-	call CaveLadderWalk             ; sites far enough from it
+	; Ladder B: sites far enough from A, same tier preference.
+	call CaveLadderWalk
 	and a
 	jr nz, .partner
+	ld a, b
+	and a
+	jr z, .noPartner                ; already counted every tier
+	ld b, 0
+	call CaveLadderWalk
+	and a
+	jr nz, .partner
+.noPartner
 	farcall CaveAddEntranceLadder
 	jr .stamp
 .partner
+	ld e, c                         ; e = A (Rangerandom keeps de)
 	ld c, a
-	call Rangerandom
+	call Rangerandom                ; keeps bc
 	inc a
+	or b
 	ld b, a
-	ld a, [CAVESUB_LADDER_A]
-	ld c, a
+	ld c, e
 	call CaveLadderWalk
 	ld [CAVESUB_LADDER_B], a
 .stamp
@@ -160,7 +181,10 @@ CaveSubroomPlaceLadders::
 ; Walks the sites that pass CaveLadderSiteValid and, when c names a partner
 ; site (its block in CAVESUB_TMP_X/Y), lie at least CAVE_LADDER_MIN_DISTANCE
 ; blocks from it. In: b = k >= 1: stop on the k-th, a = its site; b = 0: count,
-; a = how many. SRAM bank 0 open. Clobbers a/de/hl, keeps bc.
+; a = how many. b | CAVE_LADDER_FAR_TIER: the same, skipping every site within
+; CAVE_LADDER_ENTRANCE_CLEARANCE of the entrance. SRAM bank 0 open. Clobbers
+; a/de/hl, keeps bc.
+	ASSERT NUM_CAVE_LADDER_SITES < CAVE_LADDER_FAR_TIER
 CaveLadderWalk:
 	ld hl, 0                        ; h = site, l = passes so far
 .site
@@ -170,7 +194,14 @@ CaveLadderWalk:
 	push hl
 	push bc
 	call CaveLadderSiteXY
+	bit 7, b                        ; CAVE_LADDER_FAR_TIER
+	jr z, .anyTier
+	call CaveLadderNearEntrance     ; carry = too near; keeps de
+	ccf
+	jr nc, .judged
+.anyTier
 	call CaveLadderSiteValid        ; carry = a ladder may go here; keeps de
+.judged
 	pop bc
 	pop hl
 	jr nc, .next
@@ -195,8 +226,9 @@ CaveLadderWalk:
 	jr c, .next                     ; also rejects the partner itself
 .take
 	inc l
-	ld a, l
-	cp b
+	ld a, b
+	and ~CAVE_LADDER_FAR_TIER & $ff
+	cp l                            ; never 0 = l, so a count runs to the end
 	jr nz, .next
 	ld a, h
 	ret
@@ -205,6 +237,24 @@ CaveLadderWalk:
 	jr .site
 .end
 	ld a, l
+	ret
+
+; In: d/e = a site's block. Out: carry = within CAVE_LADDER_ENTRANCE_CLEARANCE
+; blocks (Manhattan) of the entrance block. Every site's Y is above the
+; entrance row. Keeps de. Clobbers a/c.
+	ASSERT CAVESUB_ENTRANCE_Y == 19 ; sites are asserted Y <= 18
+CaveLadderNearEntrance:
+	ld a, d
+	sub CAVESUB_ENTRANCE_X
+	jr nc, .dx
+	cpl
+	inc a
+.dx
+	ld c, a
+	ld a, CAVESUB_ENTRANCE_Y
+	sub e
+	add c
+	cp CAVE_LADDER_ENTRANCE_CLEARANCE + 1
 	ret
 
 ; Walks every block (rows/columns 1-18) in row order through the ladder rule.

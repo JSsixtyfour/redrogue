@@ -61,7 +61,11 @@ ENGINE_WRAM = {"wPlayerName", "wPartyCount", "wPartySpecies", "wBoxCount", "wCur
                "wFollowerLedgeLatch", "wFollowerDataEnd",
                # migration optionalEncounterAdded (schema 16 -> 17)
                "wOptionalEncounterSpecies", "wOptionalEncounterPackage", "wOptionalEncounterLevel",
-               "wOptionalEncounterState", "wOptionalEncounterMap", "wOptionalEncounterScript", "wOptionalEncounterBattle"}
+               "wOptionalEncounterState", "wOptionalEncounterMap", "wOptionalEncounterScript", "wOptionalEncounterBattle",
+               # migration dexFormsAdded (schema 17 -> 18)
+               "wPokedexSeen", "wPokedexFormOwned", "wPokedexFormSeen", "wObjectDataPointerTemp", "wGrassTile",
+               "wToggleableObjectFlagsEnd", "wToggleableObjectList",
+               "wDayCareInUse", "wDayCareMon", "wDayCareInUse2", "wDayCareMon2"}
 
 # Steps whose per-migration table flag_translation() computes and attaches to the target schema.
 FLAG_STEP = "flagsRenumbered"

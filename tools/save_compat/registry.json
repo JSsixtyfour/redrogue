@@ -133,6 +133,12 @@
    "to": "17",
    "steps": ["optionalEncounterAdded"],
    "verified": "2026-11-02: seven unused saved follower-padding bytes initialize inactive, old direct-loss records invalidate; no existing RAM/SRAM address moves. All three ROMs build, schema17 and converter tests pass (25 pass/1 legacy-fixture skip). Six pinned schema16 saves plus two old DMG/CGB grove fixtures convert and cold Continue/save/Continue; unconverted16 is refused. Focused lifecycle/geometry tests pass. BGB/hardware acceptance pending; no release publication. Evidence builds/procedural_updates/checkpoint4/."
+  },
+  {
+   "from": "17",
+   "to": "18",
+   "steps": ["dexFormsAdded"],
+   "verified": "NOT YET (2026-11-03, Claude): Pokedex forms Checkpoint B. wPokedexFormOwned/Seen (7 B each) inserted after wPokedexSeen, five dead vanilla pads (15 B) removed later in the main block; bank-1 data after the main block moves down 1. Held forms (party, current box, stored boxes, daycare) credited; base flags unchanged (overcredit documented); loss record cleared. Synthetic converter tests only; real-save gate not run."
   }
  ]
 }

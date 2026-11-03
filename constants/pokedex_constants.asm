@@ -274,3 +274,80 @@
 	const DEX_PORYGON_Z   ; 252
 
 DEF NUM_POKEMON EQU const_value - 1
+
+; Form collection identities (2026-11-03, POKEDEX_FORMS_CHECKPOINT_A_2026-11-03.md).
+; One id per form record that is a Pokedex entry of its own. Ids index
+; wPokedexFormOwned / wPokedexFormSeen and are SAVED: append only, never reorder,
+; never reuse a removed id for a different meaning without a save migration.
+; data/pokemon/dex_forms.asm maps each id to its (species, form) key in this order.
+; Not identities, by design: Armored Mewtwo, Fossil Aerodactyl, Fossil Kabutops,
+; named special packages, type variants, ghosts, fusions.
+	const_def
+	const DEX_FORM_A_RATTATA     ; 00
+	const DEX_FORM_A_RATICATE    ; 01
+	const DEX_FORM_A_RAICHU      ; 02
+	const DEX_FORM_A_SANDSHREW   ; 03
+	const DEX_FORM_A_SANDSLASH   ; 04
+	const DEX_FORM_A_VULPIX      ; 05
+	const DEX_FORM_A_NINETALES   ; 06
+	const DEX_FORM_SCREAM_TAIL   ; 07
+	const DEX_FORM_A_DIGLETT     ; 08
+	const DEX_FORM_WIGLETT       ; 09
+	const DEX_FORM_A_DUGTRIO     ; 0a
+	const DEX_FORM_WUGTRIO       ; 0b
+	const DEX_FORM_A_MEOWTH      ; 0c
+	const DEX_FORM_G_MEOWTH      ; 0d
+	const DEX_FORM_A_PERSIAN     ; 0e
+	const DEX_FORM_PERRSERKER    ; 0f
+	const DEX_FORM_H_GROWLITHE   ; 10
+	const DEX_FORM_H_ARCANINE    ; 11
+	const DEX_FORM_TOEDSCOOL     ; 12
+	const DEX_FORM_TOEDSCRUEL    ; 13
+	const DEX_FORM_A_GEODUDE     ; 14
+	const DEX_FORM_A_GRAVELER    ; 15
+	const DEX_FORM_A_GOLEM       ; 16
+	const DEX_FORM_G_PONYTA      ; 17
+	const DEX_FORM_G_RAPIDASH    ; 18
+	const DEX_FORM_G_SLOWPOKE    ; 19
+	const DEX_FORM_G_SLOWBRO     ; 1a
+	const DEX_FORM_SANDY_SHOCKS  ; 1b
+	const DEX_FORM_G_FARFETCHD   ; 1c
+	const DEX_FORM_A_GRIMER      ; 1d
+	const DEX_FORM_A_MUK         ; 1e
+	const DEX_FORM_H_VOLTORB     ; 1f
+	const DEX_FORM_H_ELECTRODE   ; 20
+	const DEX_FORM_A_EXEGGUTOR   ; 21
+	const DEX_FORM_A_MAROWAK     ; 22
+	const DEX_FORM_G_WEEZING     ; 23
+	const DEX_FORM_G_MR_MIME     ; 24
+	const DEX_FORM_P_TAUROS_COMBAT ; 25
+	const DEX_FORM_P_TAUROS_BLAZE  ; 26
+	const DEX_FORM_P_TAUROS_AQUA   ; 27
+	const DEX_FORM_GLACEON       ; 28
+	const DEX_FORM_SYLVEON       ; 29
+	const DEX_FORM_ESPEON        ; 2a
+	const DEX_FORM_UMBREON       ; 2b
+	const DEX_FORM_LEAFEON       ; 2c
+	const DEX_FORM_G_ARTICUNO    ; 2d
+	const DEX_FORM_G_ZAPDOS      ; 2e
+	const DEX_FORM_G_MOLTRES     ; 2f
+	const DEX_FORM_P_WOOPER      ; 30
+	const DEX_FORM_CLODSIRE      ; 31
+	const DEX_FORM_G_SLOWKING    ; 32
+DEF NUM_DEX_FORMS EQU const_value
+; Saved capacity: fixed, so adding an identity does not move the save layout
+; until it overflows. 56 bits = 7 B per array.
+DEF NUM_DEX_FORM_SLOTS EQU 56
+ASSERT NUM_DEX_FORMS <= NUM_DEX_FORM_SLOTS, "raise NUM_DEX_FORM_SLOTS (save layout change)"
+ASSERT NUM_DEX_FORM_SLOTS % 8 == 0
+; Combined collection total; 16-bit everywhere it is counted or compared.
+DEF NUM_DEX_IDENTITIES EQU NUM_POKEMON + NUM_DEX_FORMS
+
+; DexRegisterMon (custom_functions/dex_forms.asm) request byte, passed in e:
+; the form index sits in its MON_CATCH_RATE position (FORM_MASK, bits 5-6) so a
+; caller holding a catch-rate byte only masks it; the action bits are 0-1.
+DEF DEX_REG_OWNED_F EQU 0
+DEF DEX_REG_SEEN_F  EQU 1
+DEF DEX_REG_OWNED   EQU 1 << DEX_REG_OWNED_F
+DEF DEX_REG_SEEN    EQU 1 << DEX_REG_SEEN_F
+DEF DEX_REG_BOTH    EQU DEX_REG_OWNED | DEX_REG_SEEN

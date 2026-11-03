@@ -401,6 +401,13 @@ INCLUDE "custom_functions/func_forms.asm"
 INCLUDE "data/pokemon/forms.asm"
 
 
+; Pokedex form collection core: registration, identity catalog, counts. Pinned
+; beside "Species Forms" so GetEnemySpawnForm is a plain same-bank call.
+SECTION "Dex Forms", ROMX
+
+INCLUDE "custom_functions/dex_forms.asm"
+
+
 SECTION "Battle Engine 7", ROMX
 
 INCLUDE "data/moves/moves.asm"

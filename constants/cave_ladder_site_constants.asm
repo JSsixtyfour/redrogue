@@ -15,6 +15,15 @@
 
 DEF CAVE_FIRST_LADDER_WARP EQU 2 ; after the entrance and the exit
 DEF CAVE_LADDER_MIN_DISTANCE EQU 8 ; blocks, Manhattan, between the two ladders
+; Sites within this many blocks (Manhattan) of the entrance block are a
+; fallback tier: each ladder is drawn from the farther sites first, and from all
+; valid sites only when none of those fit. Measured 2026-11-03 over 600 caves
+; (PROCEDURAL_REVIEW_2026-11-03.md): two-ladder rate unchanged at 93.4%, a
+; ladder within 10 steps of the door 66% -> 23%. Only sites 1, 4 and 27 are
+; this close; no site index changes, so saved caves keep their meaning.
+DEF CAVE_LADDER_ENTRANCE_CLEARANCE EQU 4
+; CaveLadderWalk's b bit 7: skip the near-entrance tier.
+DEF CAVE_LADDER_FAR_TIER EQU $80
 DEF CAVE_LADDER_BLOCK EQU 40
 DEF CAVE_LADDER_NONE EQU $FF
 ; A=ordinary site, B=$FE: entrance BR supplies the second connection, returning

@@ -328,17 +328,16 @@ Evolution_PartyMonLoop: ; loop over party mons
 	ldh a, [hIsInBattle]
 	and a
 	call z, Evolution_ReloadTilesetTilePatterns
-	predef IndexToPokedex
-	ld a, [wPokedexNum]
-	dec a
-	ld c, a
-	ld b, FLAG_SET
-	ld hl, wPokedexOwned
-	push bc
-	call Evolution_FlagAction
-	pop bc
-	ld hl, wPokedexSeen
-	call Evolution_FlagAction
+	; owned + seen for the evolved mon's exact identity. wLoadedMon is still the
+	; evolved struct (its species is stored into the party list just below), and
+	; its MON_CATCH_RATE carries the post-evolution form.
+	ld a, [wLoadedMonSpecies]
+	ld d, a
+	ld a, [wLoadedMon + MON_CATCH_RATE]
+	and FORM_MASK
+	or DEX_REG_BOTH
+	ld e, a
+	farcall DexRegisterMon
 	pop de
 	pop hl
 	ld a, [wLoadedMonSpecies]

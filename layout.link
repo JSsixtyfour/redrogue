@@ -343,6 +343,8 @@ ROMX $30
 	; that fails the build if this pin is ever dropped. Small and intentional -
 	; this is NOT the kind of section the headroom warning above is about.
 	"Species Forms"
+	; Dex form collection core: plain-calls GetEnemySpawnForm in "Species Forms".
+	"Dex Forms"
 ROMX $31
 	; "Evos Moves" holds EvosMovesPointerTable AND the blocks it points at. Those
 	; pointers are bare 16-bit `dw`, so table and data must share one bank - this

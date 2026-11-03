@@ -57,16 +57,19 @@ _GivePokemon::
 	ret
 
 SetPokedexOwnedFlag:
+; Exact identity, owned + seen (seen too: a gift sent straight to the box used to
+; leave the base species owned-but-unseen). wSpawnForm is unconsumed here.
 	ld a, [wCurPartySpecies]
 	push af
-	ld [wPokedexNum], a
-	predef IndexToPokedex
-	ld a, [wPokedexNum]
-	dec a
-	ld c, a
-	ld hl, wPokedexOwned
-	ld b, FLAG_SET
-	predef FlagActionPredef
+	ld d, a
+	ld a, [wSpawnForm]
+	and NUM_FORM_SLOTS
+	rrca                    ; 0..3 -> bits 5-6
+	rrca
+	rrca
+	or DEX_REG_BOTH
+	ld e, a
+	farcall DexRegisterMon
 	pop af
 	ld [wNamedObjectIndex], a
 ; Phase 2R: name the mon by its FORM for the "You got X!" line. This routine

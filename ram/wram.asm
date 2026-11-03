@@ -2220,6 +2220,15 @@ wPokedexOwnedEnd::
 wPokedexSeen:: flag_array NUM_POKEMON
 wPokedexSeenEnd::
 
+; Form collection flags (2026-11-03, schema 18): one bit per DEX_FORM_* identity
+; (data/pokemon/dex_forms.asm), exact form only, never base-species credit. They
+; sit right after the base arrays so SavePartyAndDexData's single contiguous copy
+; (wPokedexOwned..wPokedexDataEnd) saves them too. Funded by deleting 15 B of
+; dead vanilla padding later in this head region (net -1 B).
+wPokedexFormOwned:: flag_array NUM_DEX_FORM_SLOTS
+wPokedexFormSeen:: flag_array NUM_DEX_FORM_SLOTS
+wPokedexDataEnd::
+
 ; Recovery pocket — one count byte per item type (0=none, N=have N).
 ; Display order matches RecoveryItemTable in custom_functions/pocket_items.asm.
 ; Each array has spare slots past its table (*_SLOTS vs NUM_*, ram_constants.asm),
@@ -2300,8 +2309,7 @@ wSpriteSet:: ds SPRITE_SET_LENGTH
 wSpriteSetID:: db
 
 wObjectDataPointerTemp:: dw
-
-	ds 2
+; (dead vanilla ds 2 removed 2026-11-03 to fund wPokedexFormOwned/Seen)
 
 ; the tile shown outside the boundaries of the map
 wMapBackgroundTile:: db
@@ -2394,9 +2402,9 @@ wTilesetCollisionPtr:: dw
 
 wTilesetTalkingOverTiles:: ds 3
 
+; LoadTilesetHeader copies exactly wTilesetBank..wGrassTile (11 B). The dead
+; vanilla ds 4 after it was removed 2026-11-03 (form Dex flags).
 wGrassTile:: db
-
-	ds 4
 
 ; The vanilla PC item box (wNumBoxItems, wBoxItems: 102 bytes) sat here until
 ; 2026-10-03. Nothing deposited into it any more; deleted with the legacy bag
@@ -2406,8 +2414,6 @@ wGrassTile:: db
 ; bit 7: whether the player has changed boxes before
 wCurrentBoxNum:: db
 
-	ds 1
-
 ; number of HOF teams
 wNumHoFTeams:: db
 
@@ -2416,8 +2422,7 @@ wPlayerCoins:: dw ; BCD
 ; bit array of toggleable objects; bit set = toggled off
 wToggleableObjectFlags:: flag_array $100
 wToggleableObjectFlagsEnd::
-
-	ds 7
+; (dead vanilla ds 7 removed 2026-11-03 to fund wPokedexFormOwned/Seen)
 
 ; saved copy of SPRITESTATEDATA1_IMAGEINDEX (used for sprite facing/anim)
 wSavedSpriteImageIndex:: db
@@ -2426,9 +2431,8 @@ wSavedSpriteImageIndex:: db
 ; * the sprite ID (depending on the current map)
 ; * the toggleable object index (global, used for wToggleableObjectFlags)
 ; terminated with $FF
+; Max 9 toggleable objects on any one map today (PROCEDURAL_CAVE_1).
 wToggleableObjectList:: ds 16 * 2 + 1
-
-	ds 1
 
 wGameProgressFlags::
 ; EndlessContinue (custom_functions/endless.asm) zeroes wGameProgressFlags

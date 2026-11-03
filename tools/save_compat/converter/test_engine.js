@@ -231,6 +231,79 @@ test("schema 16 to 17: optional encounter padding initializes inactive, all othe
   assert.equal(api.checksumStatus(out.bytes, to).main, true);
 });
 
+// Full schema (with constants), for checks the trimmed package cannot make.
+const fullSchema = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
+
+test("schema 17 to 18: form Pokedex flags inserted, dead pads removed, every field keeps its bytes", () => {
+  // wPokedexSeenEnd is the empty label at the insertion point (its old "size" ran over the item
+  // counts); wToggleableObjectFlagsEnd's old size was the 7-byte pad that is gone.
+  const loss = ["sLossRecovery1", "sLossRecovery2", "sLossRecovery3", "sLossRecoveryCRC", "sLossRecoveryValid"];
+  const { b, to } = checkMigration(17, 18, ["wPokedexSeenEnd", "wToggleableObjectFlagsEnd"], loss);
+  // The synthetic save holds no form (empty party/box, boxes never switched), so no credit,
+  // unless the noise made a daycare slot "in use" with a cataloged form.
+  const owned = wramOffset(to, "wPokedexFormOwned");
+  const care = ["wDayCareInUse", "wDayCareInUse2"].some((l) => b[wramOffset(to, l)] === 1);
+  if (!care) for (let i = 0; i < 14; i++) assert.equal(b[owned + i], 0, `form flags +${i}`);
+});
+
+test("schema 17 to 18: held forms are credited exactly; base flags and excluded forms are not", () => {
+  const from = PKG.schemas["17"], to = PKG.schemas["18"], pkg = packageTargeting("18");
+  const save = syntheticSave("17");
+  const c = fullSchema(18).constants;
+  const put = (base, slot, stride, cap, species, form) => {
+    const mon = base + cap + 2 + slot * stride;
+    save[base + 1 + slot] = species;
+    save[mon] = species;
+    save[mon + c.MON_CATCH_RATE] = (form << 5) | 0x01; // a non-form flag bit rides along
+  };
+  const party = wramOffset(from, "wPartyCount");
+  save[party] = 2;
+  put(party, 0, c.PARTYMON_STRUCT_LENGTH, 6, c.MEOWTH, 1);     // Alolan Meowth
+  put(party, 1, c.PARTYMON_STRUCT_LENGTH, 6, c.MEWTWO, 1);     // Armored Mewtwo: not an identity
+  save[party + 3] = 0xff;
+  const box = wramOffset(from, "wBoxCount");
+  save[box] = 1;
+  put(box, 0, c.BOXMON_STRUCT_LENGTH, c.MONS_PER_BOX, c.DUGTRIO, 2); // Wugtrio
+  save[box + 2] = 0xff;
+  save[wramOffset(from, "wCurrentBoxNum")] = 0x80; // box 1 current, boxes have been switched
+  const sbox = (n) => { const f = from.sram.find((s) => s.label === `sBox${n}`); return offsetOf(f.bank, f.address); };
+  save[sbox(1)] = 1; put(sbox(1), 0, c.BOXMON_STRUCT_LENGTH, c.MONS_PER_BOX, c.TAUROS, 3); // stale copy: ignored
+  save[sbox(2)] = 1; put(sbox(2), 0, c.BOXMON_STRUCT_LENGTH, c.MONS_PER_BOX, c.JOLTEON, 1); // Espeon
+  for (let n = 3; n <= 12; n++) save[sbox(n)] = 0xff; // never initialised
+  const careUse = wramOffset(from, "wDayCareInUse"), careMon = wramOffset(from, "wDayCareMon");
+  save[careUse] = 1; save[careMon] = c.QUAGSIRE; save[careMon + c.MON_CATCH_RATE] = 1 << 5; // Clodsire
+  recomputeChecksums(save, from);
+  const out = api.convert(save, pkg, { mode: "continue" });
+  assert.equal(out.ok, true, out.reason);
+  const bit = (label, id) => (out.bytes[wramOffset(to, label) + (id >> 3)] >> (id & 7)) & 1;
+  const credited = [];
+  for (let id = 0; id < c.NUM_DEX_FORM_SLOTS; id++) if (bit("wPokedexFormOwned", id)) credited.push(id);
+  assert.deepEqual(credited, [c.DEX_FORM_A_MEOWTH, c.DEX_FORM_WUGTRIO, c.DEX_FORM_ESPEON, c.DEX_FORM_CLODSIRE].sort((x, y) => x - y));
+  for (const id of credited) assert.equal(bit("wPokedexFormSeen", id), 1, `seen ${id}`);
+  for (let i = 0; i < 64; i++) assert.equal(out.bytes[wramOffset(to, "wPokedexOwned") + i], 0, "base flags untouched");
+  assert.equal(api.checksumStatus(out.bytes, to).main, true);
+});
+
+test("dexFormsAdded's catalog matches data/pokemon/dex_forms.asm and the schema's constants", () => {
+  const c = fullSchema(18).constants;
+  const asm = fs.readFileSync(path.join(__dirname, "..", "..", "..", "data", "pokemon", "dex_forms.asm"), "utf8");
+  const rows = [...asm.matchAll(/^\s*dex_form\s+(DEX_FORM_\w+),\s*(\w+),\s*(\d)/gm)];
+  assert.equal(rows.length, c.NUM_DEX_FORMS);
+  assert.ok(c.NUM_DEX_FORMS <= c.NUM_DEX_FORM_SLOTS);
+  assert.equal(c.MON_CATCH_RATE, 7); assert.equal(c.FORM_MASK, 0x60);
+  assert.equal(c.PARTYMON_STRUCT_LENGTH, 44); assert.equal(c.BOXMON_STRUCT_LENGTH, 33); assert.equal(c.MONS_PER_BOX, 20);
+  const to = PKG.schemas["18"];
+  for (const [, id, species, form] of rows) {
+    assert.equal(c[id], rows.findIndex((r) => r[1] === id), `${id} order`);
+    const bytes = new Uint8Array(api.SRAM_SIZE);
+    const party = wramOffset(to, "wPartyCount");
+    bytes[party] = 1; bytes[party + 8] = c[species]; bytes[party + 8 + 7] = Number(form) << 5;
+    assert.equal(api._internal.STEPS.creditHeldForms(bytes, to), null);
+    const at = wramOffset(to, "wPokedexFormOwned");
+    assert.equal((bytes[at + (c[id] >> 3)] >> (c[id] & 7)) & 1, 1, `${id} (${species} form ${form})`);
+  }
+});
+
 test("schema 12 to 13: run records initialize empty without moving existing fields", () => {
   const from = PKG.schemas["12"], to = PKG.schemas["13"];
   const save = syntheticSave("12"), pkg = packageTargeting("13");

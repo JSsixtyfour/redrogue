@@ -7479,15 +7479,7 @@ LoadEnemyMonData:
 	ld de, wEnemyMonNick
 	ld bc, NAME_LENGTH
 	call CopyData
-	ld a, [wEnemyMonSpecies2]
-	ld [wPokedexNum], a
-	predef IndexToPokedex
-	ld a, [wPokedexNum]
-	dec a
-	ld c, a
-	ld b, FLAG_SET
-	ld hl, wPokedexSeen
-	predef FlagActionPredef ; mark this mon as seen in the pokedex
+	farcall DexRegisterEnemySeen ; mark this mon's exact identity seen (dex_forms.asm)
 	ld hl, wEnemyMonLevel
 	ld de, wEnemyMonUnmodifiedLevel
 	ld bc, 1 + NUM_STATS * 2

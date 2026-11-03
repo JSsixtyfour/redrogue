@@ -102,28 +102,21 @@ _AddPartyMon::
 	ld b, SPDSPCDV_TRAINER
 	jp nz, .next4 ; was jr: the reward-offer DV branch below pushed it out of range
 
-; If the mon is being added to the player's party, update the pokedex.
-	ld a, [wCurPartySpecies]
-	ld [wPokedexNum], a
+; If the mon is being added to the player's party, update the pokedex: the
+; exact identity (base species or its cataloged form), custom_functions/dex_forms.asm.
+; wSpawnForm is still unconsumed here (.done clears it). de = live struct cursor.
 	push de
-	predef IndexToPokedex
+	ld a, [wCurPartySpecies]
+	ld d, a
+	ld a, [wSpawnForm]
+	and NUM_FORM_SLOTS
+	rrca                    ; 0..3 -> bits 5-6
+	rrca
+	rrca
+	or DEX_REG_BOTH
+	ld e, a
+	farcall DexRegisterMon
 	pop de
-	ld a, [wPokedexNum]
-	dec a
-	ld c, a
-	ld b, FLAG_TEST
-	ld hl, wPokedexOwned
-	call FlagAction
-	ld a, c ; whether the mon was already flagged as owned
-	ld a, [wPokedexNum]
-	dec a
-	ld c, a
-	ld b, FLAG_SET
-	push bc
-	call FlagAction
-	pop bc
-	ld hl, wPokedexSeen
-	call FlagAction
 
 	pop hl
 	push hl
@@ -566,19 +559,14 @@ _AddEnemyMonToPlayerParty::
 	call SkipFixedLengthTextEntries
 	ld bc, NAME_LENGTH
 	call CopyData    ; write new mon's nickname (from an enemy mon)
+	; owned + seen for the exact identity; the form rides in the copied struct
 	ld a, [wCurPartySpecies]
-	ld [wPokedexNum], a
-	predef IndexToPokedex
-	ld a, [wPokedexNum]
-	dec a
-	ld c, a
-	ld b, FLAG_SET
-	ld hl, wPokedexOwned
-	push bc
-	call FlagAction ; add to owned pokemon
-	pop bc
-	ld hl, wPokedexSeen
-	call FlagAction ; add to seen pokemon
+	ld d, a
+	ld a, [wLoadedMon + MON_CATCH_RATE]
+	and FORM_MASK
+	or DEX_REG_BOTH
+	ld e, a
+	farcall DexRegisterMon
 	and a
 	ret                  ; return success
 

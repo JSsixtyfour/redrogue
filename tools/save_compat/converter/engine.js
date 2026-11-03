@@ -434,6 +434,132 @@
       return null;
     },
 
+    // Schema 17 -> 18 (2026-11-03, Pokedex forms): wPokedexFormOwned/Seen (7 bytes each) are
+    // inserted right after wPokedexSeen, and five dead vanilla pads later in the main block are
+    // removed (2 after wObjectDataPointerTemp, 4 after wGrassTile, 1 after wCurrentBoxNum, 7 after
+    // wToggleableObjectFlags, 1 after wToggleableObjectList): +14 - 15, so the main block shrinks
+    // by 1 and everything after it in bank 1 moves down 1. The main block is rebuilt byte by byte
+    // (insert, skip the holes); the rest of bank 1 moves as one run, as in followerPadTrimmed.
+    // The new arrays credit only forms the save provably holds right now (party, current box,
+    // every stored box when boxes have been switched, both daycare slots); an old save cannot say
+    // which forms were caught and released. The base flags keep their old meaning, which may
+    // include credit earned by a form (documented overcredit). The loss record is cleared.
+    dexFormsAdded: function (bytes, from, to) {
+      var INSERT = 14, PADS = [["wObjectDataPointerTemp", 2, 2], ["wGrassTile", 1, 4],
+        ["wCurrentBoxNum", 1, 1], ["wToggleableObjectFlagsEnd", 0, 7], ["wToggleableObjectList", 33, 1]];
+      if (wramField(from, "wPokedexFormOwned")) return "this save already has form Pokedex flags";
+      var seen = wramOffset(from, "wPokedexSeen"), owned = wramOffset(to, "wPokedexFormOwned");
+      var mainFrom = sramField(from, "sMainData"), mainTo = sramField(to, "sMainData");
+      var mainStart = offsetOf(mainFrom.bank, mainFrom.address);
+      if (seen < 0 || wramOffset(to, "wPokedexSeen") !== seen || owned !== seen + 32 ||
+          wramOffset(to, "wPokedexFormSeen") !== owned + 7 || mainTo.address !== mainFrom.address)
+        return "form Pokedex layout not recognised";
+      var holes = [], removed = 0;
+      for (var i = 0; i < PADS.length; i++) {
+        var at = wramOffset(from, PADS[i][0]);
+        if (at < 0) return "save field " + PADS[i][0] + " not recognised";
+        holes.push([at + PADS[i][1], at + PADS[i][1] + PADS[i][2]]);
+        removed += PADS[i][2];
+      }
+      var delta = INSERT - removed; // -1
+      if (mainTo.size - mainFrom.size !== delta) return "main save block changed by an unexpected amount";
+      function shiftOf(o) { // old main-block offset -> how far its byte moves
+        if (o < owned) return 0;
+        var s = INSERT;
+        for (var h = 0; h < holes.length; h++) if (holes[h][1] <= o) s -= holes[h][1] - holes[h][0];
+        return s;
+      }
+      // Every main-block field must land where the rebuild puts it (wPokedexSeenEnd, the empty
+      // label at the insertion point, legitimately stays put).
+      for (var j = 0; j < from.saved_wram.length; j++) {
+        var f = from.saved_wram[j];
+        if (f.block !== "sMainData" || f.label === "wPokedexSeenEnd") continue;
+        var t = wramField(to, f.label);
+        if (!t) return "save field " + f.label + " was removed, which this step does not expect";
+        var fo = wramOffset(from, f.label);
+        if (wramOffset(to, f.label) - fo !== shiftOf(fo)) return "save field " + f.label + " did not move as expected";
+      }
+      var src = new Uint8Array(bytes);
+      var oldEnd = mainStart + mainFrom.size, newEnd = mainStart + mainTo.size;
+      // Bank-1 labels after the main block move by delta (floating) or stay (fixed-org).
+      var last = oldEnd, fixed = [];
+      for (var k = 0; k < from.sram.length; k++) {
+        var g = from.sram[k], go = offsetOf(g.bank, g.address);
+        if (g.bank !== 1 || go < oldEnd) continue;
+        var gt = sramField(to, g.label), d = gt ? offsetOf(gt.bank, gt.address) - go : null;
+        if (!gt || (d !== delta && d !== 0) || gt.size !== g.size) return "save field " + g.label + " did not move as expected";
+        if (d === delta) last = Math.max(last, go + g.size);
+        else fixed.push([g.label, go]);
+      }
+      for (var q = 0; q < fixed.length; q++)
+        if (fixed[q][1] < last) return "save field " + fixed[q][0] + " sits inside the shifted data";
+      // Rebuild: the run after the main block, then the main block itself.
+      for (var n = oldEnd; n < last; n++) bytes[n + delta] = src[n];
+      for (var z = last + delta; z < last; z++) bytes[z] = 0; // vacated by the shift
+      for (var m = mainStart; m < oldEnd; m++) {
+        var inHole = false;
+        for (var hh = 0; hh < holes.length; hh++) if (m >= holes[hh][0] && m < holes[hh][1]) inHole = true;
+        if (!inHole) bytes[m + shiftOf(m)] = src[m];
+      }
+      bytes.fill(0, owned, owned + INSERT);
+      if (newEnd !== mainStart + mainFrom.size + delta) return "main save block end not recognised";
+      var heldError = STEPS.creditHeldForms(bytes, to);
+      if (heldError) return heldError;
+      var error = STEPS.lossRecoveryAdded(bytes, from, to);
+      if (error) return error;
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
+    // Sets wPokedexFormOwned/Seen for every cataloged form held in `bytes` (already in `to`'s
+    // layout). DEX_FORMS is data/pokemon/dex_forms.asm resolved to internal species ids;
+    // test_engine.js checks it against the schema's constants. Not a step on its own.
+    creditHeldForms: function (bytes, to) {
+      var DEX_FORMS = [[165,1],[166,1],[85,1],[96,1],[97,1],[82,1],[83,1],[100,1],[59,1],[59,2],
+        [118,1],[118,2],[77,1],[77,2],[144,1],[144,2],[33,1],[20,1],[24,1],[155,1],[169,1],[39,1],
+        [49,1],[163,1],[164,1],[37,1],[8,1],[54,1],[64,1],[13,1],[136,1],[6,1],[141,1],[10,1],
+        [145,1],[143,1],[42,1],[60,1],[60,2],[60,3],[105,1],[105,2],[104,1],[104,2],[103,1],[74,1],
+        [75,1],[73,1],[195,1],[196,1],[198,1]];
+      var CATCH_RATE = 7, FORM_MASK = 0x60, PARTY_STRIDE = 44, BOX_STRIDE = 33, PER_BOX = 20;
+      var ownedAt = wramOffset(to, "wPokedexFormOwned"), seenAt = wramOffset(to, "wPokedexFormSeen");
+      if (ownedAt < 0 || seenAt < 0) return "form Pokedex fields not recognised";
+      function credit(species, catchRate) {
+        var form = (catchRate & FORM_MASK) >> 5;
+        if (!form) return;
+        for (var i = 0; i < DEX_FORMS.length; i++) {
+          if (DEX_FORMS[i][0] !== species || DEX_FORMS[i][1] !== form) continue;
+          bytes[ownedAt + (i >> 3)] |= 1 << (i & 7);
+          bytes[seenAt + (i >> 3)] |= 1 << (i & 7);
+          return;
+        }
+      }
+      // count byte, species list (cap + 1), then the structs
+      function scan(base, cap, stride) {
+        var count = bytes[base];
+        if (count > cap) return; // never initialised ($FF) or not a list
+        for (var s = 0; s < count; s++) {
+          var mon = base + cap + 2 + s * stride;
+          credit(bytes[mon], bytes[mon + CATCH_RATE]);
+        }
+      }
+      scan(wramOffset(to, "wPartyCount"), 6, PARTY_STRIDE);
+      scan(wramOffset(to, "wBoxCount"), PER_BOX, BOX_STRIDE);
+      var boxNum = bytes[wramOffset(to, "wCurrentBoxNum")];
+      if (boxNum & 0x80) { // stored boxes are only initialised once the player has switched boxes
+        for (var b = 1; b <= 12; b++) {
+          if (b - 1 === (boxNum & 0x7f)) continue; // the current box's stored copy is stale
+          var box = sramField(to, "sBox" + b);
+          if (box) scan(offsetOf(box.bank, box.address), PER_BOX, BOX_STRIDE);
+        }
+      }
+      var cares = [["wDayCareInUse", "wDayCareMon"], ["wDayCareInUse2", "wDayCareMon2"]];
+      for (var c = 0; c < cares.length; c++) {
+        var use = wramOffset(to, cares[c][0]), mon = wramOffset(to, cares[c][1]);
+        if (use >= 0 && mon >= 0 && bytes[use] === 1) credit(bytes[mon], bytes[mon + CATCH_RATE]);
+      }
+      return null;
+    },
+
     // Schema 13 -> 14: Endless depth/flags take the final two saved pad bytes.
     // Zero initializes an ordinary run, with no continuation pending.
     endlessAdded: function (bytes, from, to) {

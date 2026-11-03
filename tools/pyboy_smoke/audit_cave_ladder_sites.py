@@ -63,6 +63,13 @@ _SITE_TEXT = (REPO_ROOT / "constants" / "cave_ladder_site_constants.asm").read_t
 SITES = [(int(x), int(y)) for x, y in re.findall(r"^\tladder_site\s+(\d+),\s*(\d+)", _SITE_TEXT, re.M)]
 FIRST_WARP = int(re.search(r"CAVE_FIRST_LADDER_WARP EQU (\d+)", _SITE_TEXT).group(1))
 MIN_DISTANCE = int(re.search(r"CAVE_LADDER_MIN_DISTANCE EQU (\d+)", _SITE_TEXT).group(1))
+CLEARANCE = int(re.search(r"CAVE_LADDER_ENTRANCE_CLEARANCE EQU (\d+)", _SITE_TEXT).group(1))
+ENTRANCE_LADDER = 0xFE
+
+
+def near_entrance(n: int) -> bool:
+    x, y = SITES[n]
+    return abs(x - ENTRANCE_BLOCK[0]) + abs(y - ENTRANCE_BLOCK[1]) <= CLEARANCE
 NONE = 0xFF
 UNREACHED = [0]   # sites a walkable-only rule would accept but the flood rejects
 QUADRANT = (4, 6, 12, 14)   # bottom-left tile of TL, TR, BL, BR
@@ -192,9 +199,17 @@ def check_runtime(seed, grid, player, sprites, exit_block, hideout, blockset, pa
         tally["one"] += 1
         if a not in shipped:
             problems.append(f"ladder A {SITES[a]} fails the model")
-        if b == NONE:
+        # The tier rule: a near-entrance site only when no farther one fits.
+        far_tier = [n for n in shipped if not near_entrance(n)]
+        if near_entrance(a) and far_tier:
+            problems.append(f"ladder A {SITES[a]} near the entrance although {len(far_tier)} farther sites were valid")
+        if b < len(SITES) and near_entrance(b) and any(far(a, n) for n in far_tier):
+            problems.append(f"ladder B {SITES[b]} near the entrance although a farther partner was valid")
+        if b in (NONE, ENTRANCE_LADDER):
             if any(far(a, n) for n in shipped):
-                problems.append("one ladder although a far partner was valid")
+                problems.append("no ordinary partner although a far partner was valid")
+            if b == ENTRANCE_LADDER:
+                tally["entrance"] = tally.get("entrance", 0) + 1
         else:
             tally["two"] += 1
             if b not in shipped or not far(a, b):
@@ -204,9 +219,18 @@ def check_runtime(seed, grid, player, sprites, exit_block, hideout, blockset, pa
                 x, y = SITES[site]
                 if grid[y][x] != LADDER:
                     problems.append(f"no ladder drawn at {SITES[site]}")
+    # The entrance ladder borrows site 0's slot, or site 1's when A is site 0
+    # (CaveSubroomArm), and departs from the entrance block's bottom-right.
+    entrance_slot = (1 if a == 0 else 0) if b == ENTRANCE_LADDER else None
+    if entrance_slot is not None and grid[ENTRANCE_BLOCK[1]][ENTRANCE_BLOCK[0]] != LADDER:
+        problems.append("entrance ladder recorded but not drawn")
     for n, (x, y) in enumerate(SITES):
         entry = warps[FIRST_WARP + n]
-        if n == a or n == b:
+        if n == entrance_slot:
+            ex, ey = ENTRANCE_BLOCK
+            if entry != [2 * ey + 1, 2 * ex + 1, room_warps[1], map_ids["PROCEDURAL_CAVE_SUBROOM"]]:
+                problems.append(f"entrance ladder slot {n} armed as {entry}")
+        elif n == a or n == b:
             if entry != [2 * y + 1, 2 * x + 1, room_warps[0 if n == a else 1], map_ids["PROCEDURAL_CAVE_SUBROOM"]]:
                 problems.append(f"site {n} armed as {entry}")
         elif entry[0] != NONE:
@@ -236,7 +260,7 @@ def main() -> int:
             sample_ = sample(seed, map_id)
             problems += check_runtime(seed, *sample_, blockset, passable, map_ids, tally)
         print(f"layouts {args.layouts}: a ladder in {tally['one']}, two ladders in {tally['two']}, "
-              f"resident fallback in {tally.get('fallback', 0)}, problems {problems}")
+              f"entrance second ladder in {tally.get('entrance', 0)}, resident fallback in {tally.get('fallback', 0)}, problems {problems}")
         return 1 if problems else 0
 
     def collect(seeds):
