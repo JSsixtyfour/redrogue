@@ -35,6 +35,8 @@ INCLUDE "engine/link/cable_club_npc.asm"
 INCLUDE "engine/menus/text_box.asm"
 INCLUDE "engine/events/display_pokedex.asm"
 
+INCLUDE "engine/menus/softboiled.asm"
+
 
 ; Relocated intact from the nearly-full fixed bank1 section. Its only entry is
 ; the existing HOME far-jump wrapper, and its calls target HOME or a predef.

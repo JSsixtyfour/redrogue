@@ -39,7 +39,14 @@ StartMenu_Pokemon::
 	ld a, FIELD_MOVE_MON_MENU
 	ld [wTextBoxID], a
 	call DisplayTextBoxID ; display pokemon menu options
-	lb bc, 2, 12 ; STATS, SWITCH, CANCEL only
+	lb bc, 2, 12 ; STATS, SWITCH, CANCEL, plus Softboiled when known
+	ld a, [wNumFieldMoves]
+	and a
+	jr z, .storeMenuVariables
+	inc b
+	dec c
+	dec c
+.storeMenuVariables
 	ld hl, wTopMenuItemY
 	ld a, c
 	ld [hli], a ; top menu item Y
@@ -69,7 +76,11 @@ StartMenu_Pokemon::
 	dec b
 	cp b
 	jr z, .choseSwitch
-	jp .choseStats
+	dec b
+	cp b
+	jp z, .choseStats
+	rfarcall UseSoftboiledFieldMove
+	jp .loop
 .choseSwitch
 	ld a, [wPartyCount]
 	cp 2 ; is there more than one pokemon in the party?
