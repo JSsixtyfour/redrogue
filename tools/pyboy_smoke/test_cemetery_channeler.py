@@ -20,6 +20,7 @@ from pathlib import Path
 
 from harness import RedRogueHarness
 from source_constants import parse_map_constants, parse_rgbds_constants
+from text_contract import text_blocks
 
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = ROOT / "tools/pyboy_smoke/artifacts"
@@ -215,8 +216,19 @@ class CemeteryChannelerTest(unittest.TestCase):
         self.assertFalse(self.hidden("TOGGLE_CEMETERY_1_CHANNELER"), "he left after the fight")
 
         # Talking again: his after line, no battle.
-        self.talk_up()
-        self.assertIn("peace", self.screen_text(), "not the after line")
+        after_pointer=h.address('CemChannelerAfterText')
+        printed=[]
+        def after_line(_):
+            if (h.pyboy.register_file.HL==after_pointer
+                    and h.read8('hLoadedROMBank')==h.symbols.bank('CemChannelerAfterText')):
+                printed.append(after_pointer)
+        h.register_hook('PrintText',after_line)
+        try:self.talk_up()
+        finally:h.unregister_hook('PrintText',after_line)
+        self.assertEqual(printed,[after_pointer],"did not use the after-battle dialogue")
+        authored=' '.join(text_blocks(ROOT/'custom_functions/cemetery_channeler.asm')['CemChannelerAfterText'])
+        expected=' '.join(re.sub(r'[^A-Za-z]+',' ',authored).split())
+        self.assertIn(expected,' '.join(self.screen_text().split()),"not the authored after line")
         for _ in range(6):
             h.tap("b", frames=8)
             h.tick(20)

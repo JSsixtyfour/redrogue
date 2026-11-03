@@ -123,22 +123,31 @@ class SwinubRarityTest(unittest.TestCase):
                         # call_routine lets the parked lobby run out its frame
                         # after the restore, and the lobby's own entry setups
                         # (the trader's roll) draw from Rangerandom and call
-                        # this picker too. Act only on the test's own call:
-                        # the first entry, and draws made from the picker.
+                        # this picker too, including a picker already in flight
+                        # at the parked point. Its entry hook will not fire
+                        # again. Match the injected invocation's stack as well
+                        # as its entry count and the RNG's return address.
                         calls = [0]
+                        entry_sp = [None]
+                        draw_trace = []
                         def arguments(_):
                             calls[0] += 1
                             if calls[0] == 1:
+                                entry_sp[0] = h.pyboy.register_file.SP
                                 h.pyboy.register_file.B = tier
                         def ordinal(_):
-                            if calls[0] == 1 and h.pyboy.register_file.C == 0:
+                            if (calls[0] == 1 and h.pyboy.register_file.C == 0
+                                    and h.pyboy.register_file.SP == entry_sp[0]):
                                 h.pyboy.register_file.E = index
                         def rng_count(_):
                             sp = h.pyboy.register_file.SP
                             caller = h.pyboy.memory[sp] | h.pyboy.memory[sp + 1] << 8
                             if (calls[0] == 1 and h.read8('hLoadedROMBank') == bank
                                     and roll_start <= caller < roll_end):
-                                seen_counts.append(h.pyboy.register_file.C)
+                                draw_trace.append((sp,caller,entry_sp[0],h.pyboy.frame_count))
+                                # push af (saved mask), then call Rangerandom.
+                                if sp == entry_sp[0] - 4:
+                                    seen_counts.append(h.pyboy.register_file.C)
                         h.pyboy.hook_register(bank, entry, arguments, None)
                         h.pyboy.hook_register(bank, pick, ordinal, None)
                         h.pyboy.hook_register(rng_bank, rng_entry, rng_count, None)
@@ -149,7 +158,7 @@ class SwinubRarityTest(unittest.TestCase):
                             h.pyboy.hook_deregister(bank, pick)
                             h.pyboy.hook_deregister(rng_bank, rng_entry)
                         self.assertEqual(h.last_call_registers['A'], group, (mask, tier, index))
-                        self.assertEqual(seen_counts, [sum(counts)])
+                        self.assertEqual(seen_counts, [sum(counts)],(mask,tier,index,draw_trace))
                     start += count
 
     def test_relocated_ownership_walk_preserves_form_and_finds_evolved_family(self):

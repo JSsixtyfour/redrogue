@@ -8,7 +8,7 @@ DEF FG_LAST_ROW EQU 17
 
 ; Assignment means the stage was given a Pokemon, not that its sprite is
 ; still visible after a resolved reward. Checkpoint 4 owns independent saved
-; identity; Debug 2 forces Pink or winter Snowlax, release odds stay disabled.
+; identity; production rolls use the latched season, Debug2 forces fixtures.
 ; Geometry-only tests can force this predicate at .return.
 FGHasAssignedEncounter::
 	ld a, [wOptionalEncounterMap]
@@ -23,7 +23,7 @@ FGHasAssignedEncounter::
 
 ; SRAM0 open throughout this generation hook. No wBuffer use. Pick one of
 ; the two eligible walls, then try its nine sites and the other wall once.
-; No rare-outcome writer exists yet, so production never drops a winning roll.
+; Normal maze invariants leave a legal site for each assigned outcome.
 FGPrototypeCarve::
 	call FGHasAssignedEncounter
 	and a

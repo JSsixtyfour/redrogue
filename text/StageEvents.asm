@@ -34,10 +34,10 @@ _StageEventArrivalJessieJamesText::
 	line "That #MON is"
 	cont "Team Rocket's!"
     
-    para "Don't come looking"
-	line "for us because you"
-	cont "won't like the"
-	cont "result!@"
+	para "Don't come"
+	line "looking for us"
+	cont "because you won't"
+	cont "like the result!@"
 	text_promptbutton
 	text_end
 
@@ -83,7 +83,8 @@ _StageEventTookMonPsychicText::
 	text_end
 
 _StageEventTookMonBurglarText::
-	text "He stole @"
+	text "He stole"
+	line "@"
 	text_ram wNameBuffer
 	text ""
 	line "and fled!@"
@@ -119,8 +120,8 @@ _StageEventArrivalJennyText::
 	text_end
 
 _StageEventHideoutJessieJamesText::
-	text "Alright twerp, you"
-	line "asked for it!@"
+	text "Alright twerp,"
+	line "you asked for it!@"
 	text_promptbutton
 	text_end
 
@@ -132,7 +133,8 @@ _StageEventHideoutPsychicText::
 	text_end
 
 _StageEventHideoutBurglarText::
-	text "Tch. You caught me.@"
+	text "Tch. You caught"
+	line "me.@"
 	text_promptbutton
 	text_end
 
@@ -143,8 +145,9 @@ _StageEventHideoutJoyText::
 	text_end
 
 _StageEventHideoutJennyText::
-	text "Wait, who is that?"
-	line "Stop! You're under"
+	text "Wait, who is"
+	line "that? Stop!"
+	cont "You're under"
 	cont "arrest!@"
 	text_promptbutton
 	text_end
@@ -153,11 +156,11 @@ _StageEventHideoutJennyText::
 ; Printed by PrintEndBattleText, which has ALREADY written "<CLASS>: " into
 ; the box from _TrainerNameText. Line 1 is therefore not empty when these
 ; start, and the first token has to fit whatever the name prefix leaves of the
-; box's 18 columns:
+; box's 17-column contract:
 ;
-;   "JESSIE/JAMES: " 14 used, 4 left    "NURSE JOY: " 11 used, 7 left
-;   "PSYCHIC: "       9 used, 9 left    "OFC.JENNY: " 11 used, 7 left
-;   "BURGLAR: "       9 used, 9 left
+;   "JESSIE/JAMES: " 14 used, 3 left    "NURSE JOY: " 11 used, 6 left
+;   "PSYCHIC: "       9 used, 8 left    "OFC.JENNY: " 11 used, 6 left
+;   "BURGLAR: "       9 used, 8 left
 ;
 ; That budget is the whole reason these are separate strings instead of the
 ; hideout lines reused: a hideout line opens on a full-width line 1 and would
@@ -167,7 +170,8 @@ _StageEventHideoutJennyText::
 ; Each ends `prompt`, not "@" + `text_end`. See the file header for why.
 
 _StageEventDefeatJessieJamesText::
-	text "A brat beat us?"
+	text ""
+	line "A brat beat us?"
 	prompt
 
 _StageEventDefeatPsychicText::
@@ -208,14 +212,14 @@ _StageEventDefeatJennyText::
 ; need for a trailing `prompt` - AfterDisplayingTextID waits.
 
 _StageEventAfterJessieJamesText::
-	text "JESSE: We'll get you"
-	line "next time,"
+	text "JESSE: We'll get"
+	line "you next time,"
 	cont "twerp!@"
 	text_end
 
 _StageEventAfterPsychicText::
-	text "I should have seen"
-	line "this coming.@"
+	text "I should have"
+	line "seen this coming.@"
 	text_end
 
 _StageEventAfterBurglarText::
@@ -225,8 +229,8 @@ _StageEventAfterBurglarText::
 	text_end
 
 _StageEventAfterJoyText::
-	text "I'll see you again"
-	line "soon!@"
+	text "I'll see you"
+	line "again soon!@"
 	text_end
 
 _StageEventAfterJennyText::
@@ -240,7 +244,8 @@ _StageEventAfterJennyText::
 ; here is what came back rather than who took it.
 
 _StageEventRecoverMonText::
-	text "You got @"
+	text "You got"
+	line "@"
 	text_ram wNameBuffer
 	text " back!@"
 	text_end
@@ -261,10 +266,8 @@ _StageEventRecoverNothingText::
 
 ; Party full at recovery time - the player caught something in here after
 ; being robbed - but the current box had space, so the mon is safe.
-; Party full at recovery time, but the box had space. WORDED AND SHAPED AS THE
-; CAPTURE PATH'S OWN TRANSFER LINE (_ItemUseBallText07/08), including the
-; EVENT_MET_BILL split, because from the player's side this is the same event:
-; something they now own went to the PC instead of the party.
+; Party full at recovery time, but the box had space. The authored line always
+; names BILL's PC; the former EVENT_MET_BILL/"someone's PC" split was retired.
 ;
 ; The one deliberate difference is the name source. The capture path reads
 ; `text_ram wBoxMonNicks` because SendNewMonToBox FRONT-INSERTS, so the new mon
@@ -285,7 +288,7 @@ _StageEventRecoverToBoxBillText::
 ; outcome that does not end the event: the villain stays put and the record
 ; stays live, so the player can make space and talk to them again.
 _StageEventRecoverNoRoomText::
-	text "You don't have room"
-	line "for it so get"
-	cont "lost@!"
+	text "You don't have"
+	line "room for it so"
+	cont "get lost!@"
 	text_end

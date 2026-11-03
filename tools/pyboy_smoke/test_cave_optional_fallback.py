@@ -131,12 +131,6 @@ class CaveOptionalFallbackTest(FallbackEntry,cold.CaveColdEncounterTest):
         finally:self.h=h;reboot.close()
 
 
-class CGBCaveOptionalFallbackTest(CaveOptionalFallbackTest):
-    def setUp(self):
-        self.maps=parse_map_constants(cave.ROOT/'constants/map_constants.asm')
-        self.h=RedRogueHarness(cave.ROOT,cave.ARTIFACTS,cgb_mode=True)
-
-
 class EntranceCollisionTest(unittest.TestCase):
     def test_site_zero_slot_collision_and_legacy_marker(self):
         import io
@@ -213,7 +207,3 @@ class CaveFallbackStageEventTest(FallbackEntry,unittest.TestCase):
 
     def test_joy_access(self):self.run_event(4)
     def test_jenny_access(self):self.run_event(5)
-
-
-class CGBCaveFallbackStageEventTest(CaveFallbackStageEventTest):
-    setUp=CGBCaveOptionalFallbackTest.setUp

@@ -5,7 +5,7 @@ OptionalEncounterClear::
 	ld bc, 7
 	jp FillMemory
 
-; Release has no occurrence roll yet. Debug 2 forces the test fixture.
+; Fresh-stage reset; Debug 2 retains its forced fixture for quick testing.
 OptionalForestFixture::
 	call OptionalEncounterClear
 IF DEF(_DEBUG)
@@ -21,21 +21,47 @@ OptionalForestSeasonFixture::
 IF DEF(_DEBUG)
 	ld a, [wStatusFlags6]
 	bit BIT_DEBUG2_MODE, a
-	ret z
+	jr z, .production
 	ld a, [sProcForestPalette]
 	cp 3
 	ret nz
 	call OptionalForceSnorlax
 	call FGOpenParentSRAM
-ENDC
 	ret
+ENDC
+.production
+	ld c, 100
+	call Rangerandom
+	call OptionalForestOutcome
+	jp FGOpenParentSRAM
+
+; A=unbiased0..99, SRAM0 open. One categorical outcome, no geometry reroll.
+OptionalForestOutcome::
+	ld c, a
+	ld a, [sProcForestPalette]
+	cp PROC_FOREST_PAL_COUNT
+	ret nc
+	ld e, a
+	ld d, 0
+	ld hl, .odds
+	add hl, de
+	ld a, c
+	cp [hl]
+	ret nc
+	ld a, e
+	cp 3
+	jp z, OptionalForceSnorlax
+	jp OptionalForcePink
+.odds
+	db 24, 4, 12, 20 ; saved IDs: spring, fall, summer, winter
+	ASSERT PROC_FOREST_PAL_COUNT == 4
 
 OptionalCaveFixture::
 	call OptionalEncounterClear
 IF DEF(_DEBUG)
 	ld a, [wStatusFlags6]
 	bit BIT_DEBUG2_MODE, a
-	ret z
+	jr z, .production
 	ld a, [sProcCavePalette]
 	cp 1
 	ret nz
@@ -50,7 +76,27 @@ IF DEF(_DEBUG)
 	ld a, PROCEDURAL_CAVE_SUBROOM
 	ld [wOptionalEncounterMap], a
 	call FGOpenParentSRAM
+	ret
 ENDC
+.production
+	ld a, [sProcCavePalette]
+	cp 1
+	ret nz
+	ld c, 33 ; matches33% cold theme:10/33 Onix and5/33 Snowlax give10%/5% overall
+	call Rangerandom
+	call OptionalCaveOutcome
+	jp FGOpenParentSRAM
+
+; Cold only, A=0..32:10 bins Onix,5 Snowlax,18 none. With33% cold caves,
+; overall selection is exactly10%/5%, before accepted no-ladder losses.
+OptionalCaveOutcome::
+	cp 10
+	jp c, OptionalForceOnix
+	cp 15
+	ret nc
+	call OptionalForceSnorlax
+	ld a, PROCEDURAL_CAVE_SUBROOM
+	ld [wOptionalEncounterMap], a
 	ret
 
 OptionalForceSnorlax::

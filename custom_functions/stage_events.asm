@@ -1121,15 +1121,9 @@ StageEventPrintAfterLine::
 ; bank 17, which is where "Maps 6" lives and where there is least to spare.
 ; Each map now carries a 16-byte text_asm stub that farcalls this.
 ;
-; THE BOX RESULT IS NOT A TABLE ROW, because it is the one line with a
-; condition in it. It reuses ItemUseBall's own transfer wording and its
-; EVENT_MET_BILL split, and follows it with the same box-full reminder the
-; capture path prints - a give-back that lands in the box is the same event
-; from the player's side, so it should not have a private vocabulary.
-;
-; CheckEvent only clobbers `a` in this tree (event compaction turned it into a
-; direct `ld a, [wEventFlags + byte]` + `bit`), which is what makes the
-; load-hl-then-test shape below legal - it is copied from item_effects.asm.
+; Intercept the box result to print its authored BILL's PC transfer line,
+; then reuse the capture path's full-box reminder. Other recovery results
+; must not print a transfer reminder merely because the current box is full.
 ;
 ; INPUT: wStageEventScratch. Clobbers a/bc/de/hl.
 ; ============================================================
@@ -1166,10 +1160,9 @@ StageEventAfterTexts:
 
 ; The ONLY recover-line table now - all four stages print from it. The TO_BOX
 ; row is still listed so the table stays dense and indexable by the result,
-; but StageEventPrintRecoverLine intercepts that result before the lookup,
-; because the box line needs the EVENT_MET_BILL branch. The row is what the
-; length assert counts, and it is a live fallback if that branch is ever
-; removed.
+; but StageEventPrintRecoverLine intercepts that result before the lookup so
+; it can append the box-full reminder after the transfer prompt. The row
+; keeps the table dense and remains a valid direct transfer-line lookup.
 StageEventRecoverTexts:
 	dw StageEventRecoverNothing     ; STAGE_GIVEBACK_NOTHING
 	dw StageEventRecoverMon         ; STAGE_GIVEBACK_MON

@@ -32,6 +32,8 @@ DEF PC_BASE    EQU 81  ; MAP_BORDER + MAP_BORDER*PC_STRIDE
 
 DEF PC_BLOCK_FLOOR    EQU 1
 DEF PC_BLOCK_ENTRANCE EQU 36  ; distinct floor variant used for the entrance cell only
+DEF PC_COLD_CAVE_PERCENT EQU 33 ; exact percent, not rounded one-third
+ASSERT PC_COLD_CAVE_PERCENT >= 0 && PC_COLD_CAVE_PERCENT <= 100
 DEF PC_BLOCK_WATER    EQU 118 ; river obstacle (PCCarveRiver) - confirmed impassable
                                ; (raw tile $14, not in Cavern_Coll) via direct .bst
                                ; decode, see PCCarveRiver's header comment
@@ -716,22 +718,26 @@ ENDC
 	and 1
 	ld [sProcCaveSignVariant], a
 	; Phase 4a: roll the palette variant, also while SRAM is open.
-	;   0 default  3/4
-	;   1 cold     1/4   blue cavern, reuses the Seafoam base set
-	; Cosmetic only: nothing downstream branches on this.
-	; Retune by changing the cp bound. To add a variant, see ProcCavePalSets in
+	;   0 default  67%
+	;   1 cold     33%   blue cavern, reuses the Seafoam base set
+	; Cold also selects the optional B1F encounter table after this roll.
+	; OptionalCaveOutcome uses33 bins:10 Onix,5 Snowlax,18 neither.
+	; With cold rate C%, overall selection isC*10/33% andC*5/33%.
+	; At33% this is10%/5%, before accepted zero-ladder availability losses.
+	; Retune PC_COLD_CAVE_PERCENT. To add a variant, see ProcCavePalSets in
 	; custom_functions/func_enhancedcolor.asm - the value written here must stay
 	; below PROC_CAVE_PAL_COUNT, which is what both colour paths range-check.
-	call Random
-	and 3
+	ld c, 100
+	call Rangerandom
+.paletteRolled
 	ld b, 0
-	cp 3
+	cp 100 - PC_COLD_CAVE_PERCENT
 	jr c, .palVariantSet
 	inc b
 .palVariantSet
 	ld a, b
 	ld [sProcCavePalette], a
-	farcall OptionalCaveFixture ; SRAM0 remains open; debug cold fixture only
+	farcall OptionalCaveFixture ; SRAM0 remains open; production roll/Debug2 fixture
 	; new cave preloaded: invalidate ball staging AND the baked-tiles flag so
 	; the first entry re-runs the full pipeline and re-rolls item positions.
 	; Also clear boss events so the new cave's boss actually appears.

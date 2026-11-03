@@ -129,7 +129,13 @@ class YellowFollowerSliceTests(unittest.TestCase):
         self.assertRegex(
             self.wram,
             r"(?s)wFollowerCommandBuffer:: ds 16\s+.*?wFollowerSpawnState:: db\s+"
-            r".*?wFollowerLedgeLatch:: db\s+ds 28 - 19",
+            r".*?wFollowerLedgeLatch:: db\s+.*?wOptionalEncounterSpecies:: db\s+"
+            r"wOptionalEncounterPackage:: db[^\n]*\s+wOptionalEncounterLevel:: db\s+"
+            r"wOptionalEncounterState:: db[^\n]*\s+wOptionalEncounterMap:: db\s+"
+            r"wOptionalEncounterScript:: db\s+wOptionalEncounterBattle:: db[^\n]*\s+"
+            r"ASSERT wOptionalEncounterBattle - wOptionalEncounterSpecies == 6\s+"
+            r"ds 28 - 19 - 7\s+wFollowerDataEnd::\s+"
+            r"ASSERT wFollowerDataEnd - wFollowerDataStart == 28",
         )
         warp = self.overworld.split("WarpFound2::", 1)[1].split(
             "ContinueCheckWarpsNoCollisionLoop::", 1

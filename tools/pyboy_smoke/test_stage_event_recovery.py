@@ -311,8 +311,8 @@ class AfterBattleTextContractTest(unittest.TestCase):
 
 class BoxTransferReusesTheCapturePathTest(unittest.TestCase):
     """The give-back's box case is the capture path's event, so it says and
-    does the same things: ItemUseBall's transfer wording, its EVENT_MET_BILL
-    split, and its box-full follow-up."""
+    does the same things: transfer wording, correct nickname, wait and box-full
+    follow-up. Red Rogue's authored recovery line always names BILL's PC."""
 
     def setUp(self) -> None:
         self.body = routine(STAGE_EVENTS.read_text(), "StageEventPrintRecoverLine::",
@@ -323,17 +323,11 @@ class BoxTransferReusesTheCapturePathTest(unittest.TestCase):
         self.assertLess(self.body.index("cp STAGE_GIVEBACK_TO_BOX"),
                         self.body.index("ld hl, StageEventRecoverTexts"))
 
-    def test_bill_split_matches_the_capture_path(self) -> None:
+    def test_box_transfer_uses_the_authored_bill_pc_line(self) -> None:
         to_box = self.body[self.body.index("\n.toBox\n"):]
-        self.assertIn("CheckEvent EVENT_MET_BILL", to_box)
-        self.assertIn("StageEventRecoverToBoxBill", to_box)
-        self.assertIn("StageEventRecoverToBoxPC", to_box)
-        # hl is loaded BEFORE the test, which is only legal because this
-        # tree's CheckEvent clobbers `a` alone. Guard that premise.
-        macro = (REPO_ROOT / "macros" / "scripts" / "events.asm").read_text()
-        check = macro[macro.index("MACRO CheckEvent"):]
-        check = check[:check.index("ENDM")]
-        self.assertNotIn("ld hl", check)
+        self.assertRegex(to_box,r"(?s)ld hl, StageEventRecoverToBoxBill\s+\.haveLine\s+call PrintText")
+        transfer=routine(STAGE_TEXT.read_text(),"_StageEventRecoverToBoxBillText::",code=False)
+        self.assertIn('"BILL\'s PC!"',transfer)
 
     def test_box_full_reminder_is_reused_not_reinvented(self) -> None:
         """The capture path prints it; a give-back into slot 20 must too."""
@@ -352,7 +346,7 @@ class BoxTransferReusesTheCapturePathTest(unittest.TestCase):
         The give-back appends at wBoxCount, so box slot 0 is somebody else.
         """
         source = STAGE_TEXT.read_text()
-        for name in ("_StageEventRecoverToBoxBillText", "_StageEventRecoverToBoxPCText"):
+        for name in ("_StageEventRecoverToBoxBillText",):
             with self.subTest(name):
                 body = routine(source, name + "::", code=False)
                 body = body[:body.index("prompt")]
@@ -362,18 +356,40 @@ class BoxTransferReusesTheCapturePathTest(unittest.TestCase):
     def test_transfer_line_waits_so_the_reminder_cannot_erase_it(self) -> None:
         """PrintText redraws the box, so a second line with no wait wipes it."""
         source = STAGE_TEXT.read_text()
-        for name in ("_StageEventRecoverToBoxBillText", "_StageEventRecoverToBoxPCText"):
+        for name in ("_StageEventRecoverToBoxBillText",):
             with self.subTest(name):
                 body = routine(source, name + "::", code=False)
                 head = body[:body.index("prompt")]
                 self.assertNotIn("@", head)  # '@' before a prompt orphans it
+
+    def test_inserted_names_fit_with_the_surrounding_words(self) -> None:
+        source = STAGE_TEXT.read_text()
+        names = ["_StageEventTook%s%sText" % (kind, actor)
+                 for kind in ("Mon", "Item")
+                 for actor in ("JessieJames", "Psychic", "Burglar")]
+        names += ["_StageEventRecoverMonText", "_StageEventRecoverItemText",
+                  "_StageEventRecoverToBoxBillText"]
+        for name in names:
+            with self.subTest(name):
+                width = 0
+                for row in routine(source, name + "::", code=False).splitlines():
+                    if "text_ram wNameBuffer" in row:
+                        width += 10
+                    else:
+                        match = re.match(r'\s*(text|line|cont|para) "([^"]*)"', row)
+                        if not match:
+                            continue
+                        if match[1] != "text":
+                            width = 0
+                        literal = match[2].split('@', 1)[0]
+                        width += len(literal) + literal.count("#") * 6
+                    self.assertLessEqual(width, 17, row)
 
     def test_new_strings_fit_the_box(self) -> None:
         source = STAGE_TEXT.read_text()
         names = ["_StageEventAfter%sText" % n for n in
                  ("JessieJames", "Psychic", "Burglar", "Joy", "Jenny")]
         names += ["_StageEventRecoverToBoxBillText",
-                  "_StageEventRecoverToBoxPCText",
                   "_StageEventRecoverNoRoomText"]
         for name in names:
             with self.subTest(name):
@@ -383,10 +399,11 @@ class BoxTransferReusesTheCapturePathTest(unittest.TestCase):
                            if i != -1)
                 body = body[:stop]
                 for literal in re.findall(r'\b(?:text|line|cont|para) "([^"]*)"', body):
+                    literal=literal.split('@',1)[0] # terminator is not rendered
                     # "#" expands to POKeMON; count it as 7 columns, not 1.
                     width = len(literal) + literal.count("#") * 6
                     # A leading text_ram is a nickname of up to 10 columns.
-                    self.assertLessEqual(width, 18, literal)
+                    self.assertLessEqual(width, 17, literal)
 
 
 if __name__ == "__main__":

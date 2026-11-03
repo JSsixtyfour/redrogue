@@ -11,13 +11,13 @@ _UndergroundPathWestEastBiker1EndBattleText::
 _UndergroundPathWestEastBiker1AfterBattleText::
 	text "Watch your step"
 	line "around here kid,"
-	cont "it's a tough crowd."
-	done
+	cont "it's a tough"
+	cont "crowd."
 	done
 
 _UndergroundPathWestEastJugglerBattleText::
-	text "What are you doing"
-	line "here?"
+	text "What are you"
+	line "doing here?"
 	done
 
 _UndergroundPathWestEastJugglerEndBattleText::
@@ -33,18 +33,21 @@ _UndergroundPathWestEastJugglerAfterBattleText::
 
 _UndergroundPathWestEastBurglarBattleText::
 	text "So, carrying"
-	line "anything valuable?"
+	line "anything"
+	cont "valuable?"
 	done
 
 _UndergroundPathWestEastBurglarEndBattleText::
 	text "What?"
-	line "I was only asking!"
+	line "I was only"
+	cont "asking!"
 	prompt
 
 _UndergroundPathWestEastBurglarAfterBattleText::
 	text "I'm not who you"
-	line "should be worrying"
-	cont "about down here."
+	line "should be"
+	cont "worrying about"
+	cont "down here."
 	done
 
 _UndergroundPathWestEastCueBallBattleText::
@@ -58,7 +61,7 @@ _UndergroundPathWestEastCueBallEndBattleText::
 	prompt
 
 _UndergroundPathWestEastCueBallAfterBattleText::
-	text "Get out of my face"
-	line "kid or you'll"
-	cont "regret it."
+	text "Get out of my"
+	line "face kid or"
+	cont "you'll regret it."
 	done
