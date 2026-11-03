@@ -20,15 +20,26 @@ class KeySwapCheckpointTest(HarnessTestCase):
             h.tap('b',4);h.tick(30)
         self.assertEqual(h.read8('wBattleCount'),29)
         self.assertEqual(h.read8('wYCoord'),6)
-        # Walk to the authored upper door. A floor tile in the warp table
-        # alone does not invoke the door-collision path.
-        for _ in range(8):
-            x=h.read8('wXCoord')
-            if x==6:
-                break
-            h.tap('left' if x>6 else 'right',4)
-            h.tick(24)
-        self.assertEqual(h.read8('wXCoord'),6)
+        # Walk under the room's live north exit. Between gyms the room keeps one
+        # centre exit (RewardRoom_UpdateExitLayout rewrites the authored pair at
+        # load), so read it from the armed warp table rather than a fixed column.
+        # A floor tile in the warp table alone does not invoke the door path.
+        north=[w for w in h.warp_entries() if w[0]==0]
+        self.assertEqual(len(north),1,f'one north exit between gyms: {h.warp_entries()}')
+        door_x=north[0][1]
+        # The middle reward ball stands right under the centre exit, so go up
+        # the free column beside it to row 1, then step across under the door.
+        def step_to(axis,target,less,more):
+            for _ in range(10):
+                v=h.read8(axis)
+                if v==target:
+                    return
+                h.tap(less if v>target else more,4)
+                h.tick(24)
+            self.assertEqual(h.read8(axis),target,f'{axis} stuck at {v}')
+        step_to('wXCoord',door_x+1,'left','right')
+        step_to('wYCoord',1,'up','down')
+        step_to('wXCoord',door_x,'left','right')
         opened=h.hook_flag('LobbyKeySwapOpen.open')
         h.pyboy.button_press('up')
         for _ in range(20):

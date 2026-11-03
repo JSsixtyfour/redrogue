@@ -3137,6 +3137,18 @@ PCRowOffsetTable:
 
 PCWriteCell:
 	push af
+	call PCCellAddr
+	pop af
+	ld [hl], a
+	ret
+
+; ============================================================
+; PCCellAddr
+; OUTPUT: hl = the target buffer address of cell wProcCaveCurX/Y (the address
+; PCReadCell/PCWriteCell use). Clobbers a/bc/de. Lets PCClassifyCell reach the
+; four neighbours as hl -/+ PC_STRIDE and hl -/+ 1 (2026-11-03, review item 4).
+; ============================================================
+PCCellAddr:
 	ld a, [wBuffer + wProcCaveTargetBase]
 	ld l, a
 	ld a, [wBuffer + wProcCaveTargetBase + 1]
@@ -3157,11 +3169,8 @@ PCWriteCell:
 	ld a, [wBuffer + wProcCaveCurX]
 	add a, l
 	ld l, a
-	jr nc, .noCarryX
+	ret nc
 	inc h
-.noCarryX
-	pop af
-	ld [hl], a
 	ret
 
 ; ============================================================
@@ -3295,80 +3304,68 @@ PCIsFloorLike:
 ; transitively) before re-reading it.
 ; ============================================================
 PCClassifyCell:
+	; The neighbours are read straight off the cell's address (PCCellAddr):
+	; north/south are -/+ PC_STRIDE, west/east -/+ 1, exactly the cells the old
+	; per-neighbour PCReadCell calls computed from CurX/CurY (2026-11-03, review
+	; item 4: those calls were half of PCAutotilePass). CurX/CurY are never
+	; changed, so they still end as they began; DX/DY and Flags are still
+	; written as before. e = the flags while reading (PCIsFloorLike uses a/b).
 	ld a, [wBuffer + wProcCaveCurX]
 	ld [wBuffer + wProcCaveDX], a
 	ld a, [wBuffer + wProcCaveCurY]
 	ld [wBuffer + wProcCaveDY], a
-	xor a
-	ld [wBuffer + wProcCaveFlags], a
+	call PCCellAddr                 ; hl = this cell
+	ld e, 0
 
 	; north (y-1)
 	ld a, [wBuffer + wProcCaveDY]
 	and a
 	jr z, .skipNorth
-	dec a
-	ld [wBuffer + wProcCaveCurY], a
-	ld a, [wBuffer + wProcCaveDX]
-	ld [wBuffer + wProcCaveCurX], a
-	call PCReadCell
+	push hl
+	ld bc, -PC_STRIDE
+	add hl, bc
+	ld a, [hl]
+	pop hl
 	call PCIsFloorLike
 	jr nc, .skipNorth
-	ld a, [wBuffer + wProcCaveFlags]
-	or 1
-	ld [wBuffer + wProcCaveFlags], a
+	set 0, e
 .skipNorth
 	; south (y+1)
 	ld a, [wBuffer + wProcCaveDY]
 	cp PC_SIZE - 1
 	jr z, .skipSouth
-	inc a
-	ld [wBuffer + wProcCaveCurY], a
-	ld a, [wBuffer + wProcCaveDX]
-	ld [wBuffer + wProcCaveCurX], a
-	call PCReadCell
+	push hl
+	ld bc, PC_STRIDE
+	add hl, bc
+	ld a, [hl]
+	pop hl
 	call PCIsFloorLike
 	jr nc, .skipSouth
-	ld a, [wBuffer + wProcCaveFlags]
-	or 2
-	ld [wBuffer + wProcCaveFlags], a
+	set 1, e
 .skipSouth
 	; east (x+1)
 	ld a, [wBuffer + wProcCaveDX]
 	cp PC_SIZE - 1
 	jr z, .skipEast
-	inc a
-	ld [wBuffer + wProcCaveCurX], a
-	ld a, [wBuffer + wProcCaveDY]
-	ld [wBuffer + wProcCaveCurY], a
-	call PCReadCell
+	inc hl
+	ld a, [hld]
 	call PCIsFloorLike
 	jr nc, .skipEast
-	ld a, [wBuffer + wProcCaveFlags]
-	or 4
-	ld [wBuffer + wProcCaveFlags], a
+	set 2, e
 .skipEast
 	; west (x-1)
 	ld a, [wBuffer + wProcCaveDX]
 	and a
 	jr z, .skipWest
-	dec a
-	ld [wBuffer + wProcCaveCurX], a
-	ld a, [wBuffer + wProcCaveDY]
-	ld [wBuffer + wProcCaveCurY], a
-	call PCReadCell
+	dec hl
+	ld a, [hli]
 	call PCIsFloorLike
 	jr nc, .skipWest
-	ld a, [wBuffer + wProcCaveFlags]
-	or 8
-	ld [wBuffer + wProcCaveFlags], a
+	set 3, e
 .skipWest
 
-	ld a, [wBuffer + wProcCaveDX]
-	ld [wBuffer + wProcCaveCurX], a
-	ld a, [wBuffer + wProcCaveDY]
-	ld [wBuffer + wProcCaveCurY], a
-
-	ld a, [wBuffer + wProcCaveFlags]
+	ld a, e
+	ld [wBuffer + wProcCaveFlags], a
 	and a
 	jr z, .noFloorNeighbor
 	ld b, a
@@ -4033,33 +4030,32 @@ PCAutotilePass:
 	jr nz, .aYLoop
 
 	; Pass A cleanup: convert this pass's own pending-floor sentinels to
-	; real floor now that Pass A's own sweep is fully finished.
-	xor a
-	ld [wBuffer + wProcCaveLoopY], a
+	; real floor now that Pass A's own sweep is fully finished. A pointer walk
+	; over the same 20x20 cells (row r is base + r * PC_STRIDE, as in
+	; PCRowOffsetTable) with the same single write; it used to call
+	; PCReadCell per cell (2026-11-03, review item 4). Pass B resets the loop
+	; and cell coordinates before it reads them.
 .cleanYLoop
-	xor a
-	ld [wBuffer + wProcCaveLoopX], a
-.cleanXLoop
-	ld a, [wBuffer + wProcCaveLoopX]
-	ld [wBuffer + wProcCaveCurX], a
-	ld a, [wBuffer + wProcCaveLoopY]
-	ld [wBuffer + wProcCaveCurY], a
-	call PCReadCell
+	ld a, [wBuffer + wProcCaveTargetBase]
+	ld l, a
+	ld a, [wBuffer + wProcCaveTargetBase + 1]
+	ld h, a
+	ld de, PC_STRIDE - PC_SIZE
+	ld c, PC_SIZE
+.cleanRow
+	ld b, PC_SIZE
+.cleanCol
+	ld a, [hl]
 	cp PC_BLOCK_PENDING_FLOOR
 	jr nz, .cleanSkip
-	ld a, PC_BLOCK_FLOOR
-	call PCWriteCell
+	ld [hl], PC_BLOCK_FLOOR
 .cleanSkip
-	ld a, [wBuffer + wProcCaveLoopX]
-	inc a
-	ld [wBuffer + wProcCaveLoopX], a
-	cp PC_SIZE
-	jr nz, .cleanXLoop
-	ld a, [wBuffer + wProcCaveLoopY]
-	inc a
-	ld [wBuffer + wProcCaveLoopY], a
-	cp PC_SIZE
-	jr nz, .cleanYLoop
+	inc hl
+	dec b
+	jr nz, .cleanCol
+	add hl, de
+	dec c
+	jr nz, .cleanRow
 
 	; --- Pass B: edge/corner classification, floor layout now fully fixed ---
 	xor a

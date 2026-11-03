@@ -229,8 +229,10 @@ ROMX $20
 	"Song RocketBattle" ; imported song, pinned by tools/music_kit/song_placement.py
 ROMX $21
 	"Text 2"
+	"Form Dex Text A"
 ROMX $22
 	"Text 3"
+	"Form Dex Text B"
 ROMX $23
 	"Text 4"
 ROMX $24

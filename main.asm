@@ -414,6 +414,9 @@ SECTION "Form Dex", ROMX
 
 INCLUDE "custom_functions/form_dex.asm"
 
+; Form Pokedex descriptions (declares its own sections, pinned to $21/$22).
+INCLUDE "data/pokemon/dex_form_text.asm"
+
 
 SECTION "Battle Engine 7", ROMX
 
