@@ -137,7 +137,7 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
      - M. Gene/M. Tome
      - Zero Delay Text
      - and much more
-### Credits For [Pokemon Yume](https://github.com/PokefanMarcel/yumepokered):
+### [Pokemon Yume](https://github.com/PokefanMarcel/yumepokered):
 #### Creator:
 - PokefanMarcel - Developer
    - Bill's PC grid
@@ -150,7 +150,7 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
    - EXP Bar
    - AI Work
    - and much more
-### Credits For [Pokemon Extreme Yellow](https://github.com/RainbowMetalPigeon/ExtremeYellow):
+### [Pokemon Extreme Yellow](https://github.com/RainbowMetalPigeon/ExtremeYellow):
 #### Creator:
 - RainbowMetalPigeon
    - mid-battle evolution
@@ -161,7 +161,7 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
 #### Programmer:  
 - Porygondolier
    - mid-battle evolution
-### Credits For [Kanto Expansion Pak](https://github.com/MementoMartha/kep-hack):
+### [Kanto Expansion Pak](https://github.com/MementoMartha/kep-hack):
 #### Creator:
 - MementoMartha
    - Post GSC Species Data
@@ -169,16 +169,16 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
 #### Sprite Artist
 - Albatross
    - Sprites for Various Regional Forms, Eeveelutions, and other Pokemon
-### Credits For [Red++](https://github.com/JustRegularLuna/rpp-backup):
+### [Red++](https://github.com/JustRegularLuna/rpp-backup):
 #### Creator:
 - JustRegularLuna
    - Johto Species Data
    - Sprites for Various Regional Forms, Eeveelutions, and other Pokemon
-### Credits For [Polished Crystal](https://github.com/rangi42/polishedcrystal):
+### [Polished Crystal](https://github.com/rangi42/polishedcrystal):
 #### Creator:
 - Rangi
    - Multiplication & Division Routine
-### Credits For [pureRGB](https://github.com/Vortyne/pureRGB):
+### [pureRGB](https://github.com/Vortyne/pureRGB):
 #### Creator:
 - Vortyne - Developer
    - HBlank tile copying
@@ -252,6 +252,8 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
 - Patrik Rak: [CMWC random number generator (with optimisations by Einar Saukas and Alan Albrecht)](https://gist.github.com/raxoft/2275716fea577b48f7f0)
 - VimesCarrot [Trainer Movesets](https://github.com/pret/pokered/wiki/Edit-the-trainer-movesets)
 - Pret Tutorials:https://github.com/pret/pokered/wiki/Tutorials
+- Bob Nystrom - [Dungeon Maze Generating Algorithm](https://journal.stuffwithstuff.com/2014/12/21/rooms-and-mazes/)
+- mazelib - [Procedural Maze Algorithms](https://github.com/john-science/mazelib/tree/main?tab=readme-ov-file)
 
 **Tutorials**
 - The pret/pokered wiki tutorial authors.
