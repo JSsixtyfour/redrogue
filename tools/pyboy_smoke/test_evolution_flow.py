@@ -105,6 +105,21 @@ class EvolutionFlowFixture:
 
 
 class EvolutionFlowTest(EvolutionFlowFixture, HarnessTestCase):
+    def test_shiny_evolution_movie_before_and_after_flash(self):
+        h = self.harness
+        colors = []
+        def mark_active(_):
+            h.write8("wPartyMon1CatchRate", h.read8("wPartyMon1CatchRate") | 16)
+            h.write8("wPartyMon2CatchRate", h.read8("wPartyMon2CatchRate") & ~16)
+        h.register_hook("GainExperience", mark_active)
+        h.register_hook("EvolutionSetWholeScreenPalette.ready", lambda _:
+                        colors.append((h.read8("wWholeScreenPaletteMonSpecies"),
+                                       h.pyboy.register_file.C)))
+        self.run_evolution()
+        self.assertEqual(colors, [(SPECIES[name], mode) for name, mode in (
+            ("BULBASAUR", 2), ("BULBASAUR", 1), ("IVYSAUR", 2),
+            ("CHARMANDER", 0), ("CHARMANDER", 1), ("CHARMELEON", 0))])
+
     def run_abra_evolution_move(self, *, bench, already_known=False):
         h = self.harness
         mon = lambda name, level, moves: dict(

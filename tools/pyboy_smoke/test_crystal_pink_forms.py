@@ -211,6 +211,36 @@ class CrystalPinkFormsTest(unittest.TestCase):
         self.assertEqual((transformed[5], transformed[7]), (PALETTES["PAL_GRAYMON"],) * 2)
         self.assertEqual(packet(SPECIAL, displayed=1)[7], packet(0, displayed=1)[7])
 
+    def test_trainer_shiny_ditto_and_redraws(self):
+        h = self.h
+        # Transform changes the active struct species and keeps Ditto's flags.
+        cases = (
+            (0, "DITTO", "DITTO", False, "PAL_GRAYMON"),
+            (16, "DITTO", "DITTO", False, "PAL_MEWMON"),
+            (16, "ONIX", "DITTO", True, "PAL_MEWMON"),
+            (17, "DITTO", "DITTO", False, "PAL_PURPLEMON"),
+            (21, "DITTO", "DITTO", False, "PAL_BLUEMON"),
+        )
+        for flags, active, displayed, transformed, expected in cases:
+            with self.subTest(flags=flags, transformed=transformed):
+                self.restore()
+                h.write8("wBattleMonSpecies", SPECIES["DITTO"])
+                h.write8("wBattleMonCatchRate", 0)
+                h.write8("wPlayerBattleStatus3", 0)
+                h.write8("wEnemyMonSpecies", SPECIES[active])
+                h.write8("wEnemyMonSpecies2", SPECIES[displayed])
+                h.write8("wEnemyMonCatchRate", flags)
+                h.write8("wEnemyMonType2", TYPES["WATER"])
+                h.write8("wEnemyBattleStatus3", 8 if transformed else 0)
+                packet = self.palette_command("SetPal_Battle", "SetPal_Battle.enemyNotTypeVariant")
+                self.assertEqual(packet[5], PALETTES["PAL_GRAYMON"])
+                self.assertEqual(packet[7], PALETTES[expected])
+        h.write8("wEnemyMonSpecies2", 0)  # Trainer portrait with stale flags.
+        stale = self.palette_command("SetPal_Battle", "SetPal_Battle.enemyNotTypeVariant")
+        h.write8("wEnemyMonCatchRate", 0)
+        clean = self.palette_command("SetPal_Battle", "SetPal_Battle.enemyNotTypeVariant")
+        self.assertEqual(stale[7], clean[7])
+
     def test_type_variant_palette_retains_existing_secondary_type_mapping(self):
         h = self.h
         for first, second, expected in (("ICE", "GROUND", "PAL_BLUEMON"),

@@ -3,6 +3,7 @@ from pathlib import Path
 import unittest
 
 from harness import RedRogueHarness
+from source_constants import parse_rgbds_constants
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -88,7 +89,8 @@ class TradeRedrawTest(unittest.TestCase):
             stride=h.address('wPartyMon2CatchRate')-h.address('wPartyMon1CatchRate')
             catch_rate=h.read8('wPartyMon1CatchRate',(h.read8('wPartyCount')-1)*stride)
             self.assertEqual(catch_rate & 0x60,form << 5)
-            self.assertEqual(anim_form,[form],"the animation showed a different form than the party got")
+            self.assertEqual(anim_form, [form | ((catch_rate & 0x10) << 3)],
+                             "movie form and shininess must match the received mon")
             self.assertFalse(h.hook_errors,h.hook_errors)
             if after_trade is not None:
                 after_trade(h)
@@ -100,6 +102,19 @@ class TradeRedrawTest(unittest.TestCase):
 
     def test_sgb_packet_path_trade_restores_background(self):
         self.trade(sgb=True)
+
+    def test_shiny_trade_movie_colors_both_mons(self):
+        colors = []
+        def setup(h):
+            h.write8("wPartyMon1CatchRate", 16)
+            h.register_hook("_AddPartyMon.writeShinyFlag",
+                            lambda _: setattr(h.pyboy.register_file, "A", 16))
+            h.register_hook("SetPal_PokemonWholeScreen.next", lambda _:
+                            colors.append((h.read8("wWholeScreenPaletteMonSpecies"),
+                                           h.pyboy.register_file.A)))
+        self.trade(sgb=True, before_trade=setup)
+        pal = parse_rgbds_constants(ROOT / "constants/palette_constants.asm")
+        self.assertEqual(colors, [(0x54, pal["PAL_BROWNMON"]), (0x24, pal["PAL_REDMON"])])
 
     def test_caterpie_trade_still_has_one_result(self):
         self.trade(given=0x0a)

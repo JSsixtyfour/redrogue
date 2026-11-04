@@ -186,21 +186,17 @@ PCWitchSetup::
     ; In "Witch Zone Effects" ($3A). farcall clobbers a/b/c/hl; none is live
     ; here (d/e are loaded just below).
     farcall WitchPrepChallengeParams ; the X her challenge text quotes
-    ; No dupes: a prize already earned this run must never be offered again.
-    ; EVERY prize is permanent now, so unlike the old 1-6/7-10 split there is no
-    ; always-available fallback and an unbounded loop COULD spin forever once the
-    ; player has earned all ten. Hence the bounded retry: after 16 draws, accept
-    ; whatever came up. Re-granting an already-set bit is a harmless no-op, so
-    ; the degenerate case just means the witch offers something already owned.
-    ; d and e both survive Rangerandom (it pushes bc; Random preserves hl/de/bc).
-    ld e, 16                  ; retry budget
+    ; No dupes: a prize already earned this run is never offered again, so the
+    ; player never takes on a challenge for no new benefit. The loop always ends:
+    ; with all ten earned, .showWitch and the Challenge 11 priority check above
+    ; either hide the witch or take .setLegendaryBoss, whose reward is a mon rather
+    ; than a prize (id 0), so this roll is reached only with one left unearned.
+    ; d survives Rangerandom (it pushes bc; Random preserves hl/de/bc).
 .rollPrize
     ld c, NUM_WITCH_PRIZES
     call Rangerandom          ; a = 0..NUM_WITCH_PRIZES-1
     inc a
     ld d, a                   ; stash the rolled prize id across the helper
-    dec e
-    jr z, .prizeOk            ; budget spent - every prize is probably earned
     call WitchPrizeEarnedMask
     jr nc, .prizeOk           ; unreachable for a valid roll, but fail safe
     and [hl]

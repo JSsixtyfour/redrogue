@@ -829,9 +829,8 @@ TradeCenter_Trade:
 	add hl, bc
 	ld a, [hl]
 	ld [wTradedPlayerMonSpecies], a
+	farcall CaptureLinkTradeColors
 	xor a
-	ld [wTradedPlayerMonForm], a ; link trades animate the base species; clear
-	ld [wTradedEnemyMonForm], a  ; whatever an earlier in-game trade left here
 	ld [wRemoveMonFromBox], a
 	call RemovePokemon
 	ld a, [wTradingWhichEnemyMon]

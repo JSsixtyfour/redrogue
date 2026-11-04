@@ -72,6 +72,17 @@ class FormPalettesTest(unittest.TestCase):
         struct = h.address("wPartyMon1")
         self.assertEqual(self.lookup("GetFormPaletteForStruct", struct >> 8, struct & 0xFF), PAL_CYANMON)
 
+    def test_link_trade_shiny_bits_come_from_selected_slots(self):
+        h = self.harness
+        h.write8("hWhichPokemon", 1)
+        h.write8("wTradingWhichEnemyMon", 2)
+        for player, enemy in ((16, 0), (0, 16)):
+            h.write8("wPartyMon2CatchRate", player)
+            h.write8("wEnemyMon3CatchRate", enemy)
+            h.call_routine("CaptureLinkTradeColors", limit=4000)
+            self.assertEqual(h.read8("wTradedPlayerMonForm"), player << 3)
+            self.assertEqual(h.read8("wTradedEnemyMonForm"), enemy << 3)
+
     def test_hall_of_fame_and_trade_carry_forms(self) -> None:
         h = self.harness
         # Party slot 1 is a form-1 mon (other catch-rate flag bits kept).

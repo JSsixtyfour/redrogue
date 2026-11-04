@@ -84,10 +84,19 @@ GameCorner_Script:
 GameCorner_ScriptPointers:
 	def_script_pointers
 	dw_const GameCornerDefaultScript,      SCRIPT_GAMECORNER_DEFAULT
+	; TalkToTrainer and StartTrainerBattle each advance wCurMapScript, so a win
+	; dispatches index 2. Without these two rows it read code as a pointer and hung.
+	dw_const DisplayEnemyTrainerTextAndStartBattle, SCRIPT_GAMECORNER_START_BATTLE
+	dw_const EndTrainerBattle,             SCRIPT_GAMECORNER_END_BATTLE
 	;dw_const GameCornerRocketBattleScript, SCRIPT_GAMECORNER_ROCKET_BATTLE
 	;dw_const GameCornerRocketExitScript,   SCRIPT_GAMECORNER_ROCKET_EXIT
 
 GameCornerDefaultScript:
+IF DEF(_DEBUG)
+	call DebugPressedOrHeldB
+	ret nz
+ENDC
+	call CheckFightingMapTrainers
 	ret
 
 ;GameCornerRocketBattleScript:

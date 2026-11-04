@@ -58,82 +58,29 @@ SetPal_Battle:
 	inc hl
 	ld a, c
 	ld [hl], a
-	; Shiny (func_shiny.asm) runs FIRST so that a ghost or type variant below
-	; simply overwrites it. Ordering is what gives those two systems priority -
-	; NOT an override test. An earlier version compared wPalPacket+5 against the
-	; original palette still supposedly in b, which is wrong: `farcall` expands
-	; to `ld b, BANK(...)`, so b is destroyed before the callee even runs and
-	; the compare was reading a bank number. Player only - enemies can never be
-	; shiny (see func_shiny.asm).
-	;
-	; Species 0 means slot +5 is the player's TRAINER pic (the battle intro):
-	; InitBattleVariables zeroes wBattleMonSpecies but leaves the rest of
-	; wBattleMon holding the previous battle's last active mon. Its ghost bit,
-	; DVs and type 2 would otherwise tint the trainer purple/shiny/type-colored.
+	; A trainer portrait has no instance flags. The player species is zero
+	; until send-out. Transform changes the struct species but keeps its flags.
 	ld a, [wBattleMonSpecies]
 	and a
-	jr z, .playerNotTypeVariant
-	; Regional form palette replaces the species palette BEFORE shiny, so a
-	; shiny form gets the shiny permutation of its own palette. Not while
-	; transformed: DeterminePaletteID gave Ditto's gray there on purpose.
-	ld a, [wPlayerBattleStatus3]
-	bit TRANSFORMED, a
-	jr nz, .playerNoFormPalette
+	jr z, .enemy
 	ld de, wBattleMon
 	ld hl, wPalPacket + 5
-	call ApplyFormPaletteToSlot
-.playerNoFormPalette
-	ld de, wBattleMon
-	farcall IsShiny
-	jr z, .playerNotShiny
-	ld a, [wPalPacket + 5]
-	call ShinyPaletteConvert
-	ld [wPalPacket + 5], a
-.playerNotShiny
-	; Ghost variant (func_ghost_variant.asm): recolor the player (+5) / enemy (+7)
-	; mon palette slot to purple if that mon is a ghost variant. de-input (farcall
-	; clobbers hl); must run after +5/+7 are written above.
-	ld de, wBattleMon
-	farcall IsGhostVariant
-	jr z, .playerNotGhostVariant
-	ld a, PAL_PURPLEMON
-	ld [wPalPacket + 5], a
-.playerNotGhostVariant
-	; Type variant (func_special_form.asm): blue/gray by stored MON_TYPE2.
-	; Palette comes back in e (a can't survive the farcall).
-	ld de, wBattleMon
-	farcall GetTypeVariantPalette
-	ld a, e
+	ld a, [wPlayerBattleStatus3]
+	call ApplyBattleMonPalette
+.enemy
+	ld a, [wEnemyMonSpecies2]
 	and a
-	jr z, .playerNotTypeVariant
-	ld [wPalPacket + 5], a
-.playerNotTypeVariant
-	; Enemy form palette. Only when wEnemyMon really is the mon in slot +7: in
-	; the trainer intro wEnemyMonSpecies2 is the trainer class while wEnemyMon
-	; still holds the previous battle's last mon.
-	ld a, [wEnemyBattleStatus3]
-	bit TRANSFORMED, a
-	jr nz, .enemyNoFormPalette
-	ld a, [wEnemyMonSpecies]
-	ld hl, wEnemyMonSpecies2
+	jr z, .enemyNotTypeVariant ; trainer portrait
+	ld hl, wEnemyMonSpecies
 	cp [hl]
-	jr nz, .enemyNoFormPalette
+	ld a, [wEnemyBattleStatus3]
+	jr z, .enemyReady
+	bit TRANSFORMED, a
+	jr z, .enemyNotTypeVariant
+.enemyReady
 	ld de, wEnemyMon
 	ld hl, wPalPacket + 7
-	call ApplyFormPaletteToSlot
-.enemyNoFormPalette
-	ld de, wEnemyMon
-	farcall IsGhostVariant
-	jr z, .enemyNotGhostVariant
-	ld a, PAL_PURPLEMON
-	ld [wPalPacket + 7], a
-.enemyNotGhostVariant
-	ld de, wEnemyMon
-	farcall GetTypeVariantPalette
-	ld a, e
-	and a
-	jr z, .enemyNotTypeVariant
-	ld [wPalPacket + 7], a
+	call ApplyBattleMonPalette
 .enemyNotTypeVariant
 	ld hl, wPalPacket
 	ld de, BlkPacket_Battle
@@ -166,40 +113,53 @@ SetPal_StatusScreen:
 	inc hl
 	pop af
 	ld [hl], a
-	; Form palette first, then shiny on top of it (same order as SetPal_Battle).
 	ld de, wLoadedMon
 	ld hl, wPalPacket + 3
-	call ApplyFormPaletteToSlot
-	; Shiny (func_shiny.asm) runs FIRST so ghost/type variant below overwrites
-	; it - same ordering rule and same reason as SetPal_Battle above.
-	ld de, wLoadedMon
-	farcall IsShiny
-	jr z, .notShiny
-	ld a, [wPalPacket + 3]
-	call ShinyPaletteConvert
-	ld [wPalPacket + 3], a
-.notShiny
-	; Ghost variant: purple palette for the status-screen mon (+3) if it's a variant.
-	ld de, wLoadedMon
-	farcall IsGhostVariant
-	jr z, .notGhostVariant
-	ld a, PAL_PURPLEMON
-	ld [wPalPacket + 3], a
-.notGhostVariant
-	; Type variant (func_special_form.asm): blue/gray by stored MON_TYPE2.
-	; Palette comes back in e (a can't survive the farcall).
-	ld de, wLoadedMon
-	farcall GetTypeVariantPalette
-	ld a, e
-	and a
-	jr z, .notTypeVariant
-	ld [wPalPacket + 3], a
+	xor a ; status screen shows the stored form
+	call ApplyBattleMonPalette
 .notTypeVariant
 	ld hl, wPalPacket
 	ld de, BlkPacket_StatusScreen
 	ret
 
 ; ============================================================
+; Apply the same instance colors to both combatants and the status screen.
+; de = mon, hl = palette slot, a = battle status 3 (zero outside battle).
+ApplyBattleMonPalette:
+	bit TRANSFORMED, a
+	jr nz, .variants ; keep DeterminePaletteID's Ditto base
+	push de
+	call ApplyFormPaletteToSlot ; preserves hl
+	pop de
+.variants
+	push hl
+	ld hl, MON_CATCH_RATE
+	add hl, de
+	ld a, [hl]
+	pop hl
+	bit BIT_TYPE_VARIANT, a
+	jr nz, .type
+	bit BIT_GHOST_VARIANT, a
+	jr nz, .ghost
+	bit BIT_SHINY, a
+	ret z
+	push hl
+	ld a, [hl]
+	call ShinyPaletteConvert
+	pop hl
+	jr .store
+.type
+	push hl
+	farcall GetTypeVariantPalette
+	pop hl
+	ld a, e
+	jr .store
+.ghost
+	ld a, PAL_PURPLEMON
+.store
+	ld [hl], a
+	ret
+
 ; ShinyPaletteConvert — map a mon's normal palette to its shiny one.
 ;
 ; Ported from shinpokered's ShinyDVConvert (custom_functions/func_shiny.asm in
@@ -528,14 +488,14 @@ SetPal_PokemonWholeScreen:
 	ld bc, $10
 	call CopyData
 	pop bc
-	ld a, c
-	and a
+	bit 0, c ; 1 = black silhouette, 2 = shiny
 	ld a, PAL_BLACK
 	jr nz, .next
 	ld a, [wWholeScreenPaletteMonSpecies]
 	call DeterminePaletteIDOutOfBattle
 	; Its form's palette, if any (evolution, Hall of Fame). Callers that set
 	; the species also set wWholeScreenPaletteMonForm (0 when unknown).
+	push bc
 	push af
 	ld a, [wWholeScreenPaletteMonSpecies]
 	ld d, a
@@ -545,8 +505,12 @@ SetPal_PokemonWholeScreen:
 	pop af
 	inc e
 	dec e                      ; z = no form palette; a keeps the species one
-	jr z, .next
+	jr z, .checkShiny
 	ld a, e
+.checkShiny
+	pop bc
+	bit 1, c
+	call nz, ShinyPaletteConvert
 .next
 	ld [wPalPacket + 1], a
 	ld hl, wPalPacket

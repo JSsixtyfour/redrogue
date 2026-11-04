@@ -120,19 +120,17 @@ IsShiny::
 ; that mon is a display variant. Shared entry point rather than a shiny-specific
 ; one so a future ghost/type-variant caller can reuse it with a different
 ; animation ID - see ShinRed_Import.md Phase 9.2.
-; INPUT: none (player side only; the enemy send-out has no sparkle hook).
-;        Call with farcall.
-;
-; Deviation from shinpokered: it also tracks wUnusedD366 suppression bits so
-; the sparkle doesn't replay on every one of several redraw paths it hooks.
-; This fork hooks a single call site, SendOutMon, which runs exactly once per
-; switch-in, so there's nothing to suppress and those bits are not ported.
-; ---------------------------------------------------------------------------
+; Each send-out calls its entry once, after the cry. Redraws do not replay it.
 PlayVariantEntranceAnim::
-	ld de, wBattleMon
-	farcall IsShiny
+	ld a, [wBattleMonCatchRate]
+	ld d, 0
+	jr PlayShinyEntrance
+PlayEnemyVariantEntranceAnim::
+	ld a, [wEnemyMonCatchRate]
+	ld d, 1
+PlayShinyEntrance:
+	bit BIT_SHINY, a
 	ret z
-	ld d, $00 ; player side ($01 would be the enemy side)
 	ld e, SHINY_ENTRANCE_ANIM
 	farcall PlaySelectedAnimation
 	ld b, SET_PAL_BATTLE

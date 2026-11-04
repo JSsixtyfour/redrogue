@@ -800,6 +800,8 @@ class AutoplayAgent:
             choice = min(choice, no_thanks)
         elif self.offer_policy == "random":
             choice = self.rng.randrange(no_thanks)
+        elif self.offer_policy == "last":
+            choice = no_thanks - 1  # a ball: a trade NPC, when present, takes slot 0
         else:
             choice = 0
         if self.menu_input == "cursor":

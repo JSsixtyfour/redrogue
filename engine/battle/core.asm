@@ -1767,6 +1767,7 @@ EnemySendOutFirstMon:
 	farcall RogueAnimateEnemySendOut ; the grow-in, or a ghost variant's fade-in
 	ld a, [wEnemyMonSpecies2]
 	call PlayCry
+	farcall PlayEnemyVariantEntranceAnim
 	call DrawEnemyHUDAndHPBar
 	ldh a, [hCurrentMenuItem]
 	and a

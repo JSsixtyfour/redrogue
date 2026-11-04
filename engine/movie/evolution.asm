@@ -115,6 +115,13 @@ Evolution_OldForm:
 	ret
 
 EvolutionSetWholeScreenPalette:
+	bit 0, c
+	jr nz, .ready ; black flash
+	ld a, [wLoadedMon + MON_CATCH_RATE]
+	bit BIT_SHINY, a
+	jr z, .ready
+	ld c, 2
+.ready
 	ld b, SET_PAL_POKEMON_WHOLE_SCREEN
 	jp RunPaletteCommand
 

@@ -211,6 +211,7 @@ LoadTradingGFXAndMonNames:
 	xor a
 	ldh [hAutoBGTransferEnabled], a
 	ld a, [wTradedPlayerMonForm] ; the given mon's form name too (A-MEOWTH),
+	and 3
 	ld [wFormContextForm], a     ; for its info box and "sends" text
 	ld a, [wTradedPlayerMonSpecies]
 	ld [wFormContextSpecies], a
@@ -237,6 +238,7 @@ LoadTradingGFXAndMonNames:
 ; offer's wroguenpctradeform (InGameTrade_PrepareTradeData), so an authored
 ; TradeMons entry can never inherit a reward slot's form.
 	ld a, [wTradedEnemyMonForm]
+	and 3
 	ld [wFormContextForm], a
 	ld a, [wTradedEnemyMonSpecies]
 	ld [wFormContextSpecies], a
@@ -820,9 +822,13 @@ Trade_LoadMonSprite:
 	ld [wCurSpecies], a
 	ld [wWholeScreenPaletteMonSpecies], a
 	ld a, e
+	and 3
 	ld [wWholeScreenPaletteMonForm], a ; the form's palette too
-	ld b, SET_PAL_POKEMON_WHOLE_SCREEN
-	ld c, 0
+	lb bc, SET_PAL_POKEMON_WHOLE_SCREEN, 0
+	bit 7, e
+	jr z, .paletteReady
+	ld c, 2
+.paletteReady
 	call RunPaletteCommand
 	ldh a, [hAutoBGTransferEnabled]
 	xor $1
@@ -963,3 +969,25 @@ Trade_ShowAnimation:
 	xor a
 	ld [wAnimationType], a
 	predef_jump MoveAnimation
+
+; Link trade indices are still live here, before RemovePokemon shifts the party.
+CaptureLinkTradeColors::
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMon1CatchRate
+	call .color
+	ld [wTradedPlayerMonForm], a
+	ld a, [wTradingWhichEnemyMon]
+	ld hl, wEnemyMon1CatchRate
+	call .color
+	ld [wTradedEnemyMonForm], a
+	ret
+.color
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld a, [hl]
+	; Link movies historically show base forms.
+	and 1 << BIT_SHINY
+	rlca
+	rlca
+	rlca
+	ret

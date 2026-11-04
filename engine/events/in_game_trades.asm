@@ -174,19 +174,14 @@ InGameTrade_DoTrade:
 	predef FlagActionPredef
 	ld hl, ConnectCableText
 	call PrintText
+	ld a, [wWhichTrade]
+	push af
 	ldh a, [hWhichPokemon]
 	push af
 	ld a, [wCurEnemyLevel]
 	push af
 	call LoadHpBarAndStatusTilePatterns
-	; wWhichTrade aliases wTradedPlayerMonSpecies. Keep the trade ID while
-	; the animation owns that union, then restore it before form/result checks.
-	ld a, [wWhichTrade]
-	push af
 	call InGameTrade_PrepareTradeData
-	predef InternalClockTradeAnim
-	pop af
-	ld [wWhichTrade], a
 	pop af
 	ld [wCurEnemyLevel], a
 	pop af
@@ -199,25 +194,22 @@ InGameTrade_DoTrade:
 	call RemovePokemon
 	ld a, $80 ; prevent the player from naming the mon
 	ld [wMonDataLocation], a
-; Phase 2R increment 8i: publish the offered mon's form so AddPartyMon folds it
-; into the new mon's own MON_CATCH_RATE. Safe here because the routine that
-; post-processes this mon (InGameTrade_CopyDataToReceivedMon, below) touches only
-; the nickname, OT name and OT ID - never the catch-rate byte.
-;
-; Guarded the same way as the offer's name above: only a TRADE_FOR_RANDOM trade
-; carries a form, from wroguenpctradeform, which every such caller writes with
-; its offer (the legendary trade writes 0). An authored TradeMons entry gets 0,
-; and the 0 also stops one inheriting a stale wSpawnForm.
-;
-; `ld a, 0` not `xor a` - the flags from the `cp` have to reach the jr.
-	ld a, [wWhichTrade]
-	cp TRADE_FOR_RANDOM
-	ld a, 0
-	jr nz, .noTradeForm
-	ld a, [wroguenpctradeform]
-.noTradeForm
+	ld a, [wTradedEnemyMonForm]
 	ld [wSpawnForm], a
 	call AddPartyMon
+	; Animate the actual received mon, including the shiny roll just made.
+	ld hl, wPartyMon1CatchRate
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call InGameTrade_GetReceivedMonPointer
+	ld a, [de]
+	and FORM_MASK | (1 << BIT_SHINY)
+	rlca
+	rlca
+	rlca
+	ld [wTradedEnemyMonForm], a
+	predef InternalClockTradeAnim
+	pop af
+	ld [wWhichTrade], a
 	call InGameTrade_CopyLegendaryMoves
 	call InGameTrade_CopyDataToReceivedMon
 	callfar InGameTrade_CheckForTradeEvo
@@ -316,8 +308,8 @@ InGameTrade_PrepareTradeData:
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
 	ld a, [hl]
-	and FORM_MASK
-	rlca                       ; bits 5-6 -> 0-3
+	and FORM_MASK | (1 << BIT_SHINY)
+	rlca                       ; form in bits 0-1, shiny in bit 7
 	rlca
 	rlca
 	ld [wTradedPlayerMonForm], a
