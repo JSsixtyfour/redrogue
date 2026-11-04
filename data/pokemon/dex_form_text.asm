@@ -17,7 +17,7 @@ _ARattataFormDexEntryText::
 
 _ARaticateFormDexEntryText::
 	text "It commands a"
-	next "group of Rattata."
+	next "group of RATTATA."
 	next "Each group has its"
 
 	page "own territory, and"
@@ -96,7 +96,7 @@ _ADiglettFormDexEntryText::
 
 _WiglettFormDexEntryText::
 	text "It can smell a"
-	next "Veluza over 65"
+	next "VELUZA over 65"
 	next "feet away and will"
 
 	page "hide itself in the"
@@ -262,7 +262,7 @@ _GSlowpokeFormDexEntryText::
 	dex
 
 _GSlowbroFormDexEntryText::
-	text "A Shellder bite"
+	text "A SHELLDER bite"
 	next "set off a reaction"
 	next "with the spices in"
 
@@ -281,7 +281,7 @@ _SandyShocksFormDexEntryText::
 	dex
 
 _GFarfetchdFormDexEntryText::
-	text "The Farfetch'd of"
+	text "The FARFETCH'D of"
 	next "Galar are brave"
 	next "warriors that"
 
@@ -290,7 +290,7 @@ _GFarfetchdFormDexEntryText::
 	dex
 
 _AGrimerFormDexEntryText::
-	text "A Grimer brought"
+	text "A GRIMER brought"
 	next "in to solve a"
 	next "garbage problem"
 
@@ -311,7 +311,7 @@ _AMukFormDexEntryText::
 
 _HVoltorbFormDexEntryText::
 	text "It resembles a"
-	next "# Ball. When"
+	next "# BALL. When"
 	next "excited, it"
 
 	page "discharges its"
@@ -321,7 +321,7 @@ _HVoltorbFormDexEntryText::
 
 _HElectrodeFormDexEntryText::
 	text "Its body tissue is"
-	next "like an Apricorn."
+	next "like an APRICORN."
 	next "When irritated, it"
 
 	page "lets loose current"
@@ -378,13 +378,12 @@ _PTaurosCombatFormDexEntryText::
 	dex
 
 _PTaurosBlazeFormDexEntryText::
-	text "Its horns can get"
-	next "hotter than 1,800"
-	next "F when heated by"
+	text "Heated by fire,"
+	next "its horns can top"
+	next "1,800 F. Those it"
 
-	page "fire. Those gored"
-	next "suffer wounds and"
-	next "burns."
+	page "gores suffer"
+	next "wounds and burns."
 	dex
 
 _PTaurosAquaFormDexEntryText::
@@ -455,13 +454,13 @@ _GArticunoFormDexEntryText::
 	dex
 
 _GZapdosFormDexEntryText::
-	text "Its feathers"
-	next "crackle like"
-	next "zapping"
+	text "Its feathers make"
+	next "a crackling sound"
+	next "like zapping"
 
-	page "electricity."
-	next "That's why it's"
-	next "called Zapdos."
+	page "electricity. That"
+	next "is why it's called"
+	next "ZAPDOS."
 	dex
 
 _GMoltresFormDexEntryText::
@@ -476,7 +475,7 @@ _GMoltresFormDexEntryText::
 _PWooperFormDexEntryText::
 	text "After losing a"
 	next "territorial"
-	next "struggle, Wooper"
+	next "struggle, WOOPER"
 
 	page "took to land and"
 	next "developed a"
@@ -496,8 +495,8 @@ _ClodsireFormDexEntryText::
 _GSlowkingFormDexEntryText::
 	text "Toxins and the"
 	next "shock of evolving"
-	next "made Shellder so"
+	next "made SHELLDER so"
 
 	page "smart that it now"
-	next "controls Slowking."
+	next "controls SLOWKING."
 	dex

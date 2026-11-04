@@ -250,7 +250,7 @@ Seel2Sprite:: ; standing poses only, repeated as the walk frames
 	ASSERT @ - Seel2Sprite == 24 tiles
 
 ; Bank $3E is full after the sheets above; the one-pose sheets follow in $37.
-SECTION "Yellow Legacy Pokemon Sprites 2", ROMX, BANK[$37]
+SECTION "Yellow Legacy Pokemon Sprites 2", ROMX ; unpinned from $37 2026-11-03 (Player Back Pics needed the room)
 PorygonSprite::
 	INCBIN "gfx/sprites/porygon.2bpp"
 	ASSERT @ - PorygonSprite == 24 tiles
@@ -278,3 +278,26 @@ WigglytuffSprite:: ; one pose, repeated for all six frames
 	INCBIN "gfx/sprites/wigglytuff.2bpp"
 	INCBIN "gfx/sprites/wigglytuff.2bpp"
 	ASSERT @ - WigglytuffSprite == 24 tiles
+
+; Full walking sheets added 2026-11-03. Floating (unpinned): reached only
+; through BANK()-carrying pointers (SpriteSheetPointerTable), so any ROMX bank
+; with 1,152 B will do and the pinned sprite banks stay untouched.
+SECTION "Pokemon Sprites 3", ROMX
+DrowzeeSprite::
+	INCBIN "gfx/sprites/drowzee.2bpp"
+	ASSERT @ - DrowzeeSprite == 24 tiles
+GengarSprite::
+	INCBIN "gfx/sprites/gengar.2bpp"
+	ASSERT @ - GengarSprite == 24 tiles
+ButterfreeSprite::
+	INCBIN "gfx/sprites/butterfree.2bpp"
+	ASSERT @ - ButterfreeSprite == 24 tiles
+HitmonleeSprite::
+	INCBIN "gfx/sprites/hitmonlee.2bpp"
+	ASSERT @ - HitmonleeSprite == 24 tiles
+HitmonchanSprite::
+	INCBIN "gfx/sprites/hitmonchan.2bpp"
+	ASSERT @ - HitmonchanSprite == 24 tiles
+DragoniteSprite::
+	INCBIN "gfx/sprites/dragonite.2bpp"
+	ASSERT @ - DragoniteSprite == 24 tiles

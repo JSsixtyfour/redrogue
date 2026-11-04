@@ -123,6 +123,12 @@ DEF FIRST_EXTRA_WALKING_SPRITE EQU const_value
 	const SPRITE_LOBBY_MOVE_TUTOR
 	const SPRITE_LOBBY_RENTAL_OFFICIAL
 	const SPRITE_PORYGON                 ; $73
+	const SPRITE_DROWZEE                 ; $74 full walking sheet (2026-11-03)
+	const SPRITE_GENGAR                  ; $75
+	const SPRITE_BUTTERFREE              ; $76
+	const SPRITE_HITMONLEE               ; $77
+	const SPRITE_HITMONCHAN              ; $78
+	const SPRITE_DRAGONITE               ; $79
 DEF NUM_SPRITES EQU const_value - 1
 
 ; Neutral Pokemon-to-overworld-sprite categories.

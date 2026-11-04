@@ -425,7 +425,9 @@ ROMX $37
 	; (SpriteSheetPointerTable, mon icon tables). "Room Sprites" moved here from
 	; $2D on 2026-09-25 to give the room decor code room to grow.
 	"Room Sprites"
-	"Yellow Legacy Pokemon Sprites 2"
+	; "Yellow Legacy Pokemon Sprites 2" unpinned 2026-11-03: three new player
+	; backs (cue ball, fisherman, hiker) overflowed $37 by 214 B. It is reached
+	; only through BANK()-carrying pointers, so it floats.
 	; Every player back pic, which LoadPlayerBackPic and the Hall of Fame load
 	; with one BANK(RedPicBack). Moved from "Pics 4" ($0C) on 2026-10-24; a
 	; back for each of the 31 appearances would be ~5.1 KB.

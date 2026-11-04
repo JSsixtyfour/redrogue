@@ -92,16 +92,36 @@ FGEncounterCry:
 	call WaitForSoundToFinish
 	jp TextScriptEnd
 
+; Join offer only: special display names (the encounter line and battle keep
+; the normal species names). The Butterfree name is too long for one line.
+; In: hl = table of 3 text pointers (Onix, Snorlax, Butterfree).
+; Out: hl = selected pointer. Clobbers a, bc.
+FGPickSpecialText:
+	ld a, [wOptionalEncounterSpecies]
+	ld c, 0
+	cp ONIX
+	jr z, .pick
+	inc c
+	cp SNORLAX
+	jr z, .pick
+	inc c
+.pick
+	ld b, 0
+	sla c
+	add hl, bc
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	ret
+
 FGEncounterEndText:
 	text_end
 
 FGEncounterOffer:
 	text_asm
 	push bc
-	ld a, [wOptionalEncounterSpecies]
-	ld [wNamedObjectIndex], a
-	call GetMonName
-	ld hl, .join
+	ld hl, FGJoinTexts
+	call FGPickSpecialText
 	call PrintText
 	call YesNoChoice
 .choiceMade
@@ -125,6 +145,25 @@ FGEncounterOffer:
 .done
 	pop bc
 	jp TextScriptEnd
-.join
-	text_far _PCBossJoinText
+
+FGJoinTexts:
+	dw .onix, .snowlax, .pink
+.onix
+	text "The wild"
+	line "CRYSTAL ONIX wants"
+	cont "to join your"
+	cont "party!@"
+	text_end
+.snowlax
+	text "The wild"
+	line "SNOWLAX wants"
+	cont "to join your"
+	cont "party!@"
+	text_end
+.pink
+	text "The wild"
+	line "COMPOUND EYES"
+	cont "BUTTERFREE wants"
+	cont "to join your"
+	cont "party!@"
 	text_end

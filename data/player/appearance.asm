@@ -41,12 +41,12 @@ PlayerAppearanceTable::
 	player_appearance YoungsterSprite,    BugCatcherPic,   BugCatcherPicBack, .bugCatcher
 	player_appearance SuperNerdSprite,    BurglarPic,      RedPicBack,    .burglar
 	player_appearance CooltrainerMSprite, CooltrainerMPic, CooltrainerMPicBack, .coolTrainerM
-	player_appearance HikerSprite,        CueBallPic,      RedPicBack,    .cueBall
+	player_appearance HikerSprite,        CueBallPic,      CueBallPicBack, .cueBall
 	player_appearance SuperNerdSprite,    EngineerPic,     EngineerPicBack, .engineer
-	player_appearance FisherSprite,       FisherPic,       RedPicBack,    .fisherman
+	player_appearance FisherSprite,       FisherPic,       FisherPicBack, .fisherman
 	player_appearance GamblerSprite,      GamblerPic,      GamblerPicBack, .gambler
 	player_appearance GentlemanSprite,    GentlemanPic,    GentlemanPicBack, .gentleman
-	player_appearance HikerSprite,        HikerPic,        RedPicBack,    .hiker
+	player_appearance HikerSprite,        HikerPic,        HikerPicBack,  .hiker
 	player_appearance CooltrainerMSprite, JrTrainerMPic,   JrTrainerMPicBack, .jrTrainerM
 	player_appearance SuperNerdSprite,    JugglerPic,      RedPicBack,    .juggler
 	player_appearance SuperNerdSprite,    PokemaniacPic,   RedPicBack,    .pokemaniac

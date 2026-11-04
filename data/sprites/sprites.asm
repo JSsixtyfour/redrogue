@@ -129,4 +129,10 @@ SpriteSheetPointerTable:
 	overworld_sprite_slice GameboyKidSprite, 0, 4 ; SPRITE_LOBBY_MOVE_TUTOR
 	overworld_sprite_slice LinkReceptionistSprite, 0, 4 ; SPRITE_LOBBY_RENTAL_OFFICIAL
 	overworld_sprite PorygonSprite, 12          ; SPRITE_PORYGON
+	overworld_sprite DrowzeeSprite, 12          ; SPRITE_DROWZEE
+	overworld_sprite GengarSprite, 12           ; SPRITE_GENGAR
+	overworld_sprite ButterfreeSprite, 12       ; SPRITE_BUTTERFREE
+	overworld_sprite HitmonleeSprite, 12        ; SPRITE_HITMONLEE
+	overworld_sprite HitmonchanSprite, 12       ; SPRITE_HITMONCHAN
+	overworld_sprite DragoniteSprite, 12        ; SPRITE_DRAGONITE
 	assert_table_length NUM_SPRITES

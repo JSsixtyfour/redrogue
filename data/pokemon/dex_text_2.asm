@@ -981,13 +981,13 @@ _KleavorDexEntry::
 	dex
 
 _MrRimeDexEntry::
-	text "It's highly skilled"
-	next "at tap-dancing. It"
+	text "Highly skilled at"
+	next "tap-dancing, it"
 	next "waves its cane of"
 
 	page "ice in time with"
 	next "its graceful"
-	next "movements"
+	next "movements."
 	dex
 
 _ElectivireDexEntry::

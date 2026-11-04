@@ -870,6 +870,12 @@ PCGetDedicatedPokemonSprite::
 	db PORYGON, SPRITE_PORYGON
 	db PORYGON2, SPRITE_PORYGON
 	db PORYGON_Z, SPRITE_PORYGON
+	db DROWZEE, SPRITE_DROWZEE   ; 2026-11-03 own walking sheets (were category fallbacks)
+	db GENGAR, SPRITE_GENGAR
+	db BUTTERFREE, SPRITE_BUTTERFREE
+	db HITMONLEE, SPRITE_HITMONLEE
+	db HITMONCHAN, SPRITE_HITMONCHAN
+	db DRAGONITE, SPRITE_DRAGONITE
 .speciesSpritesEnd
 
 ; Forms that share an overworld sheet: db species, form index, SPRITE_*.
@@ -3142,6 +3148,14 @@ PCWriteCell:
 	ld [hl], a
 	ret
 
+; OUTPUT: hl = the target buffer's cell (0, 0) (row offset 0). Clobbers a.
+PCTargetBase:
+	ld a, [wBuffer + wProcCaveTargetBase]
+	ld l, a
+	ld a, [wBuffer + wProcCaveTargetBase + 1]
+	ld h, a
+	ret
+
 ; ============================================================
 ; PCCellAddr
 ; OUTPUT: hl = the target buffer address of cell wProcCaveCurX/Y (the address
@@ -3310,11 +3324,22 @@ PCClassifyCell:
 	; item 4: those calls were half of PCAutotilePass). CurX/CurY are never
 	; changed, so they still end as they began; DX/DY and Flags are still
 	; written as before. e = the flags while reading (PCIsFloorLike uses a/b).
+	call PCCellAddr                 ; hl = this cell (reads CurX/CurY only)
+; PCClassifyCell.at: the same with hl = this cell already (the Pass A/B sweeps
+; carry it; 2026-11-03, review item 4b).
+.at
 	ld a, [wBuffer + wProcCaveCurX]
 	ld [wBuffer + wProcCaveDX], a
 	ld a, [wBuffer + wProcCaveCurY]
 	ld [wBuffer + wProcCaveDY], a
-	call PCCellAddr                 ; hl = this cell
+	; d = nonzero when PCIsFloorLike's optional cases (water, rocks) are live.
+	; Read, never assumed: wProcCaveIncludeRocks shares its byte with the item
+	; spacing-retry budget. Neither flag changes inside this routine.
+	ld a, [wBuffer + wProcCaveIncludeWater]
+	ld d, a
+	ld a, [wBuffer + wProcCaveIncludeRocks]
+	or d
+	ld d, a
 	ld e, 0
 
 	; north (y-1)
@@ -3326,7 +3351,7 @@ PCClassifyCell:
 	add hl, bc
 	ld a, [hl]
 	pop hl
-	call PCIsFloorLike
+	call .floorLike
 	jr nc, .skipNorth
 	set 0, e
 .skipNorth
@@ -3339,7 +3364,7 @@ PCClassifyCell:
 	add hl, bc
 	ld a, [hl]
 	pop hl
-	call PCIsFloorLike
+	call .floorLike
 	jr nc, .skipSouth
 	set 1, e
 .skipSouth
@@ -3349,7 +3374,7 @@ PCClassifyCell:
 	jr z, .skipEast
 	inc hl
 	ld a, [hld]
-	call PCIsFloorLike
+	call .floorLike
 	jr nc, .skipEast
 	set 2, e
 .skipEast
@@ -3359,7 +3384,7 @@ PCClassifyCell:
 	jr z, .skipWest
 	dec hl
 	ld a, [hli]
-	call PCIsFloorLike
+	call .floorLike
 	jr nc, .skipWest
 	set 3, e
 .skipWest
@@ -3485,6 +3510,25 @@ PCClassifyCell:
 	ret
 .noFloorNeighbor
 	and a
+	ret
+
+; PCIsFloorLike for the classify above, with the flag reads hoisted into d:
+; floor and entrance are floor-like always; with both optional flags off
+; nothing else is, so only then is the full routine skipped. In: a = block.
+; Out: carry = floor-like. Clobbers b. Keeps de/hl.
+.floorLike
+	cp PC_BLOCK_FLOOR
+	jr z, .floorLikeYes
+	cp PC_BLOCK_ENTRANCE
+	jr z, .floorLikeYes
+	ld b, a
+	ld a, d
+	and a                           ; carry clear
+	ld a, b
+	ret z
+	jp PCIsFloorLike
+.floorLikeYes
+	scf
 	ret
 
 ; ============================================================
@@ -3998,8 +4042,14 @@ PCAutotilePass:
 	call PCPassCReset
 
 	; --- Pass A: peninsula resolution only ---
+	; The current cell's address rides on the stack (top) across the body and
+	; steps +1 per cell, +(PC_STRIDE - PC_SIZE) per row: the address
+	; PCReadCell/PCWriteCell would compute from CurX/CurY, which are still kept
+	; in step for the routines the body calls (2026-11-03, review item 4b).
 	xor a
 	ld [wBuffer + wProcCaveLoopY], a
+	call PCTargetBase               ; hl = cell (0, 0)
+	push hl
 .aYLoop
 	xor a
 	ld [wBuffer + wProcCaveLoopX], a
@@ -4009,25 +4059,37 @@ PCAutotilePass:
 	ld a, [wBuffer + wProcCaveLoopY]
 	ld [wBuffer + wProcCaveCurY], a
 
-	call PCReadCell
+	pop hl
+	push hl
+	ld a, [hl]
 	call PCIsConvertible
 	jr nc, .aSkipCell
-	call PCClassifyCell
+	call PCClassifyCell.at          ; hl = this cell
 	jr nc, .aSkipCell
 	cp PC_BLOCK_PENDING_FLOOR
 	jr nz, .aSkipCell           ; an edge/corner result - leave it for Pass B
-	call PCWriteCell
+	pop hl
+	push hl
+	ld [hl], a                  ; PCWriteCell's store, same address
 .aSkipCell
+	pop hl
+	inc hl
+	push hl
 	ld a, [wBuffer + wProcCaveLoopX]
 	inc a
 	ld [wBuffer + wProcCaveLoopX], a
 	cp PC_SIZE
 	jr nz, .aXLoop
+	pop hl
+	ld de, PC_STRIDE - PC_SIZE
+	add hl, de
+	push hl
 	ld a, [wBuffer + wProcCaveLoopY]
 	inc a
 	ld [wBuffer + wProcCaveLoopY], a
 	cp PC_SIZE
 	jr nz, .aYLoop
+	pop hl
 
 	; Pass A cleanup: convert this pass's own pending-floor sentinels to
 	; real floor now that Pass A's own sweep is fully finished. A pointer walk
@@ -4058,8 +4120,14 @@ PCAutotilePass:
 	jr nz, .cleanRow
 
 	; --- Pass B: edge/corner classification, floor layout now fully fixed ---
+	; Same stacked cell pointer as Pass A for the read and the classify. The
+	; rare writes below (escalation, corners) still go through PCWriteCell on
+	; CurX/CurY, so PCRecheckNeighbors' mid-sweep rewrites are untouched; the
+	; pointer only ever addresses the current cell, which does not move.
 	xor a
 	ld [wBuffer + wProcCaveLoopY], a
+	call PCTargetBase               ; hl = cell (0, 0)
+	push hl
 .yLoop
 	xor a
 	ld [wBuffer + wProcCaveLoopX], a
@@ -4069,10 +4137,12 @@ PCAutotilePass:
 	ld a, [wBuffer + wProcCaveLoopY]
 	ld [wBuffer + wProcCaveCurY], a
 
-	call PCReadCell
+	pop hl
+	push hl
+	ld a, [hl]
 	call PCIsConvertible
 	jr nc, .skipCell
-	call PCClassifyCell
+	call PCClassifyCell.at          ; hl = this cell
 	jr nc, .skipCell
 
 	; CORRECTED 2026-06-26: this WAS commented "no cascade risk: this is
@@ -4132,6 +4202,9 @@ PCAutotilePass:
 .haveValue
 	call PCWriteCell
 .skipCell
+	pop hl
+	inc hl
+	push hl
 
 	ld a, [wBuffer + wProcCaveLoopX]
 	inc a
@@ -4139,11 +4212,16 @@ PCAutotilePass:
 	cp PC_SIZE
 	jr nz, .xLoop
 
+	pop hl
+	ld de, PC_STRIDE - PC_SIZE
+	add hl, de
+	push hl
 	ld a, [wBuffer + wProcCaveLoopY]
 	inc a
 	ld [wBuffer + wProcCaveLoopY], a
 	cp PC_SIZE
 	jr nz, .yLoop
+	pop hl
 
 	; --- Pass C: cosmetic edges around rocks ---
 	; Rocks (PCRockTable) only exist after Pass B places them, so this has
