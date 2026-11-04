@@ -254,6 +254,14 @@ GetFormPalette::
 	ld a, e
 	and a
 	ret z                        ; form 0: e = 0, keep the species palette
+	; Bit 7: e already names a palette. The special collection's whole-screen page
+	; (SpecialShowPage) has no struct for GetFormPaletteForStruct to read.
+	bit 7, a
+	jr z, .indexed
+	and $7f
+	ld e, a
+	ret
+.indexed
 	ld c, a
 	ld b, d
 	ld hl, FormOverrides

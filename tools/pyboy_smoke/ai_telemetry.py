@@ -53,6 +53,77 @@ FLAG_RULES = {
 # so autoplay.py passes 1 when a blackout happened during the battle.
 RESULT_PLAYER_WON = 0
 
+# Setup moves spend a turn to be better on a later one: the effects AIIsInvestmentMove
+# (ai_threat.asm) treats as investments. What became of each one (classify_setup):
+#   used      the mon went on to run a non-setup move
+#   wasted    it ran, then the mon fainted without acting again (a later boost is not acting)
+#   preempted it was selected, but the mon fainted before it ran
+#   left      the mon switched out still holding it
+#   survived  the battle ended with the mon alive and holding it
+SETUP_OUTCOMES = ("used", "wasted", "preempted", "left", "survived")
+_SETUP_EFFECT_NAMES = (
+    *(f"{stat}_UP{n}_EFFECT" for stat in ("ATTACK", "DEFENSE", "SPEED", "SPECIAL", "ACCURACY", "EVASION")
+      for n in (1, 2)),
+    "FOCUS_ENERGY_EFFECT", "LIGHT_SCREEN_EFFECT", "REFLECT_EFFECT", "SUBSTITUTE_EFFECT",
+)
+
+
+def parse_setup_moves(path: Path) -> dict[int, str]:
+    """{move id: name} of the setup moves in data/moves/moves.asm. Row order is the id
+    order (parse_move_powers); names come from the row, so constant aliases cannot win."""
+    moves: dict[int, str] = {}
+    move_id = 0
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.split(";", 1)[0].strip()
+        if not line.startswith("move "):
+            continue
+        move_id += 1
+        fields = [field.strip() for field in line[len("move "):].split(",")]
+        if fields[1] in _SETUP_EFFECT_NAMES:
+            moves[move_id] = fields[0]
+    return moves
+
+
+def classify_setup(events: list[dict[str, object]], setup_moves: dict[int, str]) -> list[dict[str, object]]:
+    """One entry per setup move from one battle's chronological event log, kinds:
+    select (the AI chose it), act (it ran), faint and switch (the active mon's stint ended).
+    Pure. Moves that never ran and were not preempted (a chosen boost replaced by a switch,
+    or still pending at the end of the battle) are not counted: nothing was spent on them."""
+    entries: list[dict[str, object]] = []
+    held: list[dict[str, object]] = []  # boosts this stint has run and not yet followed up
+    pending: dict[str, object] | None = None  # the selection not yet run
+
+    def entry(event: dict[str, object], outcome: str | None) -> dict[str, object]:
+        return {"move": event["move"], "name": setup_moves[event["move"]], "outcome": outcome,
+                "hp_pct": event["hp_pct"], "faster": event["faster"], "reserves": event["reserves"]}
+
+    def close(outcome: str) -> None:
+        for item in held:
+            item["outcome"] = outcome
+        held.clear()
+
+    for event in events:
+        kind = event["kind"]
+        if kind == "select":
+            pending = event if event["move"] in setup_moves else None
+        elif kind == "act":
+            pending = None
+            if event["move"] in setup_moves:
+                held.append(entry(event, None))
+                entries.append(held[-1])
+            else:
+                close("used")
+        elif kind == "faint":
+            close("wasted")
+            if pending is not None:
+                entries.append(entry(pending, "preempted"))
+            pending = None
+        elif kind == "switch":
+            close("left")
+            pending = None
+    close("survived")
+    return entries
+
 
 def _p95(values: list[int]) -> int | None:
     ordered = sorted(values)
@@ -121,6 +192,8 @@ def battle_record(
     player_hp: tuple[int, int, int] | None = None,
     player_fainted: int | None = None,
     plan_turns: list[dict[str, object]] | None = None,
+    setup_events: list[dict[str, object]] | None = None,
+    setup_moves: dict[int, str] | None = None,
 ) -> dict[str, object]:
     """One battle's AI record from that battle's slices of the harness lists."""
     first = first_decision_records(decisions)
@@ -182,6 +255,7 @@ def battle_record(
         "redundant_picks": chosen_freely["selected_redundant_penalty_decisions"],
         "forced_picks": sum(bool(s.get("forced")) for s in chosen),
         "personality_flips": flips,
+        "setup": classify_setup(setup_events or [], setup_moves or {}),
         "max_status_streak": streak_status,
         "max_streak": streak_any,
         "decision_cycles": {
@@ -242,6 +316,23 @@ def _group(records: list[dict[str, object]]) -> dict[str, object]:
         "mean_player_fainted": _mean([r.get("player_fainted") for r in records]),
         "player_switch_rate": _rate(sum(r.get("player_switches", 0) for r in records),
                                     sum(r.get("planned_turns", 0) for r in records)),
+        "setup": _setup_group([item for r in records for item in r.get("setup", [])]),
+    }
+
+
+def _setup_group(items: list[dict[str, object]]) -> dict[str, object]:
+    """ran = boosts that actually ran. wasted_rate is wasted / ran; preempted boosts never
+    ran, so they stay out of it. wasted_slower: the mon was not faster when it boosted, the
+    case AI_BACKLOG B12 is about."""
+    counts = Counter(str(item["outcome"]) for item in items)
+    ran = len(items) - counts["preempted"]
+    wasted = [item for item in items if item["outcome"] == "wasted"]
+    return {
+        "ran": ran,
+        **{outcome: counts[outcome] for outcome in SETUP_OUTCOMES},
+        "wasted_rate": _rate(len(wasted), ran),
+        "wasted_slower": sum(not item["faster"] for item in wasted),
+        "wasted_last_mon": sum(item["reserves"] == 0 for item in wasted),
     }
 
 
@@ -266,6 +357,10 @@ def summarize(records: list[dict[str, object]], flagged_cap: int = 50) -> dict[s
     cycles = [c for r in records for c in r["decision_cycles"]["all"]]
     move_cycles = [c for r in records for c in r["move_path_cycles"]]
     flag_counts = Counter(flag for r in records for flag in r["flags"])
+    setup_by_move: dict[str, list] = {}
+    for record in records:
+        for item in record.get("setup", []):
+            setup_by_move.setdefault(str(item["name"]), []).append(item)
     flagged = sorted(
         (r for r in records if r["flags"]),
         key=lambda r: (-len(r["flags"]), r.get("seed", 0), r.get("battle_index", 0)),
@@ -276,6 +371,10 @@ def summarize(records: list[dict[str, object]], flagged_cap: int = 50) -> dict[s
         "turns": sum(r["turns"] for r in records),
         "by_tier": {key: _group(group) for key, group in sorted(by_tier.items())},
         "by_class": {key: _group(group) for key, group in sorted(by_class.items())},
+        "setup_by_move": {
+            name: _setup_group(items)
+            for name, items in sorted(setup_by_move.items(), key=lambda pair: (-len(pair[1]), pair[0]))
+        },
         "by_personality": {
             key: {
                 name: value
@@ -320,10 +419,18 @@ class BattleAITelemetry:
         self.personality = harness.hook_ai_personality_timing()
         self.trainer_ai = harness.hook_trainer_ai_calls()
         self.switches = harness.hook_flag("SwitchEnemyMon")
+        self.setup_moves = parse_setup_moves(root / "data/moves/moves.asm")
+        self.setup_events: list[dict[str, object]] = []
         self.selections: list[dict[str, object]] = []
         self.turn_count = {"value": 0}
         harness.register_hook("SelectEnemyMove.done", self._guarded(self._selected))
         harness.register_hook("MainInBattleLoop", self._guarded(self._turn))
+        # EnemyCanExecuteMove is past the sleep/paralysis/flinch checks, so the move really
+        # runs (Metronome and Mirror Move come through twice, then as the move they call).
+        # FaintEnemyPokemon is every enemy faint, a player's KO and the enemy's own recoil.
+        harness.register_hook("EnemyCanExecuteMove", self._guarded(self._acted))
+        harness.register_hook("FaintEnemyPokemon", self._guarded(self._fainted))
+        harness.register_hook("SwitchEnemyMon", self._guarded(self._switched))
         self.plan_turns: list[dict[str, object]] = []
         try:  # a ROM from before the turn plan has no such labels
             harness.register_hook("AIPlanEnemyTurn", self._guarded(self._plan))
@@ -357,16 +464,11 @@ class BattleAITelemetry:
         turn["planned"] = bool(self.h.read8("wAITurnPlan") & 1 << 5)  # AI_TURN_PLANNED_BIT
         turn["switched"] = self.h.read8("wPlayerMonNumber") != turn["mon"]
 
-    def _selected(self, _context) -> None:
+    def _word(self, label: str) -> int:
+        return self.h.read8(label) << 8 | self.h.read8(label, offset=1)
+
+    def _enemy_reserves(self) -> int:
         h = self.h
-        move = h.pyboy.register_file.A
-        if move == NO_SELECTION:
-            return
-        moves = h.read_bytes("wEnemyMonMoves", 4)
-        pp = h.read_bytes("wEnemyMonPP", 4)
-        disabled_slot = h.read8("wEnemyDisabledMove") >> 4  # 1-4, 0 = none
-        usable = sum(bool(m) and (p & 0x3F) > 0 and slot + 1 != disabled_slot
-                     for slot, (m, p) in enumerate(zip(moves, pp)))
         position = h.read8("wEnemyMonPartyPos")
         base = h.address("wEnemyMons")
         reserves = 0
@@ -375,6 +477,43 @@ class BattleAITelemetry:
                 continue
             offset = base + index * PARTYMON_STRUCT_LENGTH + 1  # MON_HP, big-endian
             reserves += bool(h.pyboy.memory[offset] | h.pyboy.memory[offset + 1])
+        return reserves
+
+    def _setup_event(self, kind: str, move: int) -> None:
+        """A setup move's context is only worth its reads on a setup move; any other
+        select or act just needs its place in the log."""
+        event: dict[str, object] = {"kind": kind, "move": move}
+        if move in self.setup_moves:
+            max_hp = self._word("wEnemyMonMaxHP")
+            event.update(
+                hp_pct=round(100 * self._word("wEnemyMonHP") / max_hp) if max_hp else 0,
+                faster=self._word("wEnemyMonSpeed") > self._word("wBattleMonSpeed"),
+                reserves=self._enemy_reserves(),
+            )
+        self.setup_events.append(event)
+
+    def _acted(self, _context) -> None:
+        self._setup_event("act", self.h.read8("wEnemyMoveNum"))
+
+    def _fainted(self, _context) -> None:
+        self.setup_events.append({"kind": "faint"})
+
+    def _switched(self, _context) -> None:
+        self.setup_events.append({"kind": "switch"})
+
+    def _selected(self, _context) -> None:
+        h = self.h
+        move = h.pyboy.register_file.A
+        if move == NO_SELECTION:
+            return
+        self._setup_event("select", move)
+        moves = h.read_bytes("wEnemyMonMoves", 4)
+        pp = h.read_bytes("wEnemyMonPP", 4)
+        disabled_slot = h.read8("wEnemyDisabledMove") >> 4  # 1-4, 0 = none
+        usable = sum(bool(m) and (p & 0x3F) > 0 and slot + 1 != disabled_slot
+                     for slot, (m, p) in enumerate(zip(moves, pp)))
+        position = h.read8("wEnemyMonPartyPos")
+        reserves = self._enemy_reserves()
         personality = h.read8("wAIRandomPersonality")
         self.selections.append(
             {
@@ -417,6 +556,7 @@ class BattleAITelemetry:
                 "trainer_ai": len(self.trainer_ai),
                 "selections": len(self.selections),
                 "plan_turns": len(self.plan_turns),
+                "setup_events": len(self.setup_events),
                 "switches": self.switches["count"],
                 "turns": self.turn_count["value"],
                 "party": self._party_hp(),
@@ -452,6 +592,8 @@ class BattleAITelemetry:
                 move_powers=self.move_powers,
                 struggle=self.struggle,
                 plan_turns=self.plan_turns[start["plan_turns"]:],
+                setup_events=self.setup_events[start["setup_events"]:],
+                setup_moves=self.setup_moves,
                 **self._pressure(start["party"], result),
             )
         except Exception as error:

@@ -82,7 +82,11 @@
 ; varying amounts and everything after moves down 1. Meanings unchanged;
 ; migration dexFormsAdded copies by label, recovers exact forms from held
 ; party/box/daycare mons, and clears the loss-recovery record.
-DEF SAVE_SCHEMA_ID EQU 18
+; Schema 19 (2026-11-04, PC Records): wFurthestRunsFirst/Last and
+; wSpecialCollected take three saved pads. Nothing moves. Migration recordsAdded
+; zero-fills them, credits held special forms, and clears the loss-recovery
+; record. Also absorbs NUM_SPRITES $73 -> $79 (six sprites appended, no id moved).
+DEF SAVE_SCHEMA_ID EQU 19
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; Transient invalid magic while a writer owns the save. Completed headers and

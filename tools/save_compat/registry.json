@@ -139,6 +139,12 @@
    "to": "18",
    "steps": ["dexFormsAdded"],
    "verified": "2026-11-03 (Claude): Pokedex forms Checkpoint B. wPokedexFormOwned/Seen (7 B each) inserted after wPokedexSeen, five dead vanilla pads (15 B) removed later in the main block; bank-1 data after the main block moves down 1. Held forms credited; base flags unchanged (overcredit documented); loss record cleared. Real-save gate passed: six saves (lobby, route, cave, forest, cemetery, facility) made on the schema-17 build df21cf8d convert and pass saves.py continue on the schema-18 build (HEAD d77a159b); the unconverted control is refused. Evidence: redrogue-dexforms/builds/dexforms_gate/. BGB/hardware acceptance pending."
+  },
+  {
+   "from": "18",
+   "to": "19",
+   "steps": ["recordsAdded"],
+   "verified": "2026-11-04 (Claude): PC Records. Three saved pads carved (wFurthestRunsFirst/Last, wSpecialCollected), nothing moves; table empty, held specials credited, loss record cleared. Real-save gate passed: six saves (lobby, route, cave, forest, cemetery, facility) made on the schema-18 build 621bb0cc convert and pass saves.py continue on the schema-19 build; the unconverted control is refused. A fixture with real specials and noise in the old pads credits exactly the five held specials, not a stale box copy or a tutor gift, with 78 Dex flag bytes exact on two boots. Evidence: redrogue-dexforms/builds/dexforms_gate/ (old19, records). BGB/hardware acceptance pending."
   }
  ]
 }

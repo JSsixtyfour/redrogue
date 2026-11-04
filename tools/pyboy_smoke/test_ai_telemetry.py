@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import unittest
 
-from ai_telemetry import STATUS_SPAM_STREAK, battle_record, summarize
+from ai_telemetry import STATUS_SPAM_STREAK, battle_record, classify_setup, parse_setup_moves, summarize
 from run_ai_benchmark import FRAME_CYCLES, parse_move_powers
 from source_constants import parse_rgbds_constants
 
@@ -39,6 +39,94 @@ def record(selections, **overrides):
         turns=len(selections), move_powers=POWERS, struggle=STRUGGLE)
     arguments.update(overrides)
     return battle_record(**arguments)
+
+
+SD, AGILITY = 14, 97
+SETUP = {SD: "SWORDS_DANCE", AGILITY: "AGILITY"}
+
+
+def select(move, *, hp=100, faster=False, reserves=1):
+    return {"kind": "select", "move": move, "hp_pct": hp, "faster": faster, "reserves": reserves}
+
+
+def act(move, *, hp=100, faster=False, reserves=1):
+    return {"kind": "act", "move": move, "hp_pct": hp, "faster": faster, "reserves": reserves}
+
+
+FAINT, SWITCH = {"kind": "faint"}, {"kind": "switch"}
+
+
+class ClassifySetupTest(unittest.TestCase):
+    def outcomes(self, *events):
+        return [item["outcome"] for item in classify_setup(list(events), SETUP)]
+
+    def test_table_ids_and_names_come_from_the_move_table(self) -> None:
+        moves = parse_setup_moves(REPO_ROOT / "data/moves/moves.asm")
+        constants = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
+        self.assertEqual(moves[constants["SWORDS_DANCE"]], "SWORDS_DANCE")
+        self.assertEqual(moves[SD], "SWORDS_DANCE")
+        self.assertEqual(moves[AGILITY], "AGILITY")
+        for name in ("SUBSTITUTE", "REFLECT", "LIGHT_SCREEN", "FOCUS_ENERGY", "AMNESIA", "DOUBLE_TEAM"):
+            self.assertIn(constants[name], moves)
+        self.assertNotIn(constants["GROWL"], moves)  # lowers THEIR stat: not an investment
+        self.assertNotIn(constants["RECOVER"], moves)
+        self.assertEqual(len(moves), 17)
+
+    def test_boost_then_an_attack_is_used(self) -> None:
+        self.assertEqual(self.outcomes(select(SD), act(SD), select(TACKLE), act(TACKLE), FAINT), ["used"])
+
+    def test_boost_then_faint_is_wasted(self) -> None:
+        self.assertEqual(self.outcomes(select(SD), act(SD), select(TACKLE), FAINT), ["wasted"])
+
+    def test_a_later_boost_is_not_acting_again(self) -> None:
+        self.assertEqual(self.outcomes(act(SD), act(SD), FAINT), ["wasted", "wasted"])
+        self.assertEqual(self.outcomes(act(SD), act(AGILITY), act(TACKLE)), ["used", "used"])
+
+    def test_selected_but_died_first_is_preempted_and_never_ran(self) -> None:
+        self.assertEqual(self.outcomes(select(SD), FAINT), ["preempted"])
+
+    def test_preempted_and_wasted_can_share_a_faint(self) -> None:
+        self.assertEqual(self.outcomes(select(SD), act(SD), select(SD), FAINT), ["wasted", "preempted"])
+
+    def test_a_selected_boost_replaced_by_a_switch_is_not_counted(self) -> None:
+        self.assertEqual(self.outcomes(select(SD), SWITCH), [])
+
+    def test_switching_out_holding_a_boost_is_left(self) -> None:
+        self.assertEqual(self.outcomes(act(SD), SWITCH, act(TACKLE)), ["left"])
+
+    def test_a_stint_does_not_leak_into_the_next_mon(self) -> None:
+        self.assertEqual(self.outcomes(act(SD), FAINT, select(TACKLE), act(TACKLE), FAINT), ["wasted"])
+        self.assertEqual(self.outcomes(select(SD), FAINT, select(TACKLE), FAINT), ["preempted"])
+
+    def test_battle_ending_with_the_boost_held_is_survived(self) -> None:
+        self.assertEqual(self.outcomes(act(SD)), ["survived"])
+
+    def test_non_setup_moves_alone_produce_nothing(self) -> None:
+        self.assertEqual(self.outcomes(select(TACKLE), act(TACKLE), FAINT), [])
+
+    def test_entries_carry_the_board_they_boosted_on(self) -> None:
+        item = classify_setup([act(SD, hp=40, faster=True, reserves=0), FAINT], SETUP)[0]
+        self.assertEqual((item["name"], item["hp_pct"], item["faster"], item["reserves"]),
+                         ("SWORDS_DANCE", 40, True, 0))
+
+    def test_groups_rate_only_boosts_that_ran(self) -> None:
+        events = [act(SD, faster=True), FAINT, act(AGILITY, reserves=0), FAINT, select(SD), FAINT,
+                  act(SD), act(TACKLE)]
+        rec = record([], setup_events=events, setup_moves=SETUP)
+        rec["tier"] = 3
+        summary = summarize([rec])
+        setup = summary["by_tier"]["3"]["setup"]
+        self.assertEqual((setup["ran"], setup["wasted"], setup["preempted"], setup["used"]), (3, 2, 1, 1))
+        self.assertEqual(setup["wasted_rate"], round(2 / 3, 4))
+        self.assertEqual((setup["wasted_slower"], setup["wasted_last_mon"]), (1, 1))
+        self.assertEqual(summary["setup_by_move"]["AGILITY"]["wasted"], 1)
+        self.assertEqual(summary["setup_by_move"]["SWORDS_DANCE"]["preempted"], 1)
+
+    def test_no_setup_has_no_rate(self) -> None:
+        rec = record([])
+        self.assertEqual(rec["setup"], [])
+        rec["tier"] = 3
+        self.assertIsNone(summarize([rec])["by_tier"]["3"]["setup"]["wasted_rate"])
 
 
 class BattleRecordTest(unittest.TestCase):

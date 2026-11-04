@@ -12,6 +12,7 @@ import unittest
 
 from harness import RedRogueHarness
 from source_constants import parse_map_constants
+from test_eevee_form_gate import CHAR_TO_BYTE
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -97,7 +98,40 @@ class RoomPCHallOfFameTest(unittest.TestCase):
         for row, value in zip((4, 6, 8, 10, 12), ("1. 000:12:34", "2. 000:20:00", "3. 001:02:03", "4. 010:00:00", "5. 255:59:59")):
             self.assertEqual(h.read_bytes("wTileMap", len(value), row * 20 + 2), digits(value))
         self.press("b", 30)
+
+        # RECORDS -> FURTHEST RUNS: empty, then full plus the current run.
+        text = lambda value: [CHAR_TO_BYTE[c] if not c.isdigit() else 0xF6 + int(c) for c in value]
+        h.write8("wEndlessDepth", 0)
+        h.write8("wBattleCount", 0)
+        self.press("down")
+        self.press("a", 30)
+        self.assertEqual(h.read_bytes("wTileMap", 12, 6 * 20 + 2), text("NO RUNS YET."))
+        self.assertEqual(h.read_bytes("wTileMap", 8, 11 * 20 + 2), [0x7F] * 8, "no THIS RUN between runs")
+        self.press("b", 30)
+        table = [255, 73, 2, 37, 0, 73, 0, 9, 0, 2]
+        start = h.address("wFurthestRunsFirst")
+        h.pyboy.memory[start:start + 8] = table[:8]
+        start = h.address("wFurthestRunsLast")
+        h.pyboy.memory[start:start + 2] = table[8:]
+        h.write8("wEndlessDepth", 1)
+        h.write8("wBattleCount", 12)
+        self.press("down")       # every page returns to the top row
+        self.press("a", 30)
+        h.tick(3, render=True)
+        h.pyboy.screen.image.save(ARTIFACTS / "furthest_runs_full.png")
+        self.assertEqual(h.read_bytes("wTileMap", 17, 3 * 20 + 2), text("   CIRC RND  WINS"))
+        for row, value in zip(range(4, 9), ("1.  256   9 18432", "2.    3   5   180", "3.    1   9    72",
+                                            "4.    1   2     8", "5.    1   1     1")):
+            self.assertEqual(h.read_bytes("wTileMap", len(value), row * 20 + 2), text(value), value)
+        self.assertEqual(h.read_bytes("wTileMap", 8, 11 * 20 + 2), text("THIS RUN"))
+        value = "   2   2    83"
+        self.assertEqual(h.read_bytes("wTileMap", len(value), 12 * 20 + 5), text(value))
+        self.press("b", 30)
+        h.write8("wEndlessDepth", 0)
+        h.write8("wBattleCount", 0)
+
         h.write8("wNumHoFTeams", 1)
+        self.press("down")
         self.press("down")       # RECORDS -> HALL OF FAME
         self.press("a", 30)
         self.assertEqual(league["count"], 1, "HALL OF FAME did not open")

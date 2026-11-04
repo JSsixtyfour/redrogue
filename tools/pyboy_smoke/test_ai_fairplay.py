@@ -238,6 +238,72 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
         self.prime_seen_moves([])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1), 0)
 
+    def boot_player(self, species: str, level: int, moves: list[str], revealed: list[int]) -> None:
+        assert self.harness is not None
+        self.harness.inject_fight2_spec(
+            [{"species": self.species[species], "level": level,
+              "moves": [self.moves[m] for m in moves]}],
+            [self.mon("RATTATA", ["TACKLE"])],
+            trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=3,
+        )
+        self.harness.boot_fight2(seed=1)
+        self.prime_seen_moves(revealed)
+
+    def believed(self) -> list[int]:
+        assert self.harness is not None
+        return [call_a_preserving(self.harness, "AIGetPlayerMoveN", slot) for slot in range(4)]
+
+    def ids(self, *names: str) -> list[int]:
+        return [self.moves[name] if name else 0 for name in names]
+
+    def test_off_type_reveal_keeps_the_guess(self) -> None:
+        # The Erika board: Mr. Mime showed Thunderbolt in slot 0. Showing an
+        # off-type move says nothing about Psychic, so the next unrevealed slot
+        # still holds the guess, not the real Fire Punch.
+        self.boot_player("MR_MIME", 50, ["THUNDERBOLT", "FIRE_PUNCH", "BARRIER", "LIGHT_SCREEN"], [0])
+        self.assertEqual(self.believed(), self.ids("THUNDERBOLT", "PSYCHIC_M", "", ""))
+
+    def test_guess_skips_a_revealed_earlier_slot(self) -> None:
+        # Slots 0 and 2 shown, both off type: slot 1 takes the guess, slot 3 nothing.
+        self.boot_player("MR_MIME", 50, ["THUNDERBOLT", "FIRE_PUNCH", "ICE_PUNCH", "BARRIER"], [0, 2])
+        self.assertEqual(self.believed(), self.ids("THUNDERBOLT", "PSYCHIC_M", "ICE_PUNCH", ""))
+
+    def test_revealed_stab_ends_the_guess(self) -> None:
+        # Confusion shows a Psychic move, however weak: no guess on top of it.
+        self.boot_player("MR_MIME", 50, ["CONFUSION", "THUNDERBOLT", "BARRIER", "LIGHT_SCREEN"], [0])
+        self.assertEqual(self.believed(), self.ids("CONFUSION", "", "", ""))
+
+    def test_revealed_status_move_of_the_type_keeps_the_guess(self) -> None:
+        # Hypnosis is Psychic-type but deals no damage, so it is no substitute.
+        self.boot_player("MR_MIME", 50, ["HYPNOSIS", "THUNDERBOLT", "BARRIER", "LIGHT_SCREEN"], [0])
+        self.assertEqual(self.believed(), self.ids("HYPNOSIS", "PSYCHIC_M", "", ""))
+
+    def test_fully_revealed_moveset_has_no_guess(self) -> None:
+        moves = ["THUNDERBOLT", "FIRE_PUNCH", "ICE_PUNCH", "BARRIER"]
+        self.boot_player("MR_MIME", 50, moves, [0, 1, 2, 3])
+        self.assertEqual(self.believed(), self.ids(*moves))
+
+    def test_dual_type_keeps_both_guesses_past_an_off_type_reveal(self) -> None:
+        self.boot_player("GYARADOS", 50, ["BITE", "GROWL", "LEER", "SPLASH"], [0])
+        self.assertEqual(self.believed(), self.ids("BITE", "SURF", "DRILL_PECK", ""))
+
+    def test_dual_type_strikes_only_the_revealed_type(self) -> None:
+        # Slot 0 shows Water, so the first unrevealed slot holds the Flying guess.
+        self.boot_player("GYARADOS", 50, ["HYDRO_PUMP", "GROWL", "LEER", "SPLASH"], [0])
+        self.assertEqual(self.believed(), self.ids("HYDRO_PUMP", "DRILL_PECK", "", ""))
+
+    def test_low_level_assumes_the_weaker_move(self) -> None:
+        self.boot_player("SQUIRTLE", 10, ["TACKLE", "TAIL_WHIP"], [])
+        self.assertEqual(self.believed(), self.ids("WATER_GUN", "", "", ""))
+
+    def test_level_gate_boundary(self) -> None:
+        self.boot_player("MR_MIME", 29, ["BARRIER"], [])
+        self.assertEqual(self.believed(), self.ids("CONFUSION", "", "", ""))
+
+    def test_level_gate_opens_at_30(self) -> None:
+        self.boot_player("MR_MIME", 30, ["BARRIER"], [])
+        self.assertEqual(self.believed(), self.ids("PSYCHIC_M", "", "", ""))
+
     def test_revealed_moves_do_not_follow_a_player_switch(self) -> None:
         # Review F6 (2026-09-29): moves revealed by party member 0 must not be
         # reported for party member 1. The old slot-indexed buffer did.

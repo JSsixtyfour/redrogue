@@ -40,6 +40,7 @@ HallOfFameResetEventsAndSaveScript:
 	ld a, [wStatusFlags3]
 	bit BIT_WARP_FROM_CUR_SCRIPT, a
 	jr nz, .endless
+	rfarcall FurthestRunsCommit    ; only now is the run known to be over
 	xor a                          ; retry marker: normal clear
 	jr .presented
 .endless

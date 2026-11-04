@@ -261,6 +261,13 @@ def print_ai(ai: dict[str, object], args) -> None:
         print(f"  tier {tier}: {group['battles']} battles, player win rate {group['player_win_rate']}, "
               f"missed-KO rate {group['missed_ko_rate']}, switch rate {group['enemy_switch_rate']}, "
               f"{group['status_spam_battles']} status-spam, {group['struggle_battles']} struggle")
+        setup = group["setup"]
+        print(f"    setup: {setup['ran']} ran, {setup['wasted']} wasted ({setup['wasted_rate']}), "
+              f"{setup['wasted_slower']} of those slower, {setup['preempted']} preempted")
+    worst = sorted(ai["setup_by_move"].items(), key=lambda pair: -pair[1]["wasted"])[:5]
+    if worst and worst[0][1]["wasted"]:
+        print("  most wasted setup: " + ", ".join(
+            f"{name} {setup['wasted']}/{setup['ran']}" for name, setup in worst if setup["wasted"]))
     if ai["flag_counts"]:
         print("  flags: " + ", ".join(f"{name} {n}" for name, n in ai["flag_counts"].items()))
     if ai["telemetry_errors"]:

@@ -32,7 +32,10 @@ class CgbLossRecoveryTest(unittest.TestCase):
         # Select gamma on actual CGB hardware.
         h.write8('hGBC',2)
         h.write8('wGymsUsedMask',0xa5);h.write8('wGymsUsedMask',0x5a,1)
-        dex=h.read_bytes('wPokedexOwned',64)
+        dex_len=h.address('wPokedexDataEnd')-h.address('wPokedexOwned')
+        for i in range(14): # the form flags, which a lobby save leaves zero
+            h.write8('wPokedexFormOwned',0x5b+i,i)
+        dex=h.read_bytes('wPokedexOwned',dex_len)
         player_id=h.read_bytes('wPlayerID',2)
         groups=(('sKeyItemsBitfield',4,1),('sKeyItemTiers',4,1),
                 ('sRoomFurniture',2,1),('sRoomDecorSlots',8,1),('sRoomOwned',4,1),
@@ -48,7 +51,7 @@ class CgbLossRecoveryTest(unittest.TestCase):
         self.assertEqual(boot.h.read8('hGBC'),2)
         self.assertEqual(boot.h.read_bytes('wGymsUsedMask',2),[0xa5,0x5a])
         self.assertEqual(boot.h.read_bytes('wPlayerID',2),player_id)
-        self.assertEqual(boot.h.read_bytes('wPokedexOwned',64),dex)
+        self.assertEqual(boot.h.read_bytes('wPokedexOwned',dex_len),dex)
         for name,size,bank in groups:
             self.assertEqual(boot.h.read_sram_bytes(name,size,bank=bank),before[name],name)
 

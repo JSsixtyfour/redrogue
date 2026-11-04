@@ -60,6 +60,9 @@ LossRecoveryCapture::
 	ld a, [wStatusFlags6]
 	and LOSS_RECOVERY_DEBUG
 	ret nz
+	; The run is over. Before the rental gate, so a run ending on a rental ranks,
+	; and before the record, which holds the table but not wBattleCount.
+	rfarcall FurthestRunsCommit
 	ld a, [wRentalState]
 	and a
 	ret nz

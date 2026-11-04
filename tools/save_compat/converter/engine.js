@@ -520,10 +520,10 @@
         [49,1],[163,1],[164,1],[37,1],[8,1],[54,1],[64,1],[13,1],[136,1],[6,1],[141,1],[10,1],
         [145,1],[143,1],[42,1],[60,1],[60,2],[60,3],[105,1],[105,2],[104,1],[104,2],[103,1],[74,1],
         [75,1],[73,1],[195,1],[196,1],[198,1]];
-      var CATCH_RATE = 7, FORM_MASK = 0x60, PARTY_STRIDE = 44, BOX_STRIDE = 33, PER_BOX = 20;
+      var FORM_MASK = 0x60;
       var ownedAt = wramOffset(to, "wPokedexFormOwned"), seenAt = wramOffset(to, "wPokedexFormSeen");
       if (ownedAt < 0 || seenAt < 0) return "form Pokedex fields not recognised";
-      function credit(species, catchRate) {
+      STEPS.forEachHeldMon(bytes, to, function (species, catchRate) {
         var form = (catchRate & FORM_MASK) >> 5;
         if (!form) return;
         for (var i = 0; i < DEX_FORMS.length; i++) {
@@ -532,14 +532,44 @@
           bytes[seenAt + (i >> 3)] |= 1 << (i & 7);
           return;
         }
-      }
+      });
+      return null;
+    },
+
+    // Sets wSpecialCollected for every special form held in `bytes` (`to`'s layout). The tables are
+    // custom_functions/special_collection.asm resolved to internal species ids; test_engine.js
+    // checks them against it. An old save cannot say what was released. Not a step on its own.
+    creditHeldSpecials: function (bytes, to) {
+      var PACKAGES = [[17,1],[145,1],[84,2],[106,3],[41,3],[126,3],[43,4],[44,5],[64,6],[15,7],[168,7],[16,7],
+        [33,8],[20,8],[125,9],[76,10],[34,11],[132,12],[176,13],[178,13],[180,13]];
+      var FORMS = [[131,1,0]];
+      var BIT_SPECIAL_FORM = 0x08, FORM_MASK = 0x60;
+      var at = wramOffset(to, "wSpecialCollected");
+      if (at < 0) return "special collection field not recognised";
+      function set(id) { bytes[at + (id >> 3)] |= 1 << (id & 7); }
+      STEPS.forEachHeldMon(bytes, to, function (species, catchRate) {
+        var i;
+        if (catchRate & BIT_SPECIAL_FORM) {
+          for (i = 0; i < PACKAGES.length; i++) if (PACKAGES[i][0] === species) { set(PACKAGES[i][1]); return; }
+          return;
+        }
+        var form = (catchRate & FORM_MASK) >> 5;
+        for (i = 0; i < FORMS.length; i++) if (FORMS[i][0] === species && FORMS[i][1] === form) { set(FORMS[i][2]); return; }
+      });
+      return null;
+    },
+
+    // visit(species, catchRate) for every mon a save provably holds: party, current box, every
+    // stored box once boxes have been switched, both daycare slots. Not a step on its own.
+    forEachHeldMon: function (bytes, to, visit) {
+      var CATCH_RATE = 7, PARTY_STRIDE = 44, BOX_STRIDE = 33, PER_BOX = 20;
       // count byte, species list (cap + 1), then the structs
       function scan(base, cap, stride) {
         var count = bytes[base];
         if (count > cap) return; // never initialised ($FF) or not a list
         for (var s = 0; s < count; s++) {
           var mon = base + cap + 2 + s * stride;
-          credit(bytes[mon], bytes[mon + CATCH_RATE]);
+          visit(bytes[mon], bytes[mon + CATCH_RATE]);
         }
       }
       scan(wramOffset(to, "wPartyCount"), 6, PARTY_STRIDE);
@@ -555,8 +585,25 @@
       var cares = [["wDayCareInUse", "wDayCareMon"], ["wDayCareInUse2", "wDayCareMon2"]];
       for (var c = 0; c < cares.length; c++) {
         var use = wramOffset(to, cares[c][0]), mon = wramOffset(to, cares[c][1]);
-        if (use >= 0 && mon >= 0 && bytes[use] === 1) credit(bytes[mon], bytes[mon + CATCH_RATE]);
+        if (use >= 0 && mon >= 0 && bytes[use] === 1) visit(bytes[mon], bytes[mon + CATCH_RATE]);
       }
+    },
+
+    // Schema 18 -> 19 (2026-11-04, PC Records): the furthest-run table and the special collection
+    // flags take three saved pads, nothing moves. An old save has no record of how far past runs
+    // got, so the table starts empty. The loss record names its schema, so it is cleared.
+    recordsAdded: function (bytes, from, to) {
+      var carved = [["wFurthestRunsFirst", "wWhichDungeonWarp", 1, 8], ["wFurthestRunsLast", "wCompletedInGameTradeFlags", 2, 2],
+        ["wSpecialCollected", "wWarpedFromWhichMap", 1, 2]];
+      for (var i = 0; i < carved.length; i++) {
+        var at = wramOffset(to, carved[i][0]), before = wramOffset(from, carved[i][1]);
+        if (wramField(from, carved[i][0]) || before < 0 || at !== before + carved[i][2])
+          return "records padding layout not recognised";
+        bytes.fill(0, at, at + carved[i][3]);
+      }
+      var error = STEPS.creditHeldSpecials(bytes, to) || STEPS.lossRecoveryAdded(bytes, from, to);
+      if (error) return error;
+      recomputeChecksums(bytes, to, ["main"]);
       return null;
     },
 

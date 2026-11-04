@@ -231,8 +231,94 @@ test("schema 16 to 17: optional encounter padding initializes inactive, all othe
   assert.equal(api.checksumStatus(out.bytes, to).main, true);
 });
 
+test("schema 18 to 19: records padding initializes empty, all other bytes survive", () => {
+  const from = PKG.schemas["18"], to = PKG.schemas["19"];
+  const save = syntheticSave("18"), pkg = packageTargeting("19");
+  const fields = [["wFurthestRunsFirst", 8], ["wFurthestRunsLast", 2], ["wSpecialCollected", 2]];
+  const changed = new Set();
+  for (const [name, size] of fields) {
+    const at = wramOffset(to, name);
+    for (let i = 0; i < size; i++) { save[at + i] = 0xa5; changed.add(at + i); } // old pad noise
+  }
+  recomputeChecksums(save, from);
+  const out = api.convert(save, pkg, { mode: "continue" });
+  assert.equal(out.ok, true, out.reason);
+  for (const [name, size] of fields)
+    for (let i = 0; i < size; i++) assert.equal(out.bytes[wramOffset(to, name) + i], 0, `${name}+${i}`);
+  for (const f of from.saved_wram)
+    assert.equal(wramOffset(to, f.label), wramOffset(from, f.label), f.label);
+  for (const f of to.sram.filter((f) => /^sLossRecovery/.test(f.label))) {
+    const start = offsetOf(f.bank, f.address);
+    for (let i = 0; i < f.size; i++) { changed.add(start + i); assert.equal(out.bytes[start + i], 0, `${f.label}+${i}`); }
+  }
+  const sum = to.checksums.find((c) => c.name === "main");
+  changed.add(offsetOf(sum.at_bank, sum.at));
+  for (let i = 0; i < 8; i++) changed.add(0x2040 + i);
+  for (let i = 0; i < save.length; i++)
+    if (!changed.has(i)) assert.equal(out.bytes[i], save[i], `unrelated byte ${i}`);
+  assert.equal(api.checksumStatus(out.bytes, to).main, true);
+});
+
 // Full schema (with constants), for checks the trimmed package cannot make.
 const fullSchema = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
+
+test("schema 18 to 19: held specials are credited; excluded species and flags are not", () => {
+  const from = PKG.schemas["18"], to = PKG.schemas["19"], pkg = packageTargeting("19");
+  const c = fullSchema(19).constants;
+  const save = syntheticSave("18");
+  const put = (base, slot, stride, cap, species, flags) => {
+    const mon = base + cap + 2 + slot * stride;
+    save[base + 1 + slot] = species;
+    save[mon] = species;
+    save[mon + c.MON_CATCH_RATE] = flags;
+  };
+  const SPECIAL = 8, GHOST = 1, FUSION = 2;
+  const party = wramOffset(from, "wPartyCount");
+  save[party] = 6;
+  put(party, 0, c.PARTYMON_STRUCT_LENGTH, 6, c.MAROWAK, SPECIAL);          // Thick Club, evolved
+  put(party, 1, c.PARTYMON_STRUCT_LENGTH, 6, c.MEWTWO, 1 << 5);            // Armored Mewtwo
+  put(party, 2, c.PARTYMON_STRUCT_LENGTH, 6, c.EKANS, SPECIAL);            // a move-tutor gift: no identity
+  put(party, 3, c.PARTYMON_STRUCT_LENGTH, 6, c.PIKACHU, GHOST | FUSION);   // no bit 3: not Light Ball
+  put(party, 4, c.PARTYMON_STRUCT_LENGTH, 6, c.MEOWTH, 1 << 5);            // a Dex form, not a special
+  put(party, 5, c.PARTYMON_STRUCT_LENGTH, 6, c.AERODACTYL, 0);             // base form
+  save[party + 7] = 0xff;
+  const box = wramOffset(from, "wBoxCount");
+  save[box] = 1;
+  put(box, 0, c.BOXMON_STRUCT_LENGTH, c.MONS_PER_BOX, c.CHARIZARD, SPECIAL | 4); // Dragon, evolved
+  save[box + 2] = 0xff;
+  save[wramOffset(from, "wCurrentBoxNum")] = 0;
+  const careUse = wramOffset(from, "wDayCareInUse"), careMon = wramOffset(from, "wDayCareMon");
+  save[careUse] = 1; save[careMon] = c.BUTTERFREE; save[careMon + c.MON_CATCH_RATE] = SPECIAL; // Pink
+  recomputeChecksums(save, from);
+  const out = api.convert(save, pkg, { mode: "continue" });
+  assert.equal(out.ok, true, out.reason);
+  const at = wramOffset(to, "wSpecialCollected");
+  const got = [];
+  for (let id = 0; id < 16; id++) if ((out.bytes[at + (id >> 3)] >> (id & 7)) & 1) got.push(id);
+  assert.deepEqual(got, [c.SPECIAL_ARMORED_MEWTWO, c.SPECIAL_THICK_CLUB, c.SPECIAL_PINK, c.SPECIAL_DRAGON].sort((x, y) => x - y));
+  assert.equal(api.checksumStatus(out.bytes, to).main, true);
+});
+
+test("creditHeldSpecials' tables match custom_functions/special_collection.asm", () => {
+  const c = fullSchema(19).constants;
+  const asm = fs.readFileSync(path.join(__dirname, "..", "..", "..", "custom_functions", "special_collection.asm"), "utf8");
+  const to = PKG.schemas["19"];
+  const at = wramOffset(to, "wSpecialCollected");
+  const check = (species, flags, id) => {
+    const bytes = new Uint8Array(api.SRAM_SIZE);
+    const party = wramOffset(to, "wPartyCount");
+    bytes[party] = 1; bytes[party + 8] = species; bytes[party + 8 + 7] = flags;
+    assert.equal(api._internal.STEPS.creditHeldSpecials(bytes, to), null);
+    const word = bytes[at] | bytes[at + 1] << 8;
+    assert.equal(word, 1 << id, `species ${species} flags ${flags}`);
+  };
+  const packages = [...asm.matchAll(/^\s*special_package\s+(\w+),\s*(SPECIAL_\w+)/gm)];
+  assert.ok(packages.length >= 16);
+  for (const [, species, id] of packages) check(c[species], 8, c[id]);
+  const forms = [...asm.matchAll(/^\s*db\s+(\w+),\s*(\w+_FORM),\s*(SPECIAL_\w+)/gm)];
+  assert.equal(forms.length, 1);
+  for (const [, species, form, id] of forms) check(c[species], c[form] << 5, c[id]);
+});
 
 test("schema 17 to 18: form Pokedex flags inserted, dead pads removed, every field keeps its bytes", () => {
   // wPokedexSeenEnd is the empty label at the insertion point (its old "size" ran over the item

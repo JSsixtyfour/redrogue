@@ -101,6 +101,7 @@ class SaveWriterTest(unittest.TestCase):
                 # Distinct edits identify which save regions the entry owns.
                 h.write8("wPlayerMoney", h.read8("wPlayerMoney") ^ 1)
                 h.write8("wPokedexOwned", h.read8("wPokedexOwned") ^ 1)
+                h.write8("wPokedexFormSeen", h.read8("wPokedexFormSeen", 6) ^ 1, offset=6)  # last Dex byte
                 h.write8("wPartyMon1HP", h.read8("wPartyMon1HP") ^ 1, offset=1)
                 h.write8("wBoxCount", h.read8("wBoxCount") ^ 1)
                 h.write_sram_bytes("sStolenRecord", [0xA5] * 57)
@@ -116,7 +117,8 @@ class SaveWriterTest(unittest.TestCase):
                 expected_holder = [0xA5] * 57 if routine == "SaveMainData" else old_snapshot[offset:offset + 57]
                 self.assertEqual(after["sMainData"][offset:offset + 57], expected_holder)
                 if routine == "SavePartyAndDexData":
-                    dex_len = h.address("wPokedexSeenEnd") - h.address("wPokedexOwned")
+                    dex_len = h.address("wPokedexDataEnd") - h.address("wPokedexOwned")
+                    self.assertEqual(after["sMainData"][:dex_len], h.read_bytes("wPokedexOwned", dex_len))
                     self.assertEqual(after["sMainData"][dex_len:], before["sMainData"][dex_len:])
                 payload = self.data("sGameData", "sGameDataEnd")
                 self.assertEqual(h.read_sram_bytes("sMainDataCheckSum", 1), [~sum(payload) & 255])

@@ -445,6 +445,20 @@ ApplySpecialForm::
 	ld [hli], a
 	ld [hl], c
 .done
+	; Every authored gift comes through here once delivered, so this credits the
+	; special collection. wEnemyMon is an optional encounter's mon, only met so
+	; far: DexRegisterCaught credits it if the ball works.
+	ld a, d
+	cp HIGH(wEnemyMon)
+	jr nz, .credit
+	ld a, e
+	cp LOW(wEnemyMon)
+	jr z, .credited
+.credit
+	push de
+	farcall SpecialCreditStruct
+	pop de
+.credited
 	pop bc
 	pop af
 	ret

@@ -65,7 +65,10 @@ ENGINE_WRAM = {"wPlayerName", "wPartyCount", "wPartySpecies", "wBoxCount", "wCur
                # migration dexFormsAdded (schema 17 -> 18)
                "wPokedexSeen", "wPokedexFormOwned", "wPokedexFormSeen", "wObjectDataPointerTemp", "wGrassTile",
                "wToggleableObjectFlagsEnd", "wToggleableObjectList",
-               "wDayCareInUse", "wDayCareMon", "wDayCareInUse2", "wDayCareMon2"}
+               "wDayCareInUse", "wDayCareMon", "wDayCareInUse2", "wDayCareMon2",
+               # migration recordsAdded (schema 18 -> 19)
+               "wWhichDungeonWarp", "wFurthestRunsFirst", "wCompletedInGameTradeFlags", "wFurthestRunsLast",
+               "wWarpedFromWhichMap", "wSpecialCollected"}
 
 # Steps whose per-migration table flag_translation() computes and attaches to the target schema.
 FLAG_STEP = "flagsRenumbered"

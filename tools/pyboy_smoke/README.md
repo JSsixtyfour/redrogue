@@ -251,7 +251,9 @@ A selection is `forced` when only one slot has a move, PP left and is not disabl
 A forced pick breaks a `status_spam` run and is not counted in `redundant_pick`; records carry
 `forced_picks`. Reason: seed 117's Withdraw x10 was the player's Disable on the other move, not a bug.
 
-`python3 tools/pyboy_smoke/test_ai_telemetry.py` covers the pure record/summary code.
+Setup moves (2026-11-03): each record's `setup` lists every setup move (stat boosts, Focus Energy, Reflect, Light Screen, Substitute) with what became of it: `used` (the mon went on to run a non-setup move), `wasted` (it ran, then the mon fainted without acting again; a later boost is not acting), `preempted` (selected, but the mon fainted before it ran), `left` (the mon switched out holding it), `survived` (the battle ended with the mon alive), plus the mon's HP %, whether it was faster, and its living reserves at that moment. `by_tier` groups and `setup_by_move` total them: `ran`, each outcome, `wasted_rate` (wasted / ran), `wasted_slower`, `wasted_last_mon`. These are counts, not flags: a wasted boost is often a fair gamble, so no single battle is a finding. `AI_BACKLOG.md` B12.
+
+`python3 tools/pyboy_smoke/test_ai_telemetry.py` covers the pure record/summary code; `test_ai_wasted_setup.py` checks the outcomes on real battles.
 `--coverage` skips the labels that sit next to telemetry hooks.
 
 ### Bug detectors

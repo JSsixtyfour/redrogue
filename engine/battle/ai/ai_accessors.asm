@@ -11,7 +11,7 @@
 ; it reads wAISeenPlayerMoveMask, which marks only moves this party member has
 ; used this battle (populated by AITrackSeenPlayerMove, ai_fairplay.asm, bank
 ; $2C, hooked at engine/battle/core.asm's PlayerCanExecuteMove), plus a guess
-; from the player's visible types for unseen slots 0/1. Omniscience is now a
+; from the player's visible types for unseen slots. Omniscience is now a
 ; per-class opt-in (AIOmniscientClasses below), not a tier flag. No heuristic
 ; needed editing: every consumer already goes through this seam.
 ;
@@ -66,31 +66,33 @@ AIGetTargetStatus::
 AIGetPlayerMoveN::
 	ld c, a
 	call AIPlayerMovesAreKnown
-	jr c, .omniscient
+	jr c, .realMove
 ; Fair play: the slot is known only if THIS party member revealed it. The mask
 ; layout is documented at wAISeenPlayerMoveMask (ram/wram.asm).
-	ld b, 1
-	ld a, c
-	and a
-	jr z, .gotSlotBit
-.shiftSlotBit
-	sla b
-	dec a
-	jr nz, .shiftSlotBit
-.gotSlotBit
 	ld a, [wPlayerMonNumber]
-	srl a ; a = mask byte, carry = odd party slot (high nibble)
-	jr nc, .gotNibble
-	swap b
-.gotNibble
 	ld e, a
-	ld d, 0
+	srl a ; a = mask byte
 	ld hl, wAISeenPlayerMoveMask
-	add hl, de
+	add l
+	ld l, a
+	jr nc, .gotByte
+	inc h
+.gotByte
 	ld a, [hl]
-	and b
-	jr z, .guess ; not revealed by this mon
-.omniscient
+	bit 0, e
+	jr z, .gotNibble
+	swap a ; odd party slot: its bits are the high nibble
+.gotNibble
+	and $0f
+	ld b, a ; b = this mon's revealed slots
+	ld e, c
+	inc e
+.testSlot
+	rrca ; carry = the bit just rotated out; dec leaves it alone
+	dec e
+	jr nz, .testSlot
+	jr nc, .guess ; not revealed by this mon
+.realMove
 	ld hl, wBattleMonMoves
 	ld a, c
 	ld d, 0
@@ -100,16 +102,16 @@ AIGetPlayerMoveN::
 .exit ; named for hookability (project convention); a holds the result here
 	ret
 
-; Unseen slot. Slot 0 guesses a STAB move of the player's first type, slot 1
-; of its second type (mono-types get one guess). Types are on screen, so this
-; is still fair play; it keeps a turn-1 threat check from reading "no threat"
-; just because nothing has been used yet. A guess fills only a slot that holds
-; a real move, so a one-move mon does not carry a permanent phantom attack, and
-; each guess disappears the moment that slot's real move is revealed.
+; Unseen slot. Each of the player's visible types is assumed to have a STAB move
+; until this mon reveals a damaging move of that type, or runs out of unrevealed
+; slots to hold it (2026-11-03: the guess used to belong to slots 0 and 1, so
+; showing an off-type move in slot 0 made a Psychic-type stop being a Psychic
+; threat, measured on a real Erika fight). Types are on screen, so this is still
+; fair play; it keeps a threat check from reading "no threat" just because the
+; mon has not used its STAB yet. Pending types fill the unrevealed slots in
+; order, first type first. A guess fills only a slot that holds a real move, so
+; a one-move mon does not carry a phantom attack.
 .guess
-	ld a, c
-	cp 2
-	jr nc, .unknown ; slots 2-3: no guess
 	ld hl, wBattleMonMoves
 	ld d, 0
 	ld e, c
@@ -117,27 +119,110 @@ AIGetPlayerMoveN::
 	ld a, [hl]
 	and a
 	jr z, .exit ; empty slot: nothing to guess (a = 0)
-	ld a, c
-	and a
-	ld a, [wBattleMonType1] ; ld keeps the flags from `and a`
-	jr z, .lookUpGuess
-	ld a, [wBattleMonType2]
-	ld b, a
+; d, e = the types still pending; AI_GUESS_NO_TYPE = none. A mono-type has one.
 	ld a, [wBattleMonType1]
-	cp b
-	jr z, .unknown ; mono-type: slot 0 already guessed this type
+	ld d, a
+	ld a, [wBattleMonType2]
+	cp d
+	jr nz, .gotSecondType
+	ld a, AI_GUESS_NO_TYPE
+.gotSecondType
+	ld e, a
+; Strike every type a revealed damaging move already shows. Bit 4 is a sentinel:
+; it reaches bit 0 after the fourth shift. A status move returns AI_GUESS_NO_TYPE,
+; which can only "strike" a type that is already gone.
+	push bc
+	set 4, b
+	ld hl, wBattleMonMoves
+.strikeSlot
+	srl b ; carry = this slot was revealed
+	ld a, [hli]
+	jr nc, .strikeNext
+	push hl
+	call AIMoveDamagingType
+	pop hl
+	cp d
+	jr nz, .notFirstType
+	ld d, AI_GUESS_NO_TYPE
+.notFirstType
+	cp e
+	jr nz, .strikeNext
+	ld e, AI_GUESS_NO_TYPE
+.strikeNext
 	ld a, b
-.lookUpGuess
+	dec a
+	jr nz, .strikeSlot
+	pop bc
+; Earlier unrevealed slots take the pending types first.
+	ld a, d
+	cp AI_GUESS_NO_TYPE
+	jr nz, .walkEarlierSlots
+	ld d, e
+	ld e, a
+.walkEarlierSlots
+	ld hl, wBattleMonMoves
+	inc c
+.earlierSlot
+	dec c
+	jr z, .pickGuess
+	srl b ; carry = revealed, so it holds no guess
+	ld a, [hli]
+	jr c, .earlierSlot
+	and a
+	jr z, .earlierSlot ; empty slot, likewise
+	ld d, e
+	ld e, AI_GUESS_NO_TYPE
+	jr .earlierSlot
+.pickGuess
+	ld a, d
 	cp NUM_TYPES
 	jr nc, .unknown
-	ld e, a ; d is still 0
+	ld e, a
+	ld d, 0
 	ld hl, AIStabGuessByType
 	add hl, de
+	ld a, [wBattleMonLevel]
+	cp AI_GUESS_STRONG_LEVEL
+	jr nc, .gotGuessRow
+	ld e, NUM_TYPES ; d is still 0: the weaker row follows the strong one
+	add hl, de
+.gotGuessRow
 	ld a, [hl]
 	jr .exit ; every return goes through .exit, the hookable result point
 .unknown
 	xor a
 	jr .exit
+
+; INPUT:  a = move id (nonzero).
+; OUTPUT: a = its type if it deals damage (fixed damage included), else
+;         AI_GUESS_NO_TYPE. Preserves bc, de. Clobbers hl.
+AIMoveDamagingType:
+	push de
+	dec a
+	ld l, a
+	ld h, 0
+	add hl, hl
+	ld d, h
+	ld e, l
+	add hl, hl
+	add hl, de ; (id - 1) * 6
+	ASSERT MOVE_LENGTH == 6
+	ld de, Moves + 1 ; effect, then power, then type
+	ASSERT BANK(Moves) == BANK(@)
+	add hl, de
+	pop de
+	ld a, [hli]
+	cp SPECIAL_DAMAGE_EFFECT
+	jr z, .damaging ; Night Shade: power 0, fixed damage
+	ld a, [hl]
+	and a
+	jr nz, .damaging
+	ld a, AI_GUESS_NO_TYPE
+	ret
+.damaging
+	inc hl
+	ld a, [hl]
+	ret
 
 ; SwapMovesInMenu (core.asm) just swapped two of the active mon's move slots:
 ; swap their revealed bits too, so wAISeenPlayerMoveMask keeps marking the
@@ -228,8 +313,17 @@ AIOmniscientClasses:
 	db FINAL_AI ; the final trainer keeps full knowledge (user decision 2026-09-29)
 	db $ff
 
+DEF AI_GUESS_NO_TYPE EQU $ff ; above every real type id
+
+; Below this level an unseen slot assumes the weaker row: a level 10 Squirtle has
+; Water Gun, not Surf. The level curated sets may first carry a grade A TM move.
+DEF AI_GUESS_STRONG_LEVEL EQU TM_GATE_LEVEL_A
+
 ; TUNING KNOB: the move an unseen slot is assumed to hold, per player type.
-; Typical Gen 1 threats of each type; 0 = no guess. Indexed by type id.
+; Typical Gen 1 threats of each type; 0 = no guess. Indexed by type id, then
+; by level: AIGetPlayerMoveN adds NUM_TYPES to reach the weaker row, so the two
+; rows must stay adjacent. Bug, Ghost and Dragon repeat: Leech Life is already
+; weak here, and Night Shade and Dragon Rage are fixed damage.
 AIStabGuessByType:
 	db BODY_SLAM    ; NORMAL
 	db SUBMISSION   ; FIGHTING
@@ -250,6 +344,26 @@ AIStabGuessByType:
 	db ICE_BEAM     ; ICE
 	db DRAGON_RAGE  ; DRAGON (its only Gen 1 move; fixed damage)
 	assert @ - AIStabGuessByType == NUM_TYPES, "AIStabGuessByType must cover every type"
+; The weaker row, below AI_GUESS_STRONG_LEVEL.
+	db POUND        ; NORMAL
+	db LOW_KICK     ; FIGHTING
+	db PECK         ; FLYING
+	db ACID         ; POISON
+	db BONE_CLUB    ; GROUND
+	db ROCK_THROW   ; ROCK
+	db 0            ; BIRD (unused type)
+	db LEECH_LIFE   ; BUG
+	db NIGHT_SHADE  ; GHOST
+	assert @ - AIStabGuessByType == NUM_TYPES + UNUSED_TYPES, "weaker row: physical rows"
+	ds UNUSED_TYPES_END - UNUSED_TYPES, 0
+	db EMBER        ; FIRE
+	db WATER_GUN    ; WATER
+	db VINE_WHIP    ; GRASS
+	db THUNDERSHOCK ; ELECTRIC
+	db CONFUSION    ; PSYCHIC_TYPE
+	db AURORA_BEAM  ; ICE
+	db DRAGON_RAGE  ; DRAGON
+	assert @ - AIStabGuessByType == NUM_TYPES * 2, "weaker row must cover every type"
 
 ; Fills wBuffer + AI_BUF_THREATTYPES (one byte per move slot, $ff = none) with
 ; the types of the player's DAMAGING moves as the AI believes them - revealed,

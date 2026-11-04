@@ -3256,7 +3256,11 @@ wDungeonWarpDestinationMap:: db
 ; which dungeon warp within the source map was used
 wWhichDungeonWarp:: db
 
-	ds 8
+; Permanent furthest-run table (schema 19), carved from saved padding: five
+; (wEndlessDepth, wBattleCount) pairs, best first, all zero = unused. First four
+; here, the fifth after wCompletedInGameTradeFlags. Outside the run reset and in
+; the loss record's tail, like wRunRecordsFirst. custom_functions/run_records.asm.
+wFurthestRunsFirst:: ds 8
 
 wStatusFlags1:: db
 	ds 1
@@ -3275,12 +3279,14 @@ wMovementFlags:: db
 
 wCompletedInGameTradeFlags:: dw
 
-	ds 2
+wFurthestRunsLast:: ds 2 ; the fifth entry; see wFurthestRunsFirst
 
 wWarpedFromWhichWarp:: db
 wWarpedFromWhichMap:: db
 
-	ds 2
+; Special collection flags (schema 19), one bit per SPECIAL_* identity: owned
+; only, kept for life. Carved from saved padding: 16 slots, 14 in use.
+wSpecialCollected:: ds 2
 
 wCardKeyDoorY:: db
 wCardKeyDoorX:: db

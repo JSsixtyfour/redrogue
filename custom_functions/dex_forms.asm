@@ -42,7 +42,13 @@ DexRegisterMon::
 	rlca
 	ld e, a
 	call DexFormIdentity       ; preserves b
-	jr nc, .base               ; not an identity of its own: base species credit
+	jr c, .formIdentity
+	; Not an identity of its own: base species credit. Armored Mewtwo and the
+	; fossil ghosts are in the special collection instead, once actually owned.
+	bit DEX_REG_OWNED_F, b
+	call nz, SpecialCreditForm ; preserves bc, de
+	jr .base
+.formIdentity
 	ld c, a
 	ld hl, wPokedexFormOwned
 	ld de, wPokedexFormSeen
@@ -109,6 +115,12 @@ DexRegisterEnemySeen::
 ; CLOBBERS: all
 ; ---------------------------------------------------------------------------
 DexRegisterCaught::
+	; An optional encounter's package rides in the enemy's own flag byte.
+	ld a, [wEnemyMonSpecies2]
+	ld b, a
+	ld a, [wEnemyMonCatchRate]
+	ld c, a
+	call SpecialCreditFlags
 	ld b, DEX_REG_BOTH
 	call DexRegisterEnemy
 	ld a, e

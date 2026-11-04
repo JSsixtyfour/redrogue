@@ -406,6 +406,7 @@ INCLUDE "data/pokemon/forms.asm"
 SECTION "Dex Forms", ROMX
 
 INCLUDE "custom_functions/dex_forms.asm"
+INCLUDE "custom_functions/special_collection.asm"
 
 
 ; The Pokedex menu (species + forms, "split by kind") and the form data page,
@@ -601,10 +602,19 @@ SECTION "Hidden Events 2", ROMX
 
 INCLUDE "engine/events/card_key.asm"
 INCLUDE "engine/events/rogue_reward_menu.asm"
-INCLUDE "engine/events/hidden_events/school_notebooks.asm"
 INCLUDE "engine/events/hidden_events/fighting_dojo.asm"
 INCLUDE "engine/events/hidden_events/indigo_plateau_hq.asm"
 INCLUDE "engine/events/bridge_gift_menu.asm"
+
+
+; Split from "Hidden Events 2" so that section still fits beside "Battle Engine 7"
+; in $0E: no other bank has room for it, and first-fit would open a new ROM bank.
+; Keep this file whole. TMNotebook and ViridianSchoolNotebook are text predefs
+; (raw dw, data/text_predef_pointers.asm), so they must share a bank with
+; PrintNotebookText, which the hidden event table reaches by dba.
+SECTION "School Notebooks", ROMX
+
+INCLUDE "engine/events/hidden_events/school_notebooks.asm"
 
 
 SECTION "Battle Engine 9", ROMX

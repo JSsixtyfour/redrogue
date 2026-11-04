@@ -343,6 +343,28 @@ ASSERT NUM_DEX_FORM_SLOTS % 8 == 0
 ; Combined collection total; 16-bit everywhere it is counted or compared.
 DEF NUM_DEX_IDENTITIES EQU NUM_POKEMON + NUM_DEX_FORMS
 
+; Special collection (PC RECORDS, schema 19): the forms the Pokedex deliberately
+; leaves out. Bit index in wSpecialCollected: SAVED, append only, never reorder.
+	const_def
+; Not identities, by the user's call: the fossil ghosts. They are a rare graphic
+; on an ordinary cemetery ghost, nothing a player can work toward.
+	const SPECIAL_ARMORED_MEWTWO    ; 0
+	const SPECIAL_THICK_CLUB        ; 1
+	const SPECIAL_LIGHT_BALL        ; 2
+	const SPECIAL_NO_GUARD          ; 3
+	const SPECIAL_LIMBER            ; 4
+	const SPECIAL_MYSTIC            ; 5
+	const SPECIAL_ALWAYS_CRIT       ; 6
+	const SPECIAL_QUICK_CLAW        ; 7
+	const SPECIAL_INTIMIDATE        ; 8
+	const SPECIAL_PINK              ; 9
+	const SPECIAL_SUPER_DITTO       ; a
+	const SPECIAL_CRYSTAL           ; b
+	const SPECIAL_ICE               ; c
+	const SPECIAL_DRAGON            ; d
+DEF NUM_SPECIAL_IDENTITIES EQU const_value
+ASSERT NUM_SPECIAL_IDENTITIES <= 16, "wSpecialCollected holds 16 flags (save layout change)"
+
 ; DexRegisterMon (custom_functions/dex_forms.asm) request byte, passed in e:
 ; the form index sits in its MON_CATCH_RATE position (FORM_MASK, bits 5-6) so a
 ; caller holding a catch-rate byte only masks it; the action bits are 0-1.
