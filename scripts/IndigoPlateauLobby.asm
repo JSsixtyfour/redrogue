@@ -593,8 +593,8 @@ LobbyBridgeSignTable:
 	dw .wardenText
 	db VIRIDIAN_SCHOOL_HOUSE
 	dw .schoolText
-	db VIRIDIAN_NICKNAME_HOUSE
-	dw .nicknameText
+	db OLD_MANS_HOUSE
+	dw .oldMansHouseText
 	db CERULEAN_TRASHED_HOUSE
 	dw .trashedText
 	db REDS_HOUSE_1F
@@ -638,8 +638,8 @@ LobbyBridgeSignTable:
 	text "SCHOOL"
 	line "HOUSE@"
 	text_end
-.nicknameText:
-	text "NICKNAME"
+.oldMansHouseText:
+	text "OLD MAN's"
 	line "HOUSE@"
 	text_end
 .trashedText:

@@ -48,12 +48,14 @@ class RentalZoneTest(unittest.TestCase):
     def test_reserved_survives_hubs_dorm_bridges_and_internal_maps(self):
         h = self.h
         self.seed(h, 0, {}, 0)
-        for name in ("INDIGO_PLATEAU_LOBBY", "REWARD_ROOM", "SILPH_CO_DORM",
-                     "OAKS_LAB", "BILLS_HOUSE", "SS_ANNE_B1F_ROOMS"):
-            self.map(name)
-            h.call_routine("RentalRecordMapLoad")
-            h.call_routine("RentalSettleZoneReturn")
-            self.assertEqual(h.read_bytes("wRentalRecord", 4), [1,0,42,3])
+        # These synthetic map IDs must not resume the lobby's live map loop.
+        with isolated_routine_calls(h):
+            for name in ("INDIGO_PLATEAU_LOBBY", "REWARD_ROOM", "SILPH_CO_DORM",
+                         "OAKS_LAB", "BILLS_HOUSE", "SS_ANNE_B1F_ROOMS"):
+                self.map(name)
+                h.call_routine("RentalRecordMapLoad")
+                h.call_routine("RentalSettleZoneReturn")
+                self.assertEqual(h.read_bytes("wRentalRecord", 4), [1,0,42,3])
 
     def test_unused_offer_advances_only_after_zone_and_hub(self):
         h = self.h

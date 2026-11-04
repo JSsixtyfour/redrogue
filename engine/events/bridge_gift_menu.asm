@@ -866,6 +866,92 @@ ENDC
 
 ; ---------------------------------------------------------------------------
 ; GIFT_SPECIAL routines (must not print bye - the dispatcher does).
+; Use the mart's pocket-aware item list without selling or removing anything.
+; No saved state is allocated. Restore the caller's bag/list context on every
+; exit, and report success only after adding a real extra unit.
+BridgeDuplicateItem:
+	ld a, [wBagPocketsFlags]
+	push af
+	ld a, [wListScrollOffset]
+	push af
+	ld a, [wListMenuID]
+	push af
+	ld a, [wPrintItemPrices]
+	push af
+	ldh a, [hCurrentMenuItem]
+	push af
+	xor a
+	ld [wBagPocketsFlags], a ; open Recovery, with no PC/battle list flags
+	ld [wListScrollOffset], a
+	ldh [hCurrentMenuItem], a
+	ld [wPrintItemPrices], a
+	ld a, INIT_BAG_ITEM_LIST
+	ld [wInitListType], a
+	call InitList
+	ASSERT BANK(InitList) == BANK(BridgeDuplicateItem)
+	farcall BuildRecoveryPocketList
+	ld hl, .ChooseText
+	call PrintText
+	call SaveTextBoxTilesToBuffer
+	call SaveScreenTilesToBuffer1
+.choose
+	call LoadScreenTilesFromBuffer1
+	ld a, ITEMLISTMENU
+	ld [wListMenuID], a
+	call DisplayListMenuID
+	jr c, .cancel
+	ld a, [wBagPocketsFlags]
+	and POCKET_INDEX_MASK
+	cp POCKET_KEY_ITEMS
+	jr z, .unsupported
+	cp POCKET_TM_PACK
+	jr z, .unsupported
+	ld a, [wMaxItemQuantity]
+	cp 99
+	jr nc, .full
+	call LoadScreenTilesFromBuffer1
+	ld a, [wCurItem]
+	call BridgeGiveItem
+	jr .done
+.unsupported
+	ld hl, .UnsupportedText
+	jr .reject
+.full
+	ld hl, .FullText
+.reject
+	call PrintText
+	jr .choose
+.cancel
+	call LoadScreenTilesFromBuffer1
+	and a
+.done
+	push af
+	pop de ; preserve the result flags while restoring the caller's context
+	pop af
+	ldh [hCurrentMenuItem], a
+	pop af
+	ld [wPrintItemPrices], a
+	pop af
+	ld [wListMenuID], a
+	pop af
+	ld [wListScrollOffset], a
+	pop af
+	ld [wBagPocketsFlags], a
+	xor a
+	ld [wMenuWatchMovingOutOfBounds], a
+	push de
+	pop af
+	ret
+.ChooseText
+	text_far _OldManDuplicateChooseText
+	text_end
+.UnsupportedText
+	text_far _OldManDuplicateUnsupportedText
+	text_end
+.FullText
+	text_far _OldManDuplicateFullText
+	text_end
+
 
 ; Mr. Fuji "#MON RESCUE": give the run's rogue pokemon at reward level.
 BridgeMrFujiRescue::
@@ -1293,7 +1379,7 @@ BridgeGiverMapTable:
 	db POKEMON_FAN_CLUB
 	db WARDENS_HOUSE
 	db VIRIDIAN_SCHOOL_HOUSE
-	db VIRIDIAN_NICKNAME_HOUSE
+	db OLD_MANS_HOUSE
 	db CERULEAN_TRASHED_HOUSE
 	db REDS_HOUSE_1F
 	db IGAS_DOJO
@@ -1404,7 +1490,7 @@ SchoolCooltrainerGiftList:
 	gift_entry GIFT_MON_EVOLVE, NIDORAN_F | (BRIDGE_MON_FINALIZE_QUICK_CLAW << 8), NoThanksText, SchoolGift8_Desc
 
 OldManGiftList:
-	db 8
+	db 9
 	gift_entry GIFT_MON_EVOLVE,  WEEDLE,    OldManGift1_Text, OldManGift1_Desc
 	gift_entry GIFT_MON_EVOLVE,  RATTATA,   OldManGift2_Text, OldManGift2_Desc
 	gift_entry GIFT_ITEM, TM_REST, OldManGift3_Text, OldManGift3_Desc
@@ -1413,6 +1499,7 @@ OldManGiftList:
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_SPEED_BOOST, OldManGift6_Text, OldManGift6_Desc
 	gift_entry GIFT_TEACH_MOVE, DIZZY_PUNCH, OldManGift7_Text, OldManGift7_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_STATUS_CHANCE, OldManGift8_Text, OldManGift8_Desc
+	gift_entry GIFT_SPECIAL, BridgeDuplicateItem, OldManGift9_Text, OldManGift9_Desc
 
 OfficerJennyGiftList:
 	db 8
@@ -1546,6 +1633,7 @@ OldManGift5_Text: db "DULLED SENSES@"
 OldManGift6_Text: db "COFFEE BOOST@"
 OldManGift7_Text: db "DIZZY PUNCH@"
 OldManGift8_Text: db "SPIKED DRINK@"
+OldManGift9_Text: db "ITEM DUPLICATION@"
 
 TrashedGift1_Text: db "LEMONADE@"
 TrashedGift2_Text: db "SQUIRTLE@"
@@ -1843,6 +1931,7 @@ ENDM
 	bridge_new_desc OldManGift6
 	bridge_new_desc OldManGift7
 	bridge_new_desc OldManGift8
+	bridge_new_desc OldManGift9
 	bridge_new_desc TrashedGift4
 	bridge_new_desc TrashedGift5
 	bridge_new_desc TrashedGift6

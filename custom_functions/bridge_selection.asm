@@ -23,7 +23,7 @@ BridgeRoomMaps:
 	db POKEMON_FAN_CLUB          ; 5
 	db WARDENS_HOUSE             ; 6
 	db VIRIDIAN_SCHOOL_HOUSE     ; 7
-	db VIRIDIAN_NICKNAME_HOUSE   ; 8
+	db OLD_MANS_HOUSE   ; 8
 	db CERULEAN_TRASHED_HOUSE    ; 9
 	db REDS_HOUSE_1F             ; 10
 	db IGAS_DOJO     ; 11

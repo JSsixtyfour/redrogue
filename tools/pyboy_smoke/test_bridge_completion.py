@@ -119,7 +119,7 @@ class BridgeCompletionSourceContractTest(unittest.TestCase):
     def test_bridge_giver_identity_replacements_are_wired(self) -> None:
         trashed = (REPO_ROOT / "data/maps/objects/CeruleanTrashedHouse.asm").read_text()
         iga = (REPO_ROOT / "data/maps/objects/IgasDojo.asm").read_text()
-        nickname = (REPO_ROOT / "data/maps/objects/ViridianNicknameHouse.asm").read_text()
+        nickname = (REPO_ROOT / "data/maps/objects/OldMansHouse.asm").read_text()
         sprites = (REPO_ROOT / "data/sprites/sprites.asm").read_text()
         self.assertIn("SPRITE_OFFICER_JENNY", trashed)
         self.assertIn("SPRITE_KOGA", iga)

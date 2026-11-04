@@ -95,7 +95,7 @@ HiddenEventMaps:
 	hidden_event_map SS_ANNE_CAPTAINS_ROOM
 	hidden_event_map POKEMON_FAN_CLUB
 	hidden_event_map WARDENS_HOUSE
-	hidden_event_map VIRIDIAN_NICKNAME_HOUSE
+	hidden_event_map OLD_MANS_HOUSE
 	hidden_event_map CERULEAN_TRASHED_HOUSE
 	hidden_event_map REDS_HOUSE_1F
 	hidden_event_map IGAS_DOJO
@@ -585,7 +585,7 @@ DEF ANY_FACING EQU $d0
 	hidden_event  0,  2, OpenBridgeBillsPC, SPRITE_FACING_UP ; Lab PC $08 at block (0,1)
 	db -1
 
-	hidden_events_for VIRIDIAN_NICKNAME_HOUSE
+	hidden_events_for OLD_MANS_HOUSE
 	hidden_event  0,  1, OpenBridgeBillsPC, SPRITE_FACING_UP ; used by Old Man's House
 	db -1
 

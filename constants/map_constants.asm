@@ -75,7 +75,7 @@ DEF FIRST_INDOOR_MAP EQU const_value
 	map_const VIRIDIAN_POKECENTER,            7,  4 ; $29
 	map_const VIRIDIAN_MART,                  4,  4 ; $2A
 	map_const VIRIDIAN_SCHOOL_HOUSE,          4,  4 ; $2B
-	map_const VIRIDIAN_NICKNAME_HOUSE,        4,  4 ; $2C
+	map_const OLD_MANS_HOUSE,                 4,  4 ; $2C
 	map_const VIRIDIAN_GYM,                  10,  9 ; $2D
 	end_indoor_group VIRIDIAN_CITY
 
@@ -439,3 +439,7 @@ DEF WARP_NO_RETURN EQU $fd
 ASSERT NUM_MAPS <= LAST_MAP, "map IDs overlap LAST_MAP"
 ASSERT WARP_NO_RETURN > NUM_MAPS, "WARP_NO_RETURN collides with a real map ID"
 ASSERT WARP_NO_RETURN != ROGUE_MAP, "WARP_NO_RETURN collides with ROGUE_MAP"
+
+; Archived save schemas retain this symbol. The map ID remains $2C; all live
+; map, script, menu, and tool references use OLD_MANS_HOUSE.
+DEF VIRIDIAN_NICKNAME_HOUSE EQU OLD_MANS_HOUSE

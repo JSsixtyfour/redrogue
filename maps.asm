@@ -97,7 +97,7 @@ PewterNidoranHouse_Blocks:
 PewterSpeechHouse_Blocks:
 ; The Old Man's bridge room owns this file; draw into it freely. The vanilla
 ; houses chained above are not in Red Rogue and just inherit whatever it holds.
-ViridianNicknameHouse_Blocks: INCBIN "maps/OldMansHouse.blk"
+OldMansHouse_Blocks: INCBIN "maps/OldMansHouse.blk"
 
 ; Bridge rooms with their own drawn layouts. Blocks are read with the map
 ; header's bank mapped in (LoadTileBlockMap), so these must stay in the same
@@ -134,10 +134,10 @@ INCLUDE "data/maps/headers/ViridianSchoolHouse.asm"
 INCLUDE "scripts/ViridianSchoolHouse.asm"
 INCLUDE "data/maps/objects/ViridianSchoolHouse.asm"
 
-INCLUDE "data/maps/headers/ViridianNicknameHouse.asm"
+INCLUDE "data/maps/headers/OldMansHouse.asm"
 	ds 1
-INCLUDE "scripts/ViridianNicknameHouse.asm"
-INCLUDE "data/maps/objects/ViridianNicknameHouse.asm"
+INCLUDE "scripts/OldMansHouse.asm"
+INCLUDE "data/maps/objects/OldMansHouse.asm"
 
 INCLUDE "data/maps/headers/PewterNidoranHouse.asm"
 INCLUDE "scripts/PewterNidoranHouse.asm"
