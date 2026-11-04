@@ -1,7 +1,7 @@
 """Probe the built player dispatcher: trade now OR reach the authored level.
 
 Stops before animation/group gating; full animation remains covered by
-test_evolution_flow and user emulator acceptance.
+test_evolution_flow and emulator acceptance.
 """
 from pathlib import Path
 import unittest

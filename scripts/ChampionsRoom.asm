@@ -249,7 +249,7 @@ ChampionsRoomRivalReadyToBattleScript:
 ; ============================================================
 ; ChampionsRoomRivalDefeatedScript
 ; PROF_OAK skips straight to SCRIPT_CHAMPIONSROOM_OAK_CHAMPION_CONGRATULATES
-; (no separate arriving Oak to walk in - see the HANDOFF spec, user decision:
+; (no separate arriving Oak to walk in - see the HANDOFF spec, decision:
 ; Oak congratulates in place, no arrival walk, no disappointed-with-rival
 ; beat). RIVAL3 and LANCE both continue into the unchanged 7-script Oak
 ; epilogue.
@@ -356,7 +356,7 @@ ChampionsRoomOakCongratulatesPlayerScript:
 	ret
 
 ; RIVAL3: Oak is disappointed with the rival. LANCE: full epilogue, same beat,
-; rewritten to be about Lance instead (user decision, HANDOFF spec). PROF_OAK
+; rewritten to be about Lance instead (HANDOFF spec). PROF_OAK
 ; never reaches this state.
 ChampionsRoomOakDisappointedWithRivalScript:
 	ld a, CHAMPIONSROOM_OAK

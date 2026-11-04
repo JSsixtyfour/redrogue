@@ -1,6 +1,6 @@
 """Red Rogue's low-HP alarm policy on the Crystal engine (audio/low_health_alarm.asm).
 
-Kept by user decision 2026-10-28 (Shin Red import Phase 2.10): the alarm plays three high/low
+Kept by decision 2026-10-28 (Shin Red import Phase 2.10): the alarm plays three high/low
 tone pairs and then stays quiet while the HP bar stays red; once the bar leaves red (alarm
 idle, in battle) the allotment is topped up again. DISABLE_LOW_HEALTH_ALARM ($ff), which the
 faint path writes, keeps its Red meaning, "off": Crystal's PlayDanger alone would read $ff as on.

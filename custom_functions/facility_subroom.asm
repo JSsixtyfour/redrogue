@@ -245,7 +245,7 @@ FacSubroomLoad::
 ; ============================================================
 DEF BIT_PFAC_SUPER_NERD_WON  EQU 0
 DEF BIT_PFAC_SUPER_NERD_PAID EQU 1
-; The PokeManiac (user, 2026-10-14): a rarer resident in the Super Nerd's place
+; The PokeManiac (2026-10-14): a rarer resident in the Super Nerd's place
 ; and object. He fights as the route's last trainer (FINAL_ROUTE_STEP; the step
 ; override keys on his class), no bet, and his prize is one of his Pokemon
 ; (FacManiacPrize). Losing to him is an ordinary blackout.
@@ -292,7 +292,7 @@ FacSuperNerdTalk::
 	ld a, (1 << BIT_MONEY_MATCH_ACTIVE) | (1 << BIT_MONEY_MATCH_NO_PAYOUT)
 	ld [wMoneyMatchState], a
 	; Nothing more to read: close the box as the battle starts. Without this
-	; DisplayTextID waits for one more A on the offer (user, BGB 2026-10-14).
+	; DisplayTextID waits for one more A on the offer (BGB 2026-10-14).
 	ld a, 1
 	ldh [hNoWaitAfterText], a
 	; Started here, the way AILair starts its fight: a map trainer would need
@@ -704,7 +704,7 @@ FacSubroomFoundItemText:
 	sound_get_item_1
 	text_end
 
-; Placeholder lines (user, 2026-10-14).
+; Placeholder lines (2026-10-14).
 FacSuperNerdOfferText:
 	text "Beat me and I'll"
 	line "give you an item"
@@ -750,7 +750,7 @@ FacSuperNerdWonText:
 	line "time!"
 	prompt
 
-; The PokeManiac's placeholder lines (user, 2026-10-14).
+; The PokeManiac's placeholder lines (2026-10-14).
 FacManiacOfferText:
 	text "Best me and one my"
 	line "#MON is yours."

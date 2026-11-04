@@ -4,7 +4,7 @@ GmrmimeFormEvosMoves:
 ; Level 42 is canon (Sword/Shield).
 	db EVOLVE_LEVEL, 42, MR_RIME
 	db 0
-; Learnset - Mr. Rime's (MrRimeEvosMoves), user decision 2026-10-27.
+; Learnset - Mr. Rime's (MrRimeEvosMoves), 2026-10-27.
 ; CONFUSION/BARRIER/REFLECT are granted at level 1 by the form record.
 ; Learnset
 	db 23, LIGHT_SCREEN

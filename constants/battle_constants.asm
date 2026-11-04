@@ -1,4 +1,4 @@
-; The player's level cap (ENDLESS_MODE_CHECKPOINT_G.md, user 2026-10-29): every
+; The player's level cap (ENDLESS_MODE_CHECKPOINT_G.md, 2026-10-29): every
 ; mon the player owns, gains EXP or is given stays at or below it. 235 sits under
 ; the 3-byte EXP overflow (Slow growth passes 16,777,215 above level 237, Medium
 ; Slow above 245; CalcExperience).

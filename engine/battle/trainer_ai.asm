@@ -549,7 +549,7 @@ AIGetSoftPersonality:
  call AIIsRandomPersonalityClass
  jr nc, .classFallback
 
- ; Half of these trainers keep the neutral style (user, 2026-10-16); the rest
+ ; Half of these trainers keep the neutral style (2026-10-16); the rest
  ; split evenly over the N - 1 real profiles. Cache profile + 1 so the style,
  ; NONE included, survives enemy switches without a re-roll.
  call Random ; HOME Random is equivalent to BattleRandom offline
@@ -1553,8 +1553,8 @@ ENDC
 	ret
 
 ; T2+ switching is independent of item eligibility and remaining item uses,
-; and of trainer class: every T2+ trainer can switch intelligently (user
-; decision 2026-09-29; it used to be only Juggler, Cooltrainer F and the
+; and of trainer class: every T2+ trainer can switch intelligently
+; (decision 2026-09-29; it used to be only Juggler, Cooltrainer F and the
 ; AgathaAI classes). The smart predicate owns emergency certainty and its
 ; generic probability; T0/T1 never get here and keep the original class rolls.
 ; No selected player input is consulted here. Carry SET = switched.

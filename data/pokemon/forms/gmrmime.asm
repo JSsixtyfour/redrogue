@@ -1,7 +1,7 @@
 ; Galarian Mr. Mime - MR_MIME form 1.
 ;
 ; Ice/Psychic, both valid Gen 1 types.
-; Stats: Mr. Mime's with speed and special swapped (user decision 2026-10-27).
+; Stats: Mr. Mime's with speed and special swapped (2026-10-27).
 ; Level-1 moves, growth, catch rate, base exp and tmhm follow Mr. Rime, its
 ; evolution; the level-up learnset is in form_evos_moves/gmrmime.asm.
 	form_record MR_MIME, 1

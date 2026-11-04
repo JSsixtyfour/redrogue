@@ -68,7 +68,7 @@ DEF PFAC_ROOMFLOOR EQU $F0   ; a room-interior floor cell (PFacStampRoomFloors).
                              ; Converted to PFAC_FLOOR by
                              ; PFacFinalizeBlocks.
 
-; --- Directional wall 9-slice (block IDs pinned from facility.bst / user) ---
+; --- Directional wall 9-slice (block IDs pinned from facility.bst) ---
 ; Straight walls, named by which side the open floor is on:
 DEF PFAC_W_TOP    EQU 65  ; floor to the SOUTH (solid top, walkable bottom)
 DEF PFAC_W_BOTTOM EQU 73  ; floor to the NORTH
@@ -138,7 +138,7 @@ DEF PFAC_CC_BR_N  EQU $8B
 DEF PFAC_CC_BR_W  EQU $8C
 DEF PFAC_CC_BR_NW EQU $8D
 
-; --- Structural room decor (user-authored hexadecimal block catalog) ---
+; --- Structural room decor (hand-authored hexadecimal block catalog) ---
 ; Occupancy describes the four movement quadrants, not visual tile coverage.
 DEF PFAC_DECOR_SOLID_A  EQU $06
 DEF PFAC_DECOR_SOLID_B  EQU $47
@@ -2602,7 +2602,7 @@ PFacFinalizeBlocks:
 
 ; ============================================================
 ; PFacPlaceLargeDecor
-; Try the five connectivity-safe user-authored interior payloads in a
+; Try the five connectivity-safe hand-authored interior payloads in a
 ; room-specific cyclic order
 ; for every middle room (items 1-4, exploration 5-10). A payload may sit inside
 ; any interior at least as large as itself. Candidate offsets are scanned until
@@ -3028,7 +3028,7 @@ PFacPlaceItems:
     ; item rooms 1-4 always place. It used to default to block (9,17), which is
     ; INSIDE THE ENTRY ROOM, and that single dead branch was the only reason
     ; (9,17) had to stay plain floor and be excluded from fake-ball anchors.
-    ; No item or fake item may spawn in the entry room (user decision
+    ; No item or fake item may spawn in the entry room (decided
     ; 2026-09-16), so scan for any other placed room instead. Rooms 0 and 11
     ; always place, so starting at 1 and ending at 11 always finds one, and
     ; room 0 is never reached. PFacRoomRecordAddr clobbers only de, so b
@@ -3232,7 +3232,7 @@ PFacSolidAnchorHasNeighbor:
 ; keep a ball out of the entry room. Entry Y is 19 - H with H at most
 ; PFAC_ENTRY_MAX_DIM, so the entry room and its top ring never reach above row
 ; 18 - PFAC_ENTRY_MAX_DIM; banding one row below that enforces "no item in the
-; entry room" (user decision 2026-09-16) structurally instead of trusting that
+; entry room" (2026-09-16) structurally instead of trusting that
 ; record. Room 1 needs no such guard: its X/Y bytes are written by ball 3, the
 ; last ball, so its rect is still intact for every attempt made here.
 ;
@@ -3680,7 +3680,7 @@ PFacFindFakeCorridorAnchor:
 ; Z set only for finalized plain floor outside every room floor rectangle, with
 ; exactly one straight pair of plain-floor neighbors. CurX/CurY are preserved.
 ;
-; DOORWAYS ARE ALLOWED, deliberately (user decision 2026-09-25). A doorway is a
+; DOORWAYS ARE ALLOWED, deliberately (2026-09-25). A doorway is a
 ; floor cell cut into a room's one-block wall ring, so it lies outside the floor
 ; rectangle, and a corridor entering straight through it reads as a straight
 ; run: corridor on one side, room floor on the other. Real and fake balls can
@@ -4499,7 +4499,7 @@ PFacNormalizeReversedCorners:
 ; run can end against open floor - a corridor wall reaching a junction, a
 ; premade socket carve, a corner deleted by PFacRemoveIsolatedGeneratedCorners -
 ; leaves the run terminating on a plain straight wall block, which draws as a
-; flat cut edge hanging in the floor. User-reported from screenshots.
+; flat cut edge hanging in the floor. Reported from screenshots.
 ;
 ; The eight jamb blocks are already the right art for this: each differs from
 ; its straight wall in exactly the two tiles that cap ONE edge, so "which jamb"
@@ -7374,7 +7374,7 @@ PFacPadBlockValid::
 	; Two blocks, not one: the event NPCs stand here and the villains see 4
 	; tiles. A pad's tile two blocks off is at least 5 tiles away, so nobody can
 	; spot the player arriving on it (a battle started on a warp tile takes the
-	; warp afterwards). User, 2026-10-14.
+	; warp afterwards). 2026-10-14.
 	sub d
 	add 2                            ; -2..2 -> 0..4
 	cp 5

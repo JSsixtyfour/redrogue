@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate data/pokemon/dex_display_rows.asm: the Pokedex list's row order.
 
-Split by kind (user, 2026-11-03):
+Split by kind (2026-11-03):
   - every species row in Pokedex-number order (1..NUM_POKEMON);
   - each REGIONAL form identity directly after its base species, unnumbered;
   - the DISTINCT species stored as forms (DISTINCT below) at the end, numbered

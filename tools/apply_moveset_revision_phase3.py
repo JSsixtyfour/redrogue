@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Moveset revision Phase 3 (MOVESET_REVISION_IMPLEMENTATION_PLAN.md): apply the user's
+"""Moveset revision Phase 3 (MOVESET_REVISION_IMPLEMENTATION_PLAN.md): apply the
 decisions to tools/corpus/moveset_catalog.tsv, one idempotent step at a time.
 
     python tools/apply_moveset_revision_phase3.py --step N [--dry-run]
@@ -73,7 +73,7 @@ def set_status(row, status, note):
 
 # --- Step 1: credits ----------------------------------------------------------------
 # (creator, species, unordered moves). Decisions file, "Author lookup" table, plus the
-# user-approved Sabelette/juoea credits and the three sets that stay Smogon's.
+# approved Sabelette/juoea credits and the three sets that stay Smogon's.
 AUTHORS = [
     ("Beelzemon 2003", "ABRA", "PSYCHIC_M SEISMIC_TOSS COUNTER THUNDER_WAVE", "Side Format set"),
     ("Beelzemon 2003", "DRAGONAIR", "SURF WRAP DRAGON_RAGE AGILITY", None),
@@ -303,7 +303,7 @@ def step3(rows):
     profiles = {p["logical_id"]: p for p in led["baseline_standard_elite_profiles"]}
     community = {x["logical_id"]: x for x in led["community_sets_with_priority"]}
     adaptations = {x["logical_id"]: x for x in led["target_adaptations"]}
-    user_sets = {x["logical_id"]: x for x in led["user_supplied_sets"]}
+    supplied_sets = {x["logical_id"]: x for x in led["user_supplied_sets"]}
     clip = {seg["logical_id"]: (seg["min_level"], seg["max_level"])
             for prop in led["baseline_interval_proposals"] for seg in prop["proposed_selection_segments"]
             if seg["logical_id"] != prop["logical_id"]}
@@ -357,9 +357,9 @@ def step3(rows):
                 credit_smogon(r, rules.smogon_set_name(pkmn_format=a["format"], role=a["set_name"]))
             r["source"] = "R065 community set (" + community[r["id"]]["source"]["dataset_url"] + ")"
             r["heading"] = a["set_name"]
-        elif r["id"] in adaptations or r["id"] in user_sets:
+        elif r["id"] in adaptations or r["id"] in supplied_sets:
             credit_original(r)
-            r["source"] = "R065 " + ("user-supplied set" if r["id"] in user_sets else "target adaptation")
+            r["source"] = "R065 " + ("supplied set" if r["id"] in supplied_sets else "target adaptation")
         else:
             sys.exit(f"{where}: pending row is in no credit list")
         if (r["species"], moveset(r)) in AUTHOR_INDEX:
@@ -379,7 +379,7 @@ def step3(rows):
             print("    ", it)
 
 
-# --- Step 5: removals and the user's hand-picked sets ----------------------------------
+# --- Step 5: removals and the hand-picked sets ----------------------------------
 HOPPIP_REPLACEMENTS = [
     # (species, old moves, new moves): the new set takes the old row's window and tier.
     ("HOPPIP", "SLEEP_POWDER REFLECT MEGA_DRAIN TOXIC", "SLEEP_POWDER LEECH_SEED MEGA_DRAIN REFLECT"),
@@ -426,7 +426,7 @@ def add_row(rows, species, moves, segments, why, species_ids, day=TODAY):
     row = {"id": new_id(ident, ms), "status": "ACTIVE", "kind": "species" if species in species_ids else "form",
            "species": species, "moves": ms, "segments": segments, "credit_type": "ORIGINAL", "creator": "",
            "set_name": g.FIXED_LABELS[g.LOSS_ORIGIN_ORIGINAL], "origin": True, "asm_comment": "",
-           "note": f"added {day}: {why}", "source": f"Red Rogue original (user-approved {day})",
+           "note": f"added {day}: {why}", "source": f"Red Rogue original (approved {day})",
            "source_creator": "", "heading": "", "packet_id": ""}
     assert all(r["id"] != row["id"] for r in rows), row["id"]
     rows.append(row)
@@ -447,7 +447,7 @@ def step5(rows):
             set_status(r, "ARCHIVED", f"retired {TODAY}: packet retirement/supersession proposal carried forward")
             c["retired (carry forward)"] += 1
         elif d.startswith("EXCLUDE_EXPLICITLY_REJECTED"):
-            set_status(r, "REJECTED", f"rejected {TODAY}: user declined the tutor-dependent Chansey gimmick (R053)")
+            set_status(r, "REJECTED", f"rejected {TODAY}: the tutor-dependent Chansey gimmick (R053)")
             c["rejected (Chansey)"] += 1
     for r in find_active(rows, *ALOLAN_SANDSLASH):
         set_status(r, "ARCHIVED", f"retired {TODAY}: Swords Dance with only special attacks; Blizzard/Defense Curl/Ice Beam/Slash covers it")
@@ -499,9 +499,9 @@ def step5(rows):
     print("  tutor exclusions by credit:", dict(tutor_by_credit))
 
 
-# --- Step 6: the user's answers to the Step 6 coverage report (2026-10-27) ---------------
+# --- Step 6: answers to the Step 6 coverage report (2026-10-27) ---------------
 # Each excluded/retired set comes back with its one bad move swapped, same window and tier;
-# the originals stay EXCLUDED/ARCHIVED. Jynx: the user's Lovely Kiss -> Sing learnset edit
+# the originals stay EXCLUDED/ARCHIVED. Jynx: the Lovely Kiss -> Sing learnset edit
 # leaves 25-34 empty, so credited and rental sets are left alone and Sing variants are added.
 HOLE_SWAPS = [  # (excluded row id, species, new moves)
     ("RRSET-686dba59b7fd783d", "KADABRA", "CONFUSION DISABLE PSYBEAM REFLECT"),
@@ -609,17 +609,17 @@ def step7(rows):
         print(f"  {k}: {v}")
 
 
-# Paldean Wooper / Clodsire, restored 2026-10-29 with no sets. User-authored
+# Paldean Wooper / Clodsire, restored 2026-10-29 with no sets. Hand-authored
 # sets (tiers chosen by Claude) plus fills for Wooper's range (evolves at 20),
 # Clodsire before the level-36 TM gate, Easy at 36+ and Elite.
 NH, HE = "TIER_NORMAL | TIER_HARD", "TIER_HARD | TIER_ELITE"
 PWOOPER_SETS = [
-    ("user", "CLODSIRE", "AMNESIA SURF REST EARTHQUAKE", 40, 100, HE),
-    ("user", "CLODSIRE", "AMNESIA SURF REST TOXIC", 36, 100, NH),
-    ("user", "CLODSIRE", "EARTHQUAKE PIN_MISSILE SLUDGE ROCK_SLIDE", 40, 100, NH),
-    ("user", "CLODSIRE", "DIG TOXIC DOUBLE_TEAM REST", 36, 100, H),
-    ("user", "CLODSIRE", "BODY_SLAM PIN_MISSILE EARTHQUAKE SLUDGE", 40, 100, HE),
-    ("user", "CLODSIRE", "DIG TOXIC SURF SLUDGE", 36, 100, EN),
+    ("author", "CLODSIRE", "AMNESIA SURF REST EARTHQUAKE", 40, 100, HE),
+    ("author", "CLODSIRE", "AMNESIA SURF REST TOXIC", 36, 100, NH),
+    ("author", "CLODSIRE", "EARTHQUAKE PIN_MISSILE SLUDGE ROCK_SLIDE", 40, 100, NH),
+    ("author", "CLODSIRE", "DIG TOXIC DOUBLE_TEAM REST", 36, 100, H),
+    ("author", "CLODSIRE", "BODY_SLAM PIN_MISSILE EARTHQUAKE SLUDGE", 40, 100, HE),
+    ("author", "CLODSIRE", "DIG TOXIC SURF SLUDGE", 36, 100, EN),
     ("fill", "WOOPER_PALDEA", "TACKLE POISON_STING TAIL_WHIP WATER_GUN", 4, 15, EN),
     ("fill", "WOOPER_PALDEA", "ACID SLAM TAIL_WHIP WATER_GUN", 16, 28, EN),
     ("fill", "WOOPER_PALDEA", "SLUDGE DIG AMNESIA SLAM", 24, 30, N),
@@ -634,7 +634,7 @@ def step8(rows):
     species_ids = g.parse_species_constants(g.POKEMON_CONSTANTS)
     c = Counter()
     for who, species, moves, lo, hi, tier in PWOOPER_SETS:
-        why = "user-authored set for the restored form" if who == "user" else "restored-form fill"
+        why = "set for the restored form" if who == "author" else "restored-form fill"
         c[add_row(rows, species, moves, [(lo, hi, tier)], why, species_ids, day="2026-10-29")] += 1
     for k, v in sorted(c.items()):
         print(f"  {k}: {v}")

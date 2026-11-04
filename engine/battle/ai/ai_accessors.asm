@@ -310,7 +310,7 @@ AIPlayerMovesAreKnown:
 ; trainer plays fair at every tier. One line per class, e.g. a gym leader
 ; class or a miniboss; $ff terminates.
 AIOmniscientClasses:
-	db FINAL_AI ; the final trainer keeps full knowledge (user decision 2026-09-29)
+	db FINAL_AI ; the final trainer keeps full knowledge (2026-09-29)
 	db $ff
 
 DEF AI_GUESS_NO_TYPE EQU $ff ; above every real type id

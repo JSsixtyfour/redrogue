@@ -6,7 +6,7 @@
 ;   - a cataloged form      -> its DEX_FORM_* bit in wPokedexFormOwned/Seen
 ;   - any other form        -> its BASE species (Armored Mewtwo, the fossil
 ;                              ghosts: not Pokedex entries of their own, but
-;                              they credit Mewtwo/Aerodactyl/Kabutops; user
+;                              they credit Mewtwo/Aerodactyl/Kabutops;
 ;                              2026-11-03). Same for a selector with no record.
 ; Owning Alolan Meowth therefore never credits ordinary Meowth, and vice versa.
 ;

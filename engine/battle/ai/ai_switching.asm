@@ -83,7 +83,7 @@ AISelectSendOut::
 	ld [wAILastMoveNum], a
 
 ; ===========================================================================
-; OPENING LEAD: no scoring. User decision, 2026-09-01.
+; OPENING LEAD: no scoring. Decided 2026-09-01.
 ;
 ; Scoring the opening lead is CHEATING and it did not even work. It reads
 ; wBattleMonType1 (below), but on the battle's first send-out the player's mon

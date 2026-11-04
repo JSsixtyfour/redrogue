@@ -1,4 +1,4 @@
-# Procedural Forest clearing (PROCEDURAL_SUBROOMS_PLAN Phase F), drawn by the user.
+# Procedural Forest clearing (PROCEDURAL_SUBROOMS_PLAN Phase F), hand-drawn.
 # Optional: ball <bx> <by> to choose the block whose top-left tile holds the ball.
 
 blk maps/ProceduralForestCutTreesDrop.blk

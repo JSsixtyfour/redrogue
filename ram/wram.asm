@@ -1315,7 +1315,7 @@ wBankswitchHomeSavedROMBank:: db
 wBankswitchHomeTemp:: db
 
 ; The mart BUY list's cursor row, kept across purchases so the cursor stays on
-; the item just bought instead of jumping back to the top (user request
+; the item just bought instead of jumping back to the top (added
 ; 2026-09-28). Zeroed on entering BUY. This byte was vanilla's
 ; wBoughtOrSoldItemInMart, which nothing ever read.
 wMartBuyCursor:: db

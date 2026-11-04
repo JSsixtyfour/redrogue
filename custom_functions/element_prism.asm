@@ -161,7 +161,7 @@ JohtoCartridgeTable:
 JohtoPrismEventTable:
 	dw EVENT_PRISM_FALKNER_SHOWN
 	dw EVENT_PRISM_BUGSY_SHOWN
-	dw EVENT_PRISM_WHITNEY_SHOWN
+	dw EVENT_PRISM_WHITNEY_SHOWN     ; shared with Karen (Normal)
 	dw EVENT_PRISM_E4_GHOST_SHOWN    ; Morty, shared with Agatha
 	dw EVENT_PRISM_E4_FIGHTING_SHOWN ; Chuck, shared with Bruno
 	dw EVENT_PRISM_GYM1_SHOWN        ; Jasmine, shared with Brock (Rock)
@@ -210,6 +210,10 @@ RogueGrantCartridgePoison::
 RogueGrantCartridgePsychic::
 	ld de, EVENT_PRISM_E4_PSYCHIC_SHOWN
 	ld a, PSYCHIC_TYPE
+	jr RoguePrismGrantAndAnnounce
+RogueGrantCartridgeNormal::           ; Karen; the event is shared with Whitney
+	ld de, EVENT_PRISM_WHITNEY_SHOWN
+	ld a, NORMAL
 	jr RoguePrismGrantAndAnnounce
 RogueGrantCartridgeDragon::
 	ld de, EVENT_PRISM_E4_DRAGON_SHOWN

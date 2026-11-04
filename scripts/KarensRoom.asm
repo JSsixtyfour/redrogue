@@ -134,11 +134,16 @@ KarensRoomKarenEndBattleScript:
 	cp $ff
 	jp z, ResetKarensRoomScript
 	farcall RogueAwardCredits2
-	; No ELEMENT PRISM cartridge: Karen's signature type is DARK, which does not
-	; exist in Gen 1, and GHOST is already Agatha's. User decision 2026-09-15 is
-	; that she awards credits only rather than duplicating another member's type,
-	; whose one-time event gate would silently grant nothing to whoever came second.
 	ld a, TEXT_KARENSROOM_KAREN
+	ldh [hTextID], a
+	call DisplayTextID
+; ELEMENT PRISM cartridge: NORMAL, because her signature DARK does not exist in
+; Gen 1. Whitney also grants NORMAL, so the two share one event: it is only ever
+; set by a grant, so a set event means the cartridge is already owned and the
+; second grantor has nothing to add. Same text id shape as BrunosRoom.asm.
+	CheckEvent EVENT_PRISM_WHITNEY_SHOWN
+	ret nz
+	ld a, TEXT_KARENSROOM_PRISM
 	ldh [hTextID], a
 	jp DisplayTextID
 
@@ -146,6 +151,7 @@ KarensRoom_TextPointers:
 	def_text_pointers
 	dw_const KarensRoomKarenText,            TEXT_KARENSROOM_KAREN
 	dw_const KarensRoomKarenDontRunAwayText, TEXT_KARENSROOM_KAREN_DONT_RUN_AWAY
+	dw_const KarensRoomPrismText,            TEXT_KARENSROOM_PRISM
 
 KarensRoomTrainerHeaders:
 	def_trainers
@@ -187,3 +193,9 @@ KarenAfterBattleText:
 KarensRoomKarenDontRunAwayText:
 	text_far _KarensRoomKarenDontRunAwayText
 	text_end
+
+KarensRoomPrismText:
+	text_asm
+	farcall RogueGrantCartridgeNormal
+	call DisableWaitingAfterTextDisplay ; the message carries its own prompt
+	jp TextScriptEnd

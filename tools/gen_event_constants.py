@@ -173,7 +173,7 @@ PERSISTENT = [
     "EVENT_GOT_TOWN_MAP",
     "EVENT_GOT_POKEDEX",
     # EVENT_ESTABLISHED_STARTER / EVENT_GOT_STARTER / EVENT_BATTLED_RIVAL_IN_OAKS_LAB
-    # moved to run-scoped 2026-09-03 per user audit - OaksLab is never re-entered
+    # moved to run-scoped 2026-09-03 per audit - OaksLab is never re-entered
     # after the intro, so persisting these bought nothing.
     "EVENT_INTRO_TOUR_COMPLETE",
     "EVENT_GAMMA_SHADER",
@@ -193,8 +193,8 @@ PERSISTENT = [
     "EVENT_PRISM_E4_FIGHTING_SHOWN",
     "EVENT_PRISM_E4_GHOST_SHOWN",
     "EVENT_PRISM_E4_DRAGON_SHOWN",
-    # Phase 7: Koga and Will. Karen grants no cartridge (her signature type is
-    # DARK, absent from Gen 1, and GHOST is already Agatha's), so there is no
+    # Phase 7: Koga and Will. Karen grants NORMAL (her signature type is DARK,
+    # absent from Gen 1) and shares EVENT_PRISM_WHITNEY_SHOWN, so there is no
     # EVENT_PRISM_E4_DARK_SHOWN and there should not be one.
     "EVENT_PRISM_E4_POISON_SHOWN",
     "EVENT_PRISM_E4_PSYCHIC_SHOWN",

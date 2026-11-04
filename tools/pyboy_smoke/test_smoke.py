@@ -1590,7 +1590,7 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                         continue
                     hall_real_balls += 1
                     # A ball in a DOORWAY (a floor cell cut into a room's
-                    # one-block wall ring) is allowed by design (user decision
+                    # one-block wall ring) is allowed by design (decided
                     # 2026-09-25): balls vanish once taken or beaten, so one
                     # never blocks a door for good. Its neighbours are the room
                     # interior on one side, which room decoration may later

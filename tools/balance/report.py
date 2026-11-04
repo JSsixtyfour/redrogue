@@ -697,7 +697,7 @@ def section_caveats() -> list[str]:
         "## 11. Known approximations\n",
         "- Johto/Warp runs: leaders are sampled from all 17 records and the E4 stays the Kanto "
         "four. The real Phase 7 lineup roll isn't mirrored. The default uses the Kanto lineup.\n",
-        "- The Gambler class, witch challenges and other prizes, Element Prism, Rare Scope, and the "
+        "- The Gambler class, witch challenges and other prizes, Element Boy, Rare Scope, and the "
         "ownership re-roll in `RogueSelectFromTier` are ignored.\n",
         "- The baseline assumes no witch EXP prize. `--witch-exp-start-count COUNT` adds a "
         "paired alternative trajectory with explicit acquisition timing; it does not change baseline sections.\n",

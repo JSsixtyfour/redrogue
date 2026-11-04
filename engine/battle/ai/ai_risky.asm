@@ -28,7 +28,7 @@
 ; but-unreliable move, with no distinction - and OHKO moves reached it only by
 ; accident (AIEstimateDamage deliberately reports ZERO for OHKO_EFFECT, so
 ; raw=0 trivially satisfies "raw >= reliable*2" against a reliable estimate
-; that is also 0). User's own ranking, weakest to strongest desperation play:
+; that is also 0). Ranking, weakest to strongest desperation play:
 ; Metronome < unreliable-power/high-crit < OHKO < sleep (sleep is AI_THREAT's
 ; rank 3, not this layer's concern). OHKO_EFFECT is now detected explicitly by
 ; effect id, not by the accidental 0/0 collision, and scored a tier above the

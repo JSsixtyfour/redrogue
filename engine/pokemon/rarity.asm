@@ -261,7 +261,7 @@ KantoMasterball:
 	rarity_mon EXEGGCUTE
 	rarity_mon STARYU
 	rarity_mon ZAPDOS
-	rarity_mon ARTICUNO ; masterball with Zapdos since 2026-09-28 (user); was ultraball
+	rarity_mon ARTICUNO ; masterball with Zapdos since 2026-09-28; was ultraball
 	rarity_mon MOLTRES
 KantoMasterball_Evos:
 ; stage 2

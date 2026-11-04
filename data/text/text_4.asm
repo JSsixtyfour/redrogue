@@ -20,7 +20,7 @@ _PokemonFaintedText::
 	text_start
 	done
 .ironman
-	; TODO(user): placeholder wording.
+	; TODO: placeholder wording.
 	text_start
 	para "It's gone for"
 	line "good..."

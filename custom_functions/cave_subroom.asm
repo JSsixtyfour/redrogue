@@ -668,7 +668,7 @@ CaveSubroomArm::
 	ret
 
 ; ------------------------------------------------------------
-; The subroom's drawn rooms (the user's, 2026-10-14). The map is as big as the
+; The subroom's drawn rooms (hand-drawn, 2026-10-14). The map is as big as the
 ; biggest; every load fills it with CAVESUB_FILL_BLOCK and copies the cave's
 ; rolled room in at its top-left. The map declares one warp per distinct ladder
 ; tile over all rooms (data/maps/objects/ProceduralCaveSubroom.asm); a room

@@ -82,7 +82,7 @@ CinnabarGymQuiz_AskQuestion:
 	ldh a, [hCurrentMenuItem]
 	cp c
 	jr nz, .wrongAnswer
-	; A right answer no longer opens anything (user decision, 2026-09-29): only
+	; A right answer no longer opens anything (2026-09-29): only
 	; beating a trainer opens a gate. It also used to set GATE0 + index, and
 	; machines 5 and 6 have no gate event, so they set whatever event followed
 	; GATE4 (EVENT_BEAT_BLAINE after the four-trainer event reshuffle).

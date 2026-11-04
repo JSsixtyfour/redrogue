@@ -41,7 +41,7 @@ BridgeGrantSelectedEffect::
 	ld d, b                      ; d = owner, e = effect
 
 	; The sparse registry has only two records for the whole run. Keep the
-	; user-approved one-selected-effect-per-owner rule so one Pokémon cannot
+	; one-selected-effect-per-owner rule so one Pokémon cannot
 	; consume both records.
 	ld a, d
 	call BridgeFindSelectedRecordByOwner

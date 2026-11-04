@@ -238,7 +238,7 @@ InitOptions_::
 	rlca
 	rlca ; reduced bit 4 becomes the animation-OFF bit 7
 	ld [wOptions], a
-	ld a, BATTLE_SPEED_X2 | 1 << BIT_EXP_SHARE ; Ironman OFF, BATTLE SPEED 2X, EXP SHARE ON (user defaults 2026-09-28)
+	ld a, BATTLE_SPEED_X2 | 1 << BIT_EXP_SHARE ; Ironman OFF, BATTLE SPEED 2X, EXP SHARE ON (defaults 2026-09-28)
 	or b
 	ld [wOptions3], a
 	ld a, (1 << BIT_ENHANCED_COLORS) | (1 << BIT_60_FPS)

@@ -187,7 +187,7 @@ AIClassIsListed:
 ; just switched in. One line per class; $ff terminates. Independent of
 ; AIOmniscientClasses (moveset knowledge).
 AIPsychicClasses:
-	db FINAL_AI ; the final boss reads your choice (user decision 2026-10-22)
+	db FINAL_AI ; the final boss reads your choice (2026-10-22)
 	db $ff
 
 ; The classes whose TrainerAI handler (data/trainers/ai_pointers.asm) can switch

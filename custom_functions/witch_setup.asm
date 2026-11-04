@@ -106,7 +106,7 @@ PCWitchSetup::
     ld a, TOGGLE_PC_WITCH
     call RollLobbyNPCAppearance
     jp nz, .hideWitch         ; jp: .hideWitch is out of jr range, as above
-    ; Challenge 11 priority (user decision 2026-10-13): when it is offerable,
+    ; Challenge 11 priority (2026-10-13): when it is offerable,
     ; take it outright on LEGENDARY_BOSS_PRIORITY_CHANCE of visits, before the
     ; uniform roll (which can still land on it). The masterball-class
     ; requirement inside the gate is the intended limiter.
@@ -119,7 +119,7 @@ PCWitchSetup::
     jr c, .setLegendaryBoss
     ; Debug 2 used to force CHALLENGE_LEGENDARY_BOSS here unconditionally,
     ; skipping the roll and the map/badge/masterball gates below. Removed
-    ; 2026-09-02 at user request: the witch now rolls normally in every build,
+    ; 2026-09-02: the witch now rolls normally in every build,
     ; Debug 2 included. Challenge 11 is reachable through the ordinary roll
     ; (.notLegendaryGate below), gated exactly as it always was.
 .rollChallenge

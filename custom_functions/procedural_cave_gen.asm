@@ -298,7 +298,7 @@ DEF wProcCaveIncludeWater EQU 26  ; toggle read by PCIsFloorLike, same pattern a
                                   ; gives water the same edge/corner treatment
                                   ; PCAutotilePass gives floor, reusing the exact
                                   ; same IDs (21/24/26/29/22/20/30/28) per the
-                                  ; user's explicit instruction.
+                                  ; explicit instruction.
 DEF wProcCaveCount        EQU 23  ; PCCountFloorNeighbors' running tally
 DEF wProcCaveCountX       EQU 24  ; PCCountFloorNeighbors' own save slots - must
 DEF wProcCaveCountY       EQU 25  ; NOT reuse DX/DY, which PCVerifyCorner (its
@@ -596,7 +596,7 @@ PCPreloadCave::
 	; here - moved to PCFinalizeCave instead, after measuring that doing
 	; the FULL generation during preload just relocates the entire ~1.7s
 	; cost to Pallet-Town-entry rather than reducing it anywhere (the
-	; user's own "robbing Peter to pay Paul" assessment, confirmed by the
+	; "robbing Peter to pay Paul" assessment, confirmed by the
 	; numbers). Carving alone is ~29 of the total ~101 frames - preloading
 	; ONLY this keeps the Pallet-Town-entry hit small (~0.5s) while still
 	; cutting the warp-in hit for real (~1.7s -> ~1.2s), instead of just
@@ -1204,7 +1204,7 @@ PCFinalizeCave::
 	; override from 2026-06-26 until now; Phase 5a kept it at 100% on purpose so
 	; the river could be reviewed on hardware after the two bugs that had stopped
 	; it carving anything at all were fixed. That review has happened, and the
-	; user's call is 50%, not the ~25% the original design note proposed.
+	; decision is 50%, not the ~25% the original design note proposed.
 	;
 	; The roll covers BOTH calls. Skipping only the carve would leave
 	; PCAutotileRiverEdges sweeping for water that was never written - harmless
@@ -1492,7 +1492,7 @@ PCFinalizeCaveFast:
 ; Rolls a random species (reusing the EXISTING reward-pokemon machinery -
 ; GetRewardMonLevel + Random_Pokemon_Selection, same calls
 ; rogue_pokemon_randomized_batch already makes for wRoguePokemon1-3 - and
-; reusing wRoguePokemon1 itself as scratch, per explicit user instruction,
+; reusing wRoguePokemon1 itself as scratch, by explicit choice,
 ; rather than adding a new WRAM variable) and patches it into the boss
 ; object_event's compiled data (data/maps/objects/ProceduralCave1.asm,
 ; the 5th declared object - sprite slot 5). No position patch needed -
@@ -1534,7 +1534,7 @@ PCGetBossLevel::
 	farcall RogueApplyWildLevelModifiers ; preserves bc/de/hl
 ; A wild-area boss stops at the PLAYER's cap, not ENEMY_MAX_LEVEL: beating it
 ; offers it as a gift at this same level, and it must not drop levels on the
-; way into the party (user, 2026-10-29; ENDLESS_MODE_CHECKPOINT_G.md).
+; way into the party (2026-10-29; ENDLESS_MODE_CHECKPOINT_G.md).
 	ld a, [wCurEnemyLevel]
 	cp MAX_LEVEL + 1
 	ret c
@@ -1627,7 +1627,7 @@ PCWildClassWidths:
 ; The one class roll every wild-area boss uses (cave, cemetery and its ghost
 ; reroll, facility, forest): PCRollMonClass with WILD_BOSS_RARITY_BUMP.
 ; Endless (depth >= 1) changes two things, both bosses only
-; (ENDLESS_MODE_CHECKPOINT_E.md section 3, user answers Q1 and step 3):
+; (ENDLESS_MODE_CHECKPOINT_E.md section 3, answers Q1 and step 3):
 ;   - the round is NOT clamped at LAST_ROUND, so the bonus keeps climbing and
 ;     saturates at 255 by round 20;
 ;   - a Master roll gets EndlessUberStep, which may turn it into BOSS_CLASS_UBER.
@@ -1973,7 +1973,7 @@ PCPlaceWildAreaItems:
 	add a, 4                       ; match the object_event coordinate origin
 	ld [hli], a                    ; (block 0,0 = event location 4,4 in the
 	ld a, [wBuffer + wProcCaveCurX] ; engine's sprite table convention, confirmed
-	add a, a                       ; by user measurement - warp coords don't need
+	add a, a                       ; by measurement - warp coords don't need
 	add a, 4                       ; this because warps use a different origin)
 	ld [hl], a
 
@@ -2224,7 +2224,7 @@ PCSprinkleFloorDecor:
 ; ============================================================
 ; Drop-in stamps (DRAFT 5, IMPLEMENTED 2026-06-26): small hand-authored
 ; .blk files, dropped onto a verified-clear rectangle of the finished
-; cave. User-authored, not extracted from existing maps. Two backing
+; cave. Hand-authored, not extracted from existing maps. Two backing
 ; types. The old filenames encoded which type by a "1tile"/"25tile"
 ; prefix; the files are now named by footprint (`<W>x<H>`, matching the
 ; Facility's convention) instead, so that distinction is documented here
@@ -2261,7 +2261,7 @@ DEF PC_DROPIN_BUF_FLOOR EQU 1   ; 1-tile runtime-checked buffer, floor-backed
 DEF PC_DROPIN_BUF_FILL  EQU 0   ; fill-backed stamps bake their own buffer/edges
 DEF NUM_PC_DROPINS      EQU 3
 ; maps/1tilepooldrop.blk (a 2x2 plain-96 pool patch) axed 2026-06-27 -
-; user's direct call after seeing it in actual play: "doesn't work
+; decided after seeing it in actual play: "doesn't work
 ; visually." The file itself is left in maps/, still under its old name
 ; since it is comment-only now, in case it's revisited later; it is just
 ; no longer wired into the table below.
@@ -2562,7 +2562,7 @@ PCPlaceDropIn:
 ; (wProcCaveCurX/Y must already be set to the exit position by the caller).
 ; No neighbor/direction logic needed - confirmed safe to place on any
 ; floor tile. Pool is {40, 39, 62}; 35 deliberately excluded ("to be
-; safe" per user instruction), 98 dropped after decoding gfx/blocksets/
+; safe"), 98 dropped after decoding gfx/blocksets/
 ; cavern.bst: 98 is 15/16 impassable raw tiles (almost entirely a wall
 ; graphic), unlike 39/40/62 which are mostly open floor with the ladder
 ; icon tucked into just one corner - confirmed via real PyBoy collision
@@ -3820,7 +3820,7 @@ PCRockTable:
 ; second-order cascade (a neighbor-of-a-neighbor needing escalation,
 ; one hop past what this one-level recheck reaches) can still produce
 ; an occasional awkward/wrong edge or corner tile somewhere on the map.
-; User's explicit call: this residual rate is acceptable, given the cost
+; Deliberate call: this residual rate is acceptable, given the cost
 ; of fully closing it (see the more-extreme-alternative note above).
 ; Revisit only if real testing shows this is more common or more
 ; visually disruptive than this scan suggested.
@@ -4796,7 +4796,7 @@ PCBulge:
 ; DRAFT SKETCHES, 2026-06-25/26 - NOT WIRED IN, NOT TESTED, NOT ACTIVE.
 ;
 ; Everything below is commented out and not called from anywhere. Priority
-; order for implementing these (user's explicit order): exit warp ladder
+; order for implementing these (explicit order): exit warp ladder
 ; tile [IMPLEMENTED 2026-06-26, see PCPlaceExitLadder above] -> random
 ; items in dead-ends -> rivers -> floor decor -> copy/paste feature
 ; stamps. Pick up each one at a time, build+test before starting the
@@ -5551,7 +5551,7 @@ PCAutotileRiverEdges:
 
 ; ----------------------------------------------------------------------
 ; DRAFT 5: copy/paste feature stamps (e.g. pools)
-; User's plan: hand-author small .bin block-grids (not extracted from
+; Plan: hand-author small .bin block-grids (not extracted from
 ; existing ROM maps), then randomly stamp one into a procedurally
 ; "acceptable" spot. Most open-ended item on the list, lowest priority,
 ; deliberately not sketched in code yet - needs a design conversation

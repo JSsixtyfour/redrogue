@@ -1922,7 +1922,7 @@ AIScaleDamageByAccuracy::
 ;
 ;     expected = estimate + estimate * critThreshold / 256
 ;
-; User request, 2026-09-01, and it answers the Slash-vs-Strength question
+; Added 2026-09-01, and it answers the Slash-vs-Strength question
 ; directly rather than special-casing guaranteed crits. Worked example, Persian
 ; (base speed 115), verified against the real CalcCritRate arithmetic:
 ;

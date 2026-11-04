@@ -539,7 +539,7 @@ AISmart_Trapping:
 	and a ; discourage: already trapped, re-using cannot extend the lock
 	ret
 .checkChipDamage
-; F14, 2026-09-02: user's own correction mid-design - encourage TRAPPING a
+; F14, 2026-09-02: a correction mid-design - encourage TRAPPING a
 ; target once it already has damage-over-time running (poisoned/badly
 ; poisoned/burned/Leech Seeded), never the reverse. Poisoning a target we are
 ; ALREADY trapping cannot happen anyway: core.asm's move-selection gate
@@ -569,7 +569,7 @@ AISmart_Trapping:
 ; land THIS turn (Phase 3's simulator has no charge-move awareness), which
 ; over-rates a move that gives the player a free turn to switch or set up.
 ; This handler is the scoring-side correction; the simulator itself is
-; unchanged. User's own framing: small penalty normally (bigger for the
+; unchanged. The framing: small penalty normally (bigger for the
 ; exposed family - losing a turn AND eating a hit is worse than losing a turn
 ; while invulnerable), no benefit from stalling for the exposed family (it
 ; still eats a hit regardless of what the player's status costs them).

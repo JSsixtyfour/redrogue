@@ -8,7 +8,7 @@ Errors (exit 1):
     (so a historical ROAR, now SUPER_TRANSFORM's id, can never slip in) or
     NO_MOVE, no move twice, every move learnable (tools/learnset_legality.py),
     a credit (credit_type not PENDING, set_name not empty) whose label fits;
-  - tutor rule (user decision 2026-10-27): no ACTIVE row needs a move its line
+  - tutor rule (2026-10-27): no ACTIVE row needs a move its line
     can only get from a move tutor. TUTOR_RULE_ENFORCED is True since Phase 3
     marked the tutor-dependent sets EXCLUDED (False downgrades it to a warning);
   - data/trainers/movesets.asm and rental_origins.asm match the catalog;
@@ -35,11 +35,11 @@ ROOT = g.ROOT
 COVERAGE_BASELINE = os.path.join(ROOT, "tools", "corpus", "moveset_coverage_baseline.json")
 TUTOR_RULE_ENFORCED = True
 # (species or corpus form name, requested mask name, first level, last level): holes the
-# user accepted (MOVESET_REVISION_DECISIONS_2026-10-27.md), so the generated fallback is fine.
+# accepted (MOVESET_REVISION_DECISIONS_2026-10-27.md), so the generated fallback is fine.
 ACCEPTED_HOLES = [
     ("ARCANINE", "TIER_GAMBLER", 1, 100),     # Gambler Arcanine (tutor Fire Spin) removed
     ("SHELLDER", "TIER_NORMAL | TIER_HARD", 31, 42),
-    # Kakuna and Metapod: the retired sets were their only moves anyway (user 2026-10-27).
+    # Kakuna and Metapod: the retired sets were their only moves anyway (2026-10-27).
     *[(sp, m, 25, 100) for sp in ("KAKUNA", "METAPOD")
       for m in ("TIER_EASY | TIER_NORMAL", "TIER_NORMAL", "TIER_NORMAL | TIER_HARD")],
     ("GENGAR", "TIER_EASY | TIER_NORMAL", 25, 28),
@@ -107,7 +107,7 @@ def needs_tutor(key, moves, full, no_tutor):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--write-coverage-baseline", action="store_true",
-                    help="record today's coverage as the baseline (only when the user accepts it)")
+                    help="record today's coverage as the baseline (only when the loss is intended)")
     args = ap.parse_args()
     errors, warnings = [], []
     rows = g.read_catalog()

@@ -212,7 +212,7 @@ IronmanNewGameSRAMInit::
 	call RogueOfferDVsClear ; same bank ($3C), reward_offer_info.asm
 	jr FallenLogClear
 
-; TODO(user): placeholder wording. wNameBuffer holds the mon's nickname.
+; TODO: placeholder wording. wNameBuffer holds the mon's nickname.
 IronmanReleasedText:
 	text_ram wNameBuffer
 	text "was"

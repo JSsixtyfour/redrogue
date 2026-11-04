@@ -1,7 +1,7 @@
 """Banded kinds whose team size is tied to the route table (party roster Phase 3).
 
 A wild-area ambush, and a mini-boss (Phase 4), fields what that round's largest route trainer does
-(user decision 2026-10-07): STAGE_EVENT_R<n>_MONS must equal the class-count
+(2026-10-07): STAGE_EVENT_R<n>_MONS must equal the class-count
 sum of round n's trainer_difficulty_settings block in
 data/balance/trainer_levels.asm. Retuning route sizes without the ambush
 sizes, or the other way round, fails here. No emulator needed.

@@ -23,7 +23,7 @@ SECTION "Trainer AI Core", ROMX
 ; VERY_HARD=4, because NORMAL must stay 0 for InitOptions' `xor a`. Reordering
 ; these rows to read "easiest first" would silently mis-index.
 ;
-; User's design, 2026-09-01: difficulty changes WHERE the ladder starts and
+; Design, 2026-09-01: difficulty changes WHERE the ladder starts and
 ; where it stops, not merely how fast it climbs.
 ; 2026-10-09 (player feedback #5/#7): every label moved one step easier, so each
 ; row is the row one step harder in the old ladder, and VERY EASY is all T0.

@@ -687,6 +687,101 @@ class SetMovesetSmokeTest(HarnessTestCase):
         found, _ = self._run()
         self.assertFalse(found, "a zero set_tier_mask should never match")
 
+    def _apply(self, mix_id, species_name, level):
+        """The whole slot path, PartyGenApplyMoveset. VERY HARD so the difficulty's
+        set roll (100% there) cannot send the slot to the fallback by chance."""
+        h = self.harness
+        assert h is not None
+        constants = parse_rgbds_constants(REPO_ROOT / "constants/party_spec_constants.asm")
+        moves = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
+        h.set_difficulty("VERY_HARD")
+        self._setup(mix_id, species_name, level)
+        h.write8("wPartyGenSlotSource", constants["MSRC_SET"])
+        h.call_routine("PartyGenApplyMoveset", limit=12000)
+        written = h.read_bytes("wEnemyMon1Moves", 4)
+        return written, h.read8("wPartyGenSource"), constants, moves
+
+    def test_e4_row_prefers_elite_over_hard(self):
+        self.harness.boot_fight2(seed=1)
+
+        def want(hits):
+            elite = [r for r in hits if "TIER_ELITE" in r[1] and r[2] <= 50 <= r[3]]
+            hard = [r for r in hits if "TIER_ELITE" not in r[1] and r[2] <= 50 <= r[3]]
+            return elite if elite and hard else None
+
+        species, elite = _pick(self.ELITE_TOKENS, want)
+        written, source, constants, moves = self._apply(_mix_id("MIX_E4_SETS"), species, 50)
+        self.assertEqual(source, constants["MSRC_SET"])
+        self.assertIn(written, [[moves[m] for m in r[0]] for r in elite])
+
+    def test_e4_row_falls_back_to_hard_sets_before_a_roll(self):
+        self.harness.boot_fight2(seed=1)
+
+        def want(hits):
+            if any("TIER_ELITE" in r[1] for r in hits):
+                return None
+            hard = [r for r in hits if r[2] <= 50 <= r[3]]
+            return hard or None
+
+        species, hard = _pick(self.ELITE_TOKENS, want)
+        written, source, constants, moves = self._apply(_mix_id("MIX_E4_SETS"), species, 50)
+        self.assertEqual(source, constants["MSRC_SET"], f"{species} has a Hard set: it must not roll")
+        self.assertIn(written, [[moves[m] for m in r[0]] for r in hard])
+
+    def test_e4_row_rolls_when_it_has_neither_elite_nor_hard(self):
+        self.harness.boot_fight2(seed=1)
+        species, _ = _pick(self.NORMAL_TOKENS, lambda hits: hits or None)
+        runs = _curated_runs()
+        species = next(name for name, recs in sorted(runs.items())
+                       if recs and not any(r[1] & self.ELITE_TOKENS for r in recs))
+        _, source, constants, _ = self._apply(_mix_id("MIX_E4_SETS"), species, 50)
+        self.assertEqual(source, constants["MSRC_RANDOM_TM"])
+
+    def test_other_rows_do_not_borrow_hard_sets(self):
+        self.harness.boot_fight2(seed=1)
+        # MIX_GYM_MID accepts TIER_NORMAL only, so a species with only Hard sets rolls.
+        runs = _curated_runs()
+        species = next(name for name, recs in sorted(runs.items())
+                       if recs and all(r[1] == {"TIER_HARD"} for r in recs))
+        _, source, constants, _ = self._apply(_mix_id("MIX_GYM_MID"), species, 50)
+        self.assertEqual(source, constants["MSRC_RANDOM"])
+
+    def _curated_rate(self, difficulty, n_mons, slot, seeds=24):
+        """How many of `seeds` slots on the E4 row kept a curated set."""
+        h = self.harness
+        constants = parse_rgbds_constants(REPO_ROOT / "constants/party_spec_constants.asm")
+        species, _ = _pick(self.ELITE_TOKENS,
+                           lambda hits: hits if any("TIER_ELITE" in r[1] and r[2] <= 50 <= r[3] for r in hits) else None)
+        kept = 0
+        for seed in range(seeds):
+            h.set_difficulty(difficulty)
+            self._setup(_mix_id("MIX_E4_SETS"), species, 50)
+            h.write8("wPartyGenNMons", n_mons)
+            h.write8("wPartyGenSlot", slot)
+            h.write8("wEnemyPartyCount", n_mons)
+            base = h.address("wEnemyMon1") + slot * 44
+            h.pyboy.memory[base] = h.read8("wEnemyMon1")
+            h.pyboy.memory[base + 7] = 0  # MON_CATCH_RATE: form 0
+            h.write8("wPartyGenSlotSource", constants["MSRC_SET"], offset=slot)
+            h.seed_rng([seed, seed * 7 & 0xFF, 3, seed * 13 & 0xFF])
+            h.call_routine("PartyGenApplyMoveset", limit=12000)
+            kept += h.read8("wPartyGenSource") == constants["MSRC_SET"]
+        return kept
+
+    def test_e4_ace_skips_the_generated_chance(self):
+        self.harness.boot_fight2(seed=1)
+        self.assertEqual(self._curated_rate("EASY", 2, 1), 24)
+
+    def test_e4_non_ace_keeps_the_generated_chance(self):
+        self.harness.boot_fight2(seed=1)
+        kept = self._curated_rate("EASY", 2, 0)  # 40% at EASY
+        self.assertGreater(kept, 0)
+        self.assertLess(kept, 24)
+
+    def test_very_easy_ace_still_has_no_curated_sets(self):
+        self.harness.boot_fight2(seed=1)
+        self.assertEqual(self._curated_rate("VERY_EASY", 2, 1), 0)
+
     def test_never_widens_upward_to_a_higher_level_set(self):
         h = self.harness
         assert h is not None
@@ -907,6 +1002,134 @@ class RolledMovesetSmokeTest(HarnessTestCase):
         names = {value: name for name, value in move_ids.items()}
         rolled = [names.get(m, m) for m in h.read_bytes("wEnemyMon1Moves", 4)]
         return rolled, h.read_bytes("wEnemyMon1PP", 4)
+
+    def _ensure(self, species_name, moves, level=30, mix="MIX_ELITE"):
+        """Build the roll's candidate buffers, then run the guarantee on a chosen set."""
+        h = self.harness
+        move_ids = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
+        self._roll(species_name, [], "MSRC_RANDOM_TM", mix=mix, level=level)
+        for i in range(4):
+            h.write8("wEnemyMon1Moves", move_ids[moves[i]] if i < len(moves) else 0, offset=i)
+            h.write8("wEnemyMon1PP", 0, offset=i)
+        h.call_routine("PartyGenEnsureAttack", limit=6000)
+        names = {value: name for name, value in move_ids.items()}
+        return [names.get(m, m) for m in h.read_bytes("wEnemyMon1Moves", 4)], h.read_bytes("wEnemyMon1PP", 4)
+
+    @staticmethod
+    def _powers():
+        rows = re.findall(r"^\s*move (\w+),\s*\w+,\s*(\d+),", (REPO_ROOT / "data/moves/moves.asm").read_text(), re.M)
+        return {name: int(power) for name, power in rows}
+
+    def test_all_status_set_gains_an_attack_in_place_of_its_weakest_move(self):
+        status = ["GROWL", "SING", "MINIMIZE", "TAIL_WHIP"]
+        moves, pp = self._ensure("CHANSEY", status)
+        new = [m for m in moves if m not in status]
+        self.assertEqual(len(new), 1, moves)
+        self.assertGreater(self._powers()[new[0]], 0, moves)
+        self.assertIn("SING", moves)  # Growl and Tail Whip rank lower
+        self.assertGreater(pp[moves.index(new[0])] & 0x3F, 0, "the new move needs PP")
+
+    def test_empty_slot_is_filled_before_a_move_is_replaced(self):
+        moves, _ = self._ensure("CHANSEY", ["SING", "MINIMIZE"])
+        self.assertEqual(moves[:2], ["SING", "MINIMIZE"])
+        self.assertGreater(self._powers()[moves[2]], 0, moves)
+        self.assertEqual(moves[3], "NO_MOVE")
+
+    def test_a_set_that_can_attack_is_untouched(self):
+        for kept in (["GROWL", "SING", "MINIMIZE", "POUND"],
+                     ["GROWL", "SING", "MINIMIZE", "SEISMIC_TOSS"],  # fixed damage
+                     ["GROWL", "SING", "MINIMIZE", "METRONOME"],
+                     ["GROWL", "SING", "MINIMIZE", "MIMIC"],
+                     ["GROWL", "SING", "MINIMIZE", "BIDE"]):
+            with self.subTest(kept=kept[3]):
+                self.assertEqual(self._ensure("CHANSEY", kept)[0], kept)
+
+    def test_required_moves_are_never_replaced(self):
+        # MIX_ELITE requires a sleep move: with all four required there is no slot.
+        sleep = ["SING", "HYPNOSIS", "SPORE", "SLEEP_POWDER"]
+        self.assertEqual(self._ensure("CHANSEY", sleep)[0], sleep)
+
+    def test_no_legal_attack_changes_nothing(self):
+        self.assertEqual(self._ensure("DITTO", ["TRANSFORM"])[0], ["TRANSFORM", "NO_MOVE", "NO_MOVE", "NO_MOVE"])
+
+    def _ensure_only_tm(self, level):
+        """A mon that learns nothing and whose one TM is Hyper Beam (grade S, TM15)."""
+        h = self.harness
+        move_ids = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
+        items = (REPO_ROOT / "constants/item_constants.asm").read_text()
+        index = re.findall(r"add_tm (\w+)", items).index("HYPER_BEAM")
+        status = ["GROWL", "LEER", "TAIL_WHIP", "HARDEN"]
+        self._roll("MR_MIME", [], "MSRC_RANDOM_TM", level=level)
+        h.write8("wPartyGenCandidateCount", 0)
+        h.write8("wPartyGenTMCount", 1)
+        for byte in range(8):
+            h.write8("wMonHLearnset", 1 << (index & 7) if byte == index >> 3 else 0, offset=byte)
+        for i, name in enumerate(status):
+            h.write8("wEnemyMon1Moves", move_ids[name], offset=i)
+        h.call_routine("PartyGenEnsureAttack", limit=6000)
+        names = {value: name for name, value in move_ids.items()}
+        return [names.get(m, m) for m in h.read_bytes("wEnemyMon1Moves", 4)]
+
+    def test_tm_attacks_respect_the_level_gate(self):
+        self.assertNotIn("HYPER_BEAM", self._ensure_only_tm(20), "under its gate")
+        self.assertIn("HYPER_BEAM", self._ensure_only_tm(60), "past its gate")
+
+    def test_level_up_path_clears_a_stale_tm_count(self):
+        # Reads the guard, not the moves: every species and form with TMs has a legal attack
+        # at level 1, so no mon can reach the TM scan on this path and a stale count changes
+        # no moveset today. The first species that could would be taught TMs without this.
+        status = ["SING", "GROWL", "MINIMIZE", "DEFENSE_CURL"]
+        self._learnset_slot("BLISSEY", status, 47)  # writes a stale count of 9 first
+        self.assertEqual(self.harness.read8("wPartyGenTMCount"), 0)
+
+    def _learnset_slot(self, species_name, moves, level, source="MSRC_LEARNSET"):
+        """The whole slot path for a level-up set that AddPartyMon already wrote."""
+        h = self.harness
+        move_ids = parse_rgbds_constants(REPO_ROOT / "constants/move_constants.asm")
+        constants = parse_rgbds_constants(REPO_ROOT / "constants/party_spec_constants.asm")
+        self._roll(species_name, [], "MSRC_RANDOM_TM", mix="MIX_ROUTE_EARLY", level=level)
+        h.write8("wPartyGenCandidateCount", 0)  # a level-up set arrives with no candidates
+        h.write8("wPartyGenTMCount", 9)         # and stale scratch: must not reach the TM scan
+        for i in range(4):
+            h.write8("wEnemyMon1Moves", move_ids[moves[i]] if i < len(moves) else 0, offset=i)
+            h.write8("wEnemyMon1PP", 0, offset=i)
+        h.write8("wPartyGenSlotSource", constants[source])
+        h.call_routine("PartyGenApplyMoveset", limit=6000)
+        names = {value: name for name, value in move_ids.items()}
+        return [names.get(m, m) for m in h.read_bytes("wEnemyMon1Moves", 4)], h.read_bytes("wEnemyMon1PP", 4)
+
+    def test_all_status_level_up_set_gains_a_move_it_learns(self):
+        # Blissey at 47, its last four level-up moves: it learns Pound and Doubleslap.
+        status = ["SING", "GROWL", "MINIMIZE", "DEFENSE_CURL"]
+        moves, pp = self._learnset_slot("BLISSEY", status, 47)
+        new = [m for m in moves if m not in status]
+        self.assertEqual(len(new), 1, moves)
+        self.assertIn(new[0], ("POUND", "DOUBLESLAP"), "level-up sets take no TMs")
+        self.assertGreater(pp[moves.index(new[0])] & 0x3F, 0)
+
+    def test_tutor_source_behaves_as_learnset(self):
+        status = ["SING", "GROWL", "MINIMIZE", "DEFENSE_CURL"]
+        moves, _ = self._learnset_slot("BLISSEY", status, 47, source="MSRC_TUTOR")
+        self.assertEqual(len([m for m in moves if m not in status]), 1, moves)
+
+    def test_level_up_set_that_can_attack_stays_vanilla(self):
+        kept = ["POUND", "GROWL", "SING", "TAIL_WHIP"]
+        self.assertEqual(self._learnset_slot("BLISSEY", kept, 47)[0], kept)
+
+    def test_level_up_set_with_no_learned_attack_is_untouched(self):
+        self.assertEqual(self._learnset_slot("DITTO", ["TRANSFORM"], 30)[0],
+                         ["TRANSFORM", "NO_MOVE", "NO_MOVE", "NO_MOVE"])
+
+    def test_rolled_sets_always_attack_when_they_can(self):
+        powers = self._powers()
+        rows = dict(re.findall(r"^\s*move (\w+),\s*(\w+),", (REPO_ROOT / "data/moves/moves.asm").read_text(), re.M))
+        indirect = {"METRONOME", "MIRROR_MOVE", "MIMIC", "BIDE"}
+        for species in ("CHANSEY", "BLISSEY", "BAYLEEF", "MR_MIME", "JYNX"):
+            for seed in range(12):
+                with self.subTest(species=species, seed=seed):
+                    moves, _ = self._roll(species, [], "MSRC_RANDOM_TM", level=45, seed=[seed, 5, seed * 11 & 0xFF, 9])
+                    self.assertTrue(any(powers.get(m, 0) > 0 or rows.get(m) == "SPECIAL_DAMAGE_EFFECT"
+                                        or m in indirect for m in moves), moves)
 
     def test_tm_only_roll_on_a_species_with_no_tms_keeps_a_move(self):
         moves, pp = self._roll("DITTO", ["TRANSFORM"], "MSRC_RANDOM_TM_ONLY")

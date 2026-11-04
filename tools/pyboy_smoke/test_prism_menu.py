@@ -101,6 +101,37 @@ class PrismMenuTest(HarnessTestCase):
             self.assertEqual(messages[-1],h.address('PrismShowGrantDestination.'+label))
             self.assertEqual(h.read8('wCurItem'),42)
 
+    def test_karen_grants_normal_once_sharing_whitneys_event(self):
+        h = self.boot()
+        event = parse_rgbds_constants(REPO_ROOT / 'constants/event_constants.asm')['EVENT_PRISM_WHITNEY_SHOWN']
+        byte, mask = event >> 3, 1 << (event & 7)
+        messages = []
+        self.hook('PrintText',lambda _: (messages.append(h.pyboy.register_file.HL),return_from_call(h)))
+        flags = h.read8('wEventFlags',offset=byte)
+
+        # Neither Whitney nor Karen beaten yet: Karen grants and announces.
+        h.write_sram_bytes('sPrismCartridges',[0,0])
+        h.write8('wEventFlags',flags & ~mask,offset=byte)
+        h.call_routine('RogueGrantCartridgeNormal')
+        self.assertEqual(h.read_sram_bytes('sPrismCartridges',2),[1,0])
+        self.assertEqual(messages,[h.address('PrismCartridgeGrantText')])
+        self.assertEqual(h.read_bytes('wStringBuffer',7),[ord(c)-ord('A')+0x80 for c in 'NORMAL']+[0x50])
+        self.assertTrue(h.read8('wEventFlags',offset=byte) & mask)
+
+        # Whitney already granted it: no second message, cartridge kept.
+        self.restore()
+        messages.clear()
+        h.write_sram_bytes('sPrismCartridges',[1,0])
+        h.write8('wEventFlags',flags | mask,offset=byte)
+        h.call_routine('RogueGrantCartridgeNormal')
+        self.assertEqual(h.read_sram_bytes('sPrismCartridges',2),[1,0])
+        self.assertEqual(messages,[])
+
+        # The room's "skip the empty text box" gate must name the grant's event.
+        room = (REPO_ROOT / 'scripts/KarensRoom.asm').read_text()
+        self.assertIn('CheckEvent EVENT_PRISM_WHITNEY_SHOWN',room)
+        self.assertIn('farcall RogueGrantCartridgeNormal',room)
+
     def test_empty_cartridge_collection_does_not_open_a_menu(self):
         h = self.boot()
         self.hook('PrintText',lambda _: return_from_call(h))

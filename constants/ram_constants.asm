@@ -440,7 +440,7 @@ DEF SCRIPT_SUPER_NERD_AFTER_BATTLE EQU 2
 DEF MONEY_MATCH_TURNS_MASK    EQU %00111111
 	ASSERT MONEY_MATCH_TURNS_MASK < 1 << BIT_MONEY_MATCH_NO_PAYOUT
 ; He fights as this route step of the current round (a typical route trainer:
-; the user's "3rd trainer of the route"), whatever wBattleCount's own step is.
+; the "3rd trainer of the route"), whatever wBattleCount's own step is.
 DEF MONEY_MATCH_STEP          EQU 3
 	ASSERT MONEY_MATCH_STEP >= 1 && MONEY_MATCH_STEP < FINAL_ROUTE_STEP, \
 		"Money Match must be an ordinary route step (no final-trainer bonus)"

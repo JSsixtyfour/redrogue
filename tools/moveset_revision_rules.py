@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The fixed rules for Moveset revision Phase 3 (MOVESET_REVISION_IMPLEMENTATION_PLAN.md),
 as functions, so applying them to catalog rows is transcription, not judgement.
-Every rule cites the user decision it implements (MOVESET_REVISION_DECISIONS_2026-10-27.md).
+Every rule cites the decision it implements (MOVESET_REVISION_DECISIONS_2026-10-27.md).
 
     python tools/moveset_revision_rules.py     # self-test, prints worked examples
 """
@@ -39,7 +39,7 @@ def regrade(old_expr, new_expr):
 def point_segments(points, floor=1):
     """Approved tier rule (2026-10-27) for a set graded only at points, e.g. AIPOM
     HARD@5, NORMAL@15/30/50: each grade covers its level up to the next point's
-    level - 1, the first starts at `floor`, the last ends at 100 (ceiling 100: user,
+    level - 1, the first starts at `floor`, the last ends at 100 (ceiling 100:
     'floor, no ceiling'), adjacent equal grades merge. Returns [(lo, hi, TIER_X)].
     The generator's level bump still raises the first lo to the move floor."""
     pts = sorted((p["evaluation_level"], GRADE[p["provisional_tier"]]) for p in points)
@@ -130,7 +130,7 @@ def stadium_set_name(current=None, cup=None):
     return STADIUM_LABEL_MERGES.get(current, current)
 
 
-# --- Tutor rule (user decision 2026-10-27) --------------------------------------------
+# --- Tutor rule (2026-10-27) --------------------------------------------
 _LEARN = {}
 
 

@@ -317,7 +317,7 @@ SECTION "Battle Engine 3", ROMX
 
 INCLUDE "engine/battle/print_type.asm"
 ; save_trainer_name.asm moved out 2026-09-10 (gym-leader expansion, Phase 1) to
-; SECTION "Trainer Class Names" in bank $39. It carries TrainerNamePointers,
+; SECTION "Trainer Class Names". It carries TrainerNamePointers,
 ; which is NUM_TRAINERS entries wide, and this bank had 10 bytes free - the 11
 ; new leader classes needed 22, overflowing bank $09 by 12.
 INCLUDE "engine/battle/move_effects/focus_energy.asm"
@@ -333,9 +333,8 @@ INCLUDE "engine/battle/move_effects/focus_energy.asm"
 ; Its only caller is `farcall SaveTrainerName` (home/trainers.asm), so the
 ; entry point is already bank-independent and no call site changed.
 ;
-; Pinned to $39 in layout.link, beside "Trainer Parties" - all the per-class
-; trainer data now lives in one bank with ~12 KB of headroom, instead of being
-; scattered across banks that are individually full.
+; Pinned to $29 in layout.link (it sat beside "Trainer Parties" in $39 until
+; 2026-11-04, when the party builder needed that room).
 SECTION "Trainer Class Names", ROMX
 
 INCLUDE "engine/battle/save_trainer_name.asm"

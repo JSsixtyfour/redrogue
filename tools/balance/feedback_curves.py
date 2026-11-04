@@ -166,7 +166,7 @@ def money_section(name: str, g, cfg: Config, base_final: float, n: int) -> list[
     for tier, (pct, old) in PROPOSED_TIERS.items():
         mult = TIER_TARGET[tier] * m_hard * hard_final / spend[tier]
         if tier == "very_hard":
-            mult = m_hard          # user rule: Very Hard pays HARD's multiplier
+            mult = m_hard          # rule: Very Hard pays HARD's multiplier
         _, gaps, rows = run(g, replace(cfg, difficulty=f"pct:{pct}", money_mult=mult), n)
         fin = rows[-1]["spendable"]
         out.append(f"| {tier.replace('_', ' ').title()} | {pct:+d}% | x{old:.3f} | **x{mult:.3f}** | "

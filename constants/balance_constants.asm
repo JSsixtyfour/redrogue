@@ -422,10 +422,10 @@ DEF LOBBY_WITCH_CHANCE EQU 85     ; ~1/3
 ; Replaces LOBBY_WITCH_CHANCE on visits where Challenge 11 is offerable
 ; (IsLegendaryBossOfferable), so legendary gym battles come up more often
 ; without making the witch commoner for every other challenge. 115 = ~45%
-; (user decision 2026-10-22).
+; (2026-10-22).
 DEF LOBBY_WITCH_LEGENDARY_CHANCE EQU 115
 ; Out of 256: once the witch appears and Challenge 11 is offerable, she picks it
-; outright this often (80%, user decision 2026-10-22; was 192 = 75% from
+; outright this often (80% since 2026-10-22; was 192 = 75% from
 ; 2026-10-13). With the boost above, an eligible visit offers it ~37% of the
 ; time (was ~26%).
 DEF LEGENDARY_BOSS_PRIORITY_CHANCE EQU 205

@@ -571,7 +571,7 @@ EndlessRewardLevelBonus::
 
 ; ============================================================
 ; EndlessRosterClass  -- farcalled from GetRandMon (func_enc_gen.asm) for every
-; rarity-class roster mon at depth >= 1 (ENDLESS_MODE_CHECKPOINT_D.md 3.4, user
+; rarity-class roster mon at depth >= 1 (ENDLESS_MODE_CHECKPOINT_D.md 3.4,
 ; answer Q1: "4 master and then 2 ultra or masters").
 ;
 ; Every Endless roster reads the last authored row (6 mons, 2 of them Master),
@@ -678,7 +678,7 @@ EndlessUberWidths:
 ; EndlessSpecAceUber  -- farcalled from PartyGenLegendaryBossAce (bank $39)
 ; for a spec-built team's LAST slot, its ace, after the slot's species and
 ; form are final and before AddPartyMon, when Challenge 11 did not swap it.
-; (ENDLESS_MODE_CHECKPOINT_E.md 3.2; user answer Q4 plus the mini-bosses.)
+; (ENDLESS_MODE_CHECKPOINT_E.md 3.2, answer Q4 plus the mini-bosses.)
 ;
 ; At depth >= 1, for this circuit's gym leaders, Elite Four and Champion and
 ; the three mini-bosses, the ace takes EndlessUberStep; on carry an Uber,
@@ -697,7 +697,7 @@ EndlessSpecAceUber::
 	ret nc                        ; already fields an Uber
 	call EndlessUberStep
 	ret nc
-	ld e, 0                       ; opponents ignore ownership (user answer Q2)
+	ld e, 0                       ; opponents ignore ownership (answer Q2)
 	farcall RogueDrawUber         ; carry: d = species, e = form
 	ret nc
 	ld a, d

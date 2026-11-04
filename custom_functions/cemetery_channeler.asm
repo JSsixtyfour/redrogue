@@ -1,6 +1,6 @@
 ; custom_functions/cemetery_channeler.asm
 ;
-; The Cemetery's possessed Channeler (PROCEDURAL_SUBROOMS_PLAN Phase 4, user
+; The Cemetery's possessed Channeler (PROCEDURAL_SUBROOMS_PLAN Phase 4,
 ; 2026-10-14). He stands on one random floor per Cemetery (object slot 4 of
 ; every floor map, shown on that floor only), offers a fight, and battles as
 ; the Gambler does: a route trainer at MONEY_MATCH_STEP with the ordinary AI,
@@ -206,7 +206,7 @@ CemChannelerSettle::
 	ret
 
 ; His heal, the Pokemon Tower 5F purified zone's way (scripts/PokemonTower5F.asm,
-; user 2026-10-14): heal, a white flash, no sound. (Mom's healed jingle cannot
+; 2026-10-14): heal, a white flash, no sound. (Mom's healed jingle cannot
 ; play here: the Cemetery's music is on Audio Engine 3, which has no
 ; MUSIC_PKMN_HEALED, and the wait for it span forever.) From the floor's heal
 ; text_asm. Clobbers everything.
@@ -224,7 +224,7 @@ CemChannelerHeal::
 	ld hl, CemChannelerHealedText
 	jp PrintText
 
-; Placeholder lines (user, 2026-10-14).
+; Placeholder lines (2026-10-14).
 CemChannelerOfferText:
 	text "Free...me..."
 	line "battle..."

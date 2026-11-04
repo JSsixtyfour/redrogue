@@ -130,7 +130,7 @@ GetRandMon:
 	push de
 	farcall EndlessUberStep       ; carry = Uber
 	jr nc, .noUber
-	ld e, 0                       ; opponents ignore ownership (user answer Q2)
+	ld e, 0                       ; opponents ignore ownership (answer Q2)
 	call RogueDrawUber            ; carry: d = species, e = form
 	jr nc, .noUber
 	ld a, e
@@ -192,7 +192,7 @@ GetRandRoster:
     ; a = step within the round (constants/round_constants.asm).
     ; A Money Match fights as route step MONEY_MATCH_STEP of this round,
     ; whatever the count's own step is; the PokeManiac (a subroom resident on
-    ; the same path) as the route's last trainer, FINAL_ROUTE_STEP (user,
+    ; the same path) as the route's last trainer, FINAL_ROUTE_STEP (decided
     ; 2026-10-14: "the 4th trainer of a route"). RogueBattleRound applies the
     ; same override for the moveset row, so the two always agree.
     ld hl, wMoneyMatchState

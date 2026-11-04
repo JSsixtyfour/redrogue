@@ -6,7 +6,7 @@ round-indexed table sits on its last authored row, so encounter SHAPE stays at
 its maximum; levels grow by one bonus per global round (EndlessLevelRows),
 added before the difficulty % (the level funnel, func_enc_gen.asm).
 
-The rows are not chosen, they are solved: the user's rule (2026-10-28) is to
+The rows are not chosen, they are solved: the rule (2026-10-28) is to
 hold the gap the original run ends on. Checkpoint G (2026-10-29) lifted the
 caps: the player stops at MAX_LEVEL (235), enemies at ENEMY_MAX_LEVEL (255).
 So:
@@ -24,7 +24,7 @@ So:
   ramp     holding the gap stops the rows once the player's team caps at 235
            (measured: around global round 84). From that plateau the rows
            climb --post-cap-step a round until every category reaches 255
-           (user, 2026-10-29: a deliberate climb past the player's cap).
+           (2026-10-29: a deliberate climb past the player's cap).
 
 Usage:  python3 tools/balance/endless_solve.py [--runs N] [--depth D]
             [--last-round R] [--post-cap-step S] [--write]

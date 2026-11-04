@@ -4,7 +4,7 @@
 ; - DISABLE_LOW_HEALTH_ALARM ($ff) keeps its Red meaning, "turn the alarm off": the
 ;   faint path writes it (engine/battle/core.asm RemoveFaintedPlayerMon), and Crystal's
 ;   PlayDanger alone would read $ff as "on" and keep beeping.
-; - Tone-pair limit (Shin Red import Phase 2.10, kept by user decision 2026-10-28): the
+; - Tone-pair limit (Shin Red import Phase 2.10, kept 2026-10-28): the
 ;   alarm plays 3 high/low pairs, then stays quiet until the HP bar leaves red. While the
 ;   alarm is idle in battle with the bar not red, the allotment is topped up again.
 ;   wLowHealthTonePairs holds pairs remaining + 1.

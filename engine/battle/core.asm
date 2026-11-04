@@ -3564,7 +3564,7 @@ PlayerCalcMoveDamage:
 	; below, so fixed-damage moves ignore type immunities - Seismic Toss (NORMAL)
 	; damages GHOSTs and Night Shade (GHOST) damages NORMALs. shinpokered fixes
 	; this by removing the bypass entirely and routing these moves through the
-	; normal pipeline. DELIBERATELY NOT IMPORTED (user decision, 2026-08-18): it
+	; normal pipeline. DELIBERATELY NOT IMPORTED (2026-08-18): it
 	; is a balance nerf rather than a bug, and shinred's shape is a large
 	; restructure of this routine. The other three fixed-damage items on that
 	; plan line were all measured N/A here - see ShinRed_Tracker.md item 4.24.

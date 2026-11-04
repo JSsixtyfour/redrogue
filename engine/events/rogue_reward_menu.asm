@@ -401,7 +401,7 @@ GetRewardMonLevel::
 	jr nc, .atLeastFive
 	ld a, REWARD_LEVEL_FLOOR ; round 1 gives 3-6, too low next to the starter
 .atLeastFive
-	; Endless lifts the cap (user, 2026-10-29: rewards keep growing to 100);
+	; Endless lifts the cap (2026-10-29: rewards keep growing to 100);
 	; the bonus below and its 100 clamp bound the level instead.
 	ld b, a
 	ld a, [wEndlessDepth]

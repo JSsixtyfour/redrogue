@@ -1651,9 +1651,9 @@ PartyGenApplyMoveset:
 	ld [wPartyGenSource], a
 
 	cp MSRC_LEARNSET
-	ret z                          ; already done, for free, by AddPartyMon
+	jp z, PartyGenEnsureAttack     ; the moves are done, for free, by AddPartyMon
 	cp MSRC_TUTOR
-	ret z                          ; declared, no table yet: behaves as learnset
+	jp z, PartyGenEnsureAttack     ; declared, no table yet: behaves as learnset
 	cp MSRC_EXPLICIT
 	jr nz, .notExplicit
 	ld a, LOSS_ORIGIN_ORIGINAL     ; literal moves in a spec are hand-authored
@@ -1717,7 +1717,7 @@ PartyGenApplyMoveset:
 	ld a, [hl]
 	ld [wPartyGenSource], a
 	cp MSRC_LEARNSET
-	ret z                          ; the mon keeps AddPartyMon's vanilla four
+	jp z, PartyGenEnsureAttack     ; the mon keeps AddPartyMon's vanilla four
 	; fallthrough
 
 ; ===========================================================================
@@ -1854,7 +1854,199 @@ PartyGenRollMoveset:
 ; The four move slots are final here on every path (pool exhausted early or
 ; all four filled). require_flags gets its one guaranteed pass now, after
 ; every write and before this mon counts as done.
-	jp PartyGenApplyRequireFlags
+	call PartyGenApplyRequireFlags
+	; fallthrough
+
+; ===========================================================================
+; PartyGenEnsureAttack
+;
+; A rolled or level-up set must be able to deal damage: require_flags has no
+; "damaging" bit, and 0.48% of rolled sets came out all status, about one per run
+; (Will's Xatu: Confuse Ray / Double Team / Light Screen / Reflect). A level-up
+; set's last four moves can be all status too (Blissey at 47). If none of the four
+; can deal damage, the weakest is replaced by a legal attack, the most recently
+; learned one if it learns any, else (rolls only) the first TM attack past its
+; level gate.
+;
+; Metronome, Mirror Move, Mimic and Bide count as able to: they can, and they are
+; those mons' character. A required move is never the one replaced, and with no
+; legal attack (Ditto) nothing changes. Draws no Random, so it can only change
+; the rare set it rewrites. Curated sets never reach this.
+; ===========================================================================
+PartyGenEnsureAttack:
+	ld c, 0
+.scanSlot
+	call .slotMove
+	call .canDealDamage
+	ret c                          ; this set can already attack
+	inc c
+	ld a, c
+	cp NUM_MOVES
+	jr c, .scanSlot
+
+; A level-up set never built the roll's candidates: it needs only the moves this
+; mon learns, form included, and no TMs. Loaded here so most mons skip the cost.
+	ld a, [wPartyGenSource]
+	cp MSRC_LEARNSET
+	jr z, .loadLearned
+	cp MSRC_TUTOR
+	jr nz, .pickTarget
+.loadLearned
+	call PartyGenSlotMonBase       ; hl -> the mon's party_struct base
+	ld a, [hl]                     ; MON_SPECIES
+	ld [wCurSpecies], a
+	call PublishFormContext        ; HOME; reads MON_CATCH_RATE at hl, keeps hl
+	call GetMonHeader
+	farcall GetLevelUpMovesFar     ; WRAM in, WRAM out
+	xor a
+	ld [wPartyGenTMCount], a
+
+.pickTarget
+; e = the slot to replace: the first empty one, else the lowest-ranked move the
+; row does not require. $FF = every move is required.
+	ld c, 0
+	ld de, $FFFF                   ; d = lowest rank so far, e = its slot
+.targetSlot
+	call .slotMove
+	and a
+	jr z, .emptySlot
+	push bc
+	push de
+	call PartyGenMoveHasRequiredFlag
+	pop de
+	pop bc
+	jr c, .targetNext              ; required: keep it
+	call .slotMove
+	push de
+	ld e, a
+	call PartyGenMoveRank          ; preserves bc/de
+	pop de
+	cp d
+	jr nc, .targetNext
+	ld d, a
+	ld e, c
+.targetNext
+	inc c
+	ld a, c
+	cp NUM_MOVES
+	jr c, .targetSlot
+	ld a, e
+	inc a
+	ret z                          ; nothing may be replaced
+	jr .findLearned
+.emptySlot
+	ld e, c
+
+; Level-up candidates in reverse, so the most recently learned attack wins. d = index.
+.findLearned
+	ld a, [wPartyGenCandidateCount]
+	ld d, a
+.learnedLoop
+	ld a, d
+	and a
+	jr z, .findTM
+	dec d
+	ld c, d
+	ld b, 0
+	ld hl, wPartyGenCandidates
+	add hl, bc
+	ld a, [hl]
+	push de
+	call .attackCandidate
+	pop de                         ; pop keeps the carry
+	jr nc, .learnedLoop
+.write
+	ld c, e                        ; a = the move, c = the slot
+	jp PartyGenWriteMove
+
+; TM attacks, under the roll's own level gate. PartyGenTMMoveByIndex clobbers d.
+.findTM
+	ld d, 0
+.tmLoop
+	ld a, [wPartyGenTMCount]
+	cp d
+	ret z
+	ret c
+	push de
+	ld a, d
+	call PartyGenTMMoveByIndex     ; a = move, 0 = off the end
+	ld e, a
+	and a
+	jr z, .tmDone                  ; carry clear
+	call PartyGenIsTMOnly          ; carry = not also learned by level
+	jr nc, .tmEligible
+	call PartyGenTMGated           ; carry = under its gate at this level
+	jr nc, .tmEligible
+	xor a                          ; carry clear
+	jr .tmDone
+.tmEligible
+	ld a, e
+	call .attackCandidate
+.tmDone
+	pop de                         ; pop keeps the carry
+	jr c, .write
+	inc d
+	jr .tmLoop
+
+; c = slot. OUTPUT: a = that slot's move. Preserves bc, de.
+.slotMove
+	push bc
+	push de
+	call PartyGenSlotMonMoves      ; clobbers af, bc, hl
+	pop de
+	pop bc
+	push bc
+	ld b, 0
+	add hl, bc
+	pop bc
+	ld a, [hl]
+	ret
+
+; a = move id, 0 = none. OUTPUT: carry set if it can deal damage. Preserves bc.
+.canDealDamage
+	and a
+	ret z                          ; carry clear
+	cp METRONOME
+	jr z, .yes
+	cp MIRROR_MOVE
+	jr z, .yes
+	cp MIMIC
+	jr z, .yes
+	cp BIDE
+	jr z, .yes
+	ld e, a
+	push bc
+	farcall AIMoveIdDealsDamage    ; e in, carry out, survives the return
+	pop bc
+	ret
+.yes
+	scf
+	ret
+
+; a = move id, 0 = none. OUTPUT: carry set and a = the move if the roll could
+; legally have picked this attack. Dream Eater is left out: it needs a sleeping
+; target, and this set may have no way to make one. Clobbers everything else.
+.attackCandidate
+	and a
+	ret z                          ; carry clear
+	cp DREAM_EATER
+	jr z, .notCandidate
+	ld e, a
+	call PartyGenMoveRank          ; preserves bc/de
+	cp MOVE_RANK_OFFLIST
+	jr z, .notCandidate
+	call PartyGenMoveForbidden     ; preserves e; carry = the mix forbids it
+	jr c, .notCandidate
+	push de
+	farcall AIMoveIdDealsDamage    ; clobbers de
+	pop de
+	jr nc, .notCandidate
+	ld a, e
+	scf
+	ret
+.notCandidate
+	xor a                          ; carry clear
+	ret
 
 ; ===========================================================================
 ; PartyGenApplySetMoveset (MSRC_SET)
@@ -3258,7 +3450,8 @@ PartyGenDiffMods:
 ; OUTPUT: carry SET if this MSRC_SET slot may use a curated set: a 0..99 roll
 ;         under the difficulty's DIFF_SET_PCT_*. A character's own sets
 ;         (TIER_GAMBLER, TIER_SIGNATURE_7 in the mix's tier mask) are the
-;         character, not a difficulty lever: always allowed.
+;         character, not a difficulty lever: always allowed. So is an Elite Four
+;         or Champion ace, except at a difficulty's 0%.
 ; CLOBBERS af, hl. PRESERVES bc/de.
 PartyGenDiffAllowsSet:
 	push bc
@@ -3268,7 +3461,24 @@ PartyGenDiffAllowsSet:
 	pop bc
 	ld a, [hl]
 	and TIER_GAMBLER | TIER_SIGNATURE_7
-	jr z, .roll
+	jr z, .notCharacterSet
+	scf
+	ret
+.notCharacterSet
+; An Elite Four or Champion ace (the last slot on the ELITE-only row) does not take
+; the chance of a generated set. VERY EASY's 0% still means no curated sets at all.
+	ld a, [hl]
+	cp TIER_ELITE
+	jr nz, .roll
+	ld a, [wPartyGenSlot]
+	inc a
+	ld hl, wPartyGenNMons
+	cp [hl]
+	jr nz, .roll
+	call PartyGenDiffMods          ; hl -> DIFF_MODS_SET_PCT
+	ld a, [hl]
+	and a
+	ret z                          ; carry clear
 	scf
 	ret
 .roll

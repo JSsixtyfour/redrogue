@@ -547,7 +547,7 @@ GetCurrentMenuItem::
 ; Removes every TM/HM the player already owns from the mart list in wItemList
 ; (count byte, item bytes, $ff) and fixes the count, so owned TMs are never
 ; offered and a TM just bought drops out of the list at once. Ownership is one
-; bit, so buying a second copy only cost money (user request 2026-09-28).
+; bit, so buying a second copy only cost money (2026-09-28).
 ; Then clamps wMartBuyCursor so the kept cursor row cannot sit past the
 ; shortened list (CANCEL, at index = count, is the last valid row).
 ; Clobbers everything. wCurItem is left holding the last TM/HM checked; the

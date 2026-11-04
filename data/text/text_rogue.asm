@@ -180,7 +180,7 @@ _ElementPrismSetText::
 
 ; text_ram reads the equipped type's name out of wStringBuffer.
 _ElementPrismStatusText::
-	text "PRISM CARTRIDGE:"
+	text "CARTRIDGE:"
 	line "@"
 	text_ram wStringBuffer
 	text ""
@@ -206,7 +206,7 @@ _PrismNoCartridgesText::
 ; old one-line layouts ran to 30.
 _PrismFirstGrantText::
 	text "Received the"
-	line "ELEMENT PRISM!"
+	line "ELEMENT BOY!"
 
 	para "It came with a"
 	line "@"
@@ -368,8 +368,7 @@ _RivalMiniBossEndBattleText::
 	prompt
 
 ; Mini-boss framework: shared Giovanni mini-boss dialogue, callable from any
-; of his 3 dungeon maps' 5th-trainer encounter. Placeholder text - user will
-; author the real quotes.
+; of his 3 dungeon maps' 4th-trainer encounter.
 _GiovanniMiniBossBattleText::
 	text "So! I must say, I"
 	line "am impressed you"
@@ -391,7 +390,7 @@ _Elite4GoToChampionText::
 ; Final sequence: Lance's after-battle text when he is NOT the last (order[3])
 ; member this run. Vanilla's _LancesRoomLanceAfterBattleText always assumed
 ; Lance was last and directs the player to the Champion, so it can't be reused
-; here. Placeholder text - user will author the real quote.
+; here. Placeholder text - TODO author the real quote.
 _LancesRoomLanceNormalAfterBattleText::
 	text "I still can't"
 	line "believe my"

@@ -159,7 +159,7 @@ class EndlessUberTest(HarnessTestCase):
 
     def test_constants_are_the_approved_rate(self) -> None:
         self.assertEqual(self.rounds["ENDLESS_UBER_BASE"], 1)
-        self.assertEqual(self.rounds["ENDLESS_UBER_STEP"], 4)   # user answer Q1
+        self.assertEqual(self.rounds["ENDLESS_UBER_STEP"], 4)   # answer Q1
 
     def test_depth_0_never_rolls(self) -> None:
         for round_ in (0, 4, 8):

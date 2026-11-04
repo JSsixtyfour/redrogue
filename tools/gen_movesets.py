@@ -132,7 +132,7 @@ DEFAULT_SOURCE = os.path.join(
 NAME_FIXES = {"PSYCHIC": "PSYCHIC_M", "NIGHTSHADE": "NIGHT_SHADE"}
 
 # Hand corrections to corpus records, applied before the legality check
-# (2026-10-21, the user's edits to movesets.asm, moved here so a regenerate
+# (2026-10-21, hand edits to movesets.asm, moved here so a regenerate
 # keeps them). Keyed on (corpus species name, the four corpus moves after
 # NAME_FIXES); the value replaces all four moves.
 CORPUS_FIXES = {
@@ -223,7 +223,7 @@ FORM_FILES = {
     "VULPIX_ALOLA": "avulpix", "WEEZING_GALAR": "gweezing",
     "ZAPDOS_GALAR": "gzapdos",
     # 2026-10-27: forms with no corpus record, named for moveset_catalog.tsv's
-    # rows (the user's Scream Tail and Toedscruel sets, the packet's additions).
+    # rows (the hand-made Scream Tail and Toedscruel sets, the packet's additions).
     "SCREAM_TAIL": "screamtail", "SANDY_SHOCKS": "sandyshocks",
     "TOEDSCOOL": "toedscool", "TOEDSCRUEL": "toedscruel",
     "WIGLETT": "wiglett", "WUGTRIO": "wugtrio",

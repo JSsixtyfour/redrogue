@@ -1,7 +1,7 @@
 ; The cave's subroom (PROCEDURAL_SUBROOMS_PLAN Phase 4), on the map id of the
 ; unreachable SAFARI_ZONE_NORTH_REST_HOUSE. Reached by either of the cave's two
 ; ladders down; each of its two ladders up leads back to its own. The room is
-; one of the user's drawn rooms, rolled per cave (CaveSubRooms). Its resident
+; one of the hand-drawn rooms, rolled per cave (CaveSubRooms). Its resident
 ; is rolled per cave too: the Gambler (Money Match), the Super Nerd (the
 ; Facility's) or the PokeManiac.
 

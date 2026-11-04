@@ -18,7 +18,7 @@ until every piece is covered. Per piece it then picks:
     nearest the room's centre,
   - the item ball's tile, far from the pad and from him,
 each one blocking no path: everything walkable from the pad stays walkable with
-both standing there. Pieces are weighted by interior area / 3 (the user prefers
+both standing there. Pieces are weighted by interior area / 3 (this prefers
 larger rooms; a byte-sized pick list holds the result). A piece with no valid
 spot is left out (listed on stderr). The ROM reads the generated files; it checks nothing itself.
 

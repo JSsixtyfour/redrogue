@@ -178,7 +178,7 @@ class DexFormsTest(unittest.TestCase):
         self.assertEqual(self.bits("wPokedexOwned", BASE_BYTES), [])
 
     def test_non_identity_forms_credit_their_base_species(self) -> None:
-        """Armored Mewtwo, the fossil ghosts, and selectors with no record (user 2026-11-03)."""
+        """Armored Mewtwo, the fossil ghosts, and selectors with no record (2026-11-03)."""
         cases = EXCLUDED + [("MEOWTH", 3), ("PIKACHU", 1)]
         for species, form in cases:
             self.clear_dex()

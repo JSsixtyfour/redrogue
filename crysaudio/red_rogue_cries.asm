@@ -2,7 +2,7 @@
 ; (the order of data/pokemon/cries.asm's CryData, which this replaces). Generated from
 ; CryData and the donor's PokemonCries (pokered-crysaudio 9753183a):
 ;   - 151 Gen 1 rows: identical to the old Red cries (pitch kept, length + $80, same base cry);
-;   - 87 Gen 2 rows: the authentic Crystal cry (user request, 2026-10-28);
+;   - 87 Gen 2 rows: the authentic Crystal cry (2026-10-28);
 ;   - 15 rows for species newer than Gen 2: Red Rogue's own cry, converted the same way.
 ; CRYSTAL_AUDIO_PHASE0_CHECKPOINT_2026-10-28.md section 8. PlayCry indexes this by species - 1.
 

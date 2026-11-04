@@ -10,55 +10,53 @@ _SilphCoDormCharmeleonText::
 
 _SilphCoDormPidgeyText::
 	text "A soft PIDGEY doll."
-	line "One wing is a bit"
-	cont "crooked."
 	done
 
 _SilphCoDormOmanyteText::
-	text "A plush OMANYTE,"
-	line "spiral shell"
-	cont "stitched just right."
+	text "A plush OMANYTE"
+	line "with a ridged"
+	cont "spiral shell."
 	done
 
 _SilphCoDormVoltorbText::
-	text "A round VOLTORB"
-	line "toy. The fabric"
-	cont "still smells new."
+	text "A VOLTORB doll"
+	line "that looks as"
+	cont "round as a ball."
 	done
 
 _SilphCoDormClefairyText::
 	text "A CLEFAIRY plush"
-	line "with a little star"
-	cont "pattern on its back."
+	line "with very accurate"
+	cont "details."
 	done
 
 _SilphCoDormChanseyText::
-	text "A CHANSEY nurse"
-	line "doll, egg pouch"
-	cont "sewn from felt."
+	text "A CHANSEY plush"
+	line "with removable egg"
+	cont "pouch."
 	done
 
 _SilphCoDormSnorlaxText::
-	text "A huge SNORLAX"
-	line "pillow. Perfect"
-	cont "for naps."
+	text "A SNORLAX doll big"
+	line "enough to sleep"
+	cont "on."
 	done
 
 _SilphCoDormPikachuText::
-	text "A PIKACHU plush."
-	line "The cheeks are a"
-	cont "little worn."
+	text "A PIKACHU plush"
+	line "with it a nice big"
+	cont "tail."
 	done
 
 _SilphCoDormPokedexText::
-	text "A display POKEDEX,"
-	line "just for show."
+	text "A decorative"
+	line "#DEX."
 	done
 
 _SilphCoDormOldAmberText::
 	text "A replica OLD"
-	line "AMBER. A keepsake,"
-	cont "not the real thing."
+	line "AMBER from a gift"
+	cont "shop."
 	done
 
 _SilphCoDormSeelText::
@@ -188,85 +186,83 @@ _SilphCoDormBulbasaurText::
 	done
 
 _SilphCoDormClefairyYLText::
-	text "This CLEFAIRY"
-	line "plush has tiny"
-	cont "pink wings."
+	text "A CLEFAIRY doll"
+	line "that brightens the"
+	cont "mood."
 	done
 
 _SilphCoDormJigglypuffText::
-	text "This JIGGLYPUFF"
-	line "doll is round"
-	cont "and very bouncy."
+	text "A JIGGLYPUFF doll"
+	line "that almost looks"
+	cont "real."
 	done
 
 _SilphCoDormMachokeText::
-	text "This MACHOKE doll"
-	line "shows off its"
-	cont "muscled physique."
-	done
+	text "A MACHOKE doll,"
+	line "smaller than the"
+	cont "real thing."
+	donee
 
 _SilphCoDormMeowthText::
-	text "This MEOWTH doll"
-	line "wears a shiny"
-	cont "gold coin charm."
+	text "A MEOWTH doll"
+	line "looking a bit"
+	cont "mischievous."
 	done
 
 _SilphCoDormMrMimeText::
-	text "This MR. MIME"
-	line "doll wears a"
-	cont "mime's costume."
+    text "A MR. MIME doll"
+	line "with nice white"
+	cont "gloves."
 	done
 
 _SilphCoDormNidoranMText::
-	text "This NIDORAN M"
-	line "doll has a"
-	cont "small sturdy horn."
+	text "A NIDORAN♂ doll"
+	line "with stubby little"
+	cont "legs."
 	done
 
 _SilphCoDormOddishText::
-	text "This ODDISH plush"
-	line "is round with"
-	cont "leaves on top."
+	text "An ODDISH plush"
+	line "with a nice set of"
+	cont "leaves."
 	done
 
 _SilphCoDormPidgeotText::
-	text "This PIDGEOT doll"
-	line "has sweeping"
-	cont "tail plumes."
+	text "A PIDGEOT doll"
+	line "with impressive"
+	cont "detail."
 	done
 
 _SilphCoDormPoliwrathText::
-	text "This POLIWRATH"
-	line "doll is muscled"
-	cont "with a swirl gut."
+	text "A POLIWRATH doll"
+	line "that looks ready"
+	cont "for a fight."
 	done
 
 _SilphCoDormSandshrewText::
-	text "This SANDSHREW"
-	line "doll has a tough"
-	cont "sandy, tough hide."
+	text "A SANDSHREW doll,"
+	line "much softer than"
+	cont "the real thing."
 	done
 
 _SilphCoDormSeel2Text::
-	text "This SEEL sits"
-	line "up with its"
-	cont "tail curled up."
+	text "A SEEL doll"
+	line "looking like its"
+	cont "ready to play."
 	done
 
 _SilphCoDormJolteonText::
-	text "This JOLTEON"
-	line "plush bristles"
-	cont "with spiky fur."
+    text "A JOLTEON doll"
+	line "with intense eyes."
 	done
 
 _SilphCoDormFlareonText::
-	text "This FLAREON"
-	line "plush feels warm"
-	cont "and fluffy."
+	text "A FLAREON doll, it"
+	line "almost feels like"
+	cont "the real thing."
 	done
 
 _SilphCoDormWigglytuffText::
-	text "This WIGGLYTUFF"
-	line "doll is big,"
-	cont "round and soft."
+    text "A WIGGLYTUFF doll"
+	line "with a big grin."
 	done

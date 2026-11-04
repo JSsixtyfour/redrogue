@@ -1,4 +1,4 @@
-# Facility spinner decor (PROCEDURAL_SUBROOMS_PLAN Phase 3), drawn by the user.
+# Facility spinner decor (PROCEDURAL_SUBROOMS_PLAN Phase 3), hand-drawn.
 # Arrows and stoppers are read from the art; see tools/facility_spinners.py.
 #
 #   blk     the payload: interior only, no wall ring, W x H blocks, row-major

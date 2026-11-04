@@ -27,7 +27,7 @@ Worst practical case for the new code: T3, six equal enemy mons (so every
 reserve is ranked), four revealed player attack types (so each candidate
 costs several PreviewTypeMatchup calls), and a live KO threat (so
 AIReplacementIsBetter runs). No reserve is better off, so the AI stays.
-Budget: see the user-agreed thresholds below.
+Budget: see the agreed thresholds below.
 """
 from pathlib import Path
 import unittest
@@ -41,7 +41,7 @@ DMG_FRAME = 70224
 # Measured 2026-10-22 (ai_turn_plan.asm), steady state (turn 1 is reported
 # separately, cold with no cached KO/estimate state): quiet board 94,308
 # cycles (1.34 DMG frames), worst board (6 reserves, 4 revealed player moves)
-# 155,904 cycles (2.22 frames). Budget is measured + 20% (user decision,
+# 155,904 cycles (2.22 frames). Budget is measured + 20% (decided
 # 2026-10-22): enough headroom for normal matchup variance without hiding a
 # real regression. Re-measure and update both constants together if the
 # underlying routines change.

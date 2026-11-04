@@ -170,7 +170,7 @@ AILayerDamage:
 .rankedByDelivery
 ; Two-turn moves (CHARGE_EFFECT, FLY_EFFECT) rank at HALF: two turns for one hit
 ; is half the damage per turn, and per-turn damage is what this layer compares
-; (2026-10-08, user's rule, FOLLOWUPS #61). It feeds the best-damage nudge and
+; (2026-10-08, FOLLOWUPS #61). It feeds the best-damage nudge and
 ; the half/quarter tiers below. The possible-KO test above already ran on the
 ; full hit, and .kill caps these moves anyway. Hyper Beam is deliberately not
 ; here: it lands THIS turn, and its recharge is AISmart_HyperBeam's business.

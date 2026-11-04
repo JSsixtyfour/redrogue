@@ -126,7 +126,7 @@ MoneyMatchHouseTalk::
 	ld a, 1 << BIT_MONEY_MATCH_ACTIVE ; active, no turns yet
 	ld [wMoneyMatchState], a
 	; Nothing more to read: close the box as the battle starts. Without this
-	; DisplayTextID waits for one more A on the offer (user, BGB 2026-10-14).
+	; DisplayTextID waits for one more A on the offer (BGB 2026-10-14).
 	ld a, 1
 	ldh [hNoWaitAfterText], a
 	scf

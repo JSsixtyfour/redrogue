@@ -58,7 +58,7 @@ DEF ENDLESS_FIRST_ROUND EQU ENDLESS_CIRCUIT_SPAN / ROUND_BATTLES
 ; solver's, not 255 / ROUND_BATTLES).
 ; Uber step (EndlessUberStep, ENDLESS_MODE_CHECKPOINT_E.md section 3): after a
 ; Master roll at depth >= 1, Uber's width out of 256 is BASE + STEP x (Endless
-; rounds so far). STEP 4 is the user's pick (Q1): ~0.5% of bosses in Endless
+; rounds so far). STEP 4 was picked (Q1): ~0.5% of bosses in Endless
 ; round 9, ~4% by 16, ~14% once progress saturates.
 DEF ENDLESS_UBER_BASE EQU 1
 DEF ENDLESS_UBER_STEP EQU 4

@@ -1,6 +1,6 @@
 """The cave subroom (PROCEDURAL_SUBROOMS_PLAN Phase 4, cave).
 
-PROCEDURAL_CAVE_SUBROOM shows one of the user's drawn rooms, rolled per cave
+PROCEDURAL_CAVE_SUBROOM shows one of the hand-drawn rooms, rolled per cave
 (CaveSubRooms in custom_functions/cave_subroom.asm), each with two ladders up,
 one per cave ladder down. The cave draws two ladders down on fixed sites (state
 in the staging buffer's tail), arms only their warps at the rolled room's two

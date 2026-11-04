@@ -30,7 +30,7 @@
 	RGB  3,  3,  3
 
 	; Ultra Ball: near-black top. The outline is a dark gold rather than black
-	; so the top still reads as a shape against its own outline (the user's
+	; so the top still reads as a shape against its own outline (a
 	; contrast acceptance item); tune this row if it reads poorly in BGB.
 	; The top is exactly 3,3,3 because Enhanced Colors' gamma (GBCGamma,
 	; custom_functions/func_gamma.asm) skips only colours with EVERY channel <= 3

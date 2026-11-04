@@ -5,7 +5,7 @@
 
 PCBossLevelTable:
 ; one entry per round (0-8, wBattleCount / ROUND_BATTLES). Curve F
-; (2026-10-02, BALANCE_LEVEL_SPIKE.md) set the boss well above the party (user
+; (2026-10-02, BALANCE_LEVEL_SPIKE.md) set the boss well above the party (the
 ; rule: it is a lone wild mon). 2026-10-06: every row -2, since the boss sat
 ; ~6.5 over the team average on entry; it is now ~4.5 over. Row 0 is
 ; unreachable (wild areas start at count ROUND_BATTLES); the last entry

@@ -110,7 +110,7 @@ DEF BIT_CAVESUB_PRIZE_PAID    EQU 1 ; the Super Nerd's prize was handed over
 DEF BIT_CAVESUB_SUPER_NERD    EQU 2 ; the resident is the Super Nerd (else the Gambler)
 DEF BIT_CAVESUB_MANIAC        EQU 3 ; with SUPER_NERD: the PokeManiac, who uses his object
 DEF BIT_CAVESUB_OBJECTS_SHOWN EQU 7
-; The resident roll, out of 256 (user, 2026-10-14: 40% Gambler, 40% Super
+; The resident roll, out of 256 (2026-10-14: 40% Gambler, 40% Super
 ; Nerd, 20% PokeManiac).
 DEF CAVESUB_GAMBLER_ODDS EQU 102
 DEF CAVESUB_NERD_ODDS    EQU 102

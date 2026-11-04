@@ -262,6 +262,10 @@ ROMX $28
 	"Text 9"
 ROMX $29
 	"Text 10"
+	; SaveTrainerName + TrainerNamePointers + its name strings, one unit (see
+	; main.asm), reached only by farcall. Moved from $39 on 2026-11-04 so the party
+	; builder in "Trainer Parties" keeps room to grow.
+	"Trainer Class Names"
 ROMX $2A
 	"Text 11"
 ROMX $2B
@@ -446,11 +450,6 @@ ROMX $39
 	; for 11 new leader classes), and this file's own $2E rule says a section
 	; whose size is going to change must not be left to first-fit.
 	"Trainer Parties"
-	; Phase 1: SaveTrainerName + TrainerNamePointers + its name strings,
-	; evicted from bank $09 ("Battle Engine 3", 10 bytes free) by the 11 new
-	; leader classes. Kept beside the party data so every per-class trainer
-	; table lives in one bank.
-	"Trainer Class Names"
 ROMX $3A
 	; Both option pages and the table-driven page engine they share
 	; (engine/menus/options_menu.asm), moved off bank $2E on 2026-09-23 when

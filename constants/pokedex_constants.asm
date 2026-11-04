@@ -346,7 +346,7 @@ DEF NUM_DEX_IDENTITIES EQU NUM_POKEMON + NUM_DEX_FORMS
 ; Special collection (PC RECORDS, schema 19): the forms the Pokedex deliberately
 ; leaves out. Bit index in wSpecialCollected: SAVED, append only, never reorder.
 	const_def
-; Not identities, by the user's call: the fossil ghosts. They are a rare graphic
+; Not identities, deliberately: the fossil ghosts. They are a rare graphic
 ; on an ordinary cemetery ghost, nothing a player can work toward.
 	const SPECIAL_ARMORED_MEWTWO    ; 0
 	const SPECIAL_THICK_CLUB        ; 1

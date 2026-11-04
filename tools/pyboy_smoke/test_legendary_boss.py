@@ -343,7 +343,7 @@ class LegendaryBossVeryEasySmokeTest(HarnessTestCase):
 
 class LegendaryTradeFormSmokeTest(HarnessTestCase):
     """Giovanni's post-battle trade hands over Armored Mewtwo (MEWTWO form 1),
-    armor kept; Sabrina's Mewtwo trades plain (user decision 2026-10-27).
+    armor kept; Sabrina's Mewtwo trades plain (2026-10-27).
 
     Runs the real per-leader entry and stops it at RogueDoInGameTradeDialogue's
     entry, reading the offer's wroguenpctradeform there: the byte

@@ -29,7 +29,7 @@ class OptionalEncounterOddsTest(unittest.TestCase):
             self.assertEqual(counts,Counter({0:67,1:33}))
             self.assertEqual(ranges,[33]*33) # production cold draws use range33
             # 100 theme bins x33 conditional encounter bins: exact nominal
-            # totals before the user-accepted no-ladder availability loss.
+            # totals before the accepted no-ladder availability loss.
             self.assertEqual(counts[1]*10,330) #330/3300 =10%
             self.assertEqual(counts[1]*5,165) #165/3300 =5%
             self.assertEqual(counts[0]*33+counts[1]*18,2805) #85%

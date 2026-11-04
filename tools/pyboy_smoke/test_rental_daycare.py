@@ -24,7 +24,7 @@ class RentalDaycareTest(unittest.TestCase):
         for slot in (0, 1):
             deposit = "wDayCareDepositBattleCount" + ("2" if slot else "")
             for elapsed in (0, 1, self.round, self.round + 1, 2 * self.round + 1, 255):
-                # Capped at Y9999, where the lobby's 2-byte fee saturates (user, 2026-10-29).
+                # Capped at Y9999, where the lobby's 2-byte fee saturates (2026-10-29).
                 fee = min(9999, ((elapsed + self.round - 1) // self.round) * 500)
                 for balance in (0, max(0, fee - 1), fee, fee + 800):
                     with self.subTest(slot=slot, elapsed=elapsed, balance=balance):

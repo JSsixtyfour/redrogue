@@ -112,7 +112,7 @@ ItemNames::
 	li "DOOR DICE"
 	li "MON DICE"
 	li "ITEM DICE"
-	li "ELEM PRISM"
+	li "ELEMENT BOY"
 	li "M.GENE"
 	li "M.TOME"
 	li "SUN STONE"

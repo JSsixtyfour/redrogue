@@ -9,7 +9,7 @@
 ; Tombstone blocks replacing floor (block 54 or 14):
 ;   76,78,79,81,82,23,19,77,80,101-106
 ;
-; Warp positions (tile coords, always fixed, confirmed with user):
+; Warp positions (tile coords, always fixed, confirmed):
 ;   Maps 1,3: entrance (3,9) left, exit (18,9) right
 ;   Map  2  : entrance (18,9) right, exit (3,9) left
 ;   Map  4  : entrance (18,9) right, exit (9,16) south
