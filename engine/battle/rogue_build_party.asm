@@ -1669,12 +1669,23 @@ PartyGenApplyMoveset:
 	jr nc, .setFallback
 	call PartyGenApplySetMoveset
 	ret c                          ; a matching curated set was found and written
+; An ELITE-only row (MIX_E4_SETS) tries the species' HARD sets before the roll, so
+; a mon with no ELITE set near this level still plays a curated set
+	call PartyGenMixRow
+	ld bc, 6
+	add hl, bc
+	ld a, [hl]                     ; set_tier_mask
+	cp TIER_ELITE
+	jr nz, .setFallback
+	ld e, TIER_HARD
+	call PartyGenApplySetMovesetMask
+	ret c
 	jr .setFallback
 
 ; Endless Uber ace (PartyGenLegendaryBossAce). Its own boss sets
 ; first, then the shared corpus's strongest grades, then the mix's fallback
 ; like any MSRC_SET slot. VERY EASY keeps the legendary's level-up learnset
-; (user decision 2026-10-13) rather than the mix's random fallback: AddPartyMon
+; rather than the mix's random fallback: AddPartyMon
 ; already wrote those four moves, so there is nothing to do.
 .legendaryBoss
 	ld a, [wOptions2]

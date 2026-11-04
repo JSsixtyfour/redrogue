@@ -484,8 +484,9 @@ ENDR
 ; had none.
 ;
 ; Every slot is on MIX_E4_SETS, the "sets only, ELITE mask" row: each slot draws
-; a curated set, and a species with no TIER_ELITE record near its level falls
-; back to the row's MSRC_RANDOM_TM under RANK_ROW_ELITE. There is no tier ladder
+; a curated set. A species with no TIER_ELITE record near its level tries its
+; TIER_HARD records (PartyGenApplyMoveset), then falls back to the row's
+; MSRC_RANDOM_TM under RANK_ROW_ELITE. There is no tier ladder
 ; in the row: the four tiers are within three levels, so the ladder lives in the
 ; levels instead.
 MACRO e4_member_pointers
