@@ -402,7 +402,7 @@ RoomFurnitureMenu:
 	ld bc, RoomVendorPlantIds    ; show only owned pieces
 	call RoomSetPickListFilter
 	ld hl, RoomBottomNameTable
-	ld b, 2
+	ld b, 3
 	call RoomDrawPickList
 	ret c
 	call RoomWriteFurnitureBottom
@@ -446,9 +446,10 @@ RoomPcNameTable:
 .LongDesk: db "LONG DESK@"
 
 RoomBottomNameTable:
-	dw .Nothing, .PottedPlant
+	dw .Nothing, .PottedPlant, .Statue
 .Nothing:      db "NOTHING@"
 .PottedPlant:  db "POTTED PLANT@"
+.Statue:       db "STATUE@"
 
 ; Description tables, one dw per entry, parallel to the name tables above.
 ; Two lines of at most 18 characters, joined by <NEXT>; they are drawn at
@@ -513,9 +514,10 @@ RoomPcDescTable:
 .LongDesk: db "A wide desk with<NEXT>space to display.@"
 
 RoomBottomDescTable:
-	dw .Nothing, .PottedPlant
+	dw .Nothing, .PottedPlant, .Statue
 .Nothing:     db "Leave the corner<NEXT>of the room bare.@"
 .PottedPlant: db "A leafy plant in<NEXT>a heavy clay pot.@"
+.Statue:      db "A stone statue on<NEXT>a display base.@"
 
 RoomDecorationDescTable:
 	dw .None, .Charmeleon, .Pidgey, .Omanyte, .Voltorb, .Clefairy, .Chansey, \
@@ -619,7 +621,8 @@ RoomWriteFurnitureMiddle:
 	ld [rRAMG], a
 	ret
 
-; a = selected option (0-1); writes into sRoomFurniture byte0 bit7
+; a = selected option (0-2); byte0 bit7 = occupied, byte1 bit1 = statue.
+; Retains the old plant encoding, and preserves the PC's byte1 bit0.
 RoomWriteFurnitureBottom:
 	ld c, a
 	ld a, RAMG_SRAM_ENABLE
@@ -629,6 +632,13 @@ RoomWriteFurnitureBottom:
 	ASSERT BANK("Save Data") == 1
 	ld a, 1
 	ld [rRAMB], a
+	ld hl, sRoomFurniture + 1
+	res 1, [hl]
+	ld a, c
+	cp 2
+	jr nz, .variantSet
+	set 1, [hl]
+.variantSet
 	ld a, [sRoomFurniture]
 	and %01111111
 	ld b, a

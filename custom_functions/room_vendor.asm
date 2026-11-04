@@ -10,10 +10,11 @@
 ; generic, non-item-specific pieces (HasEnoughCoins, predef SubBCDPredef) are
 ; shared.
 ;
-; Piece ids (0-60) match the owned bit layout exactly: 0-7 = TOP options
+; Piece ids (0-61) match the owned bit layout exactly: 0-7 = TOP options
 ; 1-8, 8 = LONG DESK, 9-12 = MIDDLE options 1-4, 13 = POTTED PLANT,
 ; 14-24 = decorations 1-11, 25 = TOP 9 (DINOSAUR POSTER), 26 = MIDDLE 5
 ; (SPACESHIP), 27-60 = decorations 12-45 (32+ live in sRoomOwnedExt).
+; 61 = STATUE (BOTTOM 2).
 ; Later pieces take the next free bit rather than renumbering, so owned
 ; bits in existing saves keep their meaning; each category's
 ; *Ids table maps its rows to bits. The four defaults (WALL/DESK/NOTHING/
@@ -131,7 +132,7 @@ RoomVendorMenu::
 .TopString:    db "TOP@"
 .MiddleString: db "MIDDLE@"
 .DeskString:   db "DESK@"
-.PlantString:  db "PLANT@"
+.PlantString:  db "BOTTOM@"
 .PalsString:   db "PALS@"
 
 ; ============================================================
@@ -239,8 +240,8 @@ RoomVendorCategory:
 	text_end
 
 ; ============================================================
-; RoomIsPieceOwned — INPUT: c = piece id (0-60). OUTPUT: carry set if owned.
-; RoomSetPieceOwned — INPUT: a = piece id (0-60). Sets the owned bit.
+; RoomIsPieceOwned — INPUT: c = piece id (0-61). OUTPUT: carry set if owned.
+; RoomSetPieceOwned — INPUT: a = piece id (0-61). Sets the owned bit.
 ; Both address sRoomOwned (ram/sram.asm, "Save Data" section, bank 1) as a
 ; byte-index/bit-index pair via RoomBitMasks rather than a shift loop.
 ; ============================================================
@@ -390,13 +391,15 @@ RoomVendorDeskIds:
 	db 8
 
 RoomVendorPlantNames:
-	dw .PottedPlant
+	dw .PottedPlant, .Statue
 .PottedPlant: db "POTTED PLANT@"
+.Statue: db "STATUE@"
 RoomVendorPlantPrices:
 	bcd2 5
+	bcd2 5
 RoomVendorPlantIds:
-	db 1
-	db 13
+	db 2
+	db 13, 61
 
 RoomVendorPalsNames:
 	dw .Charmeleon, .Pidgey, .Omanyte, .Voltorb, .Clefairy, .Chansey, \

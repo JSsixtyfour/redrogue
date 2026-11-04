@@ -109,6 +109,16 @@ class ClassifySetupTest(unittest.TestCase):
         self.assertEqual((item["name"], item["hp_pct"], item["faster"], item["reserves"]),
                          ("SWORDS_DANCE", 40, True, 0))
 
+    def test_decided_hp_is_from_the_selection_not_the_hit_that_followed(self) -> None:
+        # Slower mon: chose the boost at 80%, took the player's hit, then it ran at 15%.
+        item = classify_setup([select(SD, hp=80), act(SD, hp=15), FAINT], SETUP)[0]
+        self.assertEqual((item["decided_hp_pct"], item["hp_pct"], item["outcome"]), (80, 15, "wasted"))
+
+    def test_a_called_boost_with_no_matching_selection_keeps_its_own_hp(self) -> None:
+        # Metronome selected, Agility is what ran.
+        item = classify_setup([select(TACKLE), act(AGILITY, hp=60), FAINT], SETUP)[0]
+        self.assertEqual(item["decided_hp_pct"], 60)
+
     def test_groups_rate_only_boosts_that_ran(self) -> None:
         events = [act(SD, faster=True), FAINT, act(AGILITY, reserves=0), FAINT, select(SD), FAINT,
                   act(SD), act(TACKLE)]

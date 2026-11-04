@@ -94,8 +94,12 @@ def classify_setup(events: list[dict[str, object]], setup_moves: dict[int, str])
     pending: dict[str, object] | None = None  # the selection not yet run
 
     def entry(event: dict[str, object], outcome: str | None) -> dict[str, object]:
+        # hp_pct is when the move ran; decided_hp_pct is when the AI chose it, before the
+        # menu, so a slower mon's hp_pct already includes the player's hit that turn. Judge
+        # the DECISION by decided_hp_pct (a Metronome-called boost has only hp_pct).
         return {"move": event["move"], "name": setup_moves[event["move"]], "outcome": outcome,
-                "hp_pct": event["hp_pct"], "faster": event["faster"], "reserves": event["reserves"]}
+                "hp_pct": event["hp_pct"], "decided_hp_pct": event["hp_pct"],
+                "faster": event["faster"], "reserves": event["reserves"]}
 
     def close(outcome: str) -> None:
         for item in held:
@@ -107,12 +111,14 @@ def classify_setup(events: list[dict[str, object]], setup_moves: dict[int, str])
         if kind == "select":
             pending = event if event["move"] in setup_moves else None
         elif kind == "act":
-            pending = None
             if event["move"] in setup_moves:
                 held.append(entry(event, None))
                 entries.append(held[-1])
+                if pending is not None and pending["move"] == event["move"]:
+                    held[-1]["decided_hp_pct"] = pending["hp_pct"]
             else:
                 close("used")
+            pending = None
         elif kind == "faint":
             close("wasted")
             if pending is not None:

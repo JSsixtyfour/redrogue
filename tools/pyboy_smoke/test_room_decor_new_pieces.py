@@ -24,7 +24,7 @@ RESERVED_GLYPHS = {0x6D, 0x70, 0x71, 0x72, 0x73, 0x75}
 TOP_DINO_POSTER = 9
 MIDDLE_SPACESHIP = 5
 NUM_DECORATIONS = 45
-NUM_PIECES = 61
+NUM_PIECES = 62
 
 
 def asm(name: str) -> str:
@@ -166,6 +166,36 @@ class RoomDecorRuntimeTest(unittest.TestCase):
         h.tick(30, render=True)
         ARTIFACTS.mkdir(exist_ok=True)
         h.pyboy.screen.image.save(ARTIFACTS / "room_decor_new_pieces.png")
+
+    def test_statue_selection_preserves_other_furniture_and_dolls(self) -> None:
+        h = self.harness
+        h.boot_debug1(self.maps["SILPH_CO_DORM"])
+        h.write_sram_bytes("sRoomFurniture", [0x59, 0xA1])
+        h.write_sram_bytes("sRoomDecorSlots", [0, 8, 0, 0, 0, 0, 0, 0])
+        for option, expected, block in (
+            (2, [0xD9, 0xA3], 0x21),
+            (1, [0xD9, 0xA1], 0x1A),
+            (0, [0x59, 0xA1], 0x0F),
+        ):
+            with self.subTest(option=option):
+                self.park()
+                # The real caller uses a same-bank call with A as its input;
+                # the harness trampoline clobbers A, so supply it at entry.
+                bank, address = h.symbols.get("RoomWriteFurnitureBottom")
+                def select(_context):
+                    h.pyboy.register_file.A = option
+                h.pyboy.hook_register(bank, address, select, None)
+                try:
+                    h.call_routine("RoomWriteFurnitureBottom")
+                finally:
+                    h.pyboy.hook_deregister(bank, address)
+                self.assertEqual(h.read_sram_bytes("sRoomFurniture", 2), expected)
+                h.call_routine("LoadMapData")
+                self.assertEqual(h.read8("wOverworldMap", 66), block)
+                self.assertEqual(h.read8("wOverworldMap", 33), 16, "long desk changed")
+                self.assertEqual(h.read8("wOverworldMap", 35), 32, "poster changed")
+                self.assertEqual(h.sprite_positions(2)[1], [7, 6])
+                self.assertNotEqual(h.read8("wSprite02StateData1"), 0)
 
     def press(self, button: str, settle: int = 8) -> None:
         self.harness.tap(button, 4)

@@ -92,6 +92,9 @@ RoomStampBlocks::
 	bit 7, d
 	jr z, .bottomDefault
 	ld a, [RoomBottomBlockTable + 1]
+	bit 1, e                    ; statue variant of the potted plant
+	jr z, .bottomSet
+	ld a, [RoomBottomBlockTable + 2]
 	jr .bottomSet
 .bottomDefault
 	ld a, [RoomBottomBlockTable]
@@ -131,9 +134,10 @@ RoomMiddleBlockTable: ; 6 options x 4 bytes: (1,2) (2,2) (3,2) (1,3)
 	db 13, 15, 15, 15 ; 4 TV + GAME
 	db 15,  7,  8, 15 ; 5 SPACESHIP (blocks $07 left, $08 right; one block right of the tables)
 
-RoomBottomBlockTable: ; 2 options x 1 byte: (3,3)
+RoomBottomBlockTable: ; 3 options x 1 byte: (3,3)
 	db 15 ; 0 NOTHING (default)
 	db 26 ; 1 POTTED PLANT
+	db 33 ; 2 STATUE ($21 replaces $1A; left-aligned counterpart $22 replaces $12)
 
 RoomPCBlockTable: ; 2 options x 2 bytes: (0,0) (1,0)
 	db 31, 3  ; 0 DESK (default)
@@ -497,7 +501,7 @@ RoomGrantAllPieces::
 	ld [hli], a
 	ld [hli], a
 	ld [hli], a
-	ld [hl], $1f                 ; bits 0-60 = all 61 pieces; the last ext byte needs bits 56-60
+	ld [hl], $3f                 ; bits 0-61 = all 62 pieces; last ext byte holds bits 56-61
 	xor a
 	ld [rRAMB], a               ; restore the ambient bank-0 selection (see file header)
 	ld a, BMODE_SIMPLE

@@ -368,12 +368,13 @@ sKeyItemTiers:: ds 4
 ; checksum (sGameData). All-zero is a valid default: default furniture,
 ; nothing placed, nothing owned.
 sRoomFurniture:: ds 2 ; b0: bits0-3 TOP(0-9), bits4-6 MIDDLE(0-5), bit7 BOTTOM(0-1)
-                      ; b1: bit0 PC(0-1), bits1-7 free
+                      ; b1: bit0 PC(0-1), bit1 BOTTOM statue variant, bits2-7 free
 sRoomDecorSlots:: ds 8 ; slot 0-7: 0 = empty, 1-21 = decoration id
 sRoomOwned:: ds 4 ; bits 0-7 TOP options 1-8, bit 8 LONG DESK, bits 9-12 MIDDLE
                   ; options 1-4, bit 13 POTTED PLANT, bits 14-24 decorations 1-11,
                   ; bit 25 TOP option 9, bit 26 MIDDLE option 5 (appended, not renumbered),
-                  ; bits 27-31 decorations 12-16; 17-45 continue in sRoomOwnedExt
+                  ; bits 27-31 decorations 12-16; 17-45 continue in sRoomOwnedExt,
+                  ; bit 61 STATUE (BOTTOM option 2); no extra SRAM allocated
 
 ; ELEMENT PRISM's chosen type (see KEY_ITEM_EFFECTS_PLAN_PC.md). $FF = not yet
 ; chosen. SRAM so the choice survives run reset and blackout, like key-item
