@@ -19,6 +19,25 @@ class RewardRoomExitLayoutTest(HarnessTestCase):
         start = 3 * (h.read8("wCurMapWidth") + 6) + 3
         return list(h.read_bytes("wOverworldMap", 3, offset=start + 1))
 
+    def assert_clipboard_graphics(self):
+        h = self.harness
+        art = (REPO_ROOT / "gfx/sprites/clipboard.2bpp").read_bytes()
+        for slot in (6, 7):
+            self.assertEqual(h.read8(f"wSprite{slot:02}StateData2ImageBaseOffset"), 12)
+        self.assertEqual(bytes(h.pyboy.memory[0x87C0:0x8800]), art)
+
+    def check_reward_menu_close(self):
+        h = self.harness
+        self.assertTrue(h.read8("wFontLoaded") & 1)
+        for _ in range(20):
+            h.pyboy.button("b")
+            h.tick(12)
+            if not h.read8("wFontLoaded") & 1:
+                break
+        self.assertFalse(h.read8("wFontLoaded") & 1)
+        h.tick(12)
+        self.assert_clipboard_graphics()
+
     def assert_single_exit(self):
         h = self.harness
         self.assertEqual(self.north_blocks(), [0x5F, 0x73, 0x5F])
@@ -30,6 +49,8 @@ class RewardRoomExitLayoutTest(HarnessTestCase):
 
     def test_after_lab_retains_both_choices(self):
         self.enter_room(0)
+        self.assert_clipboard_graphics()
+        self.check_reward_menu_close()
         h = self.harness
         self.assertEqual(self.north_blocks(), [0x73, 0x5F, 0x73])
         self.assertEqual([w[:2] for w in h.warp_entries()[2:]], [[0, 3], [0, 7]])
@@ -38,6 +59,8 @@ class RewardRoomExitLayoutTest(HarnessTestCase):
 
     def test_between_gyms_has_one_exit(self):
         self.enter_room(1)
+        self.assert_clipboard_graphics()
+        self.check_reward_menu_close()
         self.assert_single_exit()
 
     def test_header_reload_restores_layout_without_recrediting_route(self):
