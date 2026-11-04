@@ -201,7 +201,7 @@ _SilphCoDormMachokeText::
 	text "A MACHOKE doll,"
 	line "smaller than the"
 	cont "real thing."
-	donee
+	done
 
 _SilphCoDormMeowthText::
 	text "A MEOWTH doll"
