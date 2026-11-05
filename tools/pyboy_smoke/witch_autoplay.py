@@ -775,36 +775,64 @@ class CampaignAgent(WitchAgent):
                                 "challenge": self.h.read8("wWitchChallenge"), "prize": self.h.read8("wWitchPrize"),
                                 "count": self.h.read8("wBattleCount"), "badges": self.h.read8("wObtainedBadges"),
                                 "depth": self.h.read8("wEndlessDepth"),
+                                "victory_road_cleared": self.h.event_is_set(EVENTS["EVENT_VICTORY_ROAD_CLEARED"]),
                                 "doors": [self.h.read8("wLobbyDoor1StageMap"), self.h.read8("wLobbyDoor2StageMap")]})
         super().arrive(face, label)
 
 
-def play_endless(h, agent: "CampaignAgent", stages: int, max_frames: int) -> dict[str, object]:
-    """After the Hall of Fame: accept the Endless offer, then play `stages` more zones
-    with the same unforced witch coin. Returns what Endless added."""
-    continues = h.hook_flag("EndlessContinue")
+def play_endless(h, agent: "CampaignAgent", stages: int, max_frames: int,
+                 reset_prizes: bool = False) -> dict[str, object]:
+    """After the Hall of Fame: accept the Endless offer and play up to `stages` more
+    zones with the same unforced witch coin, through as many circuits as the party
+    survives. Returns what Endless added.
+
+    `reset_prizes` clears the ten earned-prize bits at each continuation. She hides
+    once all ten are earned, and an accepting agent has usually earned them by the
+    first Hall of Fame, so without this Endless has almost no witch to play. It is a
+    forced state and is reported as an intervention. BIT_WITCH_UBER_RECEIVED is kept,
+    and so is wEarnedStatBoosts: only the offers need the room."""
+    continuations: list[dict[str, object]] = []
+
+    def on_continue(_context) -> None:
+        earned = h.read_bytes("wWitchPrizesEarned", 2)
+        continuations.append({"frame": h.pyboy.frame_count, "depth": h.read8("wEndlessDepth") + 1,
+                              "stages": agent.report.stages_cleared, "earned": earned})
+        if reset_prizes:
+            h.write8("wWitchPrizesEarned", 0)
+            h.write8("wWitchPrizesEarned", earned[1] & ~0b11 & 0xFF, offset=1)
 
     def accept(_context) -> None:
         agent.answers, agent.witch_talking = ["yes"], True
         agent.witch_talk_frame = h.pyboy.frame_count
 
+    h.register_hook("EndlessContinue", on_continue)
     h.register_hook("EndlessOffer", accept)
-    end = h.pyboy.frame_count + 60000
-    while not continues["count"] and h.pyboy.frame_count < end:
-        agent.step()
-        if h.hook_errors:
-            raise RuntimeError("a hook callback raised:\n" + h.hook_errors[0])
-    if not continues["count"]:
-        return {"continued": False, "stages": 0, "detail": "the Endless offer never continued",
-                "map": agent.map_name(h.read8("hCurMap")), "mode": agent.mode(),
-                "last_menu": agent.last_menu_caller, "events": [str(e)[:160] for e in agent.report.events[-6:]]}
     offers_before, settled_before = len(agent.offers), len(agent.settlements)
     stages_before = agent.report.stages_cleared
-    agent.run(runs=2, stages=stages_before + stages, max_frames=max_frames)
-    return {"continued": True, "stages": agent.report.stages_cleared - stages_before,
-            "depth": h.read8("wEndlessDepth"), "offers": len(agent.offers) - offers_before,
+    limit = stages_before + stages
+    detail = None
+    while True:
+        seen = len(continuations)
+        end = h.pyboy.frame_count + 60000
+        while len(continuations) == seen and h.pyboy.frame_count < end:
+            agent.step()
+            if h.hook_errors:
+                raise RuntimeError("a hook callback raised:\n" + h.hook_errors[0])
+        if len(continuations) == seen:
+            detail = {"detail": "the Endless offer never continued", "map": agent.map_name(h.read8("hCurMap")),
+                      "mode": agent.mode(), "last_menu": agent.last_menu_caller,
+                      "events": [str(e)[:160] for e in agent.report.events[-6:]]}
+            break
+        agent.run(runs=len(agent.report.runs) + 1, stages=limit, max_frames=max_frames)
+        last = agent.report.runs[-1]["outcome"] if agent.report.runs else None
+        if agent.report.outcome != "completed" or agent.report.stages_cleared >= limit or last != "champion":
+            break
+    return {"continued": bool(continuations), "stages": agent.report.stages_cleared - stages_before,
+            "depth": max((c["depth"] for c in continuations), default=0), "continuations": continuations,
+            "offers": len(agent.offers) - offers_before,
             "settled": sum(1 for s in agent.settlements[settled_before:] if s["accepted"]),
-            "outcome": agent.report.outcome, "detail": agent.report.detail}
+            "interventions": ["wWitchPrizesEarned bits 0-9 cleared at each EndlessContinue"] if reset_prizes else [],
+            "outcome": agent.report.outcome, "detail": agent.report.detail, **(detail or {})}
 
 
 def run_campaign_seed(seed: int, options: dict[str, object]) -> dict[str, object]:
@@ -830,7 +858,8 @@ def run_campaign_seed(seed: int, options: dict[str, object]) -> dict[str, object
         try:
             agent.run(runs=1, stages=options["stages"], max_frames=options["max_frames"])
             if options["endless_stages"] and agent.report.outcome == "champion":
-                endless = play_endless(h, agent, options["endless_stages"], options["max_frames"])
+                endless = play_endless(h, agent, options["endless_stages"], options["max_frames"],
+                                       options["endless_reset_prizes"])
         except Exception:
             error = traceback.format_exc()
         report = agent.report
@@ -867,7 +896,7 @@ def run_campaign(args) -> int:
         coverage_inventory.code_labels(rom)
         options = {"rom": rom, "evidence": str(args.evidence), "stages": args.stages, "max_frames": args.max_frames,
                    "stall_frames": args.stall_frames, "strong": args.strong, "difficulty": args.difficulty,
-                   "endless_stages": args.endless_stages}
+                   "endless_stages": args.endless_stages, "endless_reset_prizes": args.endless_reset_prizes}
         out = args.evidence / "campaign" / rom
         out.mkdir(parents=True, exist_ok=True)
 
@@ -883,7 +912,7 @@ def run_campaign(args) -> int:
                   f"stages={row.get('stages')} won={row.get('battles_won')} frames={row.get('frames')} "
                   f"offers={len(row.get('offers', []))} accepted_settled={len(row.get('settlements', []))} "
                   f"endless={row.get('endless', {}).get('stages', 0)}/{row.get('endless', {}).get('offers', 0)}/"
-                  f"{row.get('endless', {}).get('settled', 0)} "
+                  f"{row.get('endless', {}).get('settled', 0)} depth={row.get('endless', {}).get('depth', 0)} "
                   f"anomalies={len(row.get('anomalies', []))} {row.get('detail', '')[:90]}", flush=True)
     return 1 if failed else 0
 
@@ -914,6 +943,8 @@ def main(argv=None) -> int:
                         help="campaign: the LEVELS setting")
     parser.add_argument("--endless-stages", type=int, default=0,
                         help="campaign: after a Hall of Fame win, accept Endless and play this many more stages")
+    parser.add_argument("--endless-reset-prizes", action="store_true",
+                        help="campaign: clear the earned prizes at each continuation, so the witch has offers left")
     parser.add_argument("--evidence", type=Path)
     parser.add_argument("--rom", action="append", choices=ROMS)
     parser.add_argument("--case", action="append")
