@@ -327,8 +327,12 @@ MainInBattleLoop:
 	ld a, [wEscapedFromBattle]
 	and a
 	ret nz ; return if pokedoll was used to escape from battle
+	; A frozen mon still picks a move, as in Shin Pokemon Red: an enemy's Fire move can
+	; thaw it before its turn, and it then acts on what is selected here. Skipping the
+	; menu left the move 0 in a battle's first turn, which read before the move table,
+	; as code, and crashed the battle. Staying frozen still ends the turn before any PP.
 	ld a, [wBattleMonStatus]
-	and (1 << FRZ) | SLP_MASK
+	and SLP_MASK
 	jr nz, .selectEnemyMove ; if so, jump
 	ld a, [wPlayerBattleStatus1]
 	and (1 << STORING_ENERGY) | (1 << USING_TRAPPING_MOVE) ; check player is using Bide or using a multi-turn attack like wrap
@@ -3497,11 +3501,6 @@ ExecutePlayerMove:
 	ASSERT CANNOT_MOVE == $ff
 	inc a
 	jp z, ExecutePlayerMoveDone ; if the player cannot move, skip most of their turn
-	; No move chosen yet: a mon frozen since the battle began skips the menu, and an
-	; enemy's Fire move can thaw it before this runs. Move 0 reads before the move
-	; table, as code, and crashed the battle.
-	dec a
-	jp z, ExecutePlayerMoveDone
 	xor a
 	ld [wMoveMissed], a
 	ld [wMonIsDisobedient], a

@@ -79,6 +79,7 @@ def stem(seed: int, *, rom: str | None = None, cgb_mode: bool | None = None) -> 
 # (run_autoplay.py's per-seed timeout, an illegal opcode).
 FAILURES = ("stalled", "frame_limit", "error", "crashed", "hung")
 HEARTBEAT_STEPS = 1000
+LIST_MENU_PRESS_LIMIT = 12  # presses on one map's list menus before the agent backs out
 
 PARTYMON_STRUCT_LENGTH = 0x2C
 MON_HP, MON_MAXHP = 0x01, 0x22  # party_struct offsets
@@ -408,6 +409,7 @@ class AutoplayAgent:
         self.last_no_path = None
         self.last_progress_frame = 0
         self.progress_marker: tuple = ()
+        self.list_menu_presses = 0
         self._install_hooks()
         self.checks = autoplay_checks.GameChecks(self, ROOT)
 
@@ -1358,6 +1360,7 @@ class AutoplayAgent:
         self.script_steps.clear()
         self.hidden.clear()
         self.talked.clear()
+        self.list_menu_presses = 0
         if self.arrival_map != current_map:
             self.arrival = None
         self.event("enter_map", map=self.map_name(current_map))
@@ -1426,6 +1429,11 @@ class AutoplayAgent:
                 self.press("start", 4, 8)
         elif self.errand is not None:
             self.errand_step()
+        elif self.last_menu_caller.startswith("DisplayListMenuID"):
+            # The default answer is the top row. A list that keeps coming back is refusing
+            # it (the Old Man has nothing to add to a stack of 99), so leave instead.
+            self.list_menu_presses += 1
+            self.press("b" if self.list_menu_presses > LIST_MENU_PRESS_LIMIT else "a")
         else:
             self.press("a")
 

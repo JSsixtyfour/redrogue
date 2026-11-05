@@ -57,7 +57,11 @@ def main() -> None:
                 memory = h.pyboy.memory
                 mons.append({"species": memory[base], "level": memory[h.address("wEnemyMon1Level") + i * MON_LENGTH],
                              "moves": [memory[h.address("wEnemyMon1Moves") + i * MON_LENGTH + m] for m in range(4)],
-                             "catch_rate": memory[h.address("wEnemyMon1CatchRate") + i * MON_LENGTH]})
+                             "catch_rate": memory[h.address("wEnemyMon1CatchRate") + i * MON_LENGTH],
+                             "hp": memory[h.address("wEnemyMon1HP") + i * MON_LENGTH] << 8
+                             | memory[h.address("wEnemyMon1HP") + i * MON_LENGTH + 1],
+                             "max_hp": memory[h.address("wEnemyMon1MaxHP") + i * MON_LENGTH] << 8
+                             | memory[h.address("wEnemyMon1MaxHP") + i * MON_LENGTH + 1]})
             print(json.dumps({"frame": h.pyboy.frame_count, "anomalies": self.checks.anomalies, "mons": mons,
                               "state": {name: read(name) for name in (
                                   "wCurOpponent", "wTrainerClass", "wTrainerNo", "wEndlessDepth", "wBattleCount",
