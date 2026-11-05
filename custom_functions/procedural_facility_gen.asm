@@ -6872,14 +6872,15 @@ PFacPickHideout:
 ; ============================================================
 ; ============================================================
 ; PFacHideoutFindFloor  (2026-09-17)
-; Nudges a hideout candidate onto a PFAC_FLOOR block.
+; Nudges a hideout candidate onto a PFAC_FLOOR block the pair cannot seal
+; anything from (PFacHideoutKeepsWayOpen).
 ;
 ; INPUT:  d,e = candidate block X,Y
-; OUTPUT: carry SET  = d,e now name a PFAC_FLOOR block
+; OUTPUT: carry SET  = d,e now name such a block
 ;         carry CLEAR = neither the candidate nor any of its four
-;                       orthogonal neighbours is plain floor; the caller
-;                       disarms, which is the right answer - no event at
-;                       all beats one standing inside a wall.
+;                       orthogonal neighbours qualifies; the caller tries the
+;                       next room, and disarms only after every room fails -
+;                       no event at all beats one standing inside a wall.
 ;
 ; The candidate itself is tried first, then SOUTH before the other three.
 ; That ordering is not arbitrary: the two decoration blocks that actually
@@ -6919,6 +6920,12 @@ PFacHideoutFindFloor:
     pop hl
     cp PFAC_FLOOR
     jr nz, .probe
+    push hl
+    push de
+    call PFacHideoutKeepsWayOpen
+    pop de
+    pop hl
+    jr nc, .probe
     ld a, [wBuffer + wPFacCurX]
     ld d, a
     ld a, [wBuffer + wPFacCurY]
@@ -6936,6 +6943,88 @@ PFacHideoutFindFloor:
     db -1,  0
     db  1,  0
     db $80
+
+; ============================================================
+; PFacHideoutKeepsWayOpen  (2026-11-04)
+; May the stage-event pair stand on this plain-floor block without sealing
+; anything? The pair stays solid after defeat (StageEventKeepSpriteOnDefeat) and
+; fills the block's TOP two steps. A room's center can sit right under a door:
+; with server blocks (solid on both rows) beside the door instead of plain wall
+; (walkable bottom row), nothing led around the pair, and the exit was cut off
+; (Endless campaign seed 6). 1.9% of plain-floor blocks would do this.
+;
+; The block's bottom row is always open, so nothing can be cut off if every
+; walkable step touching the pair also connects to that row:
+;   left/right of the pair: straight down the neighbouring block's outer column
+;   above the pair: around either side, by the NW-W or NE-E column
+; That holds whatever the rest of the map looks like, and draws no Random.
+; Conservative: a step with another way round that only a flood would find is
+; still refused. The caller just tries the next candidate.
+;
+; INPUT:  wPFacCurX/Y = a PFAC_FLOOR block, in wOverworldMap
+; OUTPUT: carry SET = safe. Clobbers a/de/hl; keeps bc.
+; ============================================================
+PFacHideoutKeepsWayOpen:
+    push bc
+    ld a, [wBuffer + wPFacCurX]
+    ld d, a
+    ld a, [wBuffer + wPFacCurY]
+    ld e, a
+    call PFacPadBlockAddr           ; hl -> the block
+    dec hl
+    ld a, [hli]                     ; W
+    call PFacQuadMask
+    ld b, a
+    inc hl
+    ld a, [hl]                      ; E
+    call PFacQuadMask
+    ld c, a
+    ; Beside the pair: open means open all the way down to the bottom row.
+    ld a, b
+    and %1010                       ; W's TR, BR
+    cp %0010
+    jr z, .no
+    ld a, c
+    and %0101                       ; E's TL, BL
+    cp %0001
+    jr z, .no
+    ld de, -PFAC_STRIDE
+    add hl, de                      ; NE
+    ld a, [hld]
+    call PFacQuadMask
+    ld d, a
+    ld a, [hld]                     ; N
+    call PFacQuadMask
+    and %1100                       ; the two steps directly above the pair
+    jr z, .yes                      ; solid: nothing up there to cut off
+    ld e, a
+    bit 2, e                        ; around the left: N's BL ...
+    jr z, .right
+    ld a, [hl]                      ; ... NW's BR ...
+    call PFacQuadMask
+    bit 3, a
+    jr z, .right
+    ld a, b
+    and %1010
+    cp %1010                        ; ... then down W's column
+    jr z, .yes
+.right
+    bit 3, e                        ; around the right: N's BR ...
+    jr z, .no
+    bit 2, d                        ; ... NE's BL ...
+    jr z, .no
+    ld a, c
+    and %0101
+    cp %0101                        ; ... then down E's column
+    jr z, .yes
+.no
+    pop bc
+    and a                           ; carry clear
+    ret
+.yes
+    pop bc
+    scf
+    ret
 
 PFacPlaceStageEventNpcs:
     ; Battle return keeps the trainer's approached position and movement state.
