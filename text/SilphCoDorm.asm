@@ -156,7 +156,7 @@ _SilphCoDormMewText::
 	done
 
 _SilphCoDormNidoranFText::
-	text "This NIDORAN F"
+	text "This NIDORAN ♀"
 	line "doll has small"
 	cont "round ears."
 	done

@@ -3497,6 +3497,11 @@ ExecutePlayerMove:
 	ASSERT CANNOT_MOVE == $ff
 	inc a
 	jp z, ExecutePlayerMoveDone ; if the player cannot move, skip most of their turn
+	; No move chosen yet: a mon frozen since the battle began skips the menu, and an
+	; enemy's Fire move can thaw it before this runs. Move 0 reads before the move
+	; table, as code, and crashed the battle.
+	dec a
+	jp z, ExecutePlayerMoveDone
 	xor a
 	ld [wMoveMissed], a
 	ld [wMonIsDisobedient], a

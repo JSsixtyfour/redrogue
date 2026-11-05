@@ -403,7 +403,6 @@ def hold_enemy(run: Run, *, menus_up: int = 6, refill_from: int | None = 1) -> d
 def c14(run: Run) -> None:
     h = run.h
     pattern = [0, 0, 1, 0, 0, 2, 2, 1]          # A A B A A C C B
-    repeats = [False, True, False, False, True, False, True, False]
     state = hold_enemy(run, menus_up=len(pattern) + 1)
     run.agent.move_policy = lambda agent: pattern[(state["menus"] - 1) % len(pattern)]
     battles: dict[int, list[dict[str, object]]] = {}
@@ -423,16 +422,24 @@ def c14(run: Run) -> None:
     run.must_reach("a battle of at least five turns", len(first) >= 5)
     # A row is captured on entry to the hook, before that turn's penalty applies, so the
     # turn's penalty is the count change seen by the next row.
+    # The rule, on whatever the turns turned out to be: a repeat is the same move as the last
+    # turn that acted. State 0 is a lost action (full paralysis, a flinch), which clears the
+    # streak and draws no penalty.
     counts = [row["penalty_calls"] for row in first] + [None]
-    for index, row in enumerate(first[:len(pattern)]):
-        later = counts[index + 1]
-        run.must_reach("the penalty count after the turn", later is not None)
-        penalized = later > row["penalty_calls"]
-        expected = repeats[index] and run.branch == "accept"
-        run.check(f"turn {index + 1}: repeat penalty", expected, penalized)
-        run.check(f"turn {index + 1}: repeat state", 2 if repeats[index] else 1, row["state"])
+    previous = None
+    repeated = 0
+    for index, row in enumerate(first[:-1]):
+        lost = row["state"] == 0
+        repeat = not lost and row["move"] == previous
+        repeated += repeat
+        run.check(f"turn {index + 1}: repeat penalty", repeat and run.branch == "accept",
+                  counts[index + 1] > row["penalty_calls"])
+        if not lost:
+            run.check(f"turn {index + 1}: repeat state", 2 if repeat else 1, row["state"])
+        previous = None if lost else row["move"]
+    run.must_reach("a repeated move", repeated > 0)
     if len(battles) >= 2:
-        run.check("a fresh battle starts without a streak", 1, battles[2][0]["state"])
+        run.check("a fresh battle starts without a streak", False, battles[2][0]["state"] == 2)
     lifecycle_settlement(run, prize=run.case.prize, before=before)
 
 
@@ -1279,6 +1286,7 @@ def c08s(run: Run) -> None:
         return h.read8(label) << 8 | h.read8(label, 1)
 
     def use(move: str) -> None:
+        state["move"] = move
         for slot in range(4):
             h.write8("wBattleMonMoves", MOVES_BY_NAME[move], offset=slot)
             h.write8("wBattleMonPP", 30, offset=slot)
@@ -1298,6 +1306,10 @@ def c08s(run: Run) -> None:
         step, stage = state["step"], h.read8("wPlayerMonSpeedMod")
         if step >= 5:
             return
+        # A new battle reloads the moves from the party, and a step can land on a battle's
+        # last menu. A Transform that landed has moves of its own, the enemy's.
+        if state.get("move") and not h.read8("wPlayerBattleStatus3") >> 3 & 1:
+            use(state["move"])
         paralysed = bool(h.read8("wBattleMonStatus") & 1 << 6)
         speed, unmodified = word("wBattleMonSpeed"), word("wPlayerMonUnmodifiedSpeed")
         staged = speed_after_stage_change(unmodified, stage, sluggish=sluggish, boosted=True, paralysed=paralysed)
@@ -1711,11 +1723,25 @@ def chain(run: Run) -> None:
     talk_and_verify(run, "half SPEED")
     turns: list[tuple[int, int, int]] = []
 
+    tainted = {"battle": False}
+
+    def fresh(_context) -> None:
+        tainted["battle"] = False
+
     def menu(_context) -> None:
-        if not h.read8("wBattleMonStatus") & 1 << 6:  # paralysis stacks on top: C08S measures that
+        # Paralysis stacks on top, which C08S measures. It also stays on the party from
+        # battle to battle, so cure it here; the Speed it quartered lasts this battle.
+        if h.read8("wBattleMonStatus") & 1 << 6:
+            run.log_intervention("setup", cured="paralysis, so the next battle shows plain Speed")
+            h.write8("wBattleMonStatus", 0)
+            for index in range(h.read8("wPartyCount")):
+                h.write8("wPartyMon1Status", 0, offset=index * PARTY_STRUCT)
+            tainted["battle"] = True
+        if not tainted["battle"]:
             turns.append((bcd2(h, "wBattleMonSpeed"), bcd2(h, "wPlayerMonUnmodifiedSpeed"),
                           h.read8("wPlayerMonSpeedMod")))
 
+    h.register_hook("StartBattle", fresh)
     h.register_hook("DisplayBattleMenu", menu)
     run.play_zone()
     settle_expected(prize)

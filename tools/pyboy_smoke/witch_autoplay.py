@@ -117,6 +117,12 @@ class WitchAgent(AutoplayAgent):
     def _on_move_menu(self, context) -> None:
         super()._on_move_menu(context)
         slot = self.move_policy(self) if self.move_policy else None
+        if slot is not None:
+            # The game refuses a Disabled move or one with no PP, and this menu would be
+            # asked again forever: an enemy's Disable is not the row's business.
+            disabled = (self.h.read8("wPlayerDisabledMove") >> 4) - 1
+            if slot == disabled or not self.h.read8("wBattleMonPP", slot) & 0x3F:
+                slot = None
         if slot is not None and self.menu_goal is not None and self.menu_goal.kind == "move_menu":
             self.menu_goal.target = slot
 
