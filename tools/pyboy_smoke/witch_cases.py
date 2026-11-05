@@ -1971,6 +1971,31 @@ def c15x(run: Run) -> None:
     lifecycle_settlement(run, prize=run.case.prize, before=before)
 
 
+def c15b(run: Run) -> None:
+    """The in-battle allowance, called directly. The real battle ITEM list is one fixed
+    list of key items (the pocket switch refuses it under BIT_BATTLE_ITEM_LIST), so no
+    medicine can reach ItemUseMedicine in battle through the menu: the routine is the
+    only way to exercise the allowance."""
+    h = run.h
+    talk_and_verify(run, "No medicine")
+    allowed = h.hook_flag("RogueWitchBlockHealing.allow")
+    h.park_before_hijack()
+    saved = h.read8("hIsInBattle")
+    outcomes: dict[str, int] = {}
+    try:
+        for label, in_battle in (("outside", 0), ("inside", 1)):
+            h.write8("hIsInBattle", in_battle)
+            before = allowed["count"]
+            run.log_intervention("replay", routine=f"RogueWitchBlockHealing called with hIsInBattle={in_battle}")
+            h.call_routine("RogueWitchBlockHealing")
+            outcomes[label] = allowed["count"] - before
+    finally:
+        h.write8("hIsInBattle", saved)
+    run.notes.append(f"allow-path hits {outcomes}")
+    run.check("allowed in battle", 1, outcomes["inside"])
+    run.check("outside battle", 0 if run.branch == "accept" else 1, outcomes["outside"])
+
+
 def c18z(run: Run) -> None:
     """The next zone spends one PP per move again."""
     h = run.h
@@ -2206,6 +2231,71 @@ def p10x(run: Run, *, clerk_slot: int, boundary: bool) -> None:
     affordable = plan["wallet"] >= expected_total
     run.check("the wallet after the attempt", plan["wallet"] - expected_total if affordable else plan["wallet"], run.money)
     run.control_check("after the clerk")
+
+
+def p10f(run: Run) -> None:
+    """Prize 10 at a forest rest-house clerk, walked to through the real forest."""
+    import unittest
+    from test_forest_rest_house import ForestWalk, SITE_MASK, ROOT, house_sites
+    from source_constants import parse_map_constants, parse_rgbds_constants
+    h = run.h
+    before = talk_and_verify(run)
+    run.play_zone()
+    lifecycle_settlement(run, prize=run.case.prize, before=before)
+
+    class Walker(ForestWalk, unittest.TestCase):
+        def __init__(self, harness) -> None:
+            unittest.TestCase.__init__(self, "run")
+            self.h = harness
+            self.maps = parse_map_constants(ROOT / "constants/map_constants.asm")
+            self.toggles = parse_rgbds_constants(ROOT / "constants/toggle_constants.asm")
+            self.sites = house_sites()
+
+    walker = Walker(h)
+    forest, house = walker.maps["PROCEDURAL_FOREST"], walker.maps["PROCEDURAL_FOREST_REST_HOUSE"]
+    h.write8("wStageEvent", 0)
+    h.preload_and_enter_wild_area(forest, "forest")
+    run.log_intervention("setup", entry="forest preloaded and entered from the lobby row", wallet=90000)
+    for name in ("CLERK_HEALING", "CLERK_STOCK"):
+        index = walker.toggles[f"TOGGLE_PFRESTHOUSE_{name}"]
+        byte = h.read8("wToggleableObjectFlags", offset=index // 8)
+        h.write8("wToggleableObjectFlags", byte & ~(1 << index % 8), offset=index // 8)
+    for name in ("RENTAL_OFFICIAL", "SALESMAN"):
+        walker.hide(f"TOGGLE_PFRESTHOUSE_{name}")
+    site = (h.read_sram_bytes("sProcForestItemGot", 1, bank=0)[0] & SITE_MASK) - 1
+    run.must_reach("a rest house in this forest", site >= 0)
+    x, y = walker.sites[site]
+    h.write8("wProcForestWildBudget", 0)
+    walker.walk_to((2 * x + 1, 2 * y + 2))
+    walker.press_until("up", house, "into the rest house")
+    for move in ("up", "right", "right"):
+        walker.step(move)
+    _money(run, 90000)
+    rows: list[dict[str, int]] = []
+
+    def pre(_context) -> None:
+        rows.append({"quote": bcd(h.read_bytes("hMoney", 3))})
+
+    def post(_context) -> None:
+        if rows and "checked" not in rows[-1]:
+            rows[-1]["checked"] = bcd(h.read_bytes("hMoney", 3))
+
+    h.register_hook("RogueWitchDiscountBuyPrice", pre)
+    h.register_hook("DisplayPokemartDialogue_.isThereEnoughMoney", post)
+    h.move_tile("right")          # blocked by the clerk: only turns
+    h.tick(10)
+    for _ in range(40):
+        if rows and "checked" in rows[0]:
+            break
+        h.tap("a")
+        h.tick(40)
+    h.tick(120)
+    run.notes.append(f"forest clerk rows {rows}, wallet now {run.money}")
+    run.must_reach("a purchase was attempted at the forest clerk", bool(rows) and "checked" in rows[0])
+    quote = rows[0]["quote"]
+    expected_total = quote - quote // 10 if run.branch == "accept" else quote
+    run.check("the total checked and quoted", expected_total, rows[0]["checked"])
+    run.check("the wallet after the purchase", 90000 - expected_total, run.money)
 
 
 def _p10b(run: Run) -> None:
@@ -2782,6 +2872,8 @@ CASES = {case.id: case for case in (
     Case("C15X", "No healing: nurse and a healing move", C["CHALLENGE_NO_HEALING"], C["PRIZE_RARITY_ITEM"], c15x,
          Context(battle_count=1, gym_next=False, party=(
              Mon("TAUROS", moves=("RECOVER", "TACKLE"), pp=(20, 35)), Mon("ALAKAZAM")))),
+    Case("C15B", "No healing: the in-battle allowance", C["CHALLENGE_NO_HEALING"], C["PRIZE_RARITY_ITEM"], c15b,
+         Context(battle_count=1, gym_next=False)),
     Case("C18Z", "Double PP: the next zone is back to one", C["CHALLENGE_DOUBLE_PP"], C["PRIZE_RARITY_ITEM"], c18z,
          Context(battle_count=1, gym_next=False)),
     Case("C01TB", "No reward: the SS Anne Bow trainer's line", C["CHALLENGE_NO_REWARD_POKEMON"], C["PRIZE_RARITY_ITEM"],
@@ -2793,6 +2885,8 @@ CASES = {case.id: case for case in (
          _p10b, Context(battle_count=1, gym_next=False, money=5000)),
     Case("P10C", "Prize 10: the second clerk", C["CHALLENGE_NO_MONEY"], C["PRIZE_CHEAP_ITEMS"],
          _p10c, Context(battle_count=1, gym_next=False, money=5000)),
+    Case("P10F", "Prize 10: a forest rest-house clerk", C["CHALLENGE_NO_MONEY"], C["PRIZE_CHEAP_ITEMS"], p10f,
+         Context(battle_count=1, gym_next=False, money=5000)),
     Case("P04S", "Prize 4 with EXP Share", C["CHALLENGE_NO_MONEY"], C["PRIZE_EXP_BOOST"], p04s,
          Context(battle_count=1, gym_next=False, party=(Mon("TAUROS", level=50), Mon("ALAKAZAM", level=50)))),
     Case("DICEN", "Any bargain: Door Dice cancelled", C["CHALLENGE_NO_MONEY"], C["PRIZE_MONEY"], _dice_no,

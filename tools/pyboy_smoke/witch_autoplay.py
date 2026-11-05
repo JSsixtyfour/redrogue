@@ -779,6 +779,34 @@ class CampaignAgent(WitchAgent):
         super().arrive(face, label)
 
 
+def play_endless(h, agent: "CampaignAgent", stages: int, max_frames: int) -> dict[str, object]:
+    """After the Hall of Fame: accept the Endless offer, then play `stages` more zones
+    with the same unforced witch coin. Returns what Endless added."""
+    continues = h.hook_flag("EndlessContinue")
+
+    def accept(_context) -> None:
+        agent.answers, agent.witch_talking = ["yes"], True
+        agent.witch_talk_frame = h.pyboy.frame_count
+
+    h.register_hook("EndlessOffer", accept)
+    end = h.pyboy.frame_count + 60000
+    while not continues["count"] and h.pyboy.frame_count < end:
+        agent.step()
+        if h.hook_errors:
+            raise RuntimeError("a hook callback raised:\n" + h.hook_errors[0])
+    if not continues["count"]:
+        return {"continued": False, "stages": 0, "detail": "the Endless offer never continued",
+                "map": agent.map_name(h.read8("hCurMap")), "mode": agent.mode(),
+                "last_menu": agent.last_menu_caller, "events": [str(e)[:160] for e in agent.report.events[-6:]]}
+    offers_before, settled_before = len(agent.offers), len(agent.settlements)
+    stages_before = agent.report.stages_cleared
+    agent.run(runs=2, stages=stages_before + stages, max_frames=max_frames)
+    return {"continued": True, "stages": agent.report.stages_cleared - stages_before,
+            "depth": h.read8("wEndlessDepth"), "offers": len(agent.offers) - offers_before,
+            "settled": sum(1 for s in agent.settlements[settled_before:] if s["accepted"]),
+            "outcome": agent.report.outcome, "detail": agent.report.detail}
+
+
 def run_campaign_seed(seed: int, options: dict[str, object]) -> dict[str, object]:
     rom = options["rom"]
     autoplay.ROM = rom
@@ -790,19 +818,26 @@ def run_campaign_seed(seed: int, options: dict[str, object]) -> dict[str, object
             autoplay.boot(h, seed, 1, options["difficulty"])
         else:
             autoplay.boot_new_game(h, seed, options["difficulty"])
+        if options["endless_stages"]:
+            # Endless is offered only to a player who has beaten the AI once; the event
+            # outlives every run reset, so a returning player's save has it already.
+            h.set_event(EVENTS["EVENT_AI_DEFEATED"])
         chooser = {"player": "strong"} if options["strong"] else {"offer_policy": "random"}
         agent = CampaignAgent(h, seed=seed, stall_frames=options["stall_frames"], battle_policy="type_switcher",
                               **chooser)
         error = None
+        endless = {"continued": False, "stages": 0}
         try:
             agent.run(runs=1, stages=options["stages"], max_frames=options["max_frames"])
+            if options["endless_stages"] and agent.report.outcome == "champion":
+                endless = play_endless(h, agent, options["endless_stages"], options["max_frames"])
         except Exception:
             error = traceback.format_exc()
         report = agent.report
         row = {"rom": rom, "rom_sha8": rom_tag(rom), "seed": seed, "outcome": report.outcome, "detail": report.detail,
                "stages": report.stages_cleared, "battles_won": report.battles_won, "frames": report.frames,
                "wall_seconds": round(time.monotonic() - started, 1), "offers": agent.offers,
-               "settlements": [s for s in agent.settlements if s["accepted"]],
+               "settlements": [s for s in agent.settlements if s["accepted"]], "endless": endless,
                "anomalies": agent.checks.anomalies[:30], "error": error,
                "replay": f"witch_autoplay.py campaign --evidence {evidence} --rom {rom} --seeds {seed} "
                          f"--stages {options['stages']} --max-frames {options['max_frames']} "
@@ -831,7 +866,8 @@ def run_campaign(args) -> int:
     for rom in args.rom or list(ROMS):
         coverage_inventory.code_labels(rom)
         options = {"rom": rom, "evidence": str(args.evidence), "stages": args.stages, "max_frames": args.max_frames,
-                   "stall_frames": args.stall_frames, "strong": args.strong, "difficulty": args.difficulty}
+                   "stall_frames": args.stall_frames, "strong": args.strong, "difficulty": args.difficulty,
+                   "endless_stages": args.endless_stages}
         out = args.evidence / "campaign" / rom
         out.mkdir(parents=True, exist_ok=True)
 
@@ -846,6 +882,8 @@ def run_campaign(args) -> int:
             print(f"{'FAIL' if bad else 'ok  '} {rom:15} seed {row['seed']:>3} {row['outcome']:<11} "
                   f"stages={row.get('stages')} won={row.get('battles_won')} frames={row.get('frames')} "
                   f"offers={len(row.get('offers', []))} accepted_settled={len(row.get('settlements', []))} "
+                  f"endless={row.get('endless', {}).get('stages', 0)}/{row.get('endless', {}).get('offers', 0)}/"
+                  f"{row.get('endless', {}).get('settled', 0)} "
                   f"anomalies={len(row.get('anomalies', []))} {row.get('detail', '')[:90]}", flush=True)
     return 1 if failed else 0
 
@@ -874,6 +912,8 @@ def main(argv=None) -> int:
                         help="campaign: rewards on merit and matchup switches; release seeds need it to survive")
     parser.add_argument("--difficulty", default="HARD", choices=("VERY_EASY", "EASY", "NORMAL", "HARD", "VERY_HARD"),
                         help="campaign: the LEVELS setting")
+    parser.add_argument("--endless-stages", type=int, default=0,
+                        help="campaign: after a Hall of Fame win, accept Endless and play this many more stages")
     parser.add_argument("--evidence", type=Path)
     parser.add_argument("--rom", action="append", choices=ROMS)
     parser.add_argument("--case", action="append")

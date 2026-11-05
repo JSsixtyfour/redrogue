@@ -433,153 +433,219 @@ _PCPokemonSalesmanNoRefundsText::
 
 ; Miniboss door signs, indexed by door, boss type, then item category.
 _LobbyDoor1RivalHealingText::
-	text "DOOR 1: RIVAL"
+	text_far _LobbyDoor1InlineHeadingText
+	text "RIVAL"
 	line "ENCOUNTER"
 	cont "HEALING ITEMS@"
 	text_end
 
 _LobbyDoor1RivalStatText::
-	text "DOOR 1: RIVAL"
+	text_far _LobbyDoor1InlineHeadingText
+	text "RIVAL"
 	line "ENCOUNTER"
 	cont "STAT BOOSTS@"
 	text_end
 
 _LobbyDoor1RivalTMText::
-	text "DOOR 1: RIVAL"
+	text_far _LobbyDoor1InlineHeadingText
+	text "RIVAL"
 	line "ENCOUNTER"
 	cont "TM ITEMS@"
 	text_end
 
 _LobbyDoor1RivalMoneyText::
-	text "DOOR 1: RIVAL"
+	text_far _LobbyDoor1InlineHeadingText
+	text "RIVAL"
 	line "ENCOUNTER"
 	cont "MONEY@"
 	text_end
 
 _LobbyDoor1GiovanniHealingText::
-	text "DOOR 1: GIOVANNI"
+	text_far _LobbyDoor1InlineHeadingText
+	text "GIOVANNI"
 	line "ENCOUNTER"
 	cont "HEALING ITEMS@"
 	text_end
 
 _LobbyDoor1GiovanniStatText::
-	text "DOOR 1: GIOVANNI"
+	text_far _LobbyDoor1InlineHeadingText
+	text "GIOVANNI"
 	line "ENCOUNTER"
 	cont "STAT BOOSTS@"
 	text_end
 
 _LobbyDoor1GiovanniTMText::
-	text "DOOR 1: GIOVANNI"
+	text_far _LobbyDoor1InlineHeadingText
+	text "GIOVANNI"
 	line "ENCOUNTER"
 	cont "TM ITEMS@"
 	text_end
 
 _LobbyDoor1GiovanniMoneyText::
-	text "DOOR 1: GIOVANNI"
+	text_far _LobbyDoor1InlineHeadingText
+	text "GIOVANNI"
 	line "ENCOUNTER"
 	cont "MONEY@"
 	text_end
 
 _LobbyDoor1KarateHealingText::
-	text "DOOR 1:"
-	line "KARATE MASTER"
+	text_far _LobbyDoor1HeadingText
+	text "KARATE MASTER"
 	cont "ENCOUNTER"
 	cont "HEALING ITEMS@"
 	text_end
 
 _LobbyDoor1KarateStatText::
-	text "DOOR 1:"
-	line "KARATE MASTER"
+	text_far _LobbyDoor1HeadingText
+	text "KARATE MASTER"
 	cont "ENCOUNTER"
 	cont "STAT BOOSTS@"
 	text_end
 
 _LobbyDoor1KarateTMText::
-	text "DOOR 1:"
-	line "KARATE MASTER"
+	text_far _LobbyDoor1HeadingText
+	text "KARATE MASTER"
 	cont "ENCOUNTER"
 	cont "TM ITEMS@"
 	text_end
 
 _LobbyDoor1KarateMoneyText::
-	text "DOOR 1:"
-	line "KARATE MASTER"
+	text_far _LobbyDoor1HeadingText
+	text "KARATE MASTER"
 	cont "ENCOUNTER"
 	cont "MONEY@"
 	text_end
 
 _LobbyDoor2RivalHealingText::
-	text "DOOR 2: RIVAL"
+	text_far _LobbyDoor2InlineHeadingText
+	text "RIVAL"
 	line "ENCOUNTER"
 	cont "HEALING ITEMS@"
 	text_end
 
 _LobbyDoor2RivalStatText::
-	text "DOOR 2: RIVAL"
+	text_far _LobbyDoor2InlineHeadingText
+	text "RIVAL"
 	line "ENCOUNTER"
 	cont "STAT BOOSTS@"
 	text_end
 
 _LobbyDoor2RivalTMText::
-	text "DOOR 2: RIVAL"
+	text_far _LobbyDoor2InlineHeadingText
+	text "RIVAL"
 	line "ENCOUNTER"
 	cont "TM ITEMS@"
 	text_end
 
 _LobbyDoor2RivalMoneyText::
-	text "DOOR 2: RIVAL"
+	text_far _LobbyDoor2InlineHeadingText
+	text "RIVAL"
 	line "ENCOUNTER"
 	cont "MONEY@"
 	text_end
 
 _LobbyDoor2GiovanniHealingText::
-	text "DOOR 2: GIOVANNI"
+	text_far _LobbyDoor2InlineHeadingText
+	text "GIOVANNI"
 	line "ENCOUNTER"
 	cont "HEALING ITEMS@"
 	text_end
 
 _LobbyDoor2GiovanniStatText::
-	text "DOOR 2: GIOVANNI"
+	text_far _LobbyDoor2InlineHeadingText
+	text "GIOVANNI"
 	line "ENCOUNTER"
 	cont "STAT BOOSTS@"
 	text_end
 
 _LobbyDoor2GiovanniTMText::
-	text "DOOR 2: GIOVANNI"
+	text_far _LobbyDoor2InlineHeadingText
+	text "GIOVANNI"
 	line "ENCOUNTER"
 	cont "TM ITEMS@"
 	text_end
 
 _LobbyDoor2GiovanniMoneyText::
-	text "DOOR 2: GIOVANNI"
+	text_far _LobbyDoor2InlineHeadingText
+	text "GIOVANNI"
 	line "ENCOUNTER"
 	cont "MONEY@"
 	text_end
 
 _LobbyDoor2KarateHealingText::
-	text "DOOR 2:"
-	line "KARATE MASTER"
+	text_far _LobbyDoor2HeadingText
+	text "KARATE MASTER"
 	cont "ENCOUNTER"
 	cont "HEALING ITEMS@"
 	text_end
 
 _LobbyDoor2KarateStatText::
-	text "DOOR 2:"
-	line "KARATE MASTER"
+	text_far _LobbyDoor2HeadingText
+	text "KARATE MASTER"
 	cont "ENCOUNTER"
 	cont "STAT BOOSTS@"
 	text_end
 
 _LobbyDoor2KarateTMText::
-	text "DOOR 2:"
-	line "KARATE MASTER"
+	text_far _LobbyDoor2HeadingText
+	text "KARATE MASTER"
 	cont "ENCOUNTER"
 	cont "TM ITEMS@"
 	text_end
 
 _LobbyDoor2KarateMoneyText::
-	text "DOOR 2:"
-	line "KARATE MASTER"
+	text_far _LobbyDoor2HeadingText
+	text "KARATE MASTER"
 	cont "ENCOUNTER"
 	cont "MONEY@"
+	text_end
+
+; Only show door numbers when both notepads are available. The lobby updates
+; these from its actual door guards, including either legendary bargain door.
+; Keep bc intact: it is the live text cursor, also across nested text_far.
+LobbyOptionalDoorHeading:
+	ld a, [wNumSigns]
+	cp 2
+	jr c, .single
+	ld a, [wSignCoords]
+	and a
+	ret z
+.single
+	ld hl, .empty
+	ret
+.empty
+	text_end
+
+_LobbyDoor1HeadingText::
+	text_asm
+	ld hl, .numbered
+	jp LobbyOptionalDoorHeading
+.numbered
+	text "DOOR 1:"
+	line "@"
+	text_end
+
+_LobbyDoor1InlineHeadingText::
+	text_asm
+	ld hl, .numbered
+	jp LobbyOptionalDoorHeading
+.numbered
+	text "DOOR 1: @"
+	text_end
+
+_LobbyDoor2HeadingText::
+	text_asm
+	ld hl, .numbered
+	jp LobbyOptionalDoorHeading
+.numbered
+	text "DOOR 2:"
+	line "@"
+	text_end
+
+_LobbyDoor2InlineHeadingText::
+	text_asm
+	ld hl, .numbered
+	jp LobbyOptionalDoorHeading
+.numbered
+	text "DOOR 2: @"
 	text_end

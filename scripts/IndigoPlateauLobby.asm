@@ -181,20 +181,20 @@ LobbyDoor1SignText:
 	dw .tmText
 	dw .moneyText
 .healingText
-	text "DOOR 1:"
-	line "HEALING ITEMS@"
+	text_far _LobbyDoor1HeadingText
+	text "HEALING ITEMS@"
 	text_end
 .statText
-	text "DOOR 1:"
-	line "STAT BOOSTS@"
+	text_far _LobbyDoor1HeadingText
+	text "STAT BOOSTS@"
 	text_end
 .tmText
-	text "DOOR 1:"
-	line "TM ITEMS@"
+	text_far _LobbyDoor1HeadingText
+	text "TM ITEMS@"
 	text_end
 .moneyText
-	text "DOOR 1:"
-	line "MONEY@"
+	text_far _LobbyDoor1HeadingText
+	text "MONEY@"
 	text_end
 
 LobbyDoor2SignText:
@@ -244,20 +244,20 @@ LobbyDoor2SignText:
 	dw .tmText
 	dw .moneyText
 .healingText
-	text "DOOR 2:"
-	line "HEALING ITEMS@"
+	text_far _LobbyDoor2HeadingText
+	text "HEALING ITEMS@"
 	text_end
 .statText
-	text "DOOR 2:"
-	line "STAT BOOSTS@"
+	text_far _LobbyDoor2HeadingText
+	text "STAT BOOSTS@"
 	text_end
 .tmText
-	text "DOOR 2:"
-	line "TM ITEMS@"
+	text_far _LobbyDoor2HeadingText
+	text "TM ITEMS@"
 	text_end
 .moneyText
-	text "DOOR 2:"
-	line "MONEY@"
+	text_far _LobbyDoor2HeadingText
+	text "MONEY@"
 	text_end
 
 ; Final sequence sign check, shared by both door sign handlers. Once all 8
@@ -663,7 +663,7 @@ LobbyBridgeSignTable:
 	line "LAB@"
 	text_end
 
-; Door number, named encounter, then item prize. The far text keeps these
+; Optional door number, named encounter, then item prize. The far text keeps these
 ; permutations out of the tight map bank. Preserve bc, the live text cursor.
 ; INPUT: a = item category; type and door come from wRogueFlagsBitfield.
 LobbyMiniBossSign:
