@@ -2679,13 +2679,7 @@ LeftoversRecovery::
 	jr .healLoop
 
 .done
-	; ld hl, LeftoversText
-	; jp PrintText
 	ret
-
-LeftoversText:
-	text_far _LeftoversText
-	text_end
 
 LeftoversDescriptionText:
 	text_far _LeftoversDescriptionText
@@ -2923,13 +2917,7 @@ PPTonicRecovery::
 	ld [wPPTonicMonsLeft], a
 	jp nz, .monLoop
 
-	; ld hl, PPTonicText
-	; jp PrintText
 	ret
-
-PPTonicText:
-	text_far _PPTonicText
-	text_end
 
 PPTonicDescriptionText:
 	text_far _PPTonicDescriptionText
