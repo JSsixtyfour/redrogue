@@ -88,7 +88,10 @@ DEF BRIDGE_SELECTED_OWNER_BOX_BASE   EQU BRIDGE_SELECTED_OWNER_PARTY_BASE + PART
 DEF BRIDGE_SELECTED_OWNER_DAYCARE1   EQU BRIDGE_SELECTED_OWNER_BOX_BASE + NUM_BOXES * MONS_PER_BOX
 DEF BRIDGE_SELECTED_OWNER_DAYCARE2   EQU BRIDGE_SELECTED_OWNER_DAYCARE1 + 1
 DEF BRIDGE_SELECTED_OWNER_MAX        EQU BRIDGE_SELECTED_OWNER_DAYCARE2
-ASSERT BRIDGE_SELECTED_OWNER_MAX < $ff
+; Not a location the mon can be moved to by a menu: the villain holds it, in
+; sStolenRecord. Used by the rental owner and the selected-effect registry alike.
+DEF BRIDGE_SELECTED_OWNER_STOLEN     EQU BRIDGE_SELECTED_OWNER_MAX + 1
+ASSERT BRIDGE_SELECTED_OWNER_STOLEN < $ff
 
 ; Effect 0 is the empty-record marker. Each owner may occupy at most one record;
 ; intrinsic special-form traits such as Quick Claw and Intimidating Presence

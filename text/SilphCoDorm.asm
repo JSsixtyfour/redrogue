@@ -3,9 +3,9 @@ _SilphCoDormEmptyText::
 	done
 
 _SilphCoDormCharmeleonText::
-	text "A plush CHARMELEON,"
-	line "flame sewn onto"
-	cont "its tail."
+	text "A plush CHARMELEON"
+	line "with a cute flame"
+	cont "upon its tail."
 	done
 
 _SilphCoDormPidgeyText::
@@ -60,129 +60,126 @@ _SilphCoDormOldAmberText::
 	done
 
 _SilphCoDormSeelText::
-	text "A plush SEEL with"
-	line "its flippers"
-	cont "stitched on tight."
+	text "A plush SEEL doll"
+	line "with its cute"
+	cont "black nose."
 	done
 
 _SilphCoDormDoduoText::
-	text "A DODUO plush."
-	line "Both heads want"
-	cont "a hug."
+	text "A DODUO doll with"
+	line "two heads standing"
+	cont "up firm and tall."
 	done
 
 _SilphCoDormPsyduckText::
-	text "A PSYDUCK doll."
-	line "It looks like it"
-	cont "has a headache."
+	text "A PSYDUCK doll"
+	line "with its hands"
+	cont "upon its head."
 	done
 
 _SilphCoDormNidorinoText::
-	text "A NIDORINO plush."
-	line "The horn is soft,"
-	cont "not sharp."
+	text "A NIDORINO doll"
+	line "looking very"
+	cont "intimidating."
 	done
 
 _SilphCoDormKabutoText::
-	text "A KABUTO toy."
-	line "Its shell is"
-	cont "polished smooth."
+	text "A KABUTO doll,"
+	line "much softer shell"
+	cont "that a real one."
 	done
 
 _SilphCoDormSpearowText::
-	text "A SPEAROW doll."
-	line "Even stuffed, it"
-	cont "looks grumpy."
+	text "The SPEAROW doll"
+	line "looks poised to"
+	cont "strike."
 	done
 
 _SilphCoDormCuboneText::
-	text "A CUBONE plush."
-	line "Its skull helmet"
-	cont "is sewn from felt."
+	text "A CUBONE doll"
+	line "looking a bit"
+	cont "somber."
 	done
 
 _SilphCoDormArticunoText::
-	text "An ARTICUNO doll."
-	line "Its wings shimmer"
-	cont "like frost."
+	text "An ARTICUNO plush"
+	line "looking regal as"
+	cont "the real thing."
 	done
 
 _SilphCoDormZapdosText::
-	text "A ZAPDOS doll."
-	line "Its jagged wings"
-	cont "look electric."
+	text "A ZAPDOS plush"
+	line "with jagged, yet"
+	cont "soft wings."
 	done
 
 _SilphCoDormMoltresText::
-	text "A MOLTRES doll."
-	line "Its flame wings"
-	cont "are orange felt."
+	text "A MOLTRES doll,"
+	line "easier to hug than"
+	cont "the real thing."
 	done
 
 _SilphCoDormMewtwoText::
-	text "A MEWTWO doll."
-	line "It seems to stare"
-	cont "right back at you."
+	text "This MEWTWO doll"
+	line "looks intense."
 	done
 
 _SilphCoDormFearowText::
-	text "This FEAROW doll"
-	line "has a long beak"
-	cont "and ragged wings."
+	text "A FEAROW doll"
+	line "stands with its"
+	cont "huge gaping wings."
 	done
 
 _SilphCoDormKangaskhanText::
-	text "This KANGASKHAN"
-	line "doll carries a"
-	cont "baby in its pouch."
+	text "KANGASKHAN doll"
+	line "with detachable"
+	cont "infant."
 	done
 
 _SilphCoDormLaprasText::
-	text "This LAPRAS plush"
-	line "has a long neck"
-	cont "and a soft shell."
-	done
+	text "A LAPRAS doll"
+	line "that's a bit too"
+	cont "small to sit on."
+    done
 
 _SilphCoDormMachopText::
-	text "This MACHOP doll"
-	line "has stubby arms"
-	cont "built for lifting."
+	text "A confident"
+	line "looking MACHOP"
+	cont "doll."
 	done
 
 _SilphCoDormMewText::
-	text "This pink MEW"
-	line "plush is said to"
-	cont "hold every gene."
+	text "A MEW doll that"
+	line "almost looks real."
 	done
 
 _SilphCoDormNidoranFText::
-	text "This NIDORAN ♀"
-	line "doll has small"
-	cont "round ears."
+	text "This NIDORAN ♀ is"
+	line "sporting a wide"
+	cont "grin."
 	done
 
 _SilphCoDormPidgeyYLText::
-	text "This PIDGEY doll"
-	line "has soft fluffy"
-	cont "feathers."
+	text "A PIDGEY doll with"
+	line "soft flappy wings."
 	done
 
 _SilphCoDormSlowpokeText::
 	text "This SLOWPOKE"
-	line "doll stares off"
-	cont "into space."
+	line "dolls stares right"
+	cont "back at you."
 	done
 
 _SilphCoDormVaporeonText::
-	text "This VAPOREON"
-	line "plush is smooth"
-	cont "with finned ears."
+	text "A VAPOREON doll,"
+	line "fortunately not"
+	cont "invisible."
 	done
 
 _SilphCoDormBulbasaurText::
 	text "This BULBASAUR"
-	line "plush carries a"
-	cont "small leafy bulb."
+	line "doll looks ready"
+	cont "to use VINE WHIP."
 	done
 
 _SilphCoDormClefairyYLText::

@@ -73,6 +73,8 @@
      "guards": "stage-event NPC beaten flag landing on another event bit"},
     {"script": "audit_stage_npc_pixel_sync.py", "args": [], "kind": "guard",
      "guards": "stage NPC map position and screen pixel position disagreeing"},
+    {"script": "audit_stage_owed_played.py", "args": ["--seeds", "1"], "kind": "guard",
+     "guards": "played: villain with no room to collect from unreachable after a floor reload or CONTINUE, or the stolen mon or its Bridge gift lost (all four wild areas, pair and single)"},
     {"script": "audit_stage_pool_base_forms.py", "args": [], "kind": "guard",
      "guards": "stage-event pools listing final evolutions in round 1"},
     {"script": "audit_trainer_evolution_groups.py", "args": [], "kind": "guard",

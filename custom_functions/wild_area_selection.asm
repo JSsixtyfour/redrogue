@@ -194,6 +194,8 @@ StageEventStealMon:
 	ldh [hWhichPokemon], a
 	xor a
 	ld [wRemoveMonFromBox], a     ; 0 = party, not the current box
+	; Moves the victim's rental and Bridge ownership to the stolen owner first,
+	; so the removal below clears nothing of this mon's and only compacts.
 	rfarcall RentalTrackTheft
 	; RemovePokemon ALREADY does the bridge bookkeeping: _RemovePokemon
 	; farcalls BridgeTrackRemovePokemon on BOTH of its exit paths

@@ -30,8 +30,28 @@ SECTION "Stage Events", ROMX, BANK[$3A]
 
 ; Zeroes the theft record's tag. Called at the top of every theft and from the
 ; lobby-time reset, so a record can never outlive the visit that created it.
+; A Bridge effect the villain is still holding ends with it. A successful give-back
+; has already moved its effect to the mon's new slot, so its call finds nothing.
 ; Clobbers a.
 StageEventClearStolenRecord::
+	push hl
+	push bc
+	ld hl, wBridgeSelectedEffects
+	ld b, BRIDGE_SELECTED_RECORD_COUNT
+.nextEffect
+	ld a, [hl]
+	cp BRIDGE_SELECTED_OWNER_STOLEN
+	jr nz, .keepEffect
+	xor a
+	ld [hli], a
+	ld [hld], a
+.keepEffect
+	inc hl
+	inc hl
+	dec b
+	jr nz, .nextEffect
+	pop bc
+	pop hl
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	ld a, BMODE_ADVANCED
@@ -557,7 +577,6 @@ StageEventGiveBack::
 	cp PARTY_LENGTH
 	jr nc, .giveMonToBox
 	call StageEventRebuildStolenMon
-	rfarcall RentalTrackPartyRecovery
 	call StageEventClearStolenRecord
 	ld a, STAGE_GIVEBACK_MON
 	jr .settle
@@ -796,6 +815,9 @@ StageEventRebuildStolenMon:
 	ld [rBMODE], a
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
 	ld [rRAMG], a
+	; The new slot takes over the rental and Bridge ownership BEFORE the stats:
+	; a Growth Ray left on the stolen owner here returned as HP 330 of 294.
+	rfarcall RentalTrackPartyRecovery
 	; --- recompute the two derived fields from experience ---
 	ld a, [wStageEventScratch]
 	ldh [hWhichPokemon], a
@@ -1054,12 +1076,49 @@ StageEventInjectStolenMon::
 	push bc
 	push hl
 	farcall PrepareFusionAndBridgeRayCalcStats
+	call StageEventArmStolenStatGift
 	pop hl
 	pop bc
 	pop de
 	call CalcStats
 	pop af
 	ld [wCurEnemyLevel], a
+	ret
+
+; The villain fields the mon it stole, so a stat gift still counts. The ray
+; preparer cannot see it: it only knows party and loaded-mon owners. This also
+; keeps the record's HP legal: a Growth Ray mon's HP is above its plain max HP.
+; A mon has at most one selected effect, so the first match ends the search.
+; Clobbers a/bc/hl.
+StageEventArmStolenStatGift:
+	ld hl, wBridgeSelectedEffects
+	ld b, BRIDGE_SELECTED_RECORD_COUNT
+.loop
+	ld a, [hli]
+	cp BRIDGE_SELECTED_OWNER_STOLEN
+	ld a, [hli]                   ; ld keeps the flags from the owner test
+	jr z, .found
+	dec b
+	jr nz, .loop
+	ret
+.found
+	cp BRIDGE_SELECTED_EFFECT_SHRINK_RAY
+	jr z, .arm
+	cp BRIDGE_SELECTED_EFFECT_GROWTH_RAY
+	jr z, .arm
+	cp BRIDGE_SELECTED_EFFECT_BODY_ARMOR
+	ret nz
+.arm
+	; wBridgeCalcEffectFlags' bits are numbered by effect id.
+	ld b, a
+	ld a, 1
+.shift
+	add a
+	dec b
+	jr nz, .shift
+	ld hl, wBridgeCalcEffectFlags
+	or [hl]
+	ld [hl], a
 	ret
 
 ; ============================================================

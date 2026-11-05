@@ -885,19 +885,25 @@ RentalOwnerInRange:
 	and a
 	ret
 
-; Theft copies successfully before this hook, then RemovePokemon compacts.
+; Theft copies successfully before this hook, then RemovePokemon compacts. A mon
+; stays one mon while the villain holds it: its rental ownership and its Bridge
+; selected effect both move with it, or RemovePokemon's hook would delete the
+; effect for good. These three hooks are the theft's equivalent of
+; BridgeTrackMoveMon, which only knows the menu transfers.
 RentalTrackTheft::
 	ldh a, [hWhichPokemon]
 	inc a
 	ld d, a
-	ld e, BRIDGE_SELECTED_OWNER_MAX + 1
-	jp RentalMoveOwner
+	ld e, BRIDGE_SELECTED_OWNER_STOLEN
+	jr RentalMoveStolenOwner
 
+; Runs before the returning mon's stats are calculated, like _MoveMon: the ray
+; preparer finds a party mon's effects through this new slot.
 RentalTrackPartyRecovery::
-	ld d, BRIDGE_SELECTED_OWNER_MAX + 1
+	ld d, BRIDGE_SELECTED_OWNER_STOLEN
 	ld a, [wPartyCount]
 	ld e, a
-	jp RentalMoveOwner
+	jr RentalMoveStolenOwner
 
 RentalTrackBoxRecovery::
 	ld a, [wCurrentBoxNum]
@@ -914,8 +920,26 @@ RentalTrackBoxRecovery::
 	add e
 	add BRIDGE_SELECTED_OWNER_BOX_BASE
 	ld e, a
-	ld d, BRIDGE_SELECTED_OWNER_MAX + 1
-	jp RentalMoveOwner
+	ld d, BRIDGE_SELECTED_OWNER_STOLEN
+	; fall through
+
+; d = old owner, e = new owner. Not BridgeMoveSelectedOwner: that one lives in
+; the nearly full "rogue" bank and refuses the stolen owner as out of range.
+RentalMoveStolenOwner:
+	call RentalMoveOwner
+	ld hl, wBridgeSelectedEffects
+	ld b, BRIDGE_SELECTED_RECORD_COUNT
+.loop
+	ld a, [hl]
+	cp d
+	jr nz, .next
+	ld [hl], e
+.next
+	inc hl
+	inc hl
+	dec b
+	jr nz, .loop
+	ret
 
 ; d/e = exchanged owners; either or both may have an independent bridge effect.
 RentalSwapOwners::
@@ -1117,7 +1141,7 @@ RentalReclaimAccessible::
 	jr c, .box
 	cp BRIDGE_SELECTED_OWNER_DAYCARE2 + 1
 	jp c, RentalReclaimDaycare
-	cp BRIDGE_SELECTED_OWNER_MAX + 1
+	cp BRIDGE_SELECTED_OWNER_STOLEN
 	jr z, .stolen
 	and a ; invalid location: do not delete an unrelated Pokemon
 	ret
@@ -1519,7 +1543,7 @@ RentalSettleAndSave::
 	cp RENTAL_RUN_END_SAVE_PENDING
 	jp z, .invalid
 	ld a, [wRentalOwner]
-	cp BRIDGE_SELECTED_OWNER_MAX + 2
+	cp BRIDGE_SELECTED_OWNER_STOLEN + 1
 	jp nc, .invalid
 	; An inactive-box owner requires initialized SRAM boxes.
 	cp BRIDGE_SELECTED_OWNER_BOX_BASE
