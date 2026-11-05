@@ -384,34 +384,32 @@ LegendaryBossEnteredSlot::
 	pop bc
 	ret c
 	; fallthrough
-; Ends the bargain with nothing granted: Challenge 11's prize id is the 0
-; sentinel, and with the accepted bit clear the next lobby grants nothing.
-BreakLegendaryBargain:
+; Ends the bargain with nothing granted: with the accepted bit clear, the next
+; lobby's settlement grants nothing, whatever prize was on offer.
+BreakWitchBargain:
 	xor a
 	ld [wWitchChallenge], a
 	ld hl, wRogueFlagsBitfield
 	res BIT_WITCH_ACCEPTED, [hl]
 	ret
 
-; DoorDiceLegendaryWarning  (from RogueItemUseDoorDice, same bank, before a
-; charge is spent). Rerolling the doors after striking Challenge 11's bargain
-; would move the legendary's door, so the player is warned first.
+; DoorDiceBargainWarning  (from RogueItemUseDoorDice, same bank, before a charge
+; is spent). Rolling changes the zone the player agreed to. It could also land on
+; a gift room, which returns straight to the lobby, and settlement there would pay
+; a prize for a challenge never played. So every accepted bargain warns first.
 ; Output: carry SET = roll (YES, or no bargain at stake; on YES the bargain is
 ;         broken); carry CLEAR = NO, cancel without spending a charge.
-DoorDiceLegendaryWarning::
+DoorDiceBargainWarning::
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_WITCH_ACCEPTED, a
 	jr z, .roll
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_LEGENDARY_BOSS
-	jr nz, .roll
-	ld hl, DoorDiceLegendaryWarnText
+	ld hl, DoorDiceBargainWarnText
 	call PrintText
 	call YesNoChoice
 	ldh a, [hCurrentMenuItem]
 	and a
 	ret nz                       ; NO; `and a` cleared carry
-	call BreakLegendaryBargain
+	call BreakWitchBargain
 .roll
 	scf
 	ret
@@ -432,8 +430,8 @@ WitchLegendaryEitherDoorText:
 	text_far _WitchLegendaryEitherDoorText
 	text_end
 
-DoorDiceLegendaryWarnText:
-	text_far _DoorDiceLegendaryWarnText
+DoorDiceBargainWarnText:
+	text_far _DoorDiceBargainWarnText
 	text_end
 
 ; IsLegendaryTradeReady: shared pre-dispatch gate. Carry set if Challenge 11 is

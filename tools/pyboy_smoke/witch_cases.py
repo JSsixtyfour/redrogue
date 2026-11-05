@@ -1522,14 +1522,15 @@ def _c11m(run: Run) -> None:
     h.write8("wEndlessDepth", 0)
 
 
-def c11d(run: Run, answer: str) -> None:
-    """Door Dice after the bargain: the warning, then YES breaks it and NO spends nothing."""
+def c11d(run: Run, answer: str, quote: str = "DOOR 1") -> None:
+    """Door Dice after any bargain: the warning, then YES breaks it and NO spends nothing."""
     from autoplay import AutoplayAgent
     h, agent = run.h, run.agent
-    before = talk_and_verify(run, "DOOR 1")
+    challenge = run.case.challenge
+    before = talk_and_verify(run, quote)
     accepted = run.branch == "accept"
     h.write8("wDiceCharges", (h.read8("wDiceCharges") & 0b11111100) | 2)
-    warned = h.hook_flag("DoorDiceLegendaryWarning")
+    warned = h.hook_flag("DoorDiceBargainWarning")
     uses = {"n": 0}  # the plan retries while the lead stays hurt, as a press of the item would
     rolled = h.hook_flag("SelectAndPatchLobbyExit")
 
@@ -1550,7 +1551,7 @@ def c11d(run: Run, answer: str) -> None:
     poke_party_state(run, 0, hp=maximum // 5)
     run.log_intervention("replay", dispatch="ItemUseMedicine redirected to ItemUseDoorDice",
                          charges=2, recovery_item=item, lead_hp=maximum // 5)
-    h.register_hook("DoorDiceLegendaryWarning", warning)
+    h.register_hook("DoorDiceBargainWarning", warning)
     h.register_hook("ItemUseMedicine", use_the_dice)
     charges = h.read8("wDiceCharges") & 3
     rolled_before = rolled["count"]
@@ -1564,11 +1565,12 @@ def c11d(run: Run, answer: str) -> None:
     keeps = accepted and answer == "no"
     run.check("the bargain after the dice", keeps, run.accepted)
     run.check("the challenge id after the dice",
-              C["CHALLENGE_LEGENDARY_BOSS"] if keeps else (0 if accepted else h.read8("wWitchChallenge")),
+              challenge if keeps else (0 if accepted else h.read8("wWitchChallenge")),
               h.read8("wWitchChallenge"))
     run.check("charges after the dice", charges if keeps else max(0, charges - uses["n"]), h.read8("wDiceCharges") & 3)
     run.check("the doors rerolled unless cancelled", not keeps, rolled["count"] > rolled_before)
     run.check("earned bytes unchanged", before, run.earned)
+    run.check("the warning shows only with a bargain up", accepted, run.transcript_has("Rolling will"))
     run.control_check("after the dice")
 
 
@@ -1578,6 +1580,14 @@ def _c11k(run: Run) -> None:
 
 def _c11y(run: Run) -> None:
     c11d(run, "yes")
+
+
+def _dice_no(run: Run) -> None:
+    c11d(run, "no", quote="No money from")
+
+
+def _dice_yes(run: Run) -> None:
+    c11d(run, "yes", quote="No money from")
 
 
 def gate_excluded(run: Run) -> None:
@@ -2240,12 +2250,12 @@ def p04s(run: Run) -> None:
 
 
 def gift_door(run: Run) -> None:
-    """Measure: a Door Dice after a bargain lands on a gift room. She never hosts a bargain
-    with gift doors, because a gift room returns straight to the lobby."""
+    """A Door Dice after a bargain lands on a gift room. A gift room returns straight to the
+    lobby, so a bargain still up would pay a prize for nothing: rolling must end it first."""
     from autoplay import AutoplayAgent
     h, agent = run.h, run.agent
     before = talk_and_verify(run)
-    h.write8("wDiceCharges", (h.read8("wDiceCharges") & 0b11111100) | 3)
+    h.write8("wDiceCharges", (h.read8("wDiceCharges") & 0b11111100) | 1)  # one roll: the plan retries while the lead is hurt
     fired = {"n": 0}
 
     def force_gift(_context) -> None:
@@ -2256,6 +2266,11 @@ def gift_door(run: Run) -> None:
     def use_the_dice(_context) -> None:
         h.pyboy.register_file.PC = h.address("ItemUseDoorDice")
 
+    def warning(_context) -> None:
+        agent.answers, agent.witch_talking = ["yes"], True
+        agent.witch_talk_frame = h.pyboy.frame_count
+
+    h.register_hook("DoorDiceBargainWarning", warning)
     item = min(agent.heal_amounts, key=lambda i: agent.heal_amounts[i])
     h.write8("wRecoveryItemCounts", 1, offset=agent.recovery_table.index(item))
     maximum = bcd2(h, "wPartyMon1MaxHP")
@@ -2272,8 +2287,7 @@ def gift_door(run: Run) -> None:
     agent.plan = None
     doors = {h.read8("wLobbyDoor1StageMap"), h.read8("wLobbyDoor2StageMap")}
     run.must_reach("the dice landed on gift rooms", doors <= GIFT_ROOMS)
-    accepted = run.branch == "accept"
-    run.check("the bargain survives the dice", accepted, run.accepted)
+    run.check("rolling ended any bargain", False, run.accepted)
     prize = run.case.prize - 1
     lobby = agent.lobby_map
     limit = h.pyboy.frame_count + 8000
@@ -2288,7 +2302,7 @@ def gift_door(run: Run) -> None:
     earned_prize = bool(run.earned[prize // 8] >> (prize % 8) & 1)
     run.notes.append(f"doors {sorted(doors)}, accepted now {run.accepted}, prize granted {earned_prize}, "
                      f"earned {before} -> {run.earned}")
-    run.check("the bargain stays open or grants nothing for a gift room", False, earned_prize)
+    run.check("a gift room pays no prize", False, earned_prize)
     run.control_check("after the gift room")
 
 
@@ -2781,6 +2795,10 @@ CASES = {case.id: case for case in (
          _p10c, Context(battle_count=1, gym_next=False, money=5000)),
     Case("P04S", "Prize 4 with EXP Share", C["CHALLENGE_NO_MONEY"], C["PRIZE_EXP_BOOST"], p04s,
          Context(battle_count=1, gym_next=False, party=(Mon("TAUROS", level=50), Mon("ALAKAZAM", level=50)))),
+    Case("DICEN", "Any bargain: Door Dice cancelled", C["CHALLENGE_NO_MONEY"], C["PRIZE_MONEY"], _dice_no,
+         Context(battle_count=1, gym_next=False)),
+    Case("DICEY", "Any bargain: Door Dice rolled", C["CHALLENGE_NO_MONEY"], C["PRIZE_MONEY"], _dice_yes,
+         Context(battle_count=1, gym_next=False)),
     Case("GIFT", "A Door Dice sends a bargain to a gift room", C["CHALLENGE_NO_MONEY"], C["PRIZE_MONEY"], gift_door,
          Context(battle_count=13, gym_next=True, badges=0b1)),
     Case("HOF", "Elite Four, Hall of Fame, Endless", C["CHALLENGE_NO_MONEY"], 0, hall_of_fame,

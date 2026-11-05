@@ -294,8 +294,8 @@ _WitchLegendaryWithdrawText::
 	cont "now."
 	done
 
-; DoorDiceLegendaryWarning: rolling after striking Challenge 11's bargain.
-_DoorDiceLegendaryWarnText::
+; DoorDiceBargainWarning: rolling after striking any bargain.
+_DoorDiceBargainWarnText::
 	text "Rolling will"
 	line "break the witch's"
 	cont "bargain!"

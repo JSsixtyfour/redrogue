@@ -35,7 +35,7 @@ RogueItemUseDoorDice::
 	ld a, [wDiceCharges]
 	and %00000011
 	jr z, .refuseCharges
-	call DoorDiceLegendaryWarning ; Challenge 11: YES breaks the bargain
+	call DoorDiceBargainWarning ; any accepted bargain: YES breaks it
 	ret nc                      ; NO: no charge spent
 	ld a, [wDiceCharges]
 	and %00000011
