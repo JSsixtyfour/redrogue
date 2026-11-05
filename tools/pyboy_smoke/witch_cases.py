@@ -2657,7 +2657,13 @@ def c10(run: Run) -> None:
     entries: list[dict[str, int]] = []
     battle = {"menus": 0, "inits": 0, "zero_at_init": []}
 
+    def start(_context) -> None:
+        battle["starting"] = True
+
     def init(_context) -> None:
+        # The witch's offer text computes the limit here too, with no battle to start.
+        if not battle.pop("starting", False):
+            return
         battle["menus"] = 0
         battle["inits"] += 1
         battle["zero_at_init"].append(h.read8("wBattleTurnCount"))
@@ -2686,6 +2692,7 @@ def c10(run: Run) -> None:
             - h.read8("wHPBarNewHP") - (h.read8("wHPBarNewHP", 1) << 8)
         entries[-1]["post"] = h.read8("wBattleTurnCount")
 
+    h.register_hook("WitchInitTurnLimit", start)
     h.register_hook("WitchComputeTurnLimit", init)
     h.register_hook("DisplayBattleMenu", hold)
     h.register_hook("HandleTurnLimitDrain", drain_entry)

@@ -25,6 +25,14 @@ def main() -> None:
     mask = parse_rgbds_constants(ROOT / "constants/ram_constants.asm")["DIFFICULTY_MASK"]
     h = RedRogueHarness(ROOT, evidence)
     h.boot_to_lobby()
+    # Optional: let the game go idle first, so no main-thread job is under the hijack.
+    settle = int(sys.argv[3]) if len(sys.argv) > 3 else 0
+    counts = h.hook_flag("DexCountCollection")
+    h.tick(settle)
+    idle = h.hook_flag("JoypadOverworld")
+    h.tick(30)
+    print(json.dumps({"settled_frames": settle, "frame": h.pyboy.frame_count, "dex_counts_so_far": counts["count"],
+                      "overworld_polls_in_30_frames": idle["count"]}), flush=True)
     h.write8("wOptions2", h.read8("wOptions2") & ~mask & 0xFF | 3)
     # The audit's stream: seed 4, past Brock's and Misty's 60 rolls of 10 draws each.
     rng = random.Random(4)
@@ -99,7 +107,7 @@ def main() -> None:
                               "species": [memory[h.address("wEnemyPartySpecies") + i] for i in range(7)]}), flush=True)
             h.close()
             return
-    print(json.dumps({"completed": done}), flush=True)
+    print(json.dumps({"completed": done, "dex_counts": counts["count"]}), flush=True)
     h.close()
 
 

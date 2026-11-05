@@ -792,6 +792,9 @@ def play_endless(h, agent: "CampaignAgent", stages: int, max_frames: int,
     forced state and is reported as an intervention. BIT_WITCH_UBER_RECEIVED is kept,
     and so is wEarnedStatBoosts: only the offers need the room."""
     continuations: list[dict[str, object]] = []
+    # Endless is offered only to a player who has beaten the AI once. Set here, at the
+    # Hall of Fame: on release a new game's setup runs after boot and would clear it.
+    h.set_event(EVENTS["EVENT_AI_DEFEATED"])
 
     def on_continue(_context) -> None:
         earned = h.read_bytes("wWitchPrizesEarned", 2)
@@ -846,10 +849,6 @@ def run_campaign_seed(seed: int, options: dict[str, object]) -> dict[str, object
             autoplay.boot(h, seed, 1, options["difficulty"])
         else:
             autoplay.boot_new_game(h, seed, options["difficulty"])
-        if options["endless_stages"]:
-            # Endless is offered only to a player who has beaten the AI once; the event
-            # outlives every run reset, so a returning player's save has it already.
-            h.set_event(EVENTS["EVENT_AI_DEFEATED"])
         chooser = {"player": "strong"} if options["strong"] else {"offer_policy": "random"}
         agent = CampaignAgent(h, seed=seed, stall_frames=options["stall_frames"], battle_policy="type_switcher",
                               **chooser)

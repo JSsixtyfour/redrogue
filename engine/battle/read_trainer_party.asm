@@ -45,9 +45,9 @@ ReadTrainer:
 ; teams at all.
 ;
 ; It still falls into .AddAdditionalMoveData rather than returning: that block
-; applies the SpecialTrainerMoves table (preserved deliberately, so nothing
-; regresses) and, at .FinishUp, computes wAmountMoneyWon - which every trainer
-; battle needs regardless of how its party was built.
+; applies the SpecialTrainerMoves table (empty for now, kept as a feature; see
+; special_moves.asm) and, at .FinishUp, computes wAmountMoneyWon - which every
+; trainer battle needs regardless of how its party was built.
 	xor a
 	ld [wTrainerPartyFormMode], a ; specs carry per-mon forms themselves
 	ld a, [wTrainerClass]

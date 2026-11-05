@@ -129,6 +129,7 @@ _VioletGymTrainer3AfterBattleText::
 	line "types can't even"
 	cont "touch a flying"
 	cont "#MON"
+	done
 
 _VioletGymGuideAdviceText::
 	text "Hey! I'm no train-"

@@ -1857,6 +1857,7 @@ PCemPlaceChanneler:
 ;     is a coordinate trigger with no sprite, so a villain standing there is
 ;     not a graphical clash, it is a trigger the player can never reach
 ;   * floor 4 only, (4,8) - the south exit warp at step (9,16)
+;   * anywhere the pair would seal a gap (PCemHideoutKeepsWayOpen)
 ;
 ; SRAM bank 0 must already be open. Clobbers a/bc/de/hl.
 ; ============================================================
@@ -1892,12 +1893,128 @@ PCemStageHideoutCellOk:
 	call PCemCellInList
 	jr z, .no
 .ok
+	call PCemHideoutKeepsWayOpen
+	jr nc, .no
 	xor a
 	ret                            ; Z set = usable
 .no
 	ld a, 1
 	and a
 	ret                            ; Z clear = rejected
+
+INCLUDE "data/tilesets/cemetery_quad_masks.asm"
+
+; In: a = block id. Out: a = its walkable-quadrant mask, 0 past the table.
+; Keeps bc/de/hl.
+PCemQuadMask:
+	cp NUM_CEMETERY_QUAD_MASKS
+	jr nc, .none
+	push hl
+	push de
+	ld e, a
+	ld d, 0
+	ld hl, CemeteryQuadWalkMasks
+	add hl, de
+	ld a, [hl]
+	pop de
+	pop hl
+	ret
+.none
+	xor a
+	ret
+
+; ============================================================
+; PCemHideoutKeepsWayOpen  (2026-11-04)
+; May the stage-event pair stand on this floor block without sealing anything?
+; The pair stays solid until the floor next loads, and an OWED pair stays solid
+; across loads until the player collects, so it must never be in the way. It
+; fills the block's TOP two steps, and a floor with graves on it is full of
+; gaps exactly that wide: 8.5% of floor blocks cut off the exit.
+;
+; A floor block's bottom row is always open, so nothing can be cut off if every
+; walkable step touching the pair also connects to that row:
+;   left/right of the pair: straight down the neighbouring block's outer column
+;   above the pair: around either side, by the NW-W or NE-E column
+; The same rule as the Facility's PFacHideoutKeepsWayOpen. Off the map counts as
+; solid. Draws no Random. Conservative: the caller's scan just tries the next cell.
+;
+; INPUT:  wCemTryX/Y = a floor block; SRAM open on the maps' bank
+; OUTPUT: carry SET = safe. Clobbers a/bc/de/hl.
+; ============================================================
+PCemHideoutKeepsWayOpen:
+	call PCemGetCellHL             ; hl -> the block
+	ld b, 0                        ; b = W's mask
+	ld a, [wBuffer + wCemTryX]
+	and a
+	jr z, .gotWest
+	dec hl
+	ld a, [hli]
+	call PCemQuadMask
+	ld b, a
+.gotWest
+	ld c, 0                        ; c = E's mask
+	ld a, [wBuffer + wCemTryX]
+	cp CEMAP_WIDTH - 1
+	jr z, .gotEast
+	inc hl
+	ld a, [hld]
+	call PCemQuadMask
+	ld c, a
+.gotEast
+	; Beside the pair: open means open all the way down to the bottom row.
+	ld a, b
+	and %1010                      ; W's TR, BR
+	cp %0010
+	jr z, .no
+	ld a, c
+	and %0101                      ; E's TL, BL
+	cp %0001
+	jr z, .no
+	ld a, [wBuffer + wCemTryY]
+	and a
+	jr z, .yes                     ; the map's top edge: nothing up there
+	ld de, -CEMAP_WIDTH
+	add hl, de                     ; N
+	ld a, [hl]
+	call PCemQuadMask
+	and %1100                      ; the two steps directly above the pair
+	jr z, .yes                     ; solid: nothing up there to cut off
+	ld e, a
+	bit 2, e                       ; around the left: N's BL ...
+	jr z, .right
+	ld a, [wBuffer + wCemTryX]
+	and a
+	jr z, .right
+	dec hl
+	ld a, [hli]                    ; ... NW's BR ...
+	call PCemQuadMask
+	bit 3, a
+	jr z, .right
+	ld a, b
+	and %1010
+	cp %1010                       ; ... then down W's column
+	jr z, .yes
+.right
+	bit 3, e                       ; around the right: N's BR ...
+	jr z, .no
+	ld a, [wBuffer + wCemTryX]
+	cp CEMAP_WIDTH - 1
+	jr z, .no
+	inc hl
+	ld a, [hl]                     ; ... NE's BL ...
+	call PCemQuadMask
+	bit 2, a
+	jr z, .no
+	ld a, c
+	and %0101
+	cp %0101                       ; ... then down E's column
+	jr z, .yes
+.no
+	and a                          ; carry clear
+	ret
+.yes
+	scf
+	ret
 
 ; INPUT: hl = list of X,Y block pairs terminated by $ff.
 ; OUTPUT: Z set if wCemTryX/Y appears in the list. Clobbers a/bc/hl.
@@ -1969,6 +2086,10 @@ PCemStageEventFloor::
 	and STAGE_EVENT_PHASE_MASK
 	jr z, .floor1                  ; WAITING
 	cp STAGE_EVENT_PHASE_HIDING << STAGE_EVENT_PHASE_SHIFT
+	jr z, .hideout
+	; OWED villain: beaten, but still holding goods the player had no room for. It
+	; stays, or the next floor load would lose them for good.
+	cp STAGE_EVENT_PHASE_OWED << STAGE_EVENT_PHASE_SHIFT
 	jr z, .hideout
 	; SETTLED villain: beaten, paid out, gone.
 .nowhere

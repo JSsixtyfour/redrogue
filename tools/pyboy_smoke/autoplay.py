@@ -577,7 +577,10 @@ class AutoplayAgent:
                 rule = self.rules.moves.get(move)
                 if rule and not rule.power and rule.effect not in self.body_armor_allowed:
                     pp[slot] = 0
-        if pp != list(state.player.pp):
+        # When every move with PP is refused, choosing one is still right: the game
+        # then Struggles (BridgeBodyArmorRefusesEveryMove). A move with no PP is
+        # refused forever, so that is what must not be left as the only choice.
+        if pp != list(state.player.pp) and any(p & 0x3F for p in pp):
             state.player = replace(state.player, pp=tuple(pp))
         if self.battle_policy == "first_slot":
             legal = benchmark_policies.legal_slots(state.player)
