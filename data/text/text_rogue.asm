@@ -3,6 +3,7 @@ _GreedyText::
 	line "greedy..."
 	done
 
+
 _PickPokeBallText::
 	text "You want"
 	line "@"

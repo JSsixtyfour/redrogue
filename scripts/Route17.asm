@@ -200,8 +200,7 @@ Route17Biker5AfterBattleText:
     CheckEvent EVENT_GOT_ROGUE_POKEMON
     jr z, .GetMon
 
-    ld hl, Route17GreedyText
-    call PrintText
+    farcall RogueRewardClaimedLine
     jr .done
 
     .GetMon
@@ -257,10 +256,6 @@ text_asm
 ld d, TOGGLE_ROGUE_REWARD_POKEBALL_3
 farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
-
-Route17GreedyText:
-	text_far _GreedyText
-	text_end
 
 Route17NoTurningBackText:
 	text_far _NoTurningBackText

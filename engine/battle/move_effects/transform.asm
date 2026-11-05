@@ -189,8 +189,11 @@ TransformEffect_:
 	ld hl, wEnemyMonStatMods
 	ld de, wPlayerMonStatMods
 	call .copyBasedOnTurn ; stat mods
+; Super Transform's success path ends here too.
+.succeeded
 	ld hl, TransformedText
-	jp PrintText
+	call PrintText
+	farjp ReapplyPlayerStatEffectsAfterTransform
 
 .copyBasedOnTurn
 	ldh a, [hWhoseTurn]
@@ -433,8 +436,7 @@ SuperTransformEffect_:
 	dec de
 .noClampNeeded
 ; --- Super Transform addition ends here ---
-	ld hl, TransformedText
-	jp PrintText
+	jp TransformEffect_.succeeded
 
 .copyBasedOnTurn
 	ldh a, [hWhoseTurn]

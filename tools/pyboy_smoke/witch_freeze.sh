@@ -35,6 +35,7 @@ if [ "$mode" != "--sync" ]; then
     rm -rf "$tree/.git"
   fi
   cp "$evidence/roms/"*.gbc "$evidence/roms/"*.sym "$tree/"
+  if [ -d "$evidence/roms/maps" ]; then cp "$evidence/roms/maps/"*.map "$tree/"; fi
 fi
 
 # Test code may move on while the game stays frozen. Copy it, and say which.

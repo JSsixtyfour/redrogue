@@ -52,30 +52,33 @@ ApplySingleEarnedStatBoost::
 	ld d, 0 ; d = 0 -> stat UP, d = 1 -> stat DOWN
 	ld a, [hl]
 
-; Normalize whichever stat-mod effect range this is down to the +1 range
-; (ATTACK_UP1_EFFECT..EVASION_UP1_EFFECT = 0..5) and record the direction.
+; Reduce whichever stat-mod effect range this is to a stat index (0 Attack,
+; 1 Defense, 2 Speed, 3 Special, 4 Accuracy, 5 Evasion) and record the direction.
+; Each range subtracts its OWN first effect. These used to subtract only the gap
+; to ATTACK_UP1_EFFECT, leaving ATTACK_UP1_EFFECT + index, so every effect except
+; +1 failed the `cp 4` below and silently dropped the boost and challenge 8.
 	cp ATTACK_DOWN_SIDE_EFFECT
 	jr c, .checkDown2
 	cp SPECIAL_DOWN_SIDE_EFFECT + 1
 	ret nc ; above the stat-mod effects entirely
-	sub ATTACK_DOWN_SIDE_EFFECT - ATTACK_UP1_EFFECT
+	sub ATTACK_DOWN_SIDE_EFFECT
 	inc d
 	jr .haveStatIndex
 .checkDown2
 	cp ATTACK_DOWN2_EFFECT
 	jr c, .checkUp2
-	sub ATTACK_DOWN2_EFFECT - ATTACK_UP1_EFFECT
+	sub ATTACK_DOWN2_EFFECT
 	inc d
 	jr .haveStatIndex
 .checkUp2
 	cp ATTACK_UP2_EFFECT
 	jr c, .checkDown1
-	sub ATTACK_UP2_EFFECT - ATTACK_UP1_EFFECT
+	sub ATTACK_UP2_EFFECT
 	jr .haveStatIndex
 .checkDown1
 	cp ATTACK_DOWN1_EFFECT
 	jr c, .checkUp1
-	sub ATTACK_DOWN1_EFFECT - ATTACK_UP1_EFFECT
+	sub ATTACK_DOWN1_EFFECT
 	inc d
 	jr .haveStatIndex
 .checkUp1
@@ -164,6 +167,8 @@ ApplySingleEarnedStatBoost::
 ;     reaches: switch-in, level-up, evolution;
 ;   - ApplySingleEarnedStatBoost above, after a Speed stage change rebuilt
 ;     Speed from the unmodified copy.
+; Haze and a player's Transform also rewrite Speed; both end in
+; ApplyEarnedStatBoosts, so they reach this through the first caller.
 ; Link battles never get here (both callers return first). The AI mirrors this
 ; in AIPredictSpeedAtStage (AI_SPEED_SLUGGISH_BIT) - keep the two in step.
 ; Clobbers af, hl. Preserves bc, de.
@@ -185,4 +190,22 @@ HalvePlayerSpeedIfSluggish::
 	ret nz
 	inc hl
 	inc [hl] ; minimum 1
+	ret
+
+; A player's Transform replaces wBattleMon's stats with the target's, which drops
+; the earned boosts, witch challenge 8's halving and paralysis's quarter from the
+; player's stats. Put them back. Status stays on the mon through Transform, so the
+; quarter still belongs; hWhoseTurn is flipped because that routine hits the side
+; opposite the turn. The enemy's Transform changes none of the player's stats.
+; Reached only on a Transform that succeeded, by farjp. Clobbers everything.
+ReapplyPlayerStatEffectsAfterTransform::
+	ldh a, [hWhoseTurn]
+	and a
+	ret nz
+	farcall ApplyEarnedStatBoosts
+	ld a, 1
+	ldh [hWhoseTurn], a
+	farcall QuarterSpeedDueToParalysis
+	xor a
+	ldh [hWhoseTurn], a
 	ret

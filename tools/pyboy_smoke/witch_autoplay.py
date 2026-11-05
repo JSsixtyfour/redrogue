@@ -206,6 +206,8 @@ class Context:
     party: tuple[Mon, ...] = (Mon(), Mon("ALAKAZAM"))
     money: int | None = None
     pokes: dict[str, int] = field(default_factory=dict)
+    arrays: dict[str, tuple[int, ...]] = field(default_factory=dict)  # consecutive bytes from the label
+    events: tuple[str, ...] = ()  # event flags set before the lobby entry
 
 
 @dataclass
@@ -218,6 +220,8 @@ class Case:
     context: Context = field(default_factory=Context)
     max_frames: int = 400_000
     agent_options: dict[str, object] = field(default_factory=dict)  # WitchAgent keywords
+    gate_rejects: bool = False  # the steered challenge must be refused: any other offer is the setup
+    gate_hides: bool = False  # the witch must be absent: no offer at all is the setup
 
 
 @dataclass
@@ -239,8 +243,15 @@ class Run:
         self.interventions: list[dict[str, object]] = []
         self.notes: list[str] = []
         self.old_transcript: list[str] = []  # dialogue from before a Continue
+        # Anomalies the case itself causes, by message prefix (see hold_enemy in witch_cases.py).
+        # They are counted in the result as ignored_anomalies, never dropped silently.
+        self.expected_anomaly_prefixes: list[str] = []
 
     # ---- evidence
+    def unexplained_anomalies(self) -> list[dict[str, object]]:
+        return [a for a in self.agent.checks.anomalies
+                if not any(str(a.get("detail", "")).startswith(p) for p in self.expected_anomaly_prefixes)]
+
     def check(self, name: str, expected, observed) -> bool:
         ok = expected == observed
         self.checks.append(Check(name, expected, observed, ok))
@@ -515,6 +526,11 @@ def prepare_offer(run: Run, base: bytes, attempt: int) -> bool:
         writes["wObtainedBadges"] = context.badges
     for label, value in writes.items():
         h.write8(label, value)
+    for label, values in context.arrays.items():
+        for offset, value in enumerate(values):
+            h.write8(label, value, offset=offset)
+    for name in context.events:
+        h.set_event(EVENTS[name])
     if context.gym_next is not None:
         flags = h.read8("wRogueFlagsBitfield") & ~GYM_NEXT & 0xFF
         h.write8("wRogueFlagsBitfield", flags | (GYM_NEXT if context.gym_next else 0))
@@ -525,7 +541,7 @@ def prepare_offer(run: Run, base: bytes, attempt: int) -> bool:
         digits = f"{context.money:06d}"
         for i in range(3):
             h.write8("wPlayerMoney", int(digits[2 * i:2 * i + 2], 16), offset=i)
-    run.log_intervention("setup", writes=writes, gym_next=context.gym_next,
+    run.log_intervention("setup", writes=writes, arrays=context.arrays, gym_next=context.gym_next,
                          earned=context.earned, money=context.money)
     h.seed_rng([attempt, 0x57, 0x49, 0x54])
     run.log_intervention("seed", seed=[attempt, 0x57, 0x49, 0x54])
@@ -537,6 +553,10 @@ def prepare_offer(run: Run, base: bytes, attempt: int) -> bool:
     h.wait_until(lambda: setup["count"] > 0, "lobby setup", 1200)
     polls["count"] = 0
     h.wait_until(lambda: polls["count"] > 2, "lobby input poll", 1200)
+    if case.gate_hides:
+        return h.read8("wWitchChallenge") == 0
+    if case.gate_rejects:
+        return h.read8("wWitchChallenge") not in (0, case.challenge)
     return (h.read8("wWitchChallenge") == case.challenge
             and (not case.prize or h.read8("wWitchPrize") == case.prize))
 
@@ -547,12 +567,15 @@ def build_preoffer(case: Case, rom: str, evidence: Path) -> tuple[bytes, list[di
     run = Run(case, rom, "setup", evidence)
     run.h = harness(rom, evidence)
     try:
-        steer_offer(run.h, case.challenge, case.prize)
+        draws = steer_offer(run.h, case.challenge, case.prize)
         for attempt in range(1, 9):
+            draws["challenge"].clear()
+            draws["prize"].clear()
             if prepare_offer(run, base, attempt):
                 state = io.BytesIO()
                 run.h.save_state(state)
-                run.log_intervention("steer", challenge=case.challenge, prize=case.prize, attempt=attempt)
+                run.log_intervention("steer", challenge=case.challenge, prize=case.prize, attempt=attempt,
+                                     challenge_draws=len(draws["challenge"]))
                 return state.getvalue(), list(run.interventions)
         raise NotReached(f"witch never offered challenge {case.challenge} / prize {case.prize} "
                          f"(a gate rejected it, or a gift-room door hid her, 8 seeds)")
@@ -636,7 +659,7 @@ def run_branch(case: Case, rom: str, branch: str, evidence: Path, preoffer: byte
             raise DriverFault("the case verified nothing")
         if not all(c.ok for c in run.checks):
             status = "gameplay_fail"
-        anomalies = run.agent.checks.anomalies
+        anomalies = run.unexplained_anomalies()
         if anomalies:
             status = status if status != "pass" else "anomaly"
     except NotReached as error:
@@ -651,7 +674,8 @@ def run_branch(case: Case, rom: str, branch: str, evidence: Path, preoffer: byte
         "checks": [c.__dict__ for c in run.checks], "notes": run.notes,
         "interventions": run.interventions,
         "transcript": run.agent.transcript if run.agent else [],
-        "anomalies": run.agent.checks.anomalies[:12] if run.agent else [],
+        "anomalies": run.unexplained_anomalies()[:12] if run.agent else [],
+        "ignored_anomalies": (len(run.agent.checks.anomalies) - len(run.unexplained_anomalies())) if run.agent else 0,
         "frames": run.agent.report.frames if run.agent else 0,
         "wall_seconds": round(time.monotonic() - started, 1),
         "stages": run.agent.report.stages_cleared if run.agent else 0,
@@ -763,9 +787,9 @@ def run_campaign_seed(seed: int, options: dict[str, object]) -> dict[str, object
     started = time.monotonic()
     try:
         if rom == autoplay.DEBUG_ROM:
-            autoplay.boot(h, seed, 1, "HARD")
+            autoplay.boot(h, seed, 1, options["difficulty"])
         else:
-            autoplay.boot_new_game(h, seed, "HARD")
+            autoplay.boot_new_game(h, seed, options["difficulty"])
         chooser = {"player": "strong"} if options["strong"] else {"offer_policy": "random"}
         agent = CampaignAgent(h, seed=seed, stall_frames=options["stall_frames"], battle_policy="type_switcher",
                               **chooser)
@@ -782,7 +806,7 @@ def run_campaign_seed(seed: int, options: dict[str, object]) -> dict[str, object
                "anomalies": agent.checks.anomalies[:30], "error": error,
                "replay": f"witch_autoplay.py campaign --evidence {evidence} --rom {rom} --seeds {seed} "
                          f"--stages {options['stages']} --max-frames {options['max_frames']} "
-                         f"--stall-frames {options['stall_frames']}"}
+                         f"--stall-frames {options['stall_frames']} --difficulty {options['difficulty']}"}
         if report.failed or error or agent.checks.anomalies:
             image, state = h.write_failure_artifacts(f"witch_campaign_{rom}_{seed}")
             row["artifacts"] = {"image": str(image), "state": str(state)}
@@ -807,7 +831,7 @@ def run_campaign(args) -> int:
     for rom in args.rom or list(ROMS):
         coverage_inventory.code_labels(rom)
         options = {"rom": rom, "evidence": str(args.evidence), "stages": args.stages, "max_frames": args.max_frames,
-                   "stall_frames": args.stall_frames, "strong": args.strong}
+                   "stall_frames": args.stall_frames, "strong": args.strong, "difficulty": args.difficulty}
         out = args.evidence / "campaign" / rom
         out.mkdir(parents=True, exist_ok=True)
 
@@ -848,6 +872,8 @@ def main(argv=None) -> int:
     parser.add_argument("--stall-frames", type=int, default=20_000)
     parser.add_argument("--strong", action="store_true",
                         help="campaign: rewards on merit and matchup switches; release seeds need it to survive")
+    parser.add_argument("--difficulty", default="HARD", choices=("VERY_EASY", "EASY", "NORMAL", "HARD", "VERY_HARD"),
+                        help="campaign: the LEVELS setting")
     parser.add_argument("--evidence", type=Path)
     parser.add_argument("--rom", action="append", choices=ROMS)
     parser.add_argument("--case", action="append")

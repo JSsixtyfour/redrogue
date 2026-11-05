@@ -193,8 +193,7 @@ SSAnneBowJrTrainerFAfterBattleText:
     CheckEvent EVENT_GOT_ROGUE_POKEMON
     jr z, .GetMon
 
-    ld hl, SSAnneBowGreedyText
-    call PrintText
+    farcall RogueRewardClaimedLine
     jr .done
 
     .GetMon
@@ -243,6 +242,3 @@ SSAnneBowNoTurningBackText:
 	text_far _NoTurningBackText
 	text_end
 
-SSAnneBowGreedyText:
-	text_far _GreedyText
-	text_end

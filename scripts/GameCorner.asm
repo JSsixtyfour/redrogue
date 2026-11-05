@@ -194,8 +194,7 @@ GameCornerClerk1Text:
     CheckEvent EVENT_GOT_ROGUE_POKEMON
     jr z, .GetMon
    
-    ld hl, GameCornerGreedyText
-	call PrintText
+	farcall RogueRewardClaimedLine
 	jr .done
     
     .GetMon
@@ -207,9 +206,6 @@ GameCornerClerk1Text:
     .done
     jp TextScriptEnd
     
-GameCornerGreedyText:
-	text_far _GreedyText
-	text_end
 ;.normalClerk
 ;	; Show player's coins
 ;	call GameCornerDrawCoinBox

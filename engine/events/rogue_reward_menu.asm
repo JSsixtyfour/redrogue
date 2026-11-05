@@ -445,6 +445,7 @@ RogueRefresh::
 	ld a, TOGGLE_ROGUE_REWARD_POKEBALL_3
 	ld [wToggleableObjectIndex], a
 	predef HideObject
+	farcall WitchCloseRewardOffers
 	jr .randomItemCheck
 .normalPokeballLogic
 	; show/hide pokeball 1 and trade NPC based on trade active flag

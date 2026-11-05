@@ -37,6 +37,10 @@ class CaveColdEncounterTest(unittest.TestCase):
 
     def run_encounter(self,species,room,level,boxed,resident_after=False):
         h=self.h
+        # A CGB frame can end inside a palette transfer with WRAM bank 2/3
+        # selected. The encounter state and party structs live in bank 1.
+        def gameplay_bank_selected():
+            return h.hardware_mode!='CGB' or (h.pyboy.memory[0xff70]&7) in (0,1)
         self.position=((14,1),(17,15),(3,8))[room]
         h.register_hook('OptionalCaveAssignEncounter',lambda _:h.pyboy.memory.__setitem__(h.address('sProcCavePalette'),1))
         def force(_):
@@ -52,7 +56,7 @@ class CaveColdEncounterTest(unittest.TestCase):
         if not boxed:
             h.write8('wPartyCount',5);h.write8('wPartySpecies',255,offset=5)
             h.register_hook('AskName',lambda _:setattr(self,'decline_nickname',True))
-        self.mash_until(lambda:h.read8('hIsInBattle')==1 and h.read8('wOptionalEncounterBattle')==0 and h.read8('wEnemyMonCatchRate')&8,'cold battle starts')
+        self.mash_until(lambda:gameplay_bank_selected() and h.read8('hIsInBattle')==1 and h.read8('wOptionalEncounterBattle')==0 and h.read8('wEnemyMonCatchRate')&8,'cold battle starts')
         self.assertEqual(h.read8('wEnemyMonSpecies'),SPECIES[species])
         self.assertEqual(h.read8('wEnemyMonLevel'),level)
         self.assertEqual(h.read8('wEnemyMonCatchRate')&0x6c,12)
@@ -64,7 +68,7 @@ class CaveColdEncounterTest(unittest.TestCase):
         self.assertEqual(battle_moves[-2:],[status,attack])
         self.assertTrue(all(h.read_bytes('wEnemyMonPP',4)))
         h.write8('wEnemyMonHP',0);h.write8('wEnemyMonHP',1,offset=1)
-        self.mash_until(lambda:h.read8('wOptionalEncounterState')&4,'cold battle -> gift',3000)
+        self.mash_until(lambda:gameplay_bank_selected() and h.read8('hIsInBattle')==0 and h.read8('wOptionalEncounterState')&4,'cold battle -> gift',3000)
         base='wBoxMon1' if boxed else 'wPartyMon6'
         self.assertEqual(h.read8(base),SPECIES[species])
         self.assertEqual(h.read8(base,7)&0x6c,12)
