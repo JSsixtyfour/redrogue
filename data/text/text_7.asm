@@ -223,7 +223,7 @@ _WrongMon4Text::
 	done
 
 _Thanks4Text::
-	text "A worthy trade!"
+	text "Thank you."
 	done
 
 _AfterTrade4Text::

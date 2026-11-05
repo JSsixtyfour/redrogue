@@ -31,11 +31,6 @@ _PartyHPAndPPRecoveredText::
 	line "partly recovered!"
 	prompt
 
-_LeftoversText::
-	text "Your party"
-	line "was healed!"
-	prompt
-
 _LeftoversDescriptionText::
 	text "Heals your"
 	line "team a bit"
@@ -43,11 +38,6 @@ _LeftoversDescriptionText::
 	cont "battle!"
 	done
 
-_PPTonicText::
-	text "Your party's"
-	line "PP was"
-	cont "restored!"
-	prompt
 
 ; Shared by CHALLENGE_RECOIL_ATTACKS, _RECOIL_PHYSICAL and _RECOIL_SPECIAL.
 ; <USER>, not <TARGET>: this damage lands on the PLAYER'S OWN mon, and
@@ -56,29 +46,34 @@ _PPTonicText::
 ; it before the hook), so <TARGET> printed "Enemy <foe> was hit by recoil!"
 ; while the player's own mon lost the HP. Pre-existing bug, fixed 2026-09-02.
 _RecoilChallengeText::
-	text "The bargain burns!"
-	line "<USER> was hit"
+	text "The challenge"
+	line "punishes that"
+	cont "move."
+    
+	para "<USER> was hit"
 	cont "by recoil!"
 	done
 
 ; <USER> expands to the player's mon nick, up to 10 characters, so it needs a
 ; line largely to itself - "repetition! <USER>" reached 21 with a long nick.
 _SameMovePenaltyText::
-	text "The bargain hates"
-	line "repetition!"
-	cont "<USER> hurts!"
+	text "The challenge"
+	line "punishes"
+	cont "repetition."
+	
+    para "<USER> hurt!"
 	done
 
 _NoHealingChallengeText::
-	text "The bargain has"
-	line "no mercy outside"
-	cont "battle!"
+	text "The challenge"
+	line "prevents healing"
+	cont "outside battle."
 	done
 
 _TurnLimitDrainText::
-	text "Time's running"
-	line "out! <TARGET> lost"
-	cont "some HP!"
+	text "The challenge"
+	line "drains your"
+	cont "#MON's HP."
 	done
 
 _PPTonicDescriptionText::
@@ -127,8 +122,8 @@ _TurnRewindDescriptionText::
 
 _RareScopeDescriptionText::
 	text "Increases the"
-	line "rarity of wild"
-	cont "Pokémon."
+	line "rarity of reward"
+	cont "#MON."
 	done
 
 _RareLensDescriptionText::
@@ -139,7 +134,7 @@ _RareLensDescriptionText::
 
 _DVBoosterDescriptionText::
 	text "Increases DVs"
-	line "of caught"
+	line "of reward"
 	cont "Pokémon."
 	done
 
@@ -157,20 +152,19 @@ _DoorDiceDescriptionText::
 
 _MonDiceDescriptionText::
 	text "Lets you"
-	line "reroll a wild"
-	cont "Pokémon."
+	line "reroll reward"
+	cont "#MON"
 	done
 
 _ItemDiceDescriptionText::
-	text "Lets you"
-	line "reroll a"
-	cont "found item."
+	text "Lets you reroll"
+	line "reward items."
 	done
 
 _ElementPrismDescriptionText::
-	text "Boosts one"
-	line "type's damage"
-	cont "and odds."
+	text "Boosts that type's"
+	line "damage and reward"
+	cont "chances."
 	done
 
 ; ELEMENT PRISM cartridge system (custom_functions/element_prism.asm).
@@ -270,7 +264,7 @@ _ItemDiceRerolledText::
 
 ; Credit Exchange vendors (engine/events/credit_mart.asm)
 _CreditVendorGreetingText::
-	text "What'll it be?"
+	text "Take your time."
 	done
 
 _CreditBuyConfirmText::
@@ -281,9 +275,9 @@ _CreditBuyConfirmText::
 	done
 
 _CreditBoughtText::
-	text "Thanks! Enjoy"
-	line "it out there."
-	done
+	text "Here you are!"
+	line "Thank you!"
+	prompt
 
 ; Text-box lines fit 18 characters. Item names run to 12 (ITEM_NAME_LENGTH-1),
 ; so the name has to start its own line - "Upgrade " + a 12-char name is
@@ -320,7 +314,7 @@ _CreditSentToPCText::
 _CreditNothingToSellText::
 	text "You've bought"
 	line "everything I"
-	cont "have. Nice."
+	cont "have. Thanks!"
 	done
 
 _CreditNothingToUpgradeText::
@@ -336,11 +330,11 @@ _CreditRoomVendorClosedText::
 	done
 
 _NoSlotPullsLeftText::
-	text "No pulls left."
-	line "Try again next"
-	cont "run."
+	text "No pulls left. Try"
+	line "again after your"
+	cont "next run."
 	done
-
+    
 ; Mini-boss framework (see MINIBOSS_FRAMEWORK.md): shared Rival mini-boss
 ; dialogue, callable from any route's 5th-trainer encounter, not tied to a
 ; specific map's text file.
@@ -430,13 +424,13 @@ _BridgeTypeVariantFailText::
 	prompt
 
 _BridgeWaterVariantText::
-	text "It's now part"
-	line "WATER type!"
+	text "It's second type"
+	line "is now WATER."
 	prompt
 
 _BridgeRockVariantText::
-	text "It's now part"
-	line "ROCK type!"
+	text "It's second type"
+	line "is now ROCK."
 	prompt
 
 ; Room Decoration System - Credit Exchange room vendor
@@ -459,5 +453,5 @@ _RoomVendorNotEnoughText::
 
 _RoomVendorAlreadyOwnedText::
 	text "You already own"
-	line "this piece."
+	line "that."
 	done

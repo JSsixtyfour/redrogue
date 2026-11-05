@@ -5,7 +5,7 @@ _FileDataDestroyedText::
 
 _SaveNeedsConvertingText::
 	text "This save is from"
-	line "another build."
+	line "an older version."
 	para "Convert it on the"
 	line "patch page first,"
 	cont "or NEW GAME will"

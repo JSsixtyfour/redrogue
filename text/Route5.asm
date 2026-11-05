@@ -24,7 +24,7 @@ _Route5Youngster1AfterBattleText::
     
 _Route5Youngster2BattleText::
 	text "I just picked my"
-	cont "#MON up from"
+	line "#MON up from"
     cont "the DAYCARE"
     done
 
@@ -42,7 +42,7 @@ _Route5Youngster2AfterBattleText::
     
 _Route5Lass2BattleText::
 	text "I was hoping"
-	cont "to bump into"
+	line "to bump into"
     cont "another trainer!"
     done
 
@@ -60,7 +60,7 @@ _Route5Lass2AfterBattleText::
     
 _Route5JrTrainerFBattleText::
 	text "I'm the queen"
-	cont "of ROUTE 5!"
+	line "of ROUTE 5!"
     done
 
 _Route5JrTrainerFEndBattleText::

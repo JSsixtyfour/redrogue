@@ -1751,7 +1751,8 @@ _ChooseDifficultyText::
 	prompt
 
 _ChooseCharacterText::
-	text "Who will you be?"
+	text "What kind of"
+	line "trainer are you?"
 
 	para "Press LEFT or"
 	line "RIGHT, then A."
