@@ -424,12 +424,12 @@ _BridgeTypeVariantFailText::
 	prompt
 
 _BridgeWaterVariantText::
-	text "It's second type"
+	text "Its second type"
 	line "is now WATER."
 	prompt
 
 _BridgeRockVariantText::
-	text "It's second type"
+	text "Its second type"
 	line "is now ROCK."
 	prompt
 
