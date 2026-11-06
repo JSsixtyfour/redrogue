@@ -29,7 +29,7 @@ from source_constants import parse_map_constants  # noqa: E402
 ARTIFACTS = REPO_ROOT / "tools" / "pyboy_smoke" / "artifacts"
 NAME_LENGTH = 11
 RECORD_BANK = 1
-MAX_GREETING_PRESSES = 4   # longest greeting today needs 2; more means the line never came
+MAX_GREETING_PRESSES = 12  # generous, so a longer greeting cannot fail this; today it takes 5
 
 
 def stage_const(name):

@@ -52,6 +52,7 @@ ARTIFACTS = REPO_ROOT / "tools" / "pyboy_smoke" / "artifacts"
 EVENT_CONSTANTS = REPO_ROOT / "constants" / "event_constants.asm"
 STAGE_CLASSES = ["JESSIE_JAMES", "PSYCHIC_TR", "BURGLAR", "NURSE_JOY", "OFFICER_JENNY"]
 ALL_GROUPS = 0b111
+SYLVEON_SEEDS = 25
 EVENTS = parse_rgbds_constants(EVENT_CONSTANTS)
 # These classes only use their stage-event specs on a Wild Area map
 # (StageEventSpecAllowed, 2026-10-06); anywhere else they are vanilla map
@@ -165,28 +166,32 @@ def main() -> int:
                                                ("Warp unlocked", 2, True)):
         drawn = 0
         as_sylveon = 0
-        h = RedRogueHarness(REPO_ROOT, ARTIFACTS)
-        try:
-            h.boot_fight2(seed=11)
-            for _ in range(4):
-                team = build(h, classes["NURSE_JOY"], 85, 9, unlock_stage)
-                base = h.address("wEnemyMon1")
-                stride = h.address("wEnemyMon2") - base
-                cr_off = h.address("wEnemyMon1CatchRate") - base
-                for i, s in enumerate(team):
-                    if s != vaporeon:
-                        continue
-                    drawn += 1
-                    form = (h.pyboy.memory[base + i * stride + cr_off] >> 5) & 0x03
-                    if form == 2:
-                        as_sylveon += 1
-        finally:
+        # About 1 Warp team in 4 holds her (measured), so one seed's 4 teams miss
+        # her a third of the time. 100 teams cannot, and they also make the
+        # Kanto-only half worth believing.
+        for seed in range(1, SYLVEON_SEEDS + 1):
+            h = RedRogueHarness(REPO_ROOT, ARTIFACTS)
             try:
-                h.close()
-            except Exception:
-                pass
-        print("  %-14s vaporeon drawn %d, of which Sylveon %d"
-              % (label, drawn, as_sylveon))
+                h.boot_fight2(seed=seed)
+                for _ in range(4):  # call_routine: stay well under its ~10-call limit
+                    team = build(h, classes["NURSE_JOY"], 85, 9, unlock_stage)
+                    base = h.address("wEnemyMon1")
+                    stride = h.address("wEnemyMon2") - base
+                    cr_off = h.address("wEnemyMon1CatchRate") - base
+                    for i, s in enumerate(team):
+                        if s != vaporeon:
+                            continue
+                        drawn += 1
+                        form = (h.pyboy.memory[base + i * stride + cr_off] >> 5) & 0x03
+                        if form == 2:
+                            as_sylveon += 1
+            finally:
+                try:
+                    h.close()
+                except Exception:
+                    pass
+        print("  %-14s %d teams: vaporeon drawn %d, of which Sylveon %d"
+              % (label, 4 * SYLVEON_SEEDS, drawn, as_sylveon))
         if not want_possible and drawn:
             failures.append(
                 "Joy fielded VAPOREON %d times with Time Warp LOCKED. Sylveon "
@@ -200,9 +205,9 @@ def main() -> int:
                 "Sylveon" % (drawn, as_sylveon))
         if want_possible and drawn == 0:
             failures.append(
-                "Joy never drew VAPOREON across 4 round-9 builds with Warp "
+                "Joy never drew VAPOREON across %d round-9 builds with Warp "
                 "unlocked - the _Warp run is not being reached at all, so the "
-                "Kanto-only half of this check proves nothing")
+                "Kanto-only half of this check proves nothing" % (4 * SYLVEON_SEEDS))
 
     print()
     if failures:

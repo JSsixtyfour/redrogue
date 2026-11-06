@@ -1826,7 +1826,9 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                             near_y = corner_y + step[1]
                             if not (0 <= near_x < 20 and 0 <= near_y < 20):
                                 return False
-                            return playable[near_y * 20 + near_x] == 0x0E
+                            # $2F is floor with a warp pad on it: pads are stamped
+                            # after the caps, on cells that were plain floor.
+                            return playable[near_y * 20 + near_x] in (0x0E, 0x2F)
 
                         which = (1 if _arm_ends(arm_a) else 0) | (
                             2 if _arm_ends(arm_b) else 0

@@ -249,7 +249,7 @@ class CrystalPinkFormsTest(unittest.TestCase):
                                          ("ICE", "DRAGON", "PAL_BLACK"),
                                          ("NORMAL", "ROCK", "PAL_GRAYMON"),
                                          ("FIRE", "DRAGON", "PAL_BLACK"),
-                                         ("WATER", "PSYCHIC_TYPE", "PAL_PURPLEMON")):
+                                         ("WATER", "PSYCHIC_TYPE", "PAL_PINKMON")):
             with self.subTest(first=first, second=second):
                 self.restore()
                 h.write8("wPartyMon1", SPECIES["ONIX"])

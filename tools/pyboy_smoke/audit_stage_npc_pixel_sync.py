@@ -67,6 +67,7 @@ from harness import RedRogueHarness  # noqa: E402
 from source_constants import parse_map_constants  # noqa: E402
 
 ARTIFACTS = REPO_ROOT / "tools" / "pyboy_smoke" / "artifacts"
+MAX_GREETING_PRESSES = 16
 
 # name -> (map constant, the string preload_and_enter_wild_area wants, slots)
 # The facility is the one stage that cannot reuse slots 6-7: they are already
@@ -162,14 +163,18 @@ def run_area(area, failures):
         check(h, area, "arrival", slots, failures)
 
         # Dismiss the greeting; the dark flash relocates the pair to the
-        # hideout and re-runs the same placement routine.
-        for _ in range(4):
-            h.tap("a", frames=12)
-            h.tick(40)
+        # hideout and re-runs the same placement routine. Press until the phase
+        # moves, not a fixed count: the greeting's length is authored text.
         phase_mask = stage_const("STAGE_EVENT_PHASE_MASK")
         shift = stage_const("STAGE_EVENT_PHASE_SHIFT")
-        phase = (h.read8("wStageEvent") & phase_mask) >> shift
-        print("HIDEOUT (phase=%d)" % phase)
+        phase = presses = 0
+        while phase == 0 and presses < MAX_GREETING_PRESSES:
+            h.tap("a", frames=12)
+            h.tick(40)
+            presses += 1
+            phase = (h.read8("wStageEvent") & phase_mask) >> shift
+        h.tick(120)  # the flash and the placement finish after the phase moves
+        print("HIDEOUT (phase=%d, %d A presses)" % (phase, presses))
         if phase == 0:
             failures.append(
                 "%s: the event is still in phase WAITING after the greeting - "

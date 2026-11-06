@@ -256,15 +256,15 @@ class FacilityAssignmentTest(unittest.TestCase):
         h.call_routine("SetPartyMonTypes", limit=4000)
         self.assertEqual(list(h.pyboy.memory[base + 5:base + 8]), [TYPES["WATER"], TYPES["PSYCHIC_TYPE"], FLAGS])
 
-    def test_purple_is_neither_stage_s_shiny_or_natural_colour(self):
+    def test_pink_is_neither_stage_s_shiny_or_natural_colour(self):
         names = (ROOT / "data/pokemon/palettes.asm").read_text(encoding="utf-8")
         code = (ROOT / "engine/gfx/palettes.asm").read_text(encoding="utf-8")
         table = re.search(r"ShinyPaletteMap:\s*(.*?)\n\s*\n", code.replace("\r\n", "\n"), re.S).group(1)
         shiny = dict((b, a) for a, b in re.findall(r"db (PAL_\w+)\s*; (PAL_\w+)", table))
         for species in ("PSYDUCK", "GOLDUCK"):
             natural = re.search(r"db (PAL_\w+)\s*; %s\b" % species, names).group(1)
-            self.assertNotEqual(natural, "PAL_PURPLEMON", species)
-            self.assertNotEqual(shiny[natural], "PAL_PURPLEMON", species)
+            self.assertNotEqual(natural, "PAL_PINKMON", species)
+            self.assertNotEqual(shiny[natural], "PAL_PINKMON", species)
 
     def test_every_ball_is_refused(self):
         h = self.h
@@ -605,8 +605,14 @@ class FacilityTripBase(unittest.TestCase):
         self.assertEqual(h.read_bytes("wSpecialCollected", 2), [0, 0], "credited on sight")
         h.write8("wEnemyMonHP", 0)
         h.write8("wEnemyMonHP", 1, offset=1)
-        self.mash_until(lambda: self.bank1() and h.read8("hIsInBattle") == 0 and h.read8("wOptionalEncounterState") & 4,
-                        "battle -> gift", 3000)
+
+        def won():
+            # This mash only ever picks move 1, and Psychic Psyduck carries Disable:
+            # a disabled move 1 would leave it on "disabled!" for good.
+            h.write8("wPlayerDisabledMove", 0)
+            return self.bank1() and h.read8("hIsInBattle") == 0 and h.read8("wOptionalEncounterState") & 4
+
+        self.mash_until(won, "battle -> gift", 3000)
         self.assertEqual(h.read8(base), SPECIES[species])
         self.assertEqual(h.read8(base, 7) & 0x6C, FLAGS)
         self.assertEqual(h.read_bytes(base, 2, 5), [TYPES["WATER"], TYPES["PSYCHIC_TYPE"]])

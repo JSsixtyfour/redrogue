@@ -188,8 +188,8 @@ class WardenDetoxTest(unittest.TestCase):
                 ("ONIX", 12, "ICE", "GROUND", "PAL_BLUEMON"),
                 ("CHARIZARD", 12, "FIRE", "DRAGON", "PAL_BLACK"),
                 ("PERSIAN", 4, "NORMAL", "WATER", "PAL_BLUEMON"),
-                ("PSYDUCK", 12, "WATER", "PSYCHIC_TYPE", "PAL_PURPLEMON"),
-                ("GOLDUCK", 12, "WATER", "PSYCHIC_TYPE", "PAL_PURPLEMON")):
+                ("PSYDUCK", 12, "WATER", "PSYCHIC_TYPE", "PAL_PINKMON"),
+                ("GOLDUCK", 12, "WATER", "PSYCHIC_TYPE", "PAL_PINKMON")):
             with self.subTest(species=species):
                 self.assertEqual(self.status_colour(species, first, second, flags), PALETTES[expected])
                 self.assertEqual(self.battle_colours(species, first, second, flags),
