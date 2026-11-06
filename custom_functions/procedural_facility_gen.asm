@@ -7718,7 +7718,7 @@ DEF PFAC_SPIN_REC_LIVE EQU $80
 DEF wPFacSpinRoom   EQU 26  ; room id being walked
 DEF wPFacSpinK      EQU 27  ; piece index being walked
 DEF wPFacSpinLeft   EQU 28  ; ordinal the walk stops at ($FF: just count)
-DEF wPFacSpinHits   EQU 29  ; (room, piece) pairs passed
+DEF wPFacSpinHits   EQU 29  ; fitting rooms passed
 
 INCLUDE "data/maps/facility_spinner_rooms.asm"
 DEF NUM_PFAC_SPINNER_DESCRIPTORS EQU (PFacSpinnerRoomsEnd - PFacSpinnerRooms) / PFAC_SPIN_STRIDE
@@ -7726,8 +7726,10 @@ DEF NUM_PFAC_SPINNER_DESCRIPTORS EQU (PFacSpinnerRoomsEnd - PFacSpinnerRooms) / 
 ; ------------------------------------------------------------
 ; PFacPlaceSpinnerDecor - generation, right before PFacPlaceLargeDecor (the
 ; ring, jambs and caps are final; no decor or item is placed yet). Picks one
-; (item room 2-4, piece) pair uniformly from every pair that fits and stamps
-; it. SRAM bank 1 open. Clobbers a/bc/de/hl.
+; item room uniformly from those that fit any piece and stamps the largest piece
+; that fits it: PFacSpinnerRooms is largest first (tools/facility_spinners.py
+; enforces that). A uniform (room, piece) pick gave the 5x5 6.5% of layouts and
+; the 3x3 58.5%. SRAM bank 1 open. Clobbers a/bc/de/hl.
 ; ------------------------------------------------------------
 PFacPlaceSpinnerDecor:
 IF NUM_FACILITY_SPINNER_ROOMS > 0
@@ -7790,8 +7792,8 @@ ENDC
 	ret
 
 ; In: a = ordinal to stop at, $FF to count. Out: when stopping, carry set with
-; wPFacSpinRoom/wPFacSpinK on the pair and wPFacRmX..H on its room; otherwise
-; a = the number of pairs, carry clear.
+; wPFacSpinRoom on the room, wPFacSpinK on its first fitting piece and
+; wPFacRmX..H on the room; otherwise a = the number of fitting rooms, carry clear.
 .walk
 	ld [wBuffer + wPFacSpinLeft], a
 	xor a
@@ -7833,6 +7835,7 @@ ENDC
 	ld [wBuffer + wPFacSpinLeft], a
 	ld hl, wBuffer + wPFacSpinHits
 	inc [hl]
+	jr .nextRoom                     ; one entry per room: its largest piece
 .nextPiece
 	ld hl, wBuffer + wPFacSpinK
 	inc [hl]

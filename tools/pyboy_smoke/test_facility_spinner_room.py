@@ -1,7 +1,7 @@
 """Play the Facility spinner decor in the engine (PROCEDURAL_SUBROOMS_PLAN Phase 3).
 
-audit_facility_spinner_rooms.py checks placement over a corpus; this plays the
-shipped piece. A route is planned over the same graph tools/facility_spinners.py
+audit_facility_spinner_rooms.py checks placement over a corpus; this plays
+every shipped piece. A route is planned over the same graph tools/facility_spinners.py
 proves with (stepping onto an arrow moves you to that slide's end), from the
 entrance to the tile beside the pokeball, and walked for real: every slide must
 stop exactly where the tool says. The ball is picked up, then a route back to
@@ -26,7 +26,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import facility_spinners as spin  # noqa: E402
 
 ARTIFACTS = ROOT / "tools/pyboy_smoke/artifacts"
-ENTRY_ATTEMPTS = 40
+ENTRY_ATTEMPTS = 120  # the rarest piece must turn up on every build's layout
 STEP = {(0, -1): "up", (0, 1): "down", (-1, 0): "left", (1, 0): "right"}
 
 
@@ -42,8 +42,8 @@ class FacilitySpinnerRoomTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.h.close()
 
-    def enter_with_spinner(self):
-        """Enter a Facility that got spinner decor; return (piece, origin tile, ball index)."""
+    def enter_with_spinner(self, index):
+        """Enter a Facility holding piece `index`; return (piece, origin tile, ball index)."""
         h = self.h
         facility = self.maps["PROCEDURAL_FACILITY"]
         h.boot_to_lobby(battle_count=11, encounter_kind=4)
@@ -55,9 +55,9 @@ class FacilitySpinnerRoomTest(unittest.TestCase):
             h.tick(offset * 5)
             h.preload_and_enter_wild_area(facility, "facility")
             ox, oy, key, ball = h.read_sram_bytes("sProcFacilityGenScratch", 6)[2:6]
-            if key & 0x80:
-                return self.pieces[key & 0x7F], (2 * ox, 2 * oy), ball
-        self.fail(f"no Facility with spinner decor in {ENTRY_ATTEMPTS} entries")
+            if key == 0x80 | index:
+                return self.pieces[index], (2 * ox, 2 * oy), ball
+        self.fail(f"no Facility with {self.pieces[index].name} in {ENTRY_ATTEMPTS} entries")
 
     def step(self, direction: str) -> None:
         """Exactly one tile: hold only until the position changes."""
@@ -132,9 +132,9 @@ class FacilitySpinnerRoomTest(unittest.TestCase):
                                  f"walk stalled at {cur} heading for {via}")
         return rides
 
-    def test_spinner_decor_reaches_the_ball_and_lets_the_player_out(self) -> None:
+    def play_piece(self, index: int) -> None:
         h = self.h
-        piece, origin, ball = self.enter_with_spinner()
+        piece, origin, ball = self.enter_with_spinner(index)
         h.write8("wProcFacilityWildBudget", 0)
         ball_world = (origin[0] + piece.ball[0], origin[1] + piece.ball[1])
         self.assertEqual(
@@ -183,6 +183,18 @@ class FacilitySpinnerRoomTest(unittest.TestCase):
         self.travel(ENTRANCE, piece, origin, ball_world, blocked, ball_gone=True)
         self.assertFalse(h.read8("wMovementFlags") & 0x80, "BIT_SPINNING left set")
         self.assertEqual(h.read8("hJoyIgnore"), 0, "input left ignored")
+
+
+def _piece_test(index: int):
+    def test(self) -> None:
+        self.play_piece(index)
+    return test
+
+
+_shipped, _errors = spin.load()
+for _index, _piece in enumerate(_shipped):
+    setattr(FacilitySpinnerRoomTest,
+            f"test_{_piece.name}_reaches_the_ball_and_lets_the_player_out", _piece_test(_index))
 
 
 if __name__ == "__main__":

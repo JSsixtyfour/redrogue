@@ -7,6 +7,12 @@ PFacSpinnerRooms:
 ; data/maps/facility_spinners/arrow_decor_1.spin: fits interiors 5x5 .. 7x7
 	db 5, 5, 7, 7, 7, 5
 	dw PFacSpinArrowDecor1Blocks, PFacSpinArrowDecor1Arrows
+; data/maps/facility_spinners/arrow_decor_2.spin: fits interiors 4x4 .. 7x7
+	db 4, 4, 7, 7, 3, 5
+	dw PFacSpinArrowDecor2Blocks, PFacSpinArrowDecor2Arrows
+; data/maps/facility_spinners/arrow_decor_3.spin: fits interiors 3x3 .. 7x7
+	db 3, 3, 7, 7, 4, 1
+	dw PFacSpinArrowDecor3Blocks, PFacSpinArrowDecor3Arrows
 PFacSpinnerRoomsEnd:
 
 PFacSpinArrowDecor1Blocks:
@@ -71,4 +77,119 @@ PFacSpinArrowDecor1Slide_3_8: ; > ends at (8, 8)
 	db -1 ; end
 PFacSpinArrowDecor1Slide_2_9: ; ^ ends at (2, 8)
 	db PAD_UP, 1
+	db -1 ; end
+PFacSpinArrowDecor2Blocks:
+	INCBIN "maps/ProceduralFacility_4x4_arrow_decor_1.blk"
+PFacSpinArrowDecor2Arrows:
+	map_coord_movement 2, 1, PFacSpinArrowDecor2Slide_2_1
+	map_coord_movement 4, 1, PFacSpinArrowDecor2Slide_4_1
+	map_coord_movement 3, 2, PFacSpinArrowDecor2Slide_3_2
+	map_coord_movement 4, 2, PFacSpinArrowDecor2Slide_4_2
+	map_coord_movement 2, 3, PFacSpinArrowDecor2Slide_2_3
+	map_coord_movement 5, 3, PFacSpinArrowDecor2Slide_5_3
+	map_coord_movement 3, 4, PFacSpinArrowDecor2Slide_3_4
+	map_coord_movement 4, 4, PFacSpinArrowDecor2Slide_4_4
+	map_coord_movement 6, 4, PFacSpinArrowDecor2Slide_6_4
+	map_coord_movement 2, 5, PFacSpinArrowDecor2Slide_2_5
+	map_coord_movement 5, 5, PFacSpinArrowDecor2Slide_5_5
+	map_coord_movement 2, 6, PFacSpinArrowDecor2Slide_2_6
+	map_coord_movement 6, 6, PFacSpinArrowDecor2Slide_6_6
+	db -1 ; end
+PFacSpinArrowDecor2Slide_2_1: ; < ends at (1, 1)
+	db PAD_LEFT, 1
+	db -1 ; end
+PFacSpinArrowDecor2Slide_4_1: ; < ends at (1, 1)
+	db PAD_LEFT, 3
+	db -1 ; end
+PFacSpinArrowDecor2Slide_3_2: ; v ends at (6, 3)
+	db PAD_UP, 1
+	db PAD_RIGHT, 3
+	db PAD_DOWN, 2
+	db -1 ; end
+PFacSpinArrowDecor2Slide_4_2: ; > ends at (5, 2)
+	db PAD_RIGHT, 1
+	db -1 ; end
+PFacSpinArrowDecor2Slide_2_3: ; ^ ends at (1, 1)
+	db PAD_LEFT, 1
+	db PAD_UP, 2
+	db -1 ; end
+PFacSpinArrowDecor2Slide_5_3: ; v ends at (5, 6)
+	db PAD_DOWN, 3
+	db -1 ; end
+PFacSpinArrowDecor2Slide_3_4: ; > ends at (6, 3)
+	db PAD_UP, 1
+	db PAD_RIGHT, 3
+	db -1 ; end
+PFacSpinArrowDecor2Slide_4_4: ; > ends at (6, 3)
+	db PAD_UP, 1
+	db PAD_RIGHT, 2
+	db -1 ; end
+PFacSpinArrowDecor2Slide_6_4: ; ^ ends at (6, 3)
+	db PAD_UP, 1
+	db -1 ; end
+PFacSpinArrowDecor2Slide_2_5: ; ^ ends at (1, 1)
+	db PAD_LEFT, 1
+	db PAD_UP, 4
+	db -1 ; end
+PFacSpinArrowDecor2Slide_5_5: ; v ends at (5, 6)
+	db PAD_DOWN, 1
+	db -1 ; end
+PFacSpinArrowDecor2Slide_2_6: ; ^ ends at (1, 1)
+	db PAD_LEFT, 1
+	db PAD_UP, 5
+	db -1 ; end
+PFacSpinArrowDecor2Slide_6_6: ; ^ ends at (6, 3)
+	db PAD_UP, 3
+	db -1 ; end
+PFacSpinArrowDecor3Blocks:
+	INCBIN "maps/ProceduralFacility_3x3_arrow_decor_1.blk"
+PFacSpinArrowDecor3Arrows:
+	map_coord_movement 3, 0, PFacSpinArrowDecor3Slide_3_0
+	map_coord_movement 2, 1, PFacSpinArrowDecor3Slide_2_1
+	map_coord_movement 1, 2, PFacSpinArrowDecor3Slide_1_2
+	map_coord_movement 3, 2, PFacSpinArrowDecor3Slide_3_2
+	map_coord_movement 5, 2, PFacSpinArrowDecor3Slide_5_2
+	map_coord_movement 0, 3, PFacSpinArrowDecor3Slide_0_3
+	map_coord_movement 2, 3, PFacSpinArrowDecor3Slide_2_3
+	map_coord_movement 5, 3, PFacSpinArrowDecor3Slide_5_3
+	map_coord_movement 3, 4, PFacSpinArrowDecor3Slide_3_4
+	map_coord_movement 2, 5, PFacSpinArrowDecor3Slide_2_5
+	db -1 ; end
+PFacSpinArrowDecor3Slide_3_0: ; v ends at (4, 4)
+	db PAD_RIGHT, 1
+	db PAD_DOWN, 4
+	db -1 ; end
+PFacSpinArrowDecor3Slide_2_1: ; ^ ends at (2, 0)
+	db PAD_UP, 1
+	db -1 ; end
+PFacSpinArrowDecor3Slide_1_2: ; > ends at (4, 4)
+	db PAD_RIGHT, 1
+	db PAD_DOWN, 2
+	db PAD_RIGHT, 2
+	db -1 ; end
+PFacSpinArrowDecor3Slide_3_2: ; v ends at (4, 4)
+	db PAD_RIGHT, 1
+	db PAD_DOWN, 2
+	db -1 ; end
+PFacSpinArrowDecor3Slide_5_2: ; < ends at (4, 4)
+	db PAD_RIGHT, 1
+	db PAD_DOWN, 2
+	db PAD_LEFT, 2
+	db -1 ; end
+PFacSpinArrowDecor3Slide_0_3: ; > ends at (2, 0)
+	db PAD_UP, 3
+	db PAD_RIGHT, 2
+	db -1 ; end
+PFacSpinArrowDecor3Slide_2_3: ; ^ ends at (2, 0)
+	db PAD_UP, 3
+	db -1 ; end
+PFacSpinArrowDecor3Slide_5_3: ; < ends at (2, 0)
+	db PAD_UP, 3
+	db PAD_LEFT, 3
+	db -1 ; end
+PFacSpinArrowDecor3Slide_3_4: ; > ends at (4, 4)
+	db PAD_RIGHT, 1
+	db -1 ; end
+PFacSpinArrowDecor3Slide_2_5: ; ^ ends at (2, 0)
+	db PAD_UP, 5
 	db -1 ; end

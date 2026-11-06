@@ -978,22 +978,8 @@ StageEventDisarmOnOtherStage::
 ; Clobbers a/bc/de/hl.
 ; ============================================================
 StageEventInjectStolenMon::
-	ld a, [wStageEvent]
-	and STAGE_EVENT_TYPE_MASK
-	cp STAGE_EVENT_PSYCHIC
-	ret nz
-	ld a, [wTrainerClass]
-	cp PSYCHIC_TR
-	ret nz
-	call StageEventIsEventMap     ; Saffron Gym's Psychics share the class
+	call StageEventFindStolenEnemySlot
 	ret nc
-	call StageEventReadStolenKind
-	cp STOLEN_MON
-	ret nz
-	ld a, [wEnemyPartyCount]
-	and a
-	ret z
-	dec a                         ; 0-based index of the last slot
 	ld [wStageEventScratch], a
 
 	ld a, RAMG_SRAM_ENABLE
@@ -1084,6 +1070,45 @@ StageEventInjectStolenMon::
 	pop af
 	ld [wCurEnemyLevel], a
 	ret
+
+; Carry set and a = last enemy slot if this is the Psychic's theft battle.
+StageEventFindStolenEnemySlot:
+	ld a, [wTrainerClass]
+	cp PSYCHIC_TR
+	jr nz, .absent
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	cp STAGE_EVENT_PSYCHIC
+	jr nz, .absent
+	call StageEventIsEventMap     ; Saffron Gym's Psychics share the class
+	ret nc
+	call StageEventReadStolenKind
+	cp STOLEN_MON
+	jr nz, .absent
+	ld a, [wEnemyPartyCount]
+	and a
+	ret z
+	dec a
+	scf
+	ret
+.absent
+	and a
+	ret
+
+; LoadEnemyMonData recalculates stats again on every send-out. Arm the gift
+; for the injected slot alongside the ordinary form and Mystic stat context.
+StageEventPublishEnemyStatContext::
+	farcall PublishEnemyFormAndStatContext
+	ldh a, [hIsInBattle]
+	cp 2
+	ret nz
+	call StageEventFindStolenEnemySlot
+	ret nc
+	ld b, a
+	ldh a, [hWhichPokemon]
+	cp b
+	ret nz
+	; fall through
 
 ; The villain fields the mon it stole, so a stat gift still counts. The ray
 ; preparer cannot see it: it only knows party and loaded-mon owners. This also

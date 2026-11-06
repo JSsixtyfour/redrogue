@@ -67,6 +67,9 @@ def check_layout(seed, playable, scratch, balls, hideout, pieces) -> tuple[bool,
             x, y, w, h = scratch[rid * 6: rid * 6 + 4]
             if (ox, oy) != (x + (w - piece.w) // 2, y + (h - piece.h) // 2):
                 problems.append(f"room {rid}: piece at {(ox, oy)} is not centred in {w}x{h} at {(x, y)}")
+            for other in pieces[:index]:
+                if other.w <= w and other.h <= h:
+                    problems.append(f"room {rid}: {w}x{h} got {piece.name}, but {other.name} fits and is larger")
         for by in range(piece.h):
             for bx in range(piece.w):
                 got = playable[(oy + by) * 20 + ox + bx]
@@ -117,6 +120,7 @@ def main() -> int:
 
     state = args.seed_state
     with_spinner = problems = 0
+    per_piece = [0] * len(pieces)
     for _ in range(args.seeds):
         state ^= (state << 13) & 0xFFFFFFFF
         state ^= state >> 17
@@ -126,8 +130,12 @@ def main() -> int:
         has, found = check_layout(seed, playable, scratch, balls, hideout, pieces)
         with_spinner += has
         problems += len(found)
+        if has and scratch[4] & 0x7F < len(pieces):
+            per_piece[scratch[4] & 0x7F] += 1
     print(f"layouts {args.seeds}: with spinner decor {with_spinner} "
           f"({100 * with_spinner / args.seeds:.0f}%), problems {problems}")
+    for piece, count in zip(pieces, per_piece):
+        print(f"  {piece.name} ({piece.w}x{piece.h}): {count} ({100 * count / args.seeds:.1f}%)")
     return 1 if problems else 0
 
 

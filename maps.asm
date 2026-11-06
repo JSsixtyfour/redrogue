@@ -1386,8 +1386,8 @@ BlackthornGym_Blocks: INCBIN "maps/BlackthornGym.blk"
 ; solve a bank overflow (ROM_BIBLE.md). Floating, so rgblink places it wherever
 ; it fits. Re-measure per the ROM Bible's section 6 after this lands.
 ;
-; PINNED to bank $3C for the same reason "Text Elite Four Rooms" is pinned to
-; $2F: left floating, first fit put these 1,215 bytes in bank $06 and left it
+; PINNED to bank $3C for the same reason "Text Elite Four Rooms" is pinned:
+; left floating, first fit put these 1,215 bytes in bank $06 and left it
 ; with 43 bytes free. These three room scripts still need in-emulator warp and
 ; entrance-coordinate verification, so they are likely to be edited, and 43
 ; bytes is not enough headroom for that to be safe. $3C had ~9.8 KB spare.

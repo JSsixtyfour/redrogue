@@ -541,7 +541,7 @@
     // checks them against it. An old save cannot say what was released. Not a step on its own.
     creditHeldSpecials: function (bytes, to) {
       var PACKAGES = [[17,1],[145,1],[84,2],[106,3],[41,3],[126,3],[43,4],[44,5],[64,6],[15,7],[168,7],[16,7],
-        [33,8],[20,8],[125,9],[76,10],[34,11],[132,12],[176,13],[178,13],[180,13]];
+        [33,8],[20,8],[125,9],[76,10],[34,11],[132,12],[176,13],[178,13],[180,13],[47,14],[128,14]];
       var FORMS = [[131,1,0]];
       var BIT_SPECIAL_FORM = 0x08, FORM_MASK = 0x60;
       var at = wramOffset(to, "wSpecialCollected");

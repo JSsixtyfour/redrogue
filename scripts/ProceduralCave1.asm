@@ -546,12 +546,6 @@ PCStageDefeatJenny:
 	text_far _StageEventDefeatJennyText
 	text_end
 
-; TalkToTrainer's before-battle text for both NPC slots (7e). Still one shared
-; string; 7e gives it the same per-type table treatment as the two above.
-PCStageNpcBattleText:
-	text_far _PCStageNpcBattleText
-	text_end
-
 PCSignBossText:
 	text_far _PCSignBossText
 	text_end
@@ -721,5 +715,6 @@ PCGamblerBeatenText:
 
 ; In battle: he won.
 PCGamblerWonText:
-	text "House wins!"
+	text "My hot"
+	line "streak continues!"
 	prompt

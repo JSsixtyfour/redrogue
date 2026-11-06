@@ -125,6 +125,18 @@ class Trial:
         h.write8("hCurMap", was_map)
         return stats(memory, h.address("wEnemyMons"))
 
+    def send_out_villain_mon(self):
+        h = self.h
+        h.write8("hCurMap", self.cave_map())
+        h.write8("hIsInBattle", 2)
+        h.write8("hWhichPokemon", 0)
+        h.write8("wEnemyMonSpecies2", h.read8("wEnemyMon1"))
+        h.write8("wCurEnemyLevel", h.read8("wEnemyMon1Level"))
+        h.call_routine("LoadEnemyMonData")
+        hp = int.from_bytes(h.read_bytes("wEnemyMonHP", 2), "big")
+        stats = h.read_bytes("wEnemyMonMaxHP", 10)
+        return [hp, *(int.from_bytes(stats[i:i + 2], "big") for i in range(0, 10, 2))]
+
     @staticmethod
     def cave_map():
         from source_constants import parse_map_constants
@@ -248,6 +260,21 @@ class StolenBridgeGiftTest(unittest.TestCase):
             with self.subTest(row["effect"]):
                 self.assertLessEqual(row["villain"][0], row["villain"][1], "HP above max HP")
                 self.assertEqual(row["villain"], row["gifted"], "the villain's copy differs from the mon it stole")
+
+    def test_the_stolen_mon_keeps_its_stat_gift_on_send_out(self) -> None:
+        h = RedRogueHarness(ROOT, ARTIFACTS)
+        try:
+            h.boot_to_lobby()
+            baseline = io.BytesIO()
+            h.save_state(baseline)
+            for name in RAYS:
+                with self.subTest(name):
+                    trial = Trial(h, baseline, EFFECTS.index(name) + 1)
+                    trial.steal_middle()
+                    trial.inject_villain()
+                    self.assertEqual(trial.send_out_villain_mon(), trial.gifted)
+        finally:
+            h.close()
 
     def test_party_return_keeps_the_gift_and_its_stats(self) -> None:
         for row in self.rows:

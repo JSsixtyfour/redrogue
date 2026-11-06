@@ -321,15 +321,14 @@ INCLUDE "text/BlackthornGym.asm"
 ; characters per line. Its own section for the same bank-fit reason that
 ; "Maps 24" is separate from "Maps 23" in maps.asm.
 ;
-; PINNED to bank $2F, and the pin is load bearing. Left floating, rgblink's
-; first fit dropped these 1,466 bytes into bank $03 and left it with THREE
-; bytes free - and this prose is the most likely thing in the whole phase to be
-; edited afterwards, so the next line of Koga dialogue would have failed the
-; link with an error pointing at bank $03 rather than at the edit. $2F is the
-; bank "Text Johto Gyms" already lives in and had ~5 KB spare, so the two
-; expansion text blocks now sit together with room to grow.
+; PINNED, and the pin is load bearing. Left floating, rgblink's first fit dropped
+; these 1,466 bytes into bank $03 and left it with THREE bytes free - and this
+; prose is the most likely thing in the whole phase to be edited afterwards, so
+; the next line of Koga dialogue would have failed the link with an error
+; pointing at bank $03 rather than at the edit. Moved from $2F to $29 (beside
+; "Text 10") so "ProceduralFacilityGen" could grow: only text_far reaches it.
 ; (project_romx_firstfit_bank_pressure: pin reactively, which is what this is.)
-SECTION "Text Elite Four Rooms", ROMX, BANK[$2F]
+SECTION "Text Elite Four Rooms", ROMX, BANK[$29]
 
 INCLUDE "text/KogasRoom.asm"
 INCLUDE "text/WillsRoom.asm"

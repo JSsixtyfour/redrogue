@@ -7254,9 +7254,9 @@ LoadEnemyMonData:
 ; cemetery ghost boss uses - would be far too late for all three.
 ; Increment 8c: a trainer mon's form comes from its OWN party struct, not the
 ; global - see GetEnemySpawnForm above. Wild mons are unaffected.
-	; same publish as TOUCH 3, plus arming CalcStats' special-form stat hooks
-	; (Mystic swap) from the trainer mon's party struct for .calcEnemyStats
-	farcall PublishEnemyFormAndStatContext
+	; Publish the form and arm any special-form or stolen-gift stat modifiers
+	; for .calcEnemyStats.
+	farcall StageEventPublishEnemyStatContext
 	call GetMonHeader
 	ld a, [wEnemyBattleStatus3]
 	bit TRANSFORMED, a ; is enemy mon transformed?

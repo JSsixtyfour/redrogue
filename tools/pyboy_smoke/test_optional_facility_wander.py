@@ -52,12 +52,15 @@ class WanderRiskBase(FacilityTripBase):
         h = self.h
         return (h.read8(f"wSprite{SLOT}StateData2MapX") - 4, h.read8(f"wSprite{SLOT}StateData2MapY") - 4)
 
-    def enter_spinner_facility(self):
+    def enter_spinner_facility(self, index=None):
+        """index: only this piece. A test whose setup needs open floor around a
+        slide asks for the 5x5: the 3x3 has no such slide."""
         h = self.h
         for seed in seeds(80):
             self.enter(force=True, seed=seed, hold=DOWN)
             ox, oy, key = h.read_sram_bytes("sProcFacilityGenScratch", 5)[2:5]
-            if key & 0x80 and h.read8("wOptionalEncounterMap") == self.maps["PROCEDURAL_FACILITY"]:
+            if key & 0x80 and (index is None or key & 0x7F == index) \
+                    and h.read8("wOptionalEncounterMap") == self.maps["PROCEDURAL_FACILITY"]:
                 h.write8("wOptionalEncounterPackage", FIRST)
                 pieces, errors = spin.load()
                 self.assertFalse(errors, errors)
@@ -91,7 +94,9 @@ class WanderRiskBase(FacilityTripBase):
                 if nxt not in cells or nxt == avoid:
                     continue
                 land = self.slides[nxt][0] if nxt in self.slides else nxt
-                if land != avoid and land not in prev:
+                # A landing counts too: callers drop the tiles beside the sprite
+                # from `cells`, and sliding onto one starts the battle.
+                if land in cells and land != avoid and land not in prev:
                     prev[land] = (cur, button)
                     todo.append(land)
         return prev
@@ -170,7 +175,7 @@ class WanderRiskBase(FacilityTripBase):
 class SpinnerSlideTest(WanderRiskBase):
     def test_on_a_slide_s_last_tile_it_stops_the_player_short_and_the_fight_starts(self):
         h = self.h
-        self.enter_spinner_facility()
+        self.enter_spinner_facility(index=0)
 
         def last_tile(arrow, end, moves):
             if len(moves) < 2:
