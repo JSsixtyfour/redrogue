@@ -426,7 +426,17 @@ RoomRecordsMenu::
 .menu
 	call LoadScreenTilesFromBuffer2
 	hlcoord 0, 0
-	lb bc, 10, 14
+	lb bc, 8, 14
+	ld a, [wNumHoFTeams]
+	and a
+	jr z, .drawBorder
+	inc b
+	inc b
+.drawBorder
+	ld a, b
+	srl a
+	dec a
+	ld [wMaxMenuItem], a
 	call TextBoxBorder
 	hlcoord 2, 2
 	ld de, .Times
@@ -435,12 +445,17 @@ RoomRecordsMenu::
 	ld de, .Furthest
 	call PlaceString
 	hlcoord 2, 6
+	ld a, [wNumHoFTeams]
+	and a
+	jr z, .drawSpecial
 	ld de, .Hall
 	call PlaceString
 	hlcoord 2, 8
+.drawSpecial
 	ld de, .Special
 	call PlaceString
-	hlcoord 2, 10
+	ld bc, 2 * SCREEN_WIDTH
+	add hl, bc
 	ld de, .Back
 	call PlaceString
 	xor a
@@ -451,20 +466,19 @@ RoomRecordsMenu::
 	ld [hli], a
 	dec a
 	ld [hl], a
-	ld a, 4
-	ld [wMaxMenuItem], a
 	ld a, PAD_A | PAD_B
 	ld [wMenuWatchedKeys], a
 	call HandleMenuInput
 	bit B_PAD_B, a
 	ret nz
 	ldh a, [hCurrentMenuItem]
-	cp 4
+	ld hl, wMaxMenuItem
+	cp [hl]
 	ret z
 	cp 3
 	jr z, .special
 	cp 2
-	jr z, .hof
+	jr z, .hallOrSpecial
 	and a
 	jr nz, .furthest
 	call RunRecordsShow
@@ -472,6 +486,10 @@ RoomRecordsMenu::
 .furthest
 	call FurthestRunsShow
 	jp .menu
+.hallOrSpecial
+	ld a, [wNumHoFTeams]
+	and a
+	jr nz, .hof
 .special
 	farcall SpecialCollectionMenu
 	jr .reload

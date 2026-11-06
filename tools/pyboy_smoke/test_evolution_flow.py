@@ -10,6 +10,7 @@ from test_smoke import HarnessTestCase, REPO_ROOT
 SPECIES = parse_rgbds_constants(REPO_ROOT / 'constants/pokemon_constants.asm')
 MOVES = parse_rgbds_constants(REPO_ROOT / 'constants/move_constants.asm')
 TRAINERS = parse_trainer_constants(REPO_ROOT / 'constants/trainer_constants.asm')
+AUDIO = parse_rgbds_constants(REPO_ROOT / 'constants/music_constants.asm')
 
 
 class EvolutionFlowFixture:
@@ -34,11 +35,20 @@ class EvolutionFlowFixture:
         events = []
         final = {}
         seeded = []
+        battle_song = []
+        resumed_song = []
         def seed(_):
             if not seeded:
                 h.write8('wCanEvolveFlags', flags)
+                battle_song.append(h.read8('wChannel1MusicID'))
+                # Move replacement leaves this SFX ID in the shared audio field.
+                h.write8('wMusicID', AUDIO['SFX_SWAP'])
                 seeded.append(True)
         h.register_hook('RogueTryMidBattleEvolution', seed)
+        def record_resumed_song(_):
+            if any(e[0] == 'RogueRefreshBattleMonAfterEvolution' for e in events):
+                resumed_song.append(h.read8('wChannel1MusicID'))
+        h.register_hook('LoadHudTilePatterns', record_resumed_song)
         for label in ('EvolveMon', 'RogueRefreshBattleMonAfterEvolution',
                       'Evolution_ReloadTilesetTilePatterns', 'EndOfBattle',
                       'LeftoversRecovery', 'PPTonicRecovery',
@@ -88,6 +98,9 @@ class EvolutionFlowFixture:
         self.assertFalse(any(e[0] == 'Evolution_ReloadTilesetTilePatterns' for e in before_end), events)
         before_evolutions = [e for e in before_end if e[0] == 'EvolveMon']
         self.assertEqual(len(before_evolutions), int(bool(flags & 1) and opponents > 1), events)
+        if before_evolutions:
+            self.assertEqual(battle_song, [AUDIO['MUSIC_TRAINER_BATTLE']])
+            self.assertEqual(resumed_song[0:1], battle_song)
         after_end = events[labels.index('EndOfBattle'):]
         after_labels = [e[0] for e in after_end]
         self.assertIn('PartyHPAndPPRecoveredText', after_labels, events)

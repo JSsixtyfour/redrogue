@@ -648,7 +648,7 @@ RogueTryMidBattleEvolution::
 	cpl
 	and c
 	push af                     ; bench flags, active bit cleared (tried once only)
-	ld a, [wMusicID]            ; the battle song, replayed after the evolution
+	ld a, [wChannel1MusicID]    ; wMusicID also holds SFX and cry IDs
 	push af
 	ld a, b
 	ld [wCanEvolveFlags], a

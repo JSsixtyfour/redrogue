@@ -1,4 +1,7 @@
 PKMNLeaguePC:
+	ld a, [wNumHoFTeams]
+	and a
+	ret z
 	ld hl, AccessedHoFPCText
 	call PrintText
 	ld hl, wStatusFlags5
