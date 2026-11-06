@@ -19,7 +19,7 @@ _ViridianSchoolHouseCooltrainerFAlreadyGotText::
 	done
 
 _SchoolGift1Desc::
-	text "Teaches one #MON"
+	text "Teach one #MON"
 	line "SHARPEN"
 	done
 

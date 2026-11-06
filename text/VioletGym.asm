@@ -36,8 +36,8 @@ _VioletGymFalknerReceivedBadgeText::
 
 _VioletGymFalknerPostBattleAdviceText::
 	text "There are #MON"
-	line "GYMS in cities and"
-	cont "towns ahead."
+	line "GYMS in cities"
+	cont "and towns ahead."
 
 	para "You should test"
 	line "your skills at"
@@ -72,10 +72,11 @@ _VioletGymTrainer1BattleText::
 	line "guts!"
 
 	para "Those here are"
-	line "training night and"
+	line "training night"
 
-	para "day to become bird"
-	line "#MON masters."
+	para "and day to become"
+	line "bird #MON"
+	cont "masters."
 
 	para "Come on!"
 	done
@@ -95,8 +96,8 @@ _VioletGymTrainer1AfterBattleText::
 
 _VioletGymTrainer2BattleText::
 	text "Let me see if you"
-	line "are good enough to"
-	cont "face FALKNER!"
+	line "are good enough"
+	cont "to face FALKNER!"
 	done
 
 _VioletGymTrainer2EndBattleText::
@@ -113,8 +114,8 @@ _VioletGymTrainer2AfterBattleText::
 _VioletGymTrainer3BattleText::
     text "I'm the final test"
 	line "before FALKNER,"
-	cont "show me what you've"
-	cont "got!"
+	cont "show me what"
+	cont "you've got!"
 	done
 
 _VioletGymTrainer3EndBattleText::

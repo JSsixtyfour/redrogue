@@ -98,7 +98,7 @@ class PokemonCenterSourceContractTest(unittest.TestCase):
             source.index("_CableClubNPCAreaReservedFor2FriendsLinkedByCableText::")
         ]
         self.assertIn('text "Welcome! I\'ll"', first)
-        self.assertIn('line "heal your #MON."', first)
+        self.assertIn('line "heal your #MON"', first)
         self.assertIn("prompt", first)
         self.assertIn('text "Let\'s heal your"', repeat)
         self.assertIn('line "#MON!"', repeat)

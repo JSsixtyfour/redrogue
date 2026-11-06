@@ -67,7 +67,7 @@ _OlivineGymCooltrainerMAfterBattleText::
 _OlivineGymGuideAdviceText::
 	text "JASMINE seems"
 	line "to use ROCK"
-	cont "type #MON, but."
+	cont "type #MON, but"
     cont "it's hard to say"
 	done
 

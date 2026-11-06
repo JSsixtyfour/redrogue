@@ -9,7 +9,8 @@ _SilphCoDormCharmeleonText::
 	done
 
 _SilphCoDormPidgeyText::
-	text "A soft PIDGEY doll."
+	text "A soft PIDGEY"
+	line "doll."
 	done
 
 _SilphCoDormOmanyteText::
@@ -26,14 +27,14 @@ _SilphCoDormVoltorbText::
 
 _SilphCoDormClefairyText::
 	text "A CLEFAIRY plush"
-	line "with very accurate"
-	cont "details."
+	line "with very"
+	cont "accurate details."
 	done
 
 _SilphCoDormChanseyText::
 	text "A CHANSEY plush"
-	line "with removable egg"
-	cont "pouch."
+	line "with removable"
+	cont "egg pouch."
 	done
 
 _SilphCoDormSnorlaxText::
@@ -44,8 +45,8 @@ _SilphCoDormSnorlaxText::
 
 _SilphCoDormPikachuText::
 	text "A PIKACHU plush"
-	line "with it a nice big"
-	cont "tail."
+	line "with it a nice"
+	cont "big tail."
 	done
 
 _SilphCoDormPokedexText::
@@ -67,8 +68,9 @@ _SilphCoDormSeelText::
 
 _SilphCoDormDoduoText::
 	text "A DODUO doll with"
-	line "two heads standing"
-	cont "up firm and tall."
+	line "two heads"
+	cont "standing up firm"
+	cont "and tall."
 	done
 
 _SilphCoDormPsyduckText::
@@ -115,8 +117,9 @@ _SilphCoDormZapdosText::
 
 _SilphCoDormMoltresText::
 	text "A MOLTRES doll,"
-	line "easier to hug than"
-	cont "the real thing."
+	line "easier to hug"
+	cont "than the real"
+	cont "thing."
 	done
 
 _SilphCoDormMewtwoText::
@@ -166,7 +169,7 @@ _SilphCoDormPidgeyYLText::
 
 _SilphCoDormSlowpokeText::
 	text "This SLOWPOKE"
-	line "dolls stares right"
+	line "doll stares right"
 	cont "back at you."
 	done
 
@@ -184,8 +187,8 @@ _SilphCoDormBulbasaurText::
 
 _SilphCoDormClefairyYLText::
 	text "A CLEFAIRY doll"
-	line "that brightens the"
-	cont "mood."
+	line "that brightens"
+	cont "the mood."
 	done
 
 _SilphCoDormJigglypuffText::
@@ -214,14 +217,14 @@ _SilphCoDormMrMimeText::
 
 _SilphCoDormNidoranMText::
 	text "A NIDORAN♂ doll"
-	line "with stubby little"
-	cont "legs."
+	line "with stubby"
+	cont "little legs."
 	done
 
 _SilphCoDormOddishText::
 	text "An ODDISH plush"
-	line "with a nice set of"
-	cont "leaves."
+	line "with a nice"
+	cont "set of leaves."
 	done
 
 _SilphCoDormPidgeotText::

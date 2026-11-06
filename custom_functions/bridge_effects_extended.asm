@@ -510,9 +510,9 @@ BridgeStripPoisonFar::
 	line "its POISON type!"
 	prompt
 .rejectText
-	text "That #MON has no"
-	line "secondary POISON"
-	cont "type!"
+	text "That #MON has"
+	line "no secondary"
+	cont "POISON type!"
 	prompt
 
 ; Restore an owned type variant's complete type pair after a species-header

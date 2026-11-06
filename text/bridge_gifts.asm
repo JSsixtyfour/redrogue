@@ -9,12 +9,12 @@ _CaptainGift9Desc::
 	done
 
 _FossilGift8Desc::
-	text "One #MON: SPEED,"
+	text "A #MON: SPEED,"
 	line "EVADE up; ATK down"
 	done
 
 _FossilGift9Desc::
-	text "One #MON: HP and"
+	text "#MON: HP and"
 	line "ATK up, SPEED down"
 	done
 
@@ -87,7 +87,7 @@ _OldManGift6Desc::
 	done
 
 _OldManGift7Desc::
-	text "Teaches one #MON"
+	text "Teach one #MON"
 	line "DIZZY PUNCH"
 	done
 
@@ -112,8 +112,8 @@ _TrashedGift6Desc::
 	done
 
 _TrashedGift7Desc::
-	text "One #MON DEF+50%"
-	line "but no status moves"
+	text "A #MON DEF+50%,"
+	line "no status moves"
 	done
 
 _TrashedGift8Desc::
@@ -171,7 +171,7 @@ _IgaGift7Desc::
 	done
 
 _IgaGift8Desc::
-	text "Teaches one #MON"
+	text "Teach one #MON"
 	line "POISON GAS"
 	done
 
@@ -186,7 +186,7 @@ _FloraGift5Desc::
 	done
 
 _FloraGift6Desc::
-	text "Teaches one #MON"
+	text "Teach one #MON"
 	line "LEECH SEED"
 	done
 
@@ -196,7 +196,7 @@ _FloraGift7Desc::
 	done
 
 _FloraGift8Desc::
-	text "Teaches one #MON"
+	text "Teach one #MON"
 	line "PETAL DANCE"
 	done
 

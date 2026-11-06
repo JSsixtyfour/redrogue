@@ -49,8 +49,8 @@ _BlackthornGymClairPostBattleAdviceText::
 
 _BlackthornGymClairWaitTakeThisText::
 	text "CLAIR: You have"
-	line "proven yourself to"
-	cont "me."
+	line "proven yourself"
+	cont "to me."
 
 	para "I want you to have"
 	line "this TM."
@@ -123,10 +123,11 @@ _BlackthornGymTrainer3AfterBattleText::
 	done
 
 _BlackthornGymTrainer4BattleText::
-	text "We go through rig-"
-	line "orous training un-"
-	cont "der CLAIR. I can't"
-	cont "afford to lose."
+	text "We go through"
+	line "rigorous training"
+	cont "under CLAIR. I"
+	cont "can't afford to"
+	cont "lose."
 	done
 
 _BlackthornGymTrainer4EndBattleText::

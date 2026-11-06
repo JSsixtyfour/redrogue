@@ -59,10 +59,10 @@ _AzaleaGymTMNoRoomText::
 
 _AzaleaGymTrainer1BattleText::
 	text "Bug #MON evolve"
-	line "young. So they get"
+	line "young. So they"
 
-	para "stronger that much"
-	line "faster."
+	para "get stronger that"
+	line "much faster."
 	done
 
 _AzaleaGymTrainer1EndBattleText::
@@ -104,8 +104,8 @@ _AzaleaGymTrainer2AfterBattleText::
 _AzaleaGymTrainer3BattleText::
 	text "You look strong"
 	line "But my grown-up"
-	cont "#MON are pretty"
-	cont "tough too!"
+	cont "#MON are"
+	cont "pretty tough too!"
 	done
 
 _AzaleaGymTrainer3EndBattleText::
@@ -149,6 +149,7 @@ _AzaleaGymGuideVictoryText::
 	line "trainers."
 
 	para "With people like"
-	line "you, the future of"
-	cont "#MON is bright!"
+	line "you, the future"
+	cont "of #MON is"
+	cont "bright!"
 	done

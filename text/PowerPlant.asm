@@ -30,8 +30,9 @@ _PowerPlantPokemaniac1EndBattleText::
 	prompt
 
 _PowerPlantPokemaniac1AfterBattleText::
-	text "The electric #MON"
-	line "will stop you!"
+	text "The electric"
+	line "#MON will stop"
+	cont "you!"
 	done
 
 _PowerPlantPokemaniac2BattleText::

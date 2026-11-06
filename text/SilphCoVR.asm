@@ -88,9 +88,9 @@ _SilphCoVRFinalRepeatText::
 
 _SilphCoVRAttemptSpentText::
 	text "PALM: The AI"
-	line "deleted your data."
-	cont "You'll need to"
-	cont "start your run"
+	line "deleted your"
+	cont "data. You'll need"
+	cont "to start your run"
 	cont "over again to"
 	cont "face it."
 	done

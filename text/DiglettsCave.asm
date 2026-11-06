@@ -14,7 +14,8 @@ _DiglettsCaveBugCatcher1EndBattleText::
 
 _DiglettsCaveBugCatcher1AfterBattleText::
 	text "Seems like only"
-	line "DIGLETT lives here."
+	line "DIGLETT lives"
+	cont "here."
 	done
     
 _DiglettsCaveHikerBattleText::
@@ -64,6 +65,7 @@ _DiglettsCaveCoolTrainerFEndBattleText::
 	prompt
 
 _DiglettsCaveCoolTrainerFAfterBattleText::
-	text "Tell me if you find"
-	line "any rare #MON!"
+	text "Tell me if you"
+	line "find any rare"
+	cont "#MON!"
 	done

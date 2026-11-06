@@ -80,8 +80,8 @@ _PlaySlotMachineText::
 	done
 
 _OutOfCoinsSlotMachineText::
-	text "Darn!"
-	line "Ran out of credits!"
+	text "Darn! Ran out of"
+	line "credits!"
 	done
 
 _BetHowManySlotMachineText::
@@ -1625,7 +1625,8 @@ _RequireCoinCaseText::
 
 _ExchangeCoinsForPrizesText::
 	text "We exchange your"
-	line "credits for prizes."
+	line "credits for"
+	cont "prizes."
 	prompt
 
 _WhichPrizeText::
@@ -1708,7 +1709,7 @@ _LinkCanceledText::
 _OakSpeechText1::
 	text "Hello there!"
 	line "Welcome to"
-	cont "#MON Red Rogue!"
+	cont "#MON Red Rogue"
 
 	para "My name is PALM!"
 	line "People call me"

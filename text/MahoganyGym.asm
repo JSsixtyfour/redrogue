@@ -10,8 +10,9 @@ _MahoganyGymPrycePreBattleText::
 	cont "in my life."
 
 	para "Since I am your"
-	line "elder, let me show"
-	cont "you what I mean."
+	line "elder, let me"
+	cont "show you what I"
+	cont "mean."
 
 	para "I have been with"
 	line "#MON since"

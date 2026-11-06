@@ -688,6 +688,38 @@ class FacilityEncounterTripTest(FacilityTripBase):
         self.assertEqual((h.read8("wPartyCount"), h.read8("wBoxCount")), (party, box))
         self.assertEqual(h.read8(f"wSprite{SLOT}StateData1"), 0)
 
+    def test_no_room_still_removes_it_like_a_boss(self):
+        """It wanders the corridors, so a full box must not leave it blocking one."""
+        h = self.h
+        block, tile = self.plan_spot()
+        self.enter(force=True, spot=block, hold=DOWN)
+        species = h.read8("wPartyMon1Species")
+        h.write8("wBoxCount", 20)
+        for i in range(20):
+            h.write8("wBoxSpecies", species, offset=i)
+            for j, byte in enumerate(h.read_bytes("wPartyMon1", 33)):
+                h.write8("wBoxMon1", byte, offset=i * 33 + j)
+        h.write8("wBoxSpecies", 255, offset=20)
+        party, box = h.read8("wPartyCount"), h.read_bytes("wBoxMon1", 33 * 20)
+        self.assertEqual(party, 6, "the gift would not reach the full box")
+        self.walk_below(tile)
+        self.mash_until(lambda: self.bank1() and h.read8("hIsInBattle") == 1 and h.read8("wEnemyMonCatchRate") & 8, "battle")
+        h.write8("wEnemyMonHP", 0)
+        h.write8("wEnemyMonHP", 1, offset=1)
+
+        def resolved():
+            h.write8("wPlayerDisabledMove", 0)
+            return self.bank1() and h.read8("hIsInBattle") == 0 and h.read8("wOptionalEncounterState") & 4
+
+        self.mash_until(resolved, "no room -> resolved", 3000)
+        self.assertEqual(h.read8("wPartyCount"), party)
+        self.assertEqual(h.read8("wBoxCount"), 20)
+        self.assertEqual(h.read_bytes("wBoxMon1", 33 * 20), box)
+        self.mash_until(lambda: self.bank1() and h.read8("wOptionalEncounterScript") == 0, "its script idle")
+        h.tap("b")
+        h.tick(60)
+        self.assert_facility_runs_on()
+
     def test_a_reload_puts_it_back_on_its_tile_and_a_gift_keeps_it_gone(self):
         h = self.h
         block, tile = self.plan_spot()

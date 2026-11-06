@@ -31,11 +31,12 @@ run() {
     fi
 }
 
-# Map, script, text and trainer data feed all three audits.
+# Map, script, text and trainer data feed all of these audits.
 if echo "$staged" | grep -qE '^(maps|scripts|text|data|constants|engine|home|custom_functions)/.*\.asm$|^(maps|text)\.asm$'; then
     run tools/pyboy_smoke/audit_map_text_id_slots.py --scope all
     run tools/pyboy_smoke/audit_map_object_const_order.py
     run tools/audit_end_battle_text.py
+    run tools/audit_text_columns.py
 fi
 
 # The static analyzers' own unit tests, only when the analyzers change.

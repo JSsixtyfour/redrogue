@@ -202,8 +202,9 @@ _WitchPrize3Text::
 
 _WitchPrize4Text::
 	text "Win and your"
-	line "#MON gain extra"
-	cont "EXP for this run"
+	line "#MON gain"
+	cont "extra EXP for"
+	cont "this run"
 
 	para "Do we have a"
 	line "bargain?"
@@ -211,8 +212,8 @@ _WitchPrize4Text::
 
 _WitchPrize5Text::
 	text "Win and your"
-	line "critical hits rise"
-	cont "for this run"
+	line "critical hits"
+	cont "rise for this run"
 
 	para "Do we have a"
 	line "bargain?"
@@ -220,8 +221,9 @@ _WitchPrize5Text::
 
 _WitchPrize6Text::
 	text "Win and your"
-	line "moves land more"
-	cont "often for this run"
+	line "moves land"
+	cont "more often for"
+	cont "this run"
 
 	para "Do we have a"
 	line "bargain?"
@@ -247,8 +249,9 @@ _WitchPrize8Text::
 
 _WitchPrize9Text::
 	text "Win and multi-hit"
-	line "moves hit more"
-	cont "often for this run"
+	line "moves hit"
+	cont "more often for"
+	cont "this run"
 
 	para "Do we have a"
 	line "bargain?"

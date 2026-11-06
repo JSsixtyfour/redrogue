@@ -33,8 +33,8 @@ _EcruteakGymMortyPreBattleText::
 	cont "dary #MON."
 
 	para "You're going to"
-	line "help me reach that"
-	cont "level!"
+	line "help me reach"
+	cont "that level!"
 	done
 
 _EcruteakGymMortyReceivedBadgeText::

@@ -15,14 +15,14 @@ _SeafoamIslands1FSwimmer1AfterBattleText::
 
 _SeafoamIslands1FCueBallBattleText::
 	text "What am I doing"
-	line "here? What are you"
-	cont "doing here!?"
+	line "here? What are"
+	cont "you doing here!?"
 	done
 
 _SeafoamIslands1FCueBallEndBattleText::
 	text "Urgh…"
-	line "Not as relaxing as"
-	cont "I hoped..."
+	line "Not as relaxing"
+	cont "as I hoped..."
 	prompt
 
 _SeafoamIslands1FCueBallAfterBattleText::
@@ -63,7 +63,7 @@ _SeafoamIslands1FPokemaniacEndBattleText::
 
 _SeafoamIslands1FPokemaniacAfterBattleText::
 	text "A LEGENDARY"
-	line "#MON is said to"
-	cont "live on these"
+	line "#MON is said"
+	cont "to live on these"
 	cont "islands."
 	done

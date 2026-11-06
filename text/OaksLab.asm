@@ -4,7 +4,8 @@ _OaksLabRivalIPickedTheWrongPokemonText::
 	cont "next room."
 
 	para "You'll need it to"
-	line "keep pace with me."
+	line "keep pace with"
+	cont "me."
 	prompt
 
 _OaksLabRivalAmIGreatOrWhatText::

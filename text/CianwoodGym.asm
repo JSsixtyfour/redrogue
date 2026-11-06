@@ -17,8 +17,8 @@ _CianwoodGymChuckPreBattleText::
 	line "now, are you?"
 
 	para "What? It has"
-	line "nothing to do with"
-	cont "#MON?"
+	line "nothing to do"
+	cont "with #MON?"
     
     para "That's true!"
 	line "Come on. We"
@@ -95,8 +95,8 @@ _CianwoodGymTrainer2EndBattleText::
 
 _CianwoodGymTrainer2AfterBattleText::
 	text "Fighting #MON"
-	line "are afraid of psy-"
-	cont "chics…"
+	line "are afraid of"
+	cont "psychics…"
 	done
 
 _CianwoodGymTrainer4BattleText::

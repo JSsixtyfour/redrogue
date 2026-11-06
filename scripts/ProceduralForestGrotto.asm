@@ -149,7 +149,14 @@ FGEncounterOffer:
 	ld a, [wOptionalEncounterLevel]
 	ld c, a
 	call GivePokemon
-	jr nc, .done
+	jr c, .gift
+	; No room. It wanders the Facility's corridors, so like a boss it leaves anyway
+	; rather than stand in the way; the others wait in their own rooms for a retry.
+	ld a, [wOptionalEncounterPackage]
+	cp OPTIONAL_PACKAGE_PSYCHIC
+	jr c, .done
+	jr .resolve
+.gift
 	call OptionalEncounterFinalizeGift
 .resolve
 	ld hl, wOptionalEncounterState
@@ -163,9 +170,9 @@ FGJoinTexts:
 	dw .onix, .snowlax, .psyduck, .golduck, .pink
 .onix
 	text "The wild"
-	line "CRYSTAL ONIX wants"
-	cont "to join your"
-	cont "party!@"
+	line "CRYSTAL ONIX"
+	cont "wants to join"
+	cont "your party!@"
 	text_end
 .snowlax
 	text "The wild"
@@ -176,14 +183,14 @@ FGJoinTexts:
 .psyduck
 	text "The wild"
 	line "PSYCHIC PSYDUCK"
-	cont "wants to join your"
-	cont "party!@"
+	cont "wants to join"
+	cont "your party!@"
 	text_end
 .golduck
 	text "The wild"
 	line "PSYCHIC GOLDUCK"
-	cont "wants to join your"
-	cont "party!@"
+	cont "wants to join"
+	cont "your party!@"
 	text_end
 .pink
 	text "The wild"

@@ -162,13 +162,16 @@ function wrap(text, W) {
   const issues = [];
   const out = paras.map(p => {
     const lines = [];
+    // Only a paragraph's first line is on the top row. Below it, column W is where the
+    // engine draws the down arrow for the next cont/para/prompt, which erases that letter.
+    const limit = () => lines.length === 0 ? W : W - 1;
     for (const forced of p.split("\n")) {
       let cur = [];
       for (const word of forced.split(/ +/).filter(Boolean)) {
         const wt = tokenize(word);
-        if (width(wt) > W) issues.push(`"${word}" is ${width(wt)} tiles, wider than the ${W}-tile line by itself.`);
         const next = cur.length ? [...cur, ...tokenize(" "), ...wt] : wt;
-        if (cur.length && width(next) > W) { lines.push(cur); cur = wt; } else cur = next;
+        if (cur.length && width(next) > limit()) { lines.push(cur); cur = wt; } else cur = next;
+        if (cur === wt && width(wt) > limit()) issues.push(`"${word}" is ${width(wt)} tiles, wider than the ${limit()}-tile line by itself.`);
       }
       if (cur.length) lines.push(cur);
     }
@@ -251,7 +254,8 @@ function box(rows, arrow, W) {
     if (cell.reserved || cell.bad) { ctx.fillStyle = cell.bad ? BADC : RES; ctx.fillRect(tx * 8 * S + S, ty * 8 * S + S, 6 * S, 6 * S); }
     if (cell.code !== undefined) put(cell.code, tx, ty);
   }));
-  if (arrow) put(0xee, cols - 2, 5);
+  // The bottom text row, column W: the tile the engine really overwrites.
+  if (arrow) { ctx.fillStyle = LIGHT; ctx.fillRect((cols - 2) * 8 * S, 4 * 8 * S, 8 * S, 8 * S); put(0xee, cols - 2, 4); }
   return c;
 }
 function screens(paras, ending, W) {
@@ -298,8 +302,11 @@ function renderWrite() {
 // ---- check tab ----
 function renderCheck() {
   const W = Math.max(4, Math.min(20, +$("cwidth").value || 18));
-  const rows = []; let afterRam = false, over = 0, bad = 0;
-  $("csrc").value.split("\n").forEach((ln, i) => {
+  const rows = []; let afterRam = false, over = 0, bad = 0, erased = 0;
+  const source = $("csrc").value.split("\n");
+  // The next command after line i, skipping blanks and comments.
+  const nextCommand = i => { for (let k = i + 1; k < source.length; k++) { const c = source[k].replace(/;.*$/, "").trim(); if (c) return c; } return ""; };
+  source.forEach((ln, i) => {
     const code = ln.replace(/;.*$/, "");
     if (/^\s*text_ram\b/.test(code)) { afterRam = true; return; }
     const m = /^\s*(text|line|cont|para|next)\s+"(.*)"/.exec(code);
@@ -310,12 +317,15 @@ function renderCheck() {
     const cont = afterRam && m[1] === "text";
     afterRam = false;
     if (w > W) over++; if (isBad) bad++;
-    rows.push(`<tr class="${w > W || isBad ? "over" : ""}"><td class="n">${i + 1}</td><td>${m[1]}${cont ? " +ram" : ""}</td><td>${esc(m[2])}</td>` +
-      `<td class="n">${w}/${W}<span class="meter"><i style="width:${Math.min(100, w / W * 100)}%"></i></span>${isBad ? " bad char" : ""}</td></tr>`);
+    const hitsArrow = ["line", "cont"].includes(m[1]) && width(tokenize(s.replace(/ +$/, ""))) === W && !m[2].endsWith("@")
+      && /^(cont|para|prompt)\b/.test(nextCommand(i));
+    if (hitsArrow) erased++;
+    rows.push(`<tr class="${w > W || isBad || hitsArrow ? "over" : ""}"><td class="n">${i + 1}</td><td>${m[1]}${cont ? " +ram" : ""}</td><td>${esc(m[2])}</td>` +
+      `<td class="n">${w}/${W}<span class="meter"><i style="width:${Math.min(100, w / W * 100)}%"></i></span>${isBad ? " bad char" : ""}${hitsArrow ? " arrow erases last letter" : ""}</td></tr>`);
   });
   $("crows").innerHTML = rows.join("");
   $("cissues").innerHTML = !rows.length ? `<li class="ok">Paste some text macros to measure them.</li>`
-    : over || bad ? `${over ? `<li>${over} line(s) are wider than ${W} tiles.</li>` : ""}${bad ? `<li>${bad} line(s) use a character the charmap does not have.</li>` : ""}`
+    : over || bad || erased ? `${over ? `<li>${over} line(s) are wider than ${W} tiles.</li>` : ""}${erased ? `<li>${erased} line(s) lose their last letter to the down arrow of the next cont/para/prompt.</li>` : ""}${bad ? `<li>${bad} line(s) use a character the charmap does not have.</li>` : ""}`
     : `<li class="ok">All ${rows.length} lines fit in ${W} tiles.</li>`;
 }
 

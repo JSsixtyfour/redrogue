@@ -174,7 +174,7 @@ _HMCantDeleteText::
 
 _PokemonCenterFirstHealText::
 	text "Welcome! I'll"
-	line "heal your #MON."
+	line "heal your #MON"
 	prompt
 
 _PokemonCenterRepeatHealText::
