@@ -90,8 +90,8 @@ _Route3Youngster4EndBattleText::
 _Route3Youngster4AfterBattleText::
 	text "Don't forget"
 	line "to heal your"
-	cont "#MON between"
-    cont "routes."
+	text "#MON at the"
+	line "#MON CENTER."
 	done
 
 _Route3Youngster5BattleText::

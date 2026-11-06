@@ -17,7 +17,11 @@ VARIANTS = (("ONIX", 12, "ICE", "GROUND"),
             ("SNORLAX", 12, "ICE", "ICE"),
             ("CHARIZARD", 12, "FIRE", "DRAGON"),
             ("PERSIAN", 4, "NORMAL", "WATER"),
-            ("RATICATE", 4, "NORMAL", "ROCK"))
+            ("RATICATE", 4, "NORMAL", "ROCK"),
+            ("GOLDUCK", 12, "WATER", "PSYCHIC_TYPE"),
+            # The Warden's DETOX: a second POISON type gone for good.
+            ("IVYSAUR", 4, "GRASS", "GRASS"),
+            ("BEEDRILL", 20, "BUG", "BUG"))
 
 
 class TypeVariantLifecycleTest(unittest.TestCase):
@@ -110,7 +114,9 @@ class TypeVariantLifecycleTest(unittest.TestCase):
                   self.pair(variant[2], variant[3])) for variant in VARIANTS]
         cases += [("ONIX", 0, "ICE", "ICE", "ONIX", self.pair("ROCK", "GROUND")),
                   ("ONIX", 8, "ICE", "ICE", "ONIX", self.pair("ROCK", "GROUND")),
-                  ("ONIX", 1, "ICE", "ICE", "ONIX", self.pair("ROCK", "GHOST"))]
+                  ("ONIX", 1, "ICE", "ICE", "ONIX", self.pair("ROCK", "GHOST")),
+                  ("GLOOM", 4, "GRASS", "GRASS", "VILEPLUME", self.pair("GRASS", "GRASS")),
+                  ("GLOOM", 4, "GRASS", "GRASS", "BELLOSSOM", self.pair("GRASS", "GRASS"))]
         for species, flags, first, second, target, expected in cases:
             with self.subTest(species=species, flags=flags, target=target):
                 self.restore()

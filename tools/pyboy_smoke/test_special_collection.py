@@ -68,7 +68,7 @@ class DataTest(unittest.TestCase):
         caps = (REPO_ROOT / "custom_functions" / "func_special_form.asm").read_text(encoding="utf-8")
         table = re.findall(r"^\s*db (\w+),\s+\(?1 << SF", caps, re.M)
         types = (REPO_ROOT / "custom_functions" / "bridge_effects_extended.asm").read_text(encoding="utf-8")
-        table += re.findall(r"^\s*db (ONIX|SNORLAX),", types, re.M)
+        table += re.findall(r"^\s*db (ONIX|SNORLAX|PSYDUCK|GOLDUCK),", types, re.M)
         listed = {species for species, _ in PACKAGES}
         self.assertTrue(table)
         self.assertEqual(set(table) - listed, set())
@@ -306,7 +306,7 @@ class PageTest(unittest.TestCase):
         self.open_list()
         self.shot("list_empty")
         self.assertEqual(h.read_bytes("wTileMap", 13, 1), self.text("SPECIAL FORMS"))
-        self.assertEqual(h.read_bytes("wTileMap", 5, 15), [0x7F, 0xF6] + self.text("/14"))
+        self.assertEqual(h.read_bytes("wTileMap", 5, 15), [0x7F, 0xF6] + self.text("/15"))
         self.assertEqual(h.read_bytes("wTileMap", 5, 22), self.text("?????"))
         self.assertEqual(h.read8("wMaxMenuItem"), NUM - 1)
         shadows = {}
@@ -337,7 +337,7 @@ class PageTest(unittest.TestCase):
             self.press("b", 60)
             self.press("down")
         self.shot("list_full")
-        self.assertEqual(h.read_bytes("wTileMap", 5, 15), [0xF7, 0xF6 + 4] + self.text("/14"))
+        self.assertEqual(h.read_bytes("wTileMap", 5, 15), [0xF7, 0xF6 + 5] + self.text("/15"))
         self.assertEqual(h.read_bytes("wTileMap", 14, 22), self.text("ARMORED MEWTWO"))
         self.assertFalse(h.hook_errors, h.hook_errors)
 

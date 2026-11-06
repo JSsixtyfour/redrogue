@@ -61,4 +61,9 @@ ProceduralFacility_Object:
 	object_event 10, 10, SPRITE_SUPER_NERD, STAY, DOWN, TEXT_PROCEDURALFACILITY_SUPER_NERD
 	ASSERT FACILITY_SUPER_NERD == 12 ; the twelfth object_event
 
+	; The optional encounter, when this Facility rolled one and has a block for it:
+	; moved there each load (OptionalEncounterPlaceFacility), otherwise picture 0.
+	object_event 10, 10, SPRITE_MONSTER, WALK, ANY_DIR, TEXT_PROCEDURALFACILITY_OPTIONAL, PSYDUCK, 1 | OW_POKEMON
+	ASSERT FACILITY_OPTIONAL_MON == 13 ; the thirteenth object_event
+
 	def_warps_to PROCEDURAL_FACILITY

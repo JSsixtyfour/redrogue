@@ -206,6 +206,19 @@ ProceduralFacility_Script:
 	call DisplayTextID
 	call DisableWaitingAfterTextDisplay
 .runScripts
+	; The optional encounter first. While its battle runs it owns the frame: it
+	; has its own header and script index, and the dispatch below would replace
+	; wTrainerHeaderPtr and take its BIT_USE_CUR_MAP_SCRIPT.
+	farcall OptionalEncounterMapScript
+	ld a, [wOptionalEncounterScript]
+	and a
+	ret nz
+	; Its offer also goes first. Won on an arrow tile, the slide below would lock
+	; every button before the offer opens, and nothing could then close its text.
+	ld a, [wOptionalEncounterState]
+	and OPTIONAL_ENCOUNTER_STATE_MASK
+	cp 1 << BIT_OPTIONAL_DEFEATED
+	ret z
 	call EnableAutoTextBoxDrawing
 	ld hl, ProceduralFacilityTrainerHeaders
 	; PICK THE HEADER BLOCK THAT MATCHES THE ENGAGED TRAINER. Measured bug,
@@ -409,13 +422,22 @@ ProceduralFacility_TextPointers:
 	dw_const PFacStageEventNpc1Text, TEXT_PROCEDURALFACILITY_STAGE_NPC_1
 	dw_const PFacStageEventNpc2Text, TEXT_PROCEDURALFACILITY_STAGE_NPC_2
 	dw_const PFacSuperNerdText, TEXT_PROCEDURALFACILITY_SUPER_NERD
-	; --- end of the object block (12 objects); script-only ids follow ---
+	dw_const PFacOptionalText, TEXT_PROCEDURALFACILITY_OPTIONAL
+	; --- end of the object block (13 objects); script-only ids follow ---
 	dw_const PFacSuperNerdPrizeText, TEXT_PROCEDURALFACILITY_SUPER_NERD_PRIZE
 	dw_const ProceduralFacilityBossOfferText, TEXT_PROCEDURALFACILITY_BOSS_OFFER
 	dw_const PFacWildCalmedText, TEXT_PROCEDURALFACILITY_CALMED
 	EXPORT TEXT_PROCEDURALFACILITY_CALMED ; used by engine/battle/wild_encounters.asm
 	dw_const PFacStageEventArrivalText, TEXT_PROCEDURALFACILITY_STAGE_EVENT
 	dw_const PFacStageEventRecoverText, TEXT_PROCEDURALFACILITY_STAGE_RECOVER
+	dw_const PFacOptionalOffer, TEXT_PROCEDURALFACILITY_OPTIONAL_OFFER
+
+PFacOptionalText:
+	text_far FGEncounterText
+	text_end
+PFacOptionalOffer:
+	text_far FGEncounterOffer
+	text_end
 
 ; The Super Nerd's fallback spot (facility_subroom.asm).
 PFacSuperNerdText:

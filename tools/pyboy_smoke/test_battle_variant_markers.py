@@ -11,7 +11,7 @@ class BattleVariantMarkerContractTest(unittest.TestCase):
     def test_hud_hook_and_marker_priority(self) -> None:
         hud = (REPO_ROOT / "engine" / "battle" / "draw_hud_pokeball_gfx.asm").read_text()
         core = (REPO_ROOT / "engine" / "battle" / "core.asm").read_text()
-        shiny = (REPO_ROOT / "custom_functions" / "func_shiny.asm").read_text()
+        shiny = (REPO_ROOT / "custom_functions" / "bridge_effects_extended.asm").read_text()
 
         self.assertNotIn("farcall DrawBattleVariantMarker", hud)
         self.assertEqual(core.count("farcall DrawBattleOwnershipMarkers"), 2)

@@ -109,6 +109,10 @@ DEF NUM_BRIDGE_SELECTED_EFFECTS EQU const_value - 1
 DEF BRIDGE_SELECTED_RECORD_SIZE  EQU 2 ; owner byte + effect byte
 DEF BRIDGE_SELECTED_RECORD_COUNT EQU BRIDGE_PER_RUN
 ASSERT NUM_BRIDGE_SELECTED_EFFECTS == 8
+; The Warden's DETOX takes the selected-effect gift path for its party picker but
+; is no registry effect: it rewrites the mon's stored types and costs no record.
+DEF BRIDGE_GIFT_STRIP_POISON EQU $FF
+ASSERT BRIDGE_GIFT_STRIP_POISON > NUM_BRIDGE_SELECTED_EFFECTS
 ; wBridgeCalcEffectFlags uses effect ids as bit numbers. Effect 0 is the empty
 ; marker, so bit 0 is free for the Mystic (SF2_SWAP_ATK_SPC) special form.
 DEF BRIDGE_CALC_SWAP_ATK_SPC EQU 0

@@ -59,39 +59,7 @@ IsTypeVariant::
 	bit BIT_TYPE_VARIANT, [hl]
 	ret
 
-; ---------------------------------------------------------------------------
-; GetTypeVariantPalette
-; INPUT:  de = struct base
-; OUTPUT: e = 0 if NOT a type variant; otherwise the palette id to use,
-;         derived from the stored MON_TYPE2 (WATER->blue, ROCK->gray,
-;         DRAGON->black, anything else defaults to blue).
-;         Returned in E, not a (farcall clobbers a on entry/exit - see
-;         GetSpecialFormCaps). Callers test `ld a, e / and a / jr z` to skip.
-; CLOBBERS: af, hl, e  (bc, d preserved)
-; ---------------------------------------------------------------------------
-GetTypeVariantPalette::
-	ld hl, MON_CATCH_RATE
-	add hl, de
-	bit BIT_TYPE_VARIANT, [hl]
-	jr nz, .variant
-	ld e, 0
-	ret
-.variant
-	ld hl, MON_TYPE2
-	add hl, de
-	ld a, [hl]
-	cp ROCK
-	jr z, .rock
-	cp DRAGON
-	jr z, .dragon
-	ld e, PAL_BLUEMON ; WATER and any future secondary type -> blue
-	ret
-.rock
-	ld e, PAL_GRAYMON
-	ret
-.dragon
-	ld e, PAL_BLACK
-	ret
+; GetTypeVariantPalette moved to bridge_effects_extended.asm: this bank is full.
 
 ; ---------------------------------------------------------------------------
 ; GetSpecialFormCaps

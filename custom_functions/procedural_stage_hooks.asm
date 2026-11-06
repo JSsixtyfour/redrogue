@@ -30,6 +30,8 @@ ProcBossPatchStageSprite::
 	jr z, .caveSubroom
 	cp PROCEDURAL_FOREST_GROTTO
 	jr z, .grotto
+	cp PROCEDURAL_FACILITY_SUBROOM
+	jr z, .grotto                 ; only the optional encounter to patch
 	cp PROCEDURAL_CEMETERY_1
 	jp z, .cemetery
 	cp PROCEDURAL_CEMETERY_2
@@ -76,6 +78,7 @@ ProcBossPatchStageSprite::
 	ld b, a
 	jr .close
 .facility
+	farcall OptionalEncounterPatchSprite ; slot 13, picture 0 unless it stands here
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	ld a, BMODE_ADVANCED
@@ -271,6 +274,7 @@ ProcStageLoadDispatch::
 	cp PROCEDURAL_FACILITY_SUBROOM
 	jr nz, .notFacilitySubroom
 	farcall FacSubroomLoad          ; stamps this Facility's rolled room piece
+	farcall OptionalEncounterPlaceFacility
 	ret
 .notFacilitySubroom
 	cp PROCEDURAL_FACILITY
@@ -280,6 +284,7 @@ ProcStageLoadDispatch::
 	farcall PFacFinalize
 	pop af
 	call ProcGenerationEndDoubleSpeed
+	farcall OptionalEncounterPlaceFacility
 	ret
 .notFacility
 	cp PROCEDURAL_CEMETERY_1

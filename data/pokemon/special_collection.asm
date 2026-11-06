@@ -27,6 +27,7 @@ SpecialEntries:
 	special_entry SPECIAL_CRYSTAL,           ONIX,       0,                   PAL_BLUEMON, .crystalName, .caveFound,    .crystalEffect
 	special_entry SPECIAL_ICE,               SNORLAX,    0,                   PAL_BLUEMON, .iceName,     .caveFound,    .iceEffect
 	special_entry SPECIAL_DRAGON,            CHARMANDER, 0,                   PAL_BLACK,   .dragonName,  .oakFound,     .dragonEffect
+	special_entry SPECIAL_PSYCHIC,           PSYDUCK,    0,                   PAL_PURPLEMON, .psychicName, .warpFound,  .psychicEffect
 	ASSERT @ - SpecialEntries == NUM_SPECIAL_IDENTITIES * SPECIAL_ENTRY_SIZE
 
 .fujiFound    db "MR.FUJI's<NEXT>HOUSE@"
@@ -39,6 +40,7 @@ SpecialEntries:
 .copycatFound db "COPYCAT's<NEXT>HOUSE@"
 .caveFound    db "CAVE<NEXT>BASEMENT@"
 .armoredFound db "GIOVANNI's<NEXT>TRADE@"
+.warpFound    db "THE<NEXT>FACILITY@"
 
 .armoredName db "ARMORED MEWTWO@"
 .armoredEffect
@@ -126,3 +128,11 @@ SpecialEntries:
 	db   "A FIRE and DRAGON"
 	next "type, at every"
 	next "stage.@"
+
+.psychicName db "PSYCHIC PSYDUCK@"
+.psychicEffect
+	db   "A WATER and"
+	next "PSYCHIC type that"
+	next "knows a PSYCHIC"
+	next "attack and a"
+	next "support move.@"

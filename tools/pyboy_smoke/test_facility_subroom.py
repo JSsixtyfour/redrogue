@@ -132,7 +132,8 @@ class FacilitySubroomTest(unittest.TestCase):
     def test_generated_files_are_current(self) -> None:
         # The ROM trusts the tables, so they must describe today's pieces.
         for path, text in ((subroom.OUT_ASM, subroom.generate_table(self.pieces)),
-                           (subroom.OUT_CONST, subroom.generate_constants(self.landings))):
+                           (subroom.OUT_CONST, subroom.generate_constants(self.landings)),
+                           (subroom.OUT_SPOTS, subroom.generate_mon_spots(self.pieces))):
             self.assertEqual(path.read_text(encoding="utf-8"), text,
                              f"{path.name} is stale: rerun tools/facility_subroom.py")
 
@@ -142,7 +143,7 @@ class FacilitySubroomTest(unittest.TestCase):
         for button, back, (dx, dy) in (("up", "down", (0, -1)), ("down", "up", (0, 1)),
                                        ("left", "right", (-1, 0)), ("right", "left", (1, 0))):
             spot = (px + dx, py + dy)
-            if spot in piece["walk"] and spot not in (piece["nerd"], piece["ball"]):
+            if spot in piece["walk"] and spot not in (piece["nerd"], piece["ball"], piece["mon"]):
                 break
         else:
             self.fail(f"{piece['file']}: no free tile beside the pad")
@@ -225,7 +226,8 @@ class FacilitySuperNerdTest(FacilitySubroomTest):
         """BFS over the tool's walk area, around the Super Nerd."""
         h = self.h
         start = (h.read8("wXCoord"), h.read8("wYCoord"))
-        free = piece["walk"] - {piece["nerd"], piece["ball"]} - self.taken
+        # The optional encounter stands in Debug 2's Facilities.
+        free = piece["walk"] - {piece["nerd"], piece["ball"], piece["mon"]} - self.taken
         moves = (("up", 0, -1), ("down", 0, 1), ("left", -1, 0), ("right", 1, 0))
         came = {start: None}
         todo = [start]
@@ -290,7 +292,7 @@ class FacilitySuperNerdTest(FacilitySubroomTest):
         bx, by = piece["ball"]
         for button, (dx, dy) in (("down", (0, -1)), ("up", (0, 1)), ("right", (-1, 0)), ("left", (1, 0))):
             spot = (bx + dx, by + dy)        # stand here, face the ball with `button`
-            if spot in piece["walk"] and spot != piece["nerd"]:
+            if spot in piece["walk"] and spot not in (piece["nerd"], piece["mon"]):
                 break
         else:
             self.fail(f"{piece['file']}: nowhere to stand beside the ball")

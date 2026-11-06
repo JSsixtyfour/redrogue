@@ -141,15 +141,15 @@ SeafoamIslands1FCueBallText:
 	jp TextScriptEnd
 
 SeafoamIslands1FCueBallBattleText:
-	text_far _SeafoamIslands1FSwimmer1BattleText
+	text_far _SeafoamIslands1FCueBallBattleText
 	text_end
 
 SeafoamIslands1FCueBallEndBattleText:
-	text_far _SeafoamIslands1FSwimmer1EndBattleText
+	text_far _SeafoamIslands1FCueBallEndBattleText
 	text_end
 
 SeafoamIslands1FCueBallAfterBattleText:
-	text_far _SeafoamIslands1FSwimmer1AfterBattleText
+	text_far _SeafoamIslands1FCueBallAfterBattleText
 	text_end
 
 SeafoamIslands1FHikerText:
@@ -159,15 +159,15 @@ SeafoamIslands1FHikerText:
 	jp TextScriptEnd
 
 SeafoamIslands1FHikerBattleText:
-	text_far _SeafoamIslands1FSwimmer1BattleText
+	text_far _SeafoamIslands1FHikerBattleText
 	text_end
 
 SeafoamIslands1FHikerEndBattleText:
-	text_far _SeafoamIslands1FSwimmer1EndBattleText
+	text_far _SeafoamIslands1FHikerEndBattleText
 	text_end
 
 SeafoamIslands1FHikerAfterBattleText:
-	text_far _SeafoamIslands1FSwimmer1AfterBattleText
+	text_far _SeafoamIslands1FHikerAfterBattleText
 	text_end
 
 SeafoamIslands1FPokemaniacText:
@@ -185,7 +185,7 @@ SeafoamIslands1FPokemaniacBattleText:
 	ld hl, .RivalMiniBoss
 	ret
 .Normal
-	text_far _SeafoamIslands1FSwimmer1BattleText
+	text_far _SeafoamIslands1FPokemaniacBattleText
 	text_end
 .RivalMiniBoss
 	text_far _RivalMiniBossBattleText
@@ -200,7 +200,7 @@ SeafoamIslands1FPokemaniacEndBattleText:
 	ld hl, .RivalMiniBoss
 	ret
 .Normal
-	text_far _SeafoamIslands1FSwimmer1EndBattleText
+	text_far _SeafoamIslands1FPokemaniacEndBattleText
 	text_end
 .RivalMiniBoss
 	text_far _RivalMiniBossEndBattleText
@@ -257,5 +257,5 @@ SeafoamIslands1FNoTurningBackText:
 	text_end
 
 SeafoamIslands1FBossAfterText:
-	text_far _SeafoamIslands1FSwimmer1AfterBattleText
+	text_far _SeafoamIslands1FPokemaniacAfterBattleText
 	text_end

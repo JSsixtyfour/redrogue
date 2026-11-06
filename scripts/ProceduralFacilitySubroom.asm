@@ -9,10 +9,13 @@ ProceduralFacilitySubroom_Script:
 	; The Super Nerd's battle, if one just ended: record a win and hand over
 	; the prize (facility_subroom.asm).
 	farcall FacSuperNerdSettle
-	ret nc
+	jr nc, .optional
 	ld a, TEXT_FACSUBROOM_PRIZE
 	ldh [hTextID], a
-	jp DisplayTextID
+	call DisplayTextID
+.optional
+	farcall OptionalEncounterMapScript
+	ret
 
 ProceduralFacilitySubroom_TextPointers:
 	def_text_pointers
@@ -20,7 +23,16 @@ ProceduralFacilitySubroom_TextPointers:
 	; (audit_map_text_id_slots.py).
 	dw_const FacSubroomSuperNerdText, TEXT_FACSUBROOM_SUPER_NERD
 	dw_const FacSubroomBallText,      TEXT_FACSUBROOM_BALL
+	dw_const FacSubroomOptionalText,  TEXT_FACSUBROOM_OPTIONAL
 	dw_const FacSubroomPrizeText,     TEXT_FACSUBROOM_PRIZE
+	dw_const FacSubroomOptionalOffer, TEXT_FACSUBROOM_OPTIONAL_OFFER
+
+FacSubroomOptionalText:
+	text_far FGEncounterText
+	text_end
+FacSubroomOptionalOffer:
+	text_far FGEncounterOffer
+	text_end
 
 FacSubroomSuperNerdText:
 	text_asm

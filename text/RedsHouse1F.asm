@@ -49,8 +49,7 @@ _MomGift1Desc::
 	done
 
 _MomGift2Desc::
-	text "A gift from"
-	line "home!"
+	text "The egg #MON."
 	done
 
 _MomGift3Desc::
@@ -59,7 +58,7 @@ _MomGift3Desc::
 	done
 
 _MomGift4Desc::
-	text "Teaches one #MON"
+	text "Tutors one #MON"
 	line "RECOVER"
 	done
     

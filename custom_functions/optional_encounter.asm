@@ -99,6 +99,137 @@ OptionalCaveOutcome::
 	ld [wOptionalEncounterMap], a
 	ret
 
+; PFacPreload, SRAM bank 1 open and left open. The roll is here and not at
+; generation because the sprite is patched before a fresh Facility generates:
+; rolled later, the first entry draws nothing. Clears first: nothing else resets
+; it between Facilities. Debug 2 forces it on palette 1, as the cave forces its
+; own on one theme.
+OptionalFacilityAssignEncounter::
+	ld a, [wCurEnemyLevel]          ; the shared level calculation writes it
+	push af
+	call OptionalEncounterClear
+IF DEF(_DEBUG)
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG2_MODE, a
+	jr z, .production
+	ld a, [sProcFacilityPalette]
+	cp 1
+	jr nz, .done
+	call OptionalForcePsychic
+	jr .done
+.production
+ENDC
+	ld c, 100
+	call Rangerandom
+	call OptionalFacilityOutcome
+.done
+	pop af
+	ld [wCurEnemyLevel], a
+	jp OptionalFacilityOpenSRAM
+
+; PFacFinalize's first visit, last of all; SRAM bank 1 open and left open. It
+; stands in the Facility itself, on a block picked by the rule the pads and the
+; Super Nerd use. Only a Facility with no such block sends it to the warp room,
+; and one with neither goes without. The 90% that rolled nothing skip the search.
+OptionalFacilityPlaceEncounter::
+	call OptionalEncounterIsCurrent
+	ret nc
+	call OptionalFacilityFindSpot
+.haveSpot
+	ret c
+	call OptionalEncounterHide      ; patched already, and it is not staying
+	ld a, [sProcFacilityGenScratch + FACSUB_SCRATCH_PAD]
+	cp NUM_FACILITY_PAD_SITES
+	jp nc, OptionalEncounterClear
+	ld a, PROCEDURAL_FACILITY_SUBROOM
+	ld [wOptionalEncounterMap], a
+	ret
+
+; A uniform pick over every block PFacPadBlockValid passes, in one pass: the k-th
+; passing block replaces the pick with odds 1/k. Never the Super Nerd's block.
+; Out: carry = found, in FACSUB_SCRATCH_MON_X/Y. SRAM bank 1 stays open.
+OptionalFacilityFindSpot:
+	call OptionalFacilityOpenSRAM
+	ld b, 0                         ; blocks passed so far
+	ld e, FACSUB_FALLBACK_TOP
+.row
+	ld d, 1
+.block
+	push bc
+	farcall PFacPadBlockValid       ; carry = it passes; keeps d/e
+	pop bc                          ; keeps the carry
+	jr nc, .next
+	ld a, [sProcFacilityGenScratch + FACSUB_SCRATCH_PIECE]
+	xor FACSUB_FALLBACK
+	cp d
+	jr nz, .notNerd
+	ld a, [sProcFacilityGenScratch + FACSUB_SCRATCH_PAD]
+	xor FACSUB_FALLBACK_ROW
+	cp e
+	jr z, .next
+.notNerd
+	inc b
+	jr nz, .count
+	dec b                           ; 255 is plenty: keep the odds byte valid
+.count
+	ld c, b
+	call Rangerandom                ; keeps bc and de
+	and a
+	jr nz, .next
+	ld a, d
+	ld [sProcFacilityGenScratch + FACSUB_SCRATCH_MON_X], a
+	ld a, e
+	ld [sProcFacilityGenScratch + FACSUB_SCRATCH_MON_Y], a
+.next
+	inc d
+	ld a, d
+	cp FACSUB_FALLBACK_MAX + 1
+	jr c, .block
+	inc e
+	ld a, e
+	cp FACSUB_FALLBACK_MAX + 1
+	jr c, .row
+	ld a, b
+	and a
+	ret z                           ; carry clear
+	scf
+	ret
+
+; A=unbiased0..99. 10%.
+OptionalFacilityOutcome::
+	cp 10
+	ret nc
+	; fall through
+
+; Psyduck evolves at 33 (data/pokemon/evos_moves.asm; test_optional_facility
+; holds this to it). The package carries its support move, rolled once here so
+; the battle and the gift agree.
+OptionalForcePsychic::
+	call OptionalForcePink
+	ld a, [wOptionalEncounterLevel]
+	cp 33
+	ld a, PSYDUCK
+	jr c, .species
+	ld a, GOLDUCK
+.species
+	ld [wOptionalEncounterSpecies], a
+	ld c, NUM_OPTIONAL_PSYCHIC_PACKAGES
+	call Rangerandom
+	add OPTIONAL_PACKAGE_PSYCHIC
+	ld [wOptionalEncounterPackage], a
+	ld a, PROCEDURAL_FACILITY
+	ld [wOptionalEncounterMap], a
+	ret
+
+OptionalFacilityOpenSRAM:
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sProcFacilityGenScratch)
+	ld [rRAMB], a
+	ret
+
 OptionalForceSnorlax::
 	call OptionalForcePink ; shared reset and reduced-level calculation
 	ld a, SNORLAX
@@ -123,6 +254,8 @@ OptionalEncounterAssigned::
 	ld a, [wOptionalEncounterPackage]
 	cp 1
 	jr z, .pink
+	cp OPTIONAL_PACKAGE_PSYCHIC
+	jr nc, .psychic
 	sub 2
 	cp 2
 	jr nc, .no
@@ -130,6 +263,15 @@ OptionalEncounterAssigned::
 	cp SNORLAX
 	ret z
 	cp ONIX
+	ret z
+	jr .no
+.psychic
+	cp OPTIONAL_PACKAGE_PSYCHIC + NUM_OPTIONAL_PSYCHIC_PACKAGES
+	jr nc, .no
+	ld a, [wOptionalEncounterSpecies]
+	cp PSYDUCK
+	ret z
+	cp GOLDUCK
 	ret z
 	jr .no
 .pink
@@ -201,11 +343,17 @@ OptionalEncounterPatchSprite::
 	ret
 
 OptionalSpriteAddress:
-	ld hl, wSprite01StateData1
 	ldh a, [hCurMap]
-	cp PROCEDURAL_CAVE_SUBROOM
-	ret nz
+	ld hl, wSprite{d:FACILITY_OPTIONAL_MON}StateData1
+	cp PROCEDURAL_FACILITY
+	ret z
+	ld hl, wSprite03StateData1
+	cp PROCEDURAL_FACILITY_SUBROOM
+	ret z
 	ld hl, wSprite06StateData1
+	cp PROCEDURAL_CAVE_SUBROOM
+	ret z
+	ld hl, wSprite01StateData1
 	ret
 
 OptionalEncounterHide::
@@ -259,7 +407,14 @@ OptionalEncounterEnemyFlags::
 	ld a, [wOptionalEncounterPackage]
 	cp 2
 	jr c, .done
-	set BIT_TYPE_VARIANT, e ; cold packages have no special stat capability
+	set BIT_TYPE_VARIANT, e ; these packages have no special stat capability
+	cp OPTIONAL_PACKAGE_PSYCHIC
+	jr c, .cold
+	ld a, WATER
+	ld [wEnemyMonType1], a
+	ld a, PSYCHIC_TYPE
+	jr .type2
+.cold
 	ld a, ICE
 	ld [wEnemyMonType1], a
 	ld a, [wOptionalEncounterSpecies]

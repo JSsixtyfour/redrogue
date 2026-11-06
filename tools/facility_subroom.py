@@ -17,8 +17,10 @@ until every piece is covered. Per piece it then picks:
   - the Super Nerd's tile, talked to from the tile below (so he faces down),
     nearest the room's centre,
   - the item ball's tile, far from the pad and from him,
+  - the optional encounter Pokemon's tile, reachable from a free side (below if
+    possible), far from him and the ball (solved last, so it never moves them),
 each one blocking no path: everything walkable from the pad stays walkable with
-both standing there. Pieces are weighted by interior area / 3 (this prefers
+all of them standing there. Pieces are weighted by interior area / 3 (this prefers
 larger rooms; a byte-sized pick list holds the result). A piece with no valid
 spot is left out (listed on stderr). The ROM reads the generated files; it checks nothing itself.
 
@@ -39,6 +41,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 GEN_ASM = ROOT / "custom_functions" / "procedural_facility_gen.asm"
 OUT_ASM = ROOT / "data" / "maps" / "facility_subroom_pieces.asm"
+OUT_SPOTS = ROOT / "data" / "maps" / "facility_subroom_mon_spots.asm"
 OUT_CONST = ROOT / "constants" / "facility_subroom_constants.asm"
 MAP_BLK = ROOT / "maps" / "ProceduralFacilitySubroom.blk"
 
@@ -194,7 +197,21 @@ def solve_residents(s, landing_index, landings, blockset) -> None:
     if not balls:
         raise SystemExit(f"{s['file']}: no tile for the item ball")
     *_, by, bx = balls[0]
-    s.update(landing=landing_index, pad=pad, nerd=nerd, ball=(bx, by), walk=walk)
+    ball = (bx, by)
+    # Talked to from below where possible; the smallest room only has a tile
+    # reachable from another side, so a side is the tiebreak, not a rule.
+    mons = sorted(
+        ((x, y + 1) not in walk or (x, y + 1) in (nerd, ball),
+         -(abs(x - nx) + abs(y - ny)) - (abs(x - bx) + abs(y - by)), y, x)
+        for x, y in walk
+        if (x, y) not in (nerd, ball, talk)
+        and any(n in walk and n not in (nerd, ball) for n in neighbours((x, y)))
+        and connected_from_pad(walk, pad, {nerd, ball, (x, y)})
+        and any(n in walk and n not in (nerd, (x, y)) for n in neighbours(ball)))
+    if not mons:
+        raise SystemExit(f"{s['file']}: no tile for the optional encounter Pokemon")
+    *_, my, mx = mons[0]
+    s.update(landing=landing_index, pad=pad, nerd=nerd, ball=ball, mon=(mx, my), walk=walk)
 
 
 def solve_all(blockset: bytes) -> tuple[list[dict], list[tuple[int, int]]]:
@@ -224,6 +241,7 @@ def draw(s: dict) -> str:
         for tx in range(2 * MAP_W):
             t = (tx, ty)
             row += ("N" if t == s["nerd"] else "o" if t == s["ball"] else
+                    "M" if t == s["mon"] else
                     "P" if t == s["pad"] else "." if t in s["walk"] else "#")
         lines.append(row)
     return "\n".join(lines)
@@ -273,6 +291,20 @@ def generate_table(placed) -> str:
     return "\n".join(out) + "\n"
 
 
+def generate_mon_spots(placed) -> str:
+    # Apart from the piece rows: their bank ($3F) has no room for two more bytes a
+    # row, and only the optional encounter, in $26, reads these.
+    out = [GENERATED.rstrip("\n"), ";",
+           "; The optional encounter Pokemon's tile per piece, in FacSubroomPieces order:",
+           "; db x, y. Proven by the tool with the Super Nerd and the ball standing too.",
+           f"DEF FACSUB_NUM_MON_SPOTS EQU {len(placed)}",
+           "",
+           "FacSubroomMonSpots:"]
+    for s in placed:
+        out.append("\tdb {}, {} ; {}".format(s["mon"][0], s["mon"][1], s["file"]))
+    return "\n".join(out) + "\n"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--show", action="store_true")
@@ -288,9 +320,10 @@ def main() -> int:
         for s in placed:
             print(f"{s['file']} at ({s['x']},{s['y']}) landing {s['landing']} weight {s['weight']}")
             print(draw(s), end="\n\n")
-    outputs = {OUT_CONST: generate_constants(landings), OUT_ASM: generate_table(placed)}
+    outputs = {OUT_CONST: generate_constants(landings), OUT_ASM: generate_table(placed),
+               OUT_SPOTS: generate_mon_spots(placed)}
     if args.check:
-        stale = [p for p, text in outputs.items() if p.read_text(encoding="utf-8") != text]
+        stale = [p for p, text in outputs.items() if not p.exists() or p.read_text(encoding="utf-8") != text]
         for p in stale:
             print(f"{p.relative_to(ROOT)} is stale: rerun tools/facility_subroom.py")
         return 1 if stale else 0

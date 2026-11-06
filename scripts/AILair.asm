@@ -189,29 +189,22 @@ AILairPatchMirrorSprite::
 AILair_TextPointers:
 	def_text_pointers
 	dw_const AILairOpponentText, TEXT_AILAIR_OPPONENT
-	dw_const AILairOpeningText, TEXT_AILAIR_OPENING
+	dw_const AILairOpponentText, TEXT_AILAIR_OPENING ; the same line as talking to it
 	dw_const AILairPostBattleText, TEXT_AILAIR_POSTBATTLE
 
 AILairOpponentText:
-	text "I know you better"
-	line "than yourself,"
-	cont "prepare to lose."
-	prompt
-
-AILairOpeningText:
-	text "I know you better"
-	line "than yourself,"
-	cont "prepare to lose."
+	text "This attempt is"
+	line "futile. Give up."
 	prompt
 
 AILairDefeatedText:
-	text "Impossible!"
-	line "You outsmarted me."
+	text "ERROR47;'IX)42"
+	line "!dzP"
 	prompt
 
 AILairVictoryText:
-	text "As expected."
-	line "You need more"
+	text "Thank you, my"
+	line "model needed that"
 	cont "training."
 	prompt
 

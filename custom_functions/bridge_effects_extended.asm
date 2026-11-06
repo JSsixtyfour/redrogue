@@ -466,7 +466,54 @@ ApplySpecialForm::
 SpecialFormTypeOverrides:
 	db ONIX, ICE, GROUND
 	db SNORLAX, ICE, ICE
+	db PSYDUCK, WATER, PSYCHIC_TYPE
+	db GOLDUCK, WATER, PSYCHIC_TYPE
 	db 0
+
+; The Warden's DETOX, reached through BridgeGrantSelectedEffect with the party
+; picker already answered. A second POISON type goes; the mon keeps its first.
+; Bit 2 makes the stored monotype outlive evolution and every header reload, and
+; IsPoisonStrippedMon keeps that bit from recolouring it. Out: carry = stripped.
+BridgeStripPoisonFar::
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld bc, MON_TYPE1
+	add hl, bc
+	ld a, [hli]
+	cp POISON
+	jr z, .reject                  ; pure POISON, or POISON first: not a second type
+	ld c, a
+	ld a, [hl]
+	cp POISON
+	jr nz, .reject
+	ld [hl], c                     ; MON_TYPE2 = MON_TYPE1
+	inc hl                         ; MON_CATCH_RATE
+	set BIT_TYPE_VARIANT, [hl]
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMonNicks
+	call GetPartyMonName
+	ld hl, .strippedText
+	call PrintText
+	scf
+	ret
+.reject
+	ld hl, .rejectText
+	call PrintText
+	and a
+	ret
+.strippedText
+	text "@"
+	text_ram wNameBuffer
+	text " lost"
+	line "its POISON type!"
+	prompt
+.rejectText
+	text "That #MON has no"
+	line "secondary POISON"
+	cont "type!"
+	prompt
 
 ; Restore an owned type variant's complete type pair after a species-header
 ; reload. Same-species guard matches the loaded instance; no new RAM context.
@@ -482,4 +529,131 @@ ApplyStoredTypeVariantToHeader::
 	ld [wMonHType1], a
 	ld a, [wLoadedMon + MON_TYPE2]
 	ld [wMonHType2], a
+	ret
+
+; ---------------------------------------------------------------------------
+; GetTypeVariantPalette
+; INPUT:  de = struct base
+; OUTPUT: e = 0 if NOT a type variant; otherwise the palette id to use,
+;         derived from the stored MON_TYPE2 (WATER->blue, ROCK->gray,
+;         DRAGON->black, PSYCHIC->pink, anything else defaults to blue).
+;         A poison-stripped mon returns 0 too, though it is a variant: it keeps
+;         its own colours (IsPoisonStrippedMon).
+;         Returned in E, not a (farcall clobbers a on entry/exit - see
+;         GetSpecialFormCaps). Callers test `ld a, e / and a / jr z` to skip.
+; CLOBBERS: af, hl, e  (bc, d preserved)
+; ---------------------------------------------------------------------------
+GetTypeVariantPalette::
+	ld hl, MON_CATCH_RATE
+	add hl, de
+	bit BIT_TYPE_VARIANT, [hl]
+	jr z, .none
+	call IsPoisonStrippedMon
+	jr nz, .variant
+.none
+	ld e, 0
+	ret
+.variant
+	ld hl, MON_TYPE2
+	add hl, de
+	ld a, [hl]
+	cp ROCK
+	jr z, .rock
+	cp DRAGON
+	jr z, .dragon
+	cp PSYCHIC_TYPE
+	jr z, .psychic
+	ld e, PAL_BLUEMON ; WATER and any future secondary type -> blue
+	ret
+.psychic
+	ld e, PAL_PINKMON
+	ret
+.rock
+	ld e, PAL_GRAYMON
+	ret
+.dragon
+	ld e, PAL_BLACK
+	ret
+
+; A type variant holding one type twice lost its second type to the Warden's
+; DETOX, so bit 2 is only keeping its types and nothing should show. Ice is the
+; exception: Ice Snorlax is an authored monotype and stays blue. No poison family
+; has an Ice first type (a fusion can; it just turns blue, its types still right).
+; INPUT: de = struct of a mon with BIT_TYPE_VARIANT set
+; OUTPUT: Z = stripped. CLOBBERS: af, hl
+IsPoisonStrippedMon:
+	ld hl, MON_TYPE1
+	add hl, de
+	ld a, [hli]
+	cp [hl]
+	ret nz
+	cp ICE
+	jr z, .authored
+	xor a
+	ret
+.authored
+	or a                ; ICE is nonzero: NZ
+	ret
+
+; Draw the single per-instance marker cell on the battle HUD. Type variants
+; have priority over Ghost, and Ghost has priority over shiny. This matches
+; the project's one-visible-variant rule while retaining a generic fallback
+; for future type variants.
+; INPUT: e = 1 for enemy HUD, -1 for player HUD (from PlaceHUDTiles)
+; CLOBBERS: af, bc, de, hl
+DrawBattleVariantMarker::
+	ld a, e
+	cp 1
+	jr z, .enemy
+	ld de, wBattleMon
+	hlcoord 13, 8
+	jr .classify
+.enemy
+	ld de, wEnemyMon
+	hlcoord 9, 1
+.classify
+	push hl
+	ld hl, MON_CATCH_RATE
+	add hl, de
+	ld a, [hl]
+	bit BIT_TYPE_VARIANT, a
+	jr nz, .typeVariant
+	bit BIT_GHOST_VARIANT, a
+	jr nz, .ghost
+	bit BIT_SHINY, a
+	jr nz, .shiny
+	pop hl
+	ret
+.typeVariant
+	call IsPoisonStrippedMon
+	jr nz, .recoloured
+	ld hl, MON_CATCH_RATE         ; stripped: no type mark, but it can be shiny
+	add hl, de
+	bit BIT_SHINY, [hl]
+	jr nz, .shiny
+	pop hl
+	ret
+.recoloured
+	ld hl, MON_TYPE2
+	add hl, de
+	ld a, [hl]
+	ld c, '<HUD_WATER>'
+	cp WATER
+	jr z, .draw
+	ld c, '<HUD_ROCK>'
+	cp ROCK
+	jr z, .draw
+	ld c, '<HUD_DRAGON>'
+	cp DRAGON
+	jr z, .draw
+	ld c, '<HUD_VARIANT>'
+	jr .draw
+.ghost
+	ld c, '<HUD_GHOST>'
+	jr .draw
+.shiny
+	ld c, '<HUD_SHINY>'
+.draw
+	pop hl
+	ld [hl], c
 	ret

@@ -362,6 +362,7 @@ DEF NUM_DEX_IDENTITIES EQU NUM_POKEMON + NUM_DEX_FORMS
 	const SPECIAL_CRYSTAL           ; b
 	const SPECIAL_ICE               ; c
 	const SPECIAL_DRAGON            ; d
+	const SPECIAL_PSYCHIC           ; e
 DEF NUM_SPECIAL_IDENTITIES EQU const_value
 ASSERT NUM_SPECIAL_IDENTITIES <= 16, "wSpecialCollected holds 16 flags (save layout change)"
 

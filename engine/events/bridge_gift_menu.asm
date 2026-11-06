@@ -1427,7 +1427,7 @@ MrFujiGiftList:
 	db 8
 	gift_entry GIFT_ITEM,       POKE_FLUTE,         MrFujiGift1_Text, MrFujiGift1_Desc
 	gift_entry GIFT_SPECIAL,    BridgeMrFujiRescue, MrFujiGift2_Text, MrFujiGift2_Desc
-	gift_entry GIFT_MON_EVOLVE, CUBONE | (1 << 8),      MrFujiGift3_Text, MrFujiGift3_Desc
+	gift_entry GIFT_MON_EVOLVE, CUBONE | (1 << 8),      NoThanksText, MrFujiGift3_Desc
 	gift_entry GIFT_SPECIAL,    BridgeMrFujiGeneSplice, MrFujiGift4_Text, MrFujiGift4_Desc
 	gift_entry GIFT_TEACH_MOVE, NIGHT_SHADE,        MrFujiGift5_Text, MrFujiGift5_Desc
 	gift_entry GIFT_TEACH_MOVE, CONFUSE_RAY,        MrFujiGift6_Text, MrFujiGift6_Desc
@@ -1469,7 +1469,7 @@ FanClubChairmanGiftList:
 	gift_entry GIFT_ITEM, MIST_STONE, FanClubGift8_Text, FanClubGift8_Desc
 
 WardenGiftList:
-	db 7
+	db 8
 	gift_entry GIFT_ITEM, HM_STRENGTH, WardenGift1_Text, WardenGift1_Desc
 	gift_entry GIFT_MON,  KANGASKHAN,  WardenGift2_Text, WardenGift2_Desc
 	gift_entry GIFT_ITEM, HM_SURF,  WardenGift3_Text, WardenGift3_Desc
@@ -1477,6 +1477,7 @@ WardenGiftList:
     gift_entry GIFT_ITEM, BIG_NUGGET,  WardenGift5_Text, WardenGift5_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_ATTACK_BOOST, WardenGift6_Text, WardenGift6_Desc
 	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_SELECTED_EFFECT_FLINCH, WardenGift7_Text, WardenGift7_Desc
+	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_GIFT_STRIP_POISON, WardenGift8_Text, WardenGift8_Desc
 
 SchoolCooltrainerGiftList:
 	db 8
@@ -1536,8 +1537,7 @@ IgaGiftList:
 	gift_entry GIFT_TEACH_MOVE, POISON_GAS, IgaGift8_Text, IgaGift8_Desc
 
 FloraGiftList: ; Flora's Grotto roster.
-	db 9
-	gift_entry GIFT_ITEM, NUGGET,     FloraGift1_Text, FloraGift1_Desc
+	db 8
 	gift_entry GIFT_MON_EVOLVE, ODDISH | (BRIDGE_MON_FINALIZE_SPORE << 8), NoThanksText, FloraGift2_Desc
 	gift_entry GIFT_ITEM, MOON_STONE, FloraGift3_Text, FloraGift3_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_DRAINING, FloraGift4_Text, FloraGift4_Desc
@@ -1577,7 +1577,6 @@ BillGift7_Text: db "THUNDERBOLT TM@"
 
 MrFujiGift1_Text: db "POKé FLUTE@"
 MrFujiGift2_Text: db "#MON RESCUE@"
-MrFujiGift3_Text: db "THICK CLUB@" ; unused - GIFT_MON_EVOLVE renders the label dynamically
 MrFujiGift4_Text: db "GENE SPLICING@"
 MrFujiGift5_Text: db "NIGHTSHADE TUTOR@"
 MrFujiGift6_Text: db "CONFUSE RAY TUTOR@"
@@ -1594,7 +1593,6 @@ CaptainGift8_Text: db "CRIT TRAINING@"
 CaptainGift9_Text: db "CRIT MASTERY@"
 
 FossilGift2_Text: db "FOSSILIZATION@"
-FossilGift3_Text: db "FIRE STONE@"
 FossilGift5_Text: db "AERODACTYL@"
 FossilGift6_Text: db "PORYGON@"
 FossilGift7_Text: db "METRONOME TM@"
@@ -1617,6 +1615,7 @@ WardenGift4_Text: db "TAUROS@"
 WardenGift5_Text: db "BIG NUGGET@"
 WardenGift6_Text: db "ATTACK BADGE@"
 WardenGift7_Text: db "STAGGERING BLOWS@"
+WardenGift8_Text: db "DETOX@"
 
 SchoolGift1_Text: db "SHARPEN TUTOR@"
 SchoolGift2_Text: db "CALCIUM@"
@@ -1661,9 +1660,8 @@ IgaGift6_Text: db "LIFE ORB@"
 IgaGift7_Text: db "SHADOW STEP@"
 IgaGift8_Text: db "POISON GAS@"
 
-FloraGift1_Text: db "NUGGET@"
 FloraGift3_Text: db "MOON STONE@"
-FloraGift4_Text: db "VERDANT DRAIN@"
+FloraGift4_Text: db "BIG ROOT@"
 FloraGift5_Text: db "IMMUNITY@"
 FloraGift6_Text: db "LEECH SEED@"
 FloraGift7_Text: db "MEGA DRAIN TM@"
@@ -1775,9 +1773,6 @@ FossilGift1_Desc:
 FossilGift2_Desc:
 	text_far _FossilGift2Desc
 	text_end
-FossilGift3_Desc:
-	text_far _FossilGift3Desc
-	text_end
 FossilGift4_Desc:
 	text_far _FossilGift4Desc
 	text_end
@@ -1882,9 +1877,6 @@ IgaGift3_Desc:
 	text_far _IgaGift3Desc
 	text_end
 
-FloraGift1_Desc:
-	text_far _FloraGift1Desc
-	text_end
 FloraGift2_Desc:
 	text_far _FloraGift2Desc
 	text_end
@@ -1921,6 +1913,7 @@ ENDM
 	bridge_new_desc FanClubGift8
 	bridge_new_desc WardenGift6
 	bridge_new_desc WardenGift7
+	bridge_new_desc WardenGift8
 	bridge_new_desc SchoolGift4
 	bridge_new_desc SchoolGift5
 	bridge_new_desc SchoolGift6

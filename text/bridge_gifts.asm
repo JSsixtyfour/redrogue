@@ -38,8 +38,13 @@ _WardenGift7Desc::
 	line "20% flinch chance"
 	done
 
+_WardenGift8Desc::
+	text "Remove a secondary"
+	line "POISON type"
+	done
+
 _SchoolGift4Desc::
-	text "A"
+	text "A gift"
 	line "@"
 	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
 	text_end
@@ -123,7 +128,7 @@ _MomGift7Desc::
 	done
 
 _MomGift8Desc::
-	text "A"
+	text "A gift"
 	line "@"
 	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
 	text_end

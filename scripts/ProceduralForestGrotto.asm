@@ -17,13 +17,20 @@ OptionalEncounterMapScript::
 	ld hl, wOptionalEncounterState
 	set BIT_OPTIONAL_OFFER_SHOWN, [hl] ; full storage retry is by talking
 	call Delay3
-	ld a, TEXT_PROCEDURALFORESTGROTTO_OFFER
-	ld b, a
 	ldh a, [hCurMap]
+	ld b, a
 	cp PROCEDURAL_CAVE_SUBROOM
-	ld a, b
-	jr nz, .offerID
 	ld a, TEXT_CAVESUB_OPTIONAL_OFFER
+	jr z, .offerID
+	ld a, b
+	cp PROCEDURAL_FACILITY_SUBROOM
+	ld a, TEXT_FACSUBROOM_OPTIONAL_OFFER
+	jr z, .offerID
+	ld a, b
+	cp PROCEDURAL_FACILITY
+	ld a, TEXT_PROCEDURALFACILITY_OPTIONAL_OFFER
+	jr z, .offerID
+	ld a, TEXT_PROCEDURALFORESTGROTTO_OFFER
 .offerID
 	ldh [hTextID], a
 	call DisplayTextID
@@ -33,7 +40,7 @@ OptionalEncounterMapScript::
 	; Dispatching index0 here would overwrite its pending reward index.
 	ld a, [wOptionalEncounterScript]
 	and a
-	ret z
+	jp z, OptionalEncounterContact
 	call EnableAutoTextBoxDrawing
 	ld hl, FGEncounterHeader
 	ld de, .pointers
@@ -56,7 +63,7 @@ FGEndEncounterBattle:
 	jp EndTrainerBattle
 
 FGEncounterHeader:
-	db BIT_OPTIONAL_DEFEATED, 0 ; talk-only; explicitly used by slots1 or6
+	db BIT_OPTIONAL_DEFEATED, 0 ; no sight range; used by slots 1, 3, 6 or 13
 	dw wOptionalEncounterState
 	dw FGEncounterCry, FGEncounterOffer ; before, after
 	dw FGEncounterEndText, FGEncounterEndText ; win, loss
@@ -93,8 +100,8 @@ FGEncounterCry:
 	jp TextScriptEnd
 
 ; Join offer only: special display names (the encounter line and battle keep
-; the normal species names). The Butterfree name is too long for one line.
-; In: hl = table of 3 text pointers (Onix, Snorlax, Butterfree).
+; the normal species names). The longer names need a line of their own.
+; In: hl = table of 5 text pointers (Onix, Snorlax, Psyduck, Golduck, Butterfree).
 ; Out: hl = selected pointer. Clobbers a, bc.
 FGPickSpecialText:
 	ld a, [wOptionalEncounterSpecies]
@@ -103,6 +110,12 @@ FGPickSpecialText:
 	jr z, .pick
 	inc c
 	cp SNORLAX
+	jr z, .pick
+	inc c
+	cp PSYDUCK
+	jr z, .pick
+	inc c
+	cp GOLDUCK
 	jr z, .pick
 	inc c
 .pick
@@ -147,7 +160,7 @@ FGEncounterOffer:
 	jp TextScriptEnd
 
 FGJoinTexts:
-	dw .onix, .snowlax, .pink
+	dw .onix, .snowlax, .psyduck, .golduck, .pink
 .onix
 	text "The wild"
 	line "CRYSTAL ONIX wants"
@@ -158,6 +171,18 @@ FGJoinTexts:
 	text "The wild"
 	line "SNOWLAX wants"
 	cont "to join your"
+	cont "party!@"
+	text_end
+.psyduck
+	text "The wild"
+	line "PSYCHIC PSYDUCK"
+	cont "wants to join your"
+	cont "party!@"
+	text_end
+.golduck
+	text "The wild"
+	line "PSYCHIC GOLDUCK"
+	cont "wants to join your"
 	cont "party!@"
 	text_end
 .pink

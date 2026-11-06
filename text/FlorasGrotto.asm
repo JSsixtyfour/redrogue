@@ -9,11 +9,6 @@ _FlorasGrottoFloraAlreadyGotText::
 	line "keep flourishing!"
 	done
 
-_FloraGift1Desc::
-	text "Solid gold -"
-	line "sells for a lot!"
-	done
-
 _FloraGift2Desc::
 	text "@"
 	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc

@@ -14,9 +14,7 @@ INCLUDE "data/maps/facility_subroom_pieces.asm"
 
 ; The rolled piece and the Facility pad site leading here. sProcFacilityGenScratch's
 ; bytes 0-7 held the ball coordinates until PFacFinalize's .ballSave; the pads
-; keep 0-1 and the spinner 2-5, and 6-7 are free from there on.
-DEF FACSUB_SCRATCH_PIECE EQU 6
-DEF FACSUB_SCRATCH_PAD   EQU 7 ; = PFAC_SUBROOM_PAD (procedural_facility_gen.asm)
+; keep 0-1 and the spinner 2-5, and 6-7 (FACSUB_SCRATCH_*) are free from there on.
 
 DEF FACSUB_STRIDE_BLOCKS EQU FACSUB_MAP_W + 6 ; wOverworldMap row, border included
 
@@ -555,11 +553,7 @@ FacSubCloseSRAM:
 ; Byte 7 at or above NUM_FACILITY_PAD_SITES already means "no subroom pad" to
 ; every reader; $FF in both means no spot at all.
 ; ------------------------------------------------------------
-DEF FACSUB_FALLBACK     EQU $80
-DEF FACSUB_FALLBACK_ROW EQU $40
 ASSERT FACSUB_FALLBACK_ROW >= NUM_FACILITY_PAD_SITES
-DEF FACSUB_FALLBACK_TOP EQU 3   ; rows 0-2 hold the exit and the boss, as for pad sites
-DEF FACSUB_FALLBACK_MAX EQU 18  ; the block's E/S/SE neighbours stay on the map
 
 ; FacSubroomGenerate's tail, SRAM bank 1 open (and left open).
 FacSuperNerdFallbackGenerate:

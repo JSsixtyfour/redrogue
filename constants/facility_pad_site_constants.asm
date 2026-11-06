@@ -20,11 +20,26 @@ DEF FACILITY_FIRST_PAD_WARP EQU 3 ; after the entrance and the two exit tiles
 DEF FACILITY_PAD_MIN_DISTANCE EQU 8 ; blocks, Manhattan, between a pair's ends
 DEF FACILITY_PAD_BLOCK EQU $2F
 DEF FACILITY_PAD_NONE EQU $FF
+; The rolled subroom piece and the pad site leading there, in
+; sProcFacilityGenScratch. The pads keep bytes 0-1 and the spinner 2-5.
+DEF FACSUB_SCRATCH_PIECE EQU 6
+DEF FACSUB_SCRATCH_PAD   EQU 7 ; = PFAC_SUBROOM_PAD (procedural_facility_gen.asm)
+; The optional encounter's block in the Facility. These are room 1's W and H, read
+; only while generating; OptionalFacilityAssignEncounter runs after all of that.
+DEF FACSUB_SCRATCH_MON_X EQU 8
+DEF FACSUB_SCRATCH_MON_Y EQU 9
+; The Super Nerd's fallback block, in the two scratch bytes above them, and the
+; blocks a Facility object may stand on.
+DEF FACSUB_FALLBACK     EQU $80
+DEF FACSUB_FALLBACK_ROW EQU $40
+DEF FACSUB_FALLBACK_TOP EQU 3   ; rows 0-2 hold the exit and the boss, as for pad sites
+DEF FACSUB_FALLBACK_MAX EQU 18  ; the block's E/S/SE neighbours stay on the map
 ; The Super Nerd's object slot in the Facility, used only when a Facility got no
 ; subroom pad (custom_functions/facility_subroom.asm, the fallback). The
 ; objects file ASSERTs it. Named like an object const on purpose: the save
 ; converter finds a toggle's new-game default by TOGGLE_<object name>.
 DEF FACILITY_SUPER_NERD EQU 12
+DEF FACILITY_OPTIONAL_MON EQU 13
 
 DEF NUM_FACILITY_PAD_SITES = 0
 MACRO pad_site

@@ -1,12 +1,24 @@
 _CeruleanTrashedHouseFishingGuruTheyStoleATMText::
-	text "Stay sharp out"
-	line "there, TRAINER!"
+	text "Stay safe out"
+	line "there, <PLAYER>!"
 	done
 
 _CeruleanTrashedHouseFishingGuruWhatsLostIsLostText::
-	text "I'm OFFICER JENNY."
-	line "I keep the peace"
-	cont "here in CERULEAN."
+	text "These poor people"
+	line "here were robbed."
+
+	para "We're positive"
+	line "that TEAM ROCKET"
+	cont "is behind this"
+	cont "terrible deed."
+
+	para "Even our POLICE"
+	line "FORCE has trouble"
+	cont "with the ROCKETs!"
+    
+    para "Oh? You'd like to"
+	line "help us? Here,"
+	cont "take this..."
 	prompt
 
 _CeruleanTrashedHouseGirlText::
@@ -22,12 +34,11 @@ _CeruleanTrashedHouseWallHoleText::
 	done
 
 _TrashedGift1Desc::
-	text "A refreshing"
-	line "LEMONADE"
+	text "Restores 80 HP"
 	done
 
 _TrashedGift2Desc::
-	text "A level-matched"
+	text "A gift"
 	line "@"
 	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
 	text_end

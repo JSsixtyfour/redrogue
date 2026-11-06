@@ -39,6 +39,8 @@ SpecialPackageRows:
 	special_package CHARMANDER, SPECIAL_DRAGON
 	special_package CHARMELEON, SPECIAL_DRAGON
 	special_package CHARIZARD,  SPECIAL_DRAGON
+	special_package PSYDUCK,    SPECIAL_PSYCHIC
+	special_package GOLDUCK,    SPECIAL_PSYCHIC
 	db 0
 
 ; (species, form) -> identity, for the form records that are no Dex entries.
@@ -238,8 +240,8 @@ SpecialDrawList:
 .Title
 	db "SPECIAL FORMS@"
 .OutOf
-	ASSERT NUM_SPECIAL_IDENTITIES == 14
-	db "/14@"
+	ASSERT NUM_SPECIAL_IDENTITIES == 15
+	db "/15@"
 
 ; ---------------------------------------------------------------------------
 ; SpecialShowPage: one entry. IN: a = identity. Modelled on LeaguePCShowMon: a

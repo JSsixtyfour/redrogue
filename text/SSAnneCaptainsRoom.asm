@@ -24,11 +24,6 @@ _SSAnneCaptainsRoomCaptainIFeelMuchBetterText::
 
 	para "I know! You can"
 	line "have this!"
-
-	para "Teach it to your"
-	line "#MON and you"
-	cont "can see it CUT"
-	cont "any time!"
 	prompt
 
 _SSAnneCaptainsRoomCaptainReceivedHM01Text::
@@ -89,10 +84,10 @@ _CaptainGift5Desc::
 	done
     
 _CaptainGift6Desc::
-	text "A sailing"
-	line "necessity"
+	text "The HIDDEN MACHINE"
+	line "SURF."
 	done
 _CaptainGift7Desc::
-	text "A sailing"
-	line "necessity"
+	text "Tutor any #MON"
+	line "to use CRABHAMMER"
 	done

@@ -143,17 +143,29 @@ ApplyBattleMonPalette:
 	jr nz, .ghost
 	bit BIT_SHINY, a
 	ret z
+.shiny
 	push hl
 	ld a, [hl]
 	call ShinyPaletteConvert
 	pop hl
 	jr .store
 .type
+	push de
 	push hl
 	farcall GetTypeVariantPalette
 	pop hl
 	ld a, e
-	jr .store
+	pop de
+	and a
+	jr nz, .store
+	; Poison-stripped: it keeps its own colours, shiny included.
+	push hl
+	ld hl, MON_CATCH_RATE
+	add hl, de
+	bit BIT_SHINY, [hl]
+	pop hl
+	ret z
+	jr .shiny
 .ghost
 	ld a, PAL_PURPLEMON
 .store

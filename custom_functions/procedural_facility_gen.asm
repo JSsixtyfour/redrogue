@@ -6240,6 +6240,8 @@ PFacPreload::
 .budgetNoClamp
     ld [wProcFacilityWildBudget], a
 
+    farcall OptionalFacilityAssignEncounter ; bank 1 stays open
+
     ; Reset reused run events (shared cave events; facility never concurrent).
     ResetEvent EVENT_BEAT_PC_BOSS
     ; Phase 7: the stage-event NPCs need the same per-preload reset the boss
@@ -6371,6 +6373,7 @@ PFacFinalize::
     ; free after .ballSave). Last, so they move no generation roll.
     call PFacPlaceSubroomPad
     farcall FacSubroomGenerate
+    farcall OptionalFacilityPlaceEncounter ; last too: its search moves nothing
 
     ; === Bake: copy wOverworldMap -> sProcFacilityStagingBuffer ===
     ld hl, wOverworldMap + PFAC_BASE

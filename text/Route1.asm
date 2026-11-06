@@ -95,11 +95,11 @@ _Route1Youngster6EndBattleText::
 
 _Route1Youngster6AfterBattleText::
 	text "Where did you get"
-	line "#MON?"
+	line "your #MON?"
 	done
     
 _Route1JrTrainerMBattleText::
-	text "I can't way to"
+	text "I can't wait to"
 	line "show everyone"
     cont "what I learned at"
     cont "school!"

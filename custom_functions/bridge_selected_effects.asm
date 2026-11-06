@@ -23,6 +23,10 @@
 ; Out: carry set when the effect was recorded; clear on invalid/full/occupied.
 BridgeGrantSelectedEffect::
 	ld a, e
+	cp BRIDGE_GIFT_STRIP_POISON
+	jr nz, .selected
+	farjp BridgeStripPoisonFar
+.selected
 	cp BRIDGE_SELECTED_EFFECT_CRITICAL_RATE
 	jr c, .reject
 	cp NUM_BRIDGE_SELECTED_EFFECTS + 1
