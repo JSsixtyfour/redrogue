@@ -1354,6 +1354,11 @@ INCLUDE "scripts/GoldenrodGym.asm"
 INCLUDE "data/maps/objects/GoldenrodGym.asm"
 GoldenrodGym_Blocks: INCBIN "maps/GoldenrodGym.blk"
 
+; Split from "Maps 23" 2026-11-06: Goldenrod's 10x9 .blk left the eight gyms 39 B
+; too large for any bank, which opened bank $40 and doubled the ROM. No gym
+; references another gym's labels, so the two halves can float independently.
+SECTION "Johto Gyms 2", ROMX
+
 INCLUDE "data/maps/headers/EcruteakGym.asm"
 INCLUDE "scripts/EcruteakGym.asm"
 INCLUDE "data/maps/objects/EcruteakGym.asm"

@@ -17,21 +17,24 @@ GoldenrodGym_Script:
 	ld [wGoldenrodGymCurScript], a
 	ret
 
+DEF GOLDENROD_GYM_OPEN_BLOCK EQU $33 ; the empty grass at the entry warp
+
 WhitneyShowOrHideExitBlock:
-; Blocks or clears the exit to the next room.
+; Beating Whitney clears the door and the trees above her. Both are baked into the
+; .blk, which reloads on every map entry, so only the cleared state needs writing.
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_1, [hl]
 	res BIT_CUR_MAP_LOADED_1, [hl]
 	ret z
 	CheckEvent EVENT_BEAT_WHITNEY
-	jr z, .blockExitToNextRoom
-	ld a, $5
-	jp .setExitBlock
-.blockExitToNextRoom
-	ld a, $24
-.setExitBlock
+	ret z
+	ld a, GOLDENROD_GYM_OPEN_BLOCK
 	ld [wNewTileBlockID], a
-	lb bc, 0, 2
+	lb bc, 0, 4
+	predef ReplaceTileBlock
+	ld a, GOLDENROD_GYM_OPEN_BLOCK
+	ld [wNewTileBlockID], a
+	lb bc, 1, 4
 	predef_jump ReplaceTileBlock
 
 ; Authored names; one-time setup runs inline above.

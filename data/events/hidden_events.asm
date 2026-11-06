@@ -100,6 +100,13 @@ HiddenEventMaps:
 	hidden_event_map REDS_HOUSE_1F
 	hidden_event_map IGAS_DOJO
 	hidden_event_map FLORAS_GROTTO
+	hidden_event_map AZALEA_GYM
+	hidden_event_map GOLDENROD_GYM
+	hidden_event_map ECRUTEAK_GYM
+	hidden_event_map CIANWOOD_GYM
+	hidden_event_map OLIVINE_GYM
+	hidden_event_map MAHOGANY_GYM
+	hidden_event_map BLACKTHORN_GYM
 	db -1 ; end
 
 HiddenEventPointers:
@@ -446,10 +453,12 @@ DEF ANY_FACING EQU $d0
 	hidden_event 26,  7, HiddenItems, FULL_RESTORE
 	db -1 ; end
 
-; Inherited from the UNUSED_MAP_6F slot VIOLET_GYM reclaimed. x=14 is outside a
-; 5-block-wide map (x max 9), so this is unreachable and inert. Kept rather than
-; deleted because HiddenItemCoords rows are index-significant.
+; The MAX_ELIXER row is inherited from the UNUSED_MAP_6F slot VIOLET_GYM reclaimed.
+; x=14 is outside this 7-block-wide map (x max 13), so it is unreachable and inert.
+; Kept rather than deleted because HiddenItemCoords rows are index-significant.
 	hidden_events_for VIOLET_GYM
+	hidden_event  4, 19, GymStatues, SPRITE_FACING_UP
+	hidden_event  9, 19, GymStatues, SPRITE_FACING_UP
 	hidden_event 14, 11, HiddenItems, MAX_ELIXER
 	db -1 ; end
 
@@ -604,3 +613,48 @@ DEF ANY_FACING EQU $d0
 	hidden_events_for FLORAS_GROTTO
 	hidden_event  0,  1, OpenBridgeBillsPC, SPRITE_FACING_UP ; Gym PC $65 at block (0,0)
 	db -1
+
+	hidden_events_for AZALEA_GYM
+	hidden_event  2, 13, GymStatues, SPRITE_FACING_UP
+	hidden_event  7, 13, GymStatues, SPRITE_FACING_UP
+	db -1 ; end
+
+	hidden_events_for GOLDENROD_GYM
+	hidden_event  1, 15, GymStatues, SPRITE_FACING_UP
+	hidden_event  4, 15, GymStatues, SPRITE_FACING_UP
+	db -1 ; end
+
+	hidden_events_for ECRUTEAK_GYM
+	hidden_event  3,  1, GymStatues, SPRITE_FACING_UP
+	hidden_event  6,  1, GymStatues, SPRITE_FACING_UP
+	hidden_event  3, 13, GymStatues, SPRITE_FACING_UP
+	hidden_event  6, 13, GymStatues, SPRITE_FACING_UP
+	db -1 ; end
+
+	hidden_events_for CIANWOOD_GYM
+	hidden_event  3,  4, GymStatues, SPRITE_FACING_UP
+	hidden_event  6,  4, GymStatues, SPRITE_FACING_UP
+	hidden_event  3, 16, GymStatues, SPRITE_FACING_UP
+	hidden_event  6, 16, GymStatues, SPRITE_FACING_UP
+	db -1 ; end
+
+	hidden_events_for OLIVINE_GYM
+	hidden_event  3, 11, GymStatues, SPRITE_FACING_UP
+	hidden_event  6, 11, GymStatues, SPRITE_FACING_UP
+	db -1 ; end
+
+	hidden_events_for MAHOGANY_GYM
+	hidden_event  3, 10, GymStatues, SPRITE_FACING_UP
+	hidden_event  6, 10, GymStatues, SPRITE_FACING_UP
+	db -1 ; end
+
+; Only statues with open floor directly below are listed: GymStatues answers only
+; when facing up, and the rest stand on top of another statue or behind a wall.
+	hidden_events_for BLACKTHORN_GYM
+	hidden_event  3,  1, GymStatues, SPRITE_FACING_UP
+	hidden_event  6,  1, GymStatues, SPRITE_FACING_UP
+	hidden_event  2,  9, GymStatues, SPRITE_FACING_UP
+	hidden_event  7,  9, GymStatues, SPRITE_FACING_UP
+	hidden_event  3, 11, GymStatues, SPRITE_FACING_UP
+	hidden_event  6, 11, GymStatues, SPRITE_FACING_UP
+	db -1 ; end
