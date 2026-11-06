@@ -6174,7 +6174,7 @@ PFacRollBoss:
 ; PFacPreload::
 ; Called when Facility is assigned at the lobby. Resets bake flag + per-generation
 ; SRAM state, rolls the
-; palette variant and sign variant, and sets the wild budget.
+; palette variant and sign variant.
 ; ============================================================
 PFacPreload::
     ld a, RAMG_SRAM_ENABLE
@@ -6220,25 +6220,6 @@ PFacPreload::
     and $fe
     or b
     ld [sProcFacilitySignVariant], a
-
-    ; Wild-battle budget: WILD_BUDGET_BASE + wBattleCount/WILD_BUDGET_DIVISOR,
-    ; capped at WILD_BUDGET_MAX (cave formula).
-    call GetRunProgress
-    ld b, 0
-.budgetDivLoop
-    cp WILD_BUDGET_DIVISOR
-    jr c, .budgetGotQuotient
-    sub WILD_BUDGET_DIVISOR
-    inc b
-    jr .budgetDivLoop
-.budgetGotQuotient
-    ld a, b
-    add a, WILD_BUDGET_BASE
-    cp WILD_BUDGET_MAX + 1
-    jr c, .budgetNoClamp
-    ld a, WILD_BUDGET_MAX
-.budgetNoClamp
-    ld [wProcFacilityWildBudget], a
 
     farcall OptionalFacilityAssignEncounter ; bank 1 stays open
 
@@ -6403,6 +6384,24 @@ PFacFinalize::
     pop bc
     dec b
     jr nz, .bakeRowLoop
+
+    ; Fresh entry only. The lobby clerk header occupies this byte until we leave.
+    call GetRunProgress
+    ld b, 0
+.budgetDivLoop
+    cp WILD_BUDGET_DIVISOR
+    jr c, .budgetGotQuotient
+    sub WILD_BUDGET_DIVISOR
+    inc b
+    jr .budgetDivLoop
+.budgetGotQuotient
+    ld a, b
+    add a, WILD_BUDGET_BASE
+    cp WILD_BUDGET_MAX + 1
+    jr c, .budgetNoClamp
+    ld a, WILD_BUDGET_MAX
+.budgetNoClamp
+    ld [wProcFacilityWildBudget], a
 
     ld a, 1
     ld [sProcFacilityBaked], a

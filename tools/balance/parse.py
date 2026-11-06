@@ -124,6 +124,7 @@ class Tables:
     gym: list[LevelBlock]
     wild: list[int]
     wild_boss: list[int]
+    wild_boss_master_widths: list[int]
 
 
 def _db_in_macro(rel: str, name: str) -> list[int]:
@@ -160,6 +161,7 @@ def load_tables() -> Tables:
         gym=_blocks("trainer_difficulty_settings_gym"),
         wild=_wild_levels(),
         wild_boss=_db_after_label("data/balance/wild_boss_levels.asm", "PCBossLevelTable"),
+        wild_boss_master_widths=_db_after_label("data/balance/wild_boss_levels.asm", "PCBossMasterWidths"),
     )
 
 

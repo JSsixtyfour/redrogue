@@ -1,27 +1,56 @@
-"""Exercise the actual four generator budget loops without generating maps.
+"""Exercise wild budget initialization, consumption, and lobby entry.
 
-Each probe enters at the division loop with the same A/B inputs as the native
-initializer, executes the real clamp and WRAM store, then returns immediately
-through the harness trampoline. The parked machine is restored between probes.
-This verifies arithmetic and initialization, not map choreography or encounters.
+The arithmetic probes enter the real division loops and restore the parked
+machine between calls. The lobby test uses the map load path to verify that
+the budget survives the handoff from the clerk buffer.
 """
 
 import io
 import unittest
 
-from source_constants import parse_rgbds_constants
+from source_constants import parse_map_constants, parse_rgbds_constants
 from test_smoke import HarnessTestCase, REPO_ROOT
 
 
 SEAMS = (
     ("PCFinalizeCave", "budgetDivLoop", "budgetNoClamp", "wProcCaveWildBudget"),
-    ("PFPreloadForest", "budgetDivLoop", "budgetNoClamp", "wProcForestWildBudget"),
-    ("PCemGenerateMaps", "cemBudgetDiv", "cemBudgetNoClamp", "wProcCemWildBudget"),
-    ("PFacPreload", "budgetDivLoop", "budgetNoClamp", "wProcFacilityWildBudget"),
+    ("PFinalizeForest", "budgetDivLoop", "budgetNoClamp", "wProcForestWildBudget"),
+    ("PCemFinalizeMap", "cemBudgetDiv", "cemBudgetNoClamp", "wProcCemWildBudget"),
+    ("PFacFinalize", "budgetDivLoop", "budgetNoClamp", "wProcFacilityWildBudget"),
 )
 
 
 class WildBudgetTest(HarnessTestCase):
+    def test_lobby_clerks_and_wild_areas_each_get_their_shared_byte(self):
+        h = self.harness
+        assert h is not None
+        maps = parse_map_constants(REPO_ROOT / "constants/map_constants.asm")
+        h.boot_to_lobby(battle_count=11, encounter_kind=4)
+        baseline = io.BytesIO()
+        h.save_state(baseline)
+        areas = (
+            ("PROCEDURAL_CAVE_1", "wProcCaveWildBudget"),
+            ("PROCEDURAL_FOREST", "wProcForestWildBudget"),
+            ("PROCEDURAL_CEMETERY_1", "wProcCemWildBudget"),
+            ("PROCEDURAL_FACILITY", "wProcFacilityWildBudget"),
+        )
+        for map_name, budget in areas:
+            with self.subTest(area=map_name):
+                h.load_state(baseline)
+                h.write8("wStageEvent", 0)
+                clerk_headers = set()
+
+                def record_clerk_header(_context):
+                    clerk_headers.add(h.read8("PCClerkText1"))
+
+                h.register_hook("LobbyKeySwapAnnounce", record_clerk_header)
+                try:
+                    h.preload_and_enter_wild_area(maps[map_name], map_name)
+                finally:
+                    h.unregister_hook("LobbyKeySwapAnnounce", record_clerk_header)
+                self.assertEqual(clerk_headers, {0xFE})
+                self.assertEqual(h.read8(budget), 8 + 11 // 4)
+
     def test_each_area_consumes_budget_and_blocks_at_zero(self):
         h = self.harness
         assert h is not None

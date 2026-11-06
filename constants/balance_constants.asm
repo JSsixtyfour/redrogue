@@ -288,7 +288,7 @@ DEF WILD_BOSS_RARITY_BUMP EQU 102
 ; First round (1-based) in which a wild GRASS encounter may be masterball tier.
 ; Before it, Random_Wild_Selection_Far folds a masterball class roll into
 ; ultraball, so the odds table above is unchanged and master's share simply
-; lands in ultra. Bosses are not gated (they use Random_Boss_Selection_Far).
+; lands in ultra. Bosses use their own gate in PCRollBossClass.
 ; Was effectively 1 until 2026-10-13: a round 2 Forest rolled a wild Tauros.
 DEF WILD_MASTER_MIN_ROUND EQU 5
 

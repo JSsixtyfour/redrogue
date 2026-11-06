@@ -19,3 +19,9 @@ PCBossLevelTable:
 	db 43  ; round 6
 	db 50  ; round 7
 	db 56  ; round 8
+
+; Campaign boss Master Ball widths out of 256, indexed by the same round.
+; Any Master rolls above this cap become Ultra Ball.
+PCBossMasterWidths:
+	db 0, 0, 26, 31, 36, 41, 46, 51, 59
+	ASSERT @ - PCBossMasterWidths == LAST_ROUND + 1

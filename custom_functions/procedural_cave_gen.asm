@@ -1583,7 +1583,7 @@ INCLUDE "data/balance/wild_boss_levels.asm"
 ; biased toward rarer tiers as wBattleCount rises. Reuses the existing
 ; reward-pool class system instead of a bespoke species table.
 ; INPUT:  b = extra rarity bump (0 = wild baseline, higher = rarer, e.g. boss)
-; OUTPUT: c = class 1-4.  Clobbers a, b, d, e, hl.
+; OUTPUT: c = class 1-4, d = round index, e = raw roll. Clobbers a, b, hl.
 ; Exported (::) so procedural_CEMETERY_gen.asm can farcall it (cross-bank -
 ; see PCemAvoidGhostBoss) rather than duplicating this formula.
 ; ============================================================
@@ -1615,8 +1615,13 @@ PCRollMonClassAtProgress:
 .noBonusClamp
 	ld b, a
 	call Random         ; a = 0-255
+.rolled
+	ld e, a
+	push de             ; keep the round and roll for the campaign boss cap
 	ld hl, PCWildClassWidths
-	jp RollSpreadClass  ; c = class 1-4
+	call RollSpreadClass ; c = class 1-4
+	pop de
+	ret
 
 ; pokeball 205 / great 38 / ultra 10 / master 3, the pre-spread odds
 PCWildClassWidths:
@@ -1631,7 +1636,7 @@ PCWildClassWidths:
 ;   - the round is NOT clamped at LAST_ROUND, so the bonus keeps climbing and
 ;     saturates at 255 by round 20;
 ;   - a Master roll gets EndlessUberStep, which may turn it into BOSS_CLASS_UBER.
-; Depth 0 is exactly the old roll.
+; Campaign Master rolls outside the round's cap become Ultra.
 ; OUTPUT: c (PCRollBossClass) / e (Far) = class 1-4, or BOSS_CLASS_UBER.
 ; Clobbers a, bc, d, hl (and e for the plain entry).
 ;
@@ -1648,7 +1653,7 @@ PCRollBossClass:
 	ld b, WILD_BOSS_RARITY_BUMP
 	ld a, [wEndlessDepth]
 	and a
-	jp z, PCRollMonClass
+	jr z, .campaign
 	call GetRunProgress           ; unclamped; preserves b
 	call PCRollMonClassAtProgress ; c = class 1-4
 	ld a, c
@@ -1658,6 +1663,20 @@ PCRollBossClass:
 	ld c, RARITY_TIER_MASTERBALL + 1
 	ret nc
 	ld c, BOSS_CLASS_UBER
+	ret
+.campaign
+	call PCRollMonClass
+	ld a, c
+	cp RARITY_TIER_MASTERBALL + 1
+	ret nz
+	ld hl, PCBossMasterWidths
+	ld a, e
+	ld e, d
+	ld d, 0
+	add hl, de
+	add [hl]                      ; carry if the roll is in the capped Master band
+	ret c
+	dec c
 	ret
 
 ; ============================================================

@@ -2394,26 +2394,6 @@ PFPreloadForest::
     ld [sProcForestPalette], a
     farcall OptionalForestAssignEncounter ; SRAM0 remains open
 
-    ; Set the forest's wild-battle budget for this run: WILD_BUDGET_BASE +
-    ; wBattleCount/WILD_BUDGET_DIVISOR, capped at WILD_BUDGET_MAX (identical formula
-    ; to cave's PCPreloadCave).
-    call GetRunProgress
-    ld b, 0
-.budgetDivLoop
-    cp WILD_BUDGET_DIVISOR
-    jr c, .budgetGotQuotient
-    sub WILD_BUDGET_DIVISOR
-    inc b
-    jr .budgetDivLoop
-.budgetGotQuotient
-    ld a, b
-    add a, WILD_BUDGET_BASE
-    cp WILD_BUDGET_MAX + 1
-    jr c, .budgetNoClamp
-    ld a, WILD_BUDGET_MAX
-.budgetNoClamp
-    ld [wProcForestWildBudget], a
-
     ; Reset run events so sprites re-appear on next visit. Reuses the cave's
     ; EVENT_PC_BUDGET_ENDED/EVENT_PC_CALMED_SHOWN/EVENT_BEAT_PC_BOSS for the
     ; forest's own systems (calmed message, boss-defeated) — safe because
@@ -2806,6 +2786,24 @@ PFinalizeForest::
     ; Phase 4: who is home in this forest's rest house (toggles, WRAM).
     call PFRestHouseRollResidents
     call PFRestHouseRollOffers          ; leaves SRAM open on bank 0
+
+    ; Fresh entry only. The lobby clerk header occupies this byte until we leave.
+    call GetRunProgress
+    ld b, 0
+.budgetDivLoop
+    cp WILD_BUDGET_DIVISOR
+    jr c, .budgetGotQuotient
+    sub WILD_BUDGET_DIVISOR
+    inc b
+    jr .budgetDivLoop
+.budgetGotQuotient
+    ld a, b
+    add a, WILD_BUDGET_BASE
+    cp WILD_BUDGET_MAX + 1
+    jr c, .budgetNoClamp
+    ld a, WILD_BUDGET_MAX
+.budgetNoClamp
+    ld [wProcForestWildBudget], a
 
     ld a, 1
     ld [sProcForestBaked], a

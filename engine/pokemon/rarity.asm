@@ -355,7 +355,6 @@ JohtoGreatball:
 	rarity_mon QWILFISH
 	rarity_mon DUNSPARCE
 	rarity_mon SHUCKLE
-	rarity_mon MANTINE
 	rarity_mon NATU
 	rarity_mon TOGEPI
 .defaultEvos:
@@ -408,6 +407,7 @@ JohtoUltraball:
 	rarity_mon HITMONTOP
 	rarity_mon LARVITAR
 	rarity_mon MILTANK
+	rarity_mon MANTINE
 JohtoUltraball_Evos:
 ; stage 1
 	rarity_mon PUPITAR
@@ -463,7 +463,6 @@ WarpPokeball:
 	rarity_mon GROWLITHE, 1 ; Hisuian Growlithe
 	rarity_mon VOLTORB, 1 ; Hisuian Voltorb
 	rarity_mon SANDSHREW, 1 ; Alolan Sandshrew
-	rarity_mon MAGNETON, 1 ; Sandy Shocks; never evolves
 WarpPokeball_Evos:
 ; Evolution-only form references. Commented entries are NOT direct picks.
 ; rarity_mon MAROWAK, 1 ; Cubone + Dusk Stone -> Alolan Marowak
@@ -522,6 +521,7 @@ WarpGreatball_End:
 WarpUltraball:
 ; Direct form picks, equal weight to each ordinary species entry.
 	rarity_mon MR_MIME, 1 ; Galarian Mr. Mime
+	rarity_mon MAGNETON, 1 ; Sandy Shocks; never evolves
 WarpUltraball_Evos:
 ; Evolution-only form references. Commented entries are NOT direct picks.
 ; from Galarian Mr. Mime (level 42).

@@ -76,7 +76,7 @@ class SwinubRarityTest(unittest.TestCase):
                 for tier in (0, 1):
                     self.configure(unlocked, enabled)
                     count, direct = self.entry(1, tier)
-                    expected = (15, 20) if boosted else (16, 19)
+                    expected = (15, 19) if boosted else (16, 18)
                     self.assertEqual(count, expected[tier], (unlocked, enabled, tier))
                     self.assertEqual(direct.count((SPECIES['SWINUB'], 0)), int(tier == int(boosted)))
                     roots.extend(direct)
@@ -112,7 +112,7 @@ class SwinubRarityTest(unittest.TestCase):
                     self.configure(7, mask)
                     counts.append(self.entry(group, tier)[0] if mask & (1 << group) else 0)
                 if mask & 2:
-                    self.assertEqual(counts[1], ((15, 20) if mask == 7 else (16, 19))[tier])
+                    self.assertEqual(counts[1], ((15, 19) if mask == 7 else (16, 18))[tier])
                 start = 0
                 for group, count in enumerate(counts):
                     if not count:

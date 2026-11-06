@@ -566,12 +566,16 @@ def wild_boss_battle(g: GameData, cfg: Config, count: int, rng: random.Random,
     clamped and a Master roll may become an Uber, drawn from the active groups'
     whole Uber tiers (Random_Boss_Selection_Far / RogueDrawUber; the ROM's
     unowned-only filter is not modelled, like every ownership re-roll here).
-    Depth 0 consumes exactly the RNG it always did."""
+    Campaign Master rolls outside the round's cap become Ultra."""
     idx = round_of(g, count)
     # PCGetBossLevel caps at the PLAYER's MAX_LEVEL: the gift keeps the fight's level.
     lv = min(MAX_LEVEL, apply_difficulty(g.tables.wild_boss[idx], cfg.difficulty, cfg.level_bonus))
     bonus_round = count // g.knobs["ROUND_BATTLES"] if endless else idx
-    cls = pc_roll_mon_class(bonus_round, g.knobs["WILD_BOSS_RARITY_BUMP"], rng, g.knobs["WILD_CLASS_ROUND_STEP"])
+    bonus = min(255, bonus_round * g.knobs["WILD_CLASS_ROUND_STEP"] + g.knobs["WILD_BOSS_RARITY_BUMP"])
+    roll = rng.randrange(256)
+    cls = spread_class(roll, bonus, WILD_CLASS_WIDTHS)
+    if not endless and cls == 4 and roll < 256 - g.tables.wild_boss_master_widths[idx]:
+        cls = 3
     if endless and cls == 4 and endless_uber_step(g, count, rng):
         ubers = [s for grp in cfg.groups for s in g.rarity[grp][parse.TIER_UBER].all]
         if ubers:

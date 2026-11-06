@@ -152,24 +152,6 @@ PCemGenerateMaps::
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
 	ld [rRAMG], a
 
-	; set wild battle budget for the entire cemetery run
-	; min(WILD_BUDGET_MAX, WILD_BUDGET_BASE + wBattleCount/WILD_BUDGET_DIVISOR)
-	call GetRunProgress
-	ld b, 0
-.cemBudgetDiv
-	cp WILD_BUDGET_DIVISOR
-	jr c, .cemBudgetDone
-	sub WILD_BUDGET_DIVISOR
-	inc b
-	jr .cemBudgetDiv
-.cemBudgetDone
-	ld a, b
-	add a, WILD_BUDGET_BASE
-	cp WILD_BUDGET_MAX + 1
-	jr c, .cemBudgetNoClamp
-	ld a, WILD_BUDGET_MAX
-.cemBudgetNoClamp
-	ld [wProcCemWildBudget], a
 	; clear calmed events for fresh run
 	ResetEvent EVENT_PC_CEM_BUDGET_ENDED
 	ResetEvent EVENT_PC_CEM_CALMED_SHOWN
@@ -1473,6 +1455,29 @@ PCemFinalizeMap::
 	ld a, [sProcCemeteryReady]
 	and b
 	jr nz, .cemAlreadyReady    ; bit set = already generated
+	; Initialize the shared budget only on the first generated floor, after
+	; leaving the lobby where the clerk header occupies the same byte.
+	ld a, [sProcCemeteryReady]
+	and %00001111                 ; upper bits hold the boss form
+	jr nz, .cemGenerateFloor
+	call GetRunProgress
+	ld b, 0
+.cemBudgetDiv
+	cp WILD_BUDGET_DIVISOR
+	jr c, .cemBudgetDone
+	sub WILD_BUDGET_DIVISOR
+	inc b
+	jr .cemBudgetDiv
+.cemBudgetDone
+	ld a, b
+	add a, WILD_BUDGET_BASE
+	cp WILD_BUDGET_MAX + 1
+	jr c, .cemBudgetNoClamp
+	ld a, WILD_BUDGET_MAX
+.cemBudgetNoClamp
+	ld [wProcCemWildBudget], a
+
+.cemGenerateFloor
 	; generate this floor now
 	call PCemGenerateOneMap
 	; Floor 4 is the boss floor. The boss species is no longer adjusted here:

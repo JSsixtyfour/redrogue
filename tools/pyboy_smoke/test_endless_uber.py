@@ -53,9 +53,9 @@ class EndlessUberModelTest(unittest.TestCase):
             self.assertEqual(hits, k["ENDLESS_UBER_BASE"] + k["ENDLESS_UBER_STEP"] * s, round_)
         self.assertFalse(self.model.endless_uber_step(self.g, 8 * 8 + 1, self.Rolls([255])))
 
-    def test_depth_0_boss_rng_is_unchanged(self) -> None:
+    def test_victory_road_boss_rng_is_unchanged(self) -> None:
         cfg = self.model.Config()
-        for count in (1, 40, 71):
+        for count in (64, 71, 76):
             a, b = self.random.Random(count), self.random.Random(count)
             got = self.model.wild_boss_battle(self.g, cfg, count, a)
             idx = self.model.round_of(self.g, count)
@@ -64,6 +64,15 @@ class EndlessUberModelTest(unittest.TestCase):
             cls = self.model.pc_roll_mon_class(idx, k["WILD_BOSS_RARITY_BUMP"], b, k["WILD_CLASS_ROUND_STEP"])
             want = self.model.select_from_tier_evolved(self.g, cfg, cls, lv, b)
             self.assertEqual(got.mons, [(want, lv)], count)
+
+    def test_campaign_model_gates_master_until_round_three(self) -> None:
+        from unittest.mock import patch
+
+        cfg = self.model.Config()
+        for count, roll, expected_class in ((8, 255, 3), (15, 255, 3), (16, 229, 3), (16, 230, 4)):
+            with patch.object(self.model, "select_from_tier_evolved", return_value="DITTO") as select:
+                self.model.wild_boss_battle(self.g, cfg, count, self.Rolls([roll]))
+            self.assertEqual(select.call_args.args[2], expected_class, count)
 
     def test_endless_bosses_reach_ubers_and_uncapped_master(self) -> None:
         cfg = self.model.Config(groups=("KANTO",))
@@ -207,7 +216,7 @@ class EndlessUberTest(HarnessTestCase):
 
     # -- bosses (step 3) -----------------------------------------------
 
-    def boss_class(self, force=()) -> tuple[int, list[int]]:
+    def boss_class(self, force=(), roll=None) -> tuple[int, list[int]]:
         """One PCRollBossClass: (class in c, bonus seen at each RollSpreadClass).
         force[i], when given, overrides the class the i-th RollSpreadClass returns."""
         h = self.harness
@@ -223,24 +232,34 @@ class EndlessUberTest(HarnessTestCase):
             if i < len(force):
                 h.pyboy.register_file.C = force[i]
 
+        def at_rolled(*_args) -> None:
+            h.pyboy.register_file.A = roll
+
         h.register_hook("RollSpreadClass", at_spread)
         h.register_hook("RollSpreadClass.done", at_done)
+        if roll is not None:
+            h.register_hook("PCRollMonClassAtProgress.rolled", at_rolled)
         try:
             h.call_routine("PCRollBossClass")
         finally:
             h.unregister_hook("RollSpreadClass", at_spread)
             h.unregister_hook("RollSpreadClass.done", at_done)
+            if roll is not None:
+                h.unregister_hook("PCRollMonClassAtProgress.rolled", at_rolled)
         return h.last_call_registers["C"], bonuses
 
-    def test_boss_roll_at_depth_0_is_the_old_roll(self) -> None:
+    def test_campaign_boss_master_widths(self) -> None:
         bump = parse_rgbds_constants(REPO_ROOT / "constants/balance_constants.asm")["WILD_BOSS_RARITY_BUMP"]
         h = self.harness
         h.write8("wEndlessDepth", 0)
-        for count in (1, 40, 76, 120):               # 120: past the authored rows, still clamped
+        for count, width in ((8, 0), (15, 0), (16, 26), (24, 31), (32, 36),
+                             (40, 41), (48, 46), (56, 51), (64, 59), (120, 59)):
             h.write8("wBattleCount", count)
-            cls, bonuses = self.boss_class(force=(4,))
+            cls, bonuses = self.boss_class(roll=255 - width)
             self.assertEqual(bonuses, [min(255, min(count // 8, LAST_ROUND) * 8 + bump)], count)
-            self.assertEqual(cls, 4, "depth 0 never takes the Uber step")
+            self.assertEqual(cls, 3, count)
+            if width:
+                self.assertEqual(self.boss_class(roll=256 - width)[0], 4, count)
 
     def test_endless_boss_bonus_is_unclamped(self) -> None:
         bump = parse_rgbds_constants(REPO_ROOT / "constants/balance_constants.asm")["WILD_BOSS_RARITY_BUMP"]
