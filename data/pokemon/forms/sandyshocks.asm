@@ -33,4 +33,4 @@
 
 	dname "SANDSHOCKS"
 
-	form_end PAL_BROWNMON
+	form_end PAL_GRAYMON
