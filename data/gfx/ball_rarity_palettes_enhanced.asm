@@ -4,10 +4,11 @@
 ; INCLUDEd by custom_functions/ball_rarity.asm as BallRarityPalettes (bank $2C,
 ; read by BufferAllEnhancedColorsGBC.ReadMasterPals).
 ;
-; EVERY colour here goes through GBCGamma (custom_functions/func_gamma.asm) before
-; it reaches the screen: a colour-mixing matrix, then a gamma-2 lookup. That lifts
-; saturation toward pastel, so write DARKER and MORE SATURATED values than the look
-; you want, rebuild, and read the real result (probe_ball_rarity.py prints the
+; With the ENH GAMMA option off (the default) these colours reach the hardware raw.
+; With it on they go through GBCGamma (custom_functions/func_gamma.asm) first: a
+; colour-mixing matrix, then a gamma-2 lookup, which lifts saturation toward pastel.
+; A real LCD softens raw colours too, so write SATURATED values, rebuild, and read
+; the real result in both settings (probe_ball_rarity.py prints the
 ; Enhanced OBJ palette RAM, "[enh] OBJn ..."). A colour whose R, G and B are all <= 3
 ; skips the gamma entirely, which is why Ultra's top is exactly 3,3,3 (5,5,6
 ; measured 12,12,12, silver).
@@ -34,9 +35,11 @@
 	RGB  2,  2,  2
 	RGB  3,  3,  3
 
-	; Row 2, Master Ball (OBJ 3): purple top
+	; Row 2, Master Ball (OBJ 3): bright purple top. A real GBC LCD crushes dark
+	; colours and shows little blue, so brightness has to come from red: 15,6,23
+	; read as an Ultra Ball on hardware, and 22,0,31 sits too close to Great's blue.
 	RGB 31, 31, 31
-	RGB 15,  6, 23
+	RGB 28,  0, 31
 	RGB 10,  4, 12
 	RGB  3,  3,  3
 

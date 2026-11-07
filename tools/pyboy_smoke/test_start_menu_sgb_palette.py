@@ -17,7 +17,7 @@ class StartMenuSGBPaletteTest(unittest.TestCase):
                 # the SNES palette state or the EverDrive menu.
                 h.write8('wOnSGB', 1)
                 h.write8('wDefaultPaletteCommand', 9)  # SET_PAL_OVERWORLD
-                h.write8('wLastMap', 0x0c)  # ROUTE_1: lobby inherits PAL_ROUTE
+                h.write8('wLastMap', 0x0c)  # ROUTE_1
             h.tick(60)
             packets = []
             def sent(_):

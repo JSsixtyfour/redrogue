@@ -337,11 +337,8 @@ SetPal_Overworld:
 ;
 ; Precedence: MapPaletteFunctions (map -> routine), then MapPalettes (map ->
 ; palette), then TilesetPalettes (tileset -> palette), then town/route by map
-; ID, then an indoor map's wLastMap town. The old chain tested the CEMETERY /
-; CAVERN / FACILITY tilesets before any map ID. Map-first is identical because
-; every map in the two map tables is either not on those tilesets or maps to
-; the palette its tileset would have given (audited 2026-09-24, and diffed
-; against the old chain for every map header in a PyBoy dump).
+; ID, then an indoor map's wLastMap town. A MapPalettes row beats its map's
+; tileset row, which Ecruteak's and Blackthorn's gyms rely on.
 ; Clobbers a, bc, de, hl.
 GetOverworldPalette:
 	ldh a, [hCurMap]
@@ -413,6 +410,52 @@ MapPalettes:
 	db SILPH_CO_VR,       PAL_SAFFRON
 	db PALMS_ROOM,        PAL_SAFFRON
 	db CREDIT_EXCHANGE,   PAL_SAFFRON
+	; Vanilla maps a run enters from the lobby. Vanilla colours them by the town
+	; whose door leads in, read from wLastMap; here wLastMap is the lobby, which
+	; falls through to PAL_ROUTE. Maps whose vanilla entrance is on a route want
+	; PAL_ROUTE anyway and need no row.
+	db PEWTER_GYM,                PAL_PEWTER
+	db CERULEAN_GYM,              PAL_CERULEAN
+	db VERMILION_GYM,             PAL_VERMILION
+	db CELADON_GYM,               PAL_CELADON
+	db FUCHSIA_GYM,               PAL_FUCHSIA
+	db SAFFRON_GYM,               PAL_SAFFRON
+	db CINNABAR_GYM,              PAL_CINNABAR
+	db VIRIDIAN_GYM,              PAL_VIRIDIAN
+	db POKEMON_MANSION_1F,        PAL_CINNABAR
+	db ROCKET_HIDEOUT_B1F,        PAL_CELADON
+	db SS_ANNE_B1F,               PAL_VERMILION
+	db SS_ANNE_B1F_ROOMS,         PAL_VERMILION
+	db GAME_CORNER,               PAL_CELADON
+	db FIGHTING_DOJO,             PAL_SAFFRON
+	db COPYCATS_HOUSE_2F,         PAL_SAFFRON
+	db MR_FUJIS_HOUSE,            PAL_LAVENDER
+	db SS_ANNE_CAPTAINS_ROOM,     PAL_VERMILION
+	db CINNABAR_LAB_FOSSIL_ROOM,  PAL_CINNABAR
+	db POKEMON_FAN_CLUB,          PAL_VERMILION
+	db WARDENS_HOUSE,             PAL_FUCHSIA
+	db VIRIDIAN_SCHOOL_HOUSE,     PAL_VIRIDIAN
+	db OLD_MANS_HOUSE,            PAL_VIRIDIAN
+	db CERULEAN_TRASHED_HOUSE,    PAL_CERULEAN
+	db REDS_HOUSE_1F,             PAL_PALLET
+	db OAKS_LAB,                  PAL_PALLET
+	db INDIGO_PLATEAU_LOBBY,      PAL_INDIGO
+	db LANCES_ROOM,               PAL_INDIGO
+	db CHAMPIONS_ROOM,            PAL_INDIGO
+	db HALL_OF_FAME,              PAL_INDIGO
+	; Maps with no vanilla colour. Azalea's gym and Flora's Grotto are green too,
+	; which is what the lobby's wLastMap already gives them. Ecruteak's and
+	; Blackthorn's rows override their CEMETERY tileset's grey.
+	db VIOLET_GYM,                PAL_CERULEAN
+	db GOLDENROD_GYM,             PAL_PINKMON
+	db ECRUTEAK_GYM,              PAL_CAVE
+	db CIANWOOD_GYM,              PAL_CAVE
+	db OLIVINE_GYM,               PAL_PEWTER
+	db MAHOGANY_GYM,              PAL_CYANMON
+	db BLACKTHORN_GYM,            PAL_CERULEAN
+	db IGAS_DOJO,                 PAL_FUCHSIA
+	db KOGAS_ROOM,                PAL_INDIGO
+	db WILLS_ROOM,                PAL_INDIGO
 	db -1
 
 TilesetPalettes:

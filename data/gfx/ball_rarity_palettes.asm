@@ -41,8 +41,11 @@
 	RGB  2,  2,  2
 	RGB  3,  3,  3
 
-	; Master Ball: purple top (colour 1). Colour 2 is the STANDARD ball's red top.
+	; Master Ball: bright purple top (colour 1). A real GBC LCD crushes dark colours
+	; and shows little blue, so brightness has to come from red: 15,6,23 read as an
+	; Ultra Ball on hardware, and 22,0,31 sits too close to Great's blue.
+	; Colour 2 is the STANDARD ball's red top.
 	RGB 31, 31, 31
-	RGB 15,  6, 23
-	RGB 10,  4, 12
+	RGB 28,  0, 31
+	RGB 26,  4,  4
 	RGB  3,  3,  3
