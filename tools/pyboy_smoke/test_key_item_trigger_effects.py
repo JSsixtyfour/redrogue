@@ -42,6 +42,11 @@ class KeyItemTriggerEffectsTest(HarnessTestCase):
                     self.configure('PP_TONIC',tier)
                     h.call_routine('RogueResetRunState')
                     self.assertEqual(h.read8('wRestorePPItemLevel'),tier*2)
+                    # RogueResetRunState empties the party. With wPartyCount 0 the mon
+                    # loop counts down from 256 and writes PP bytes across 11 KB of the
+                    # address space, so whether the test survived depended on layout.
+                    h.write8('wPartyCount', 3)
+                    h.write8('wPartySpecies', 255, 3)
                     for i in range(1,4):
                         for j,(move,pp) in enumerate(((MOVES['TACKLE'],0),(MOVES['TACKLE'],0xc0),
                                                      (MOVES['SPLASH'],39),(0,0xa5))):

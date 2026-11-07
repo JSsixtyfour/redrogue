@@ -956,6 +956,21 @@ HandleTrackVibrato:
 	; get the frequency
 	ld a, [wCurTrackFrequency]
 	ld e, a
+	; A Red battle sound (PlayBattleSound: SFX + pitch offset) wobbles around the
+	; note's own low byte, as Red's vibrato did: the move's pitch byte only lasted
+	; until the vibrato delay ran out (Hypnosis, Dream Eater). Cries have no vibrato.
+	; Test the channel number, not SOUND_SFX: execute_music clears that flag.
+	ld a, [wCurChannel]
+	bit 2, a ; CHAN5-CHAN8
+	jr z, .got_frequency
+	ld hl, CHANNEL_FLAGS2
+	add hl, bc
+	bit SOUND_PITCH_OFFSET, [hl]
+	jr z, .got_frequency
+	ld hl, CHANNEL_FREQUENCY
+	add hl, bc
+	ld e, [hl]
+.got_frequency
 	; toggle vibrato up/down
 	ld hl, CHANNEL_FLAGS3
 	add hl, bc

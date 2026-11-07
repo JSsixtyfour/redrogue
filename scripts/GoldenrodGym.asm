@@ -120,9 +120,9 @@ GoldenrodGymTrainerHeaders:
 GoldenrodGymTrainerHeader0:
 	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_0, 2, GoldenrodGymBeauty1BattleText, GoldenrodGymBeauty1EndBattleText, GoldenrodGymBeauty1AfterBattleText
 GoldenrodGymTrainerHeader1:
-	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_2, 4, GoldenrodGymBeauty2BattleText, GoldenrodGymBeauty2EndBattleText, GoldenrodGymBeauty2AfterBattleText
+	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_1, 4, GoldenrodGymBeauty2BattleText, GoldenrodGymBeauty2EndBattleText, GoldenrodGymBeauty2AfterBattleText
 GoldenrodGymTrainerHeader2:
-	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_1, 1, GoldenrodGymLass1BattleText, GoldenrodGymLass1EndBattleText, GoldenrodGymLass1AfterBattleText
+	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_2, 1, GoldenrodGymLass1BattleText, GoldenrodGymLass1EndBattleText, GoldenrodGymLass1AfterBattleText
 	db -1 ; end
 
 GoldenrodGymReceivedTMText:
