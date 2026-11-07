@@ -103,9 +103,9 @@ GoldenrodGymScriptReceiveTM:
 GoldenrodGym_TextPointers:
 	def_text_pointers
 	dw_const GoldenrodGymWhitneyText,            TEXT_GOLDENRODGYM_WHITNEY
-	dw_const GoldenrodGymCooltrainerM2Text,      TEXT_GOLDENRODGYM_COOLTRAINER_M2
-	dw_const GoldenrodGymCooltrainerM3Text,      TEXT_GOLDENRODGYM_COOLTRAINER_M3
-	dw_const GoldenrodGymCooltrainerM4Text,      TEXT_GOLDENRODGYM_COOLTRAINER_M4
+	dw_const GoldenrodGymBeauty1Text,             TEXT_GOLDENRODGYM_BEAUTY1
+	dw_const GoldenrodGymBeauty2Text,           TEXT_GOLDENRODGYM_BEAUTY2
+    dw_const GoldenrodGymLass1Text,              TEXT_GOLDENRODGYM_LASS1
 	dw_const GoldenrodGymGuideText,              TEXT_GOLDENRODGYM_GYM_GUIDE
 	dw_const GoldenrodGymWhitneyWaitTakeThisText, TEXT_GOLDENRODGYM_WHITNEY_WAIT_TAKE_THIS
 	dw_const GoldenrodGymReceivedTMText,         TEXT_GOLDENRODGYM_RECEIVED_TM
@@ -118,11 +118,11 @@ GoldenrodGymTrainerHeaders:
 ; project_gametrainer_def_trainers_inheritance_bug.
 	def_trainers 2
 GoldenrodGymTrainerHeader0:
-	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_0, 2, GoldenrodGymCooltrainerM2BattleText, GoldenrodGymCooltrainerM2EndBattleText, GoldenrodGymCooltrainerM2AfterBattleText
+	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_0, 2, GoldenrodGymBeauty1BattleText, GoldenrodGymBeauty1EndBattleText, GoldenrodGymBeauty1AfterBattleText
 GoldenrodGymTrainerHeader1:
-	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_1, 5, GoldenrodGymCooltrainerM3BattleText, GoldenrodGymCooltrainerM3EndBattleText, GoldenrodGymCooltrainerM3AfterBattleText
+	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_2, 4, GoldenrodGymBeauty2BattleText, GoldenrodGymBeauty2EndBattleText, GoldenrodGymBeauty2AfterBattleText
 GoldenrodGymTrainerHeader2:
-	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_2, 5, GoldenrodGymCooltrainerM4BattleText, GoldenrodGymCooltrainerM4EndBattleText, GoldenrodGymCooltrainerM4AfterBattleText
+	trainer EVENT_BEAT_GOLDENROD_GYM_TRAINER_1, 1, GoldenrodGymLass1BattleText, GoldenrodGymLass1EndBattleText, GoldenrodGymLass1AfterBattleText
 	db -1 ; end
 
 GoldenrodGymReceivedTMText:
@@ -195,58 +195,58 @@ ReceivedPlainBadgeText:
 	sound_get_key_item
 	text_end
 
-GoldenrodGymCooltrainerM2Text:
+GoldenrodGymBeauty1Text:
 	text_asm
 	ld hl, GoldenrodGymTrainerHeader0
 	call TalkToTrainer
 	jp TextScriptEnd
 
-GoldenrodGymCooltrainerM2BattleText:
-	text_far _GoldenrodGymTrainer2BattleText
+GoldenrodGymBeauty1BattleText:
+	text_far _GoldenrodGymBeauty1BattleText
 	text_end
 
-GoldenrodGymCooltrainerM2EndBattleText:
-	text_far _GoldenrodGymTrainer2EndBattleText
+GoldenrodGymBeauty1EndBattleText:
+	text_far _GoldenrodGymBeauty1EndBattleText
 	text_end
 
-GoldenrodGymCooltrainerM2AfterBattleText:
-	text_far _GoldenrodGymTrainer2AfterBattleText
+GoldenrodGymBeauty1AfterBattleText:
+	text_far _GoldenrodGymBeauty1AfterBattleText
 	text_end
 
-GoldenrodGymCooltrainerM3Text:
-	text_asm
-	ld hl, GoldenrodGymTrainerHeader1
-	call TalkToTrainer
-	jp TextScriptEnd
-
-GoldenrodGymCooltrainerM3BattleText:
-	text_far _GoldenrodGymTrainer3BattleText
-	text_end
-
-GoldenrodGymCooltrainerM3EndBattleText:
-	text_far _GoldenrodGymTrainer3EndBattleText
-	text_end
-
-GoldenrodGymCooltrainerM3AfterBattleText:
-	text_far _GoldenrodGymTrainer3AfterBattleText
-	text_end
-
-GoldenrodGymCooltrainerM4Text:
+GoldenrodGymLass1Text:
 	text_asm
 	ld hl, GoldenrodGymTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
-GoldenrodGymCooltrainerM4BattleText:
-	text_far _GoldenrodGymTrainer4BattleText
+GoldenrodGymLass1BattleText:
+	text_far _GoldenrodGymLass1BattleText
 	text_end
 
-GoldenrodGymCooltrainerM4EndBattleText:
-	text_far _GoldenrodGymTrainer4EndBattleText
+GoldenrodGymLass1EndBattleText:
+	text_far _GoldenrodGymLass1EndBattleText
 	text_end
 
-GoldenrodGymCooltrainerM4AfterBattleText:
-	text_far _GoldenrodGymTrainer4AfterBattleText
+GoldenrodGymLass1AfterBattleText:
+	text_far _GoldenrodGymLass1AfterBattleText
+	text_end
+
+GoldenrodGymBeauty2Text:
+	text_asm
+	ld hl, GoldenrodGymTrainerHeader1
+	call TalkToTrainer
+	jp TextScriptEnd
+
+GoldenrodGymBeauty2BattleText:
+	text_far _GoldenrodBeauty2BattleText
+	text_end
+
+GoldenrodGymBeauty2EndBattleText:
+	text_far _GoldenrodBeauty2EndBattleText
+	text_end
+
+GoldenrodGymBeauty2AfterBattleText:
+	text_far _GoldenrodBeauty2AfterBattleText
 	text_end
 
 GoldenrodGymGuideText:

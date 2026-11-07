@@ -52,7 +52,7 @@ _GoldenrodGymTMNoRoomText::
 	line "for this!"
 	done
 
-_GoldenrodGymTrainer2BattleText::
+_GoldenrodGymLass1BattleText::
 	text "I like cute"
 	line "#MON better"
 	cont "than strong ones."
@@ -61,12 +61,12 @@ _GoldenrodGymTrainer2BattleText::
 	line "and cute #MON!"
 	done
 
-_GoldenrodGymTrainer2EndBattleText::
+_GoldenrodGymLass1EndBattleText::
 	text "Ugh!"
 	line "Oh, no, no, no!"
 	prompt
 
-_GoldenrodGymTrainer2AfterBattleText::
+_GoldenrodGymLass1AfterBattleText::
 	text "I'm trying to beat"
 	line "WHITNEY, but…"
 	cont "It's depressing."
@@ -78,7 +78,7 @@ _GoldenrodGymTrainer2AfterBattleText::
 	line "time!"
 	done
 
-_GoldenrodGymTrainer3BattleText::
+_GoldenrodGymBeauty1BattleText::
 	text "Oh, you are a cute"
 	line "little trainer! "
 
@@ -86,30 +86,30 @@ _GoldenrodGymTrainer3BattleText::
 	line "won't hold back!"
 	done
 
-_GoldenrodGymTrainer3EndBattleText::
+_GoldenrodGymBeauty1EndBattleText::
 	text "Oops!"
 	line "It's already over?"
 	prompt
 
-_GoldenrodGymTrainer3AfterBattleText::
+_GoldenrodGymBeauty1AfterBattleText::
 	text "Wow, you must be"
 	line "good to beat me!"
 	cont "Keep it up!"
 	done
 
-_GoldenrodGymTrainer4BattleText::
+_GoldenrodBeauty2BattleText::
 	text "Give it your best"
 	line "shot, or I'll take"
 	cont "you down!"
 	done
 
-_GoldenrodGymTrainer4EndBattleText::
+_GoldenrodBeauty2EndBattleText::
 	text "No!"
 	line "Oh, my #MON."
 	para "I'm so sorry!"
 	prompt
 
-_GoldenrodGymTrainer4AfterBattleText::
+_GoldenrodBeauty2AfterBattleText::
 	text "I taught my"
 	line "#MON moves for"
 	cont "taking on any"
