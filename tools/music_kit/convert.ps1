@@ -162,20 +162,7 @@ function Test-Midi([byte[]]$d) {
 	}
 	if ($timesigs.Count -eq 0) { $timesigs.Add(@(0, 4, 4)) }
 	$sigs = @($timesigs | Sort-Object { $_[0] })
-	$where = {
-		param($tk)
-		$bar = 1; $t0 = 0; $num = 4; $den = 4
-		foreach ($s in $sigs) {
-			if ($s[0] -gt $tk) { break }
-			$tpb = $ppq * 4 / $den
-			$bar += [Math]::Floor(($s[0] - $t0) / ($tpb * $num))
-			$t0 = $s[0]; $num = $s[1]; $den = $s[2]
-		}
-		$tpb = $ppq * 4 / $den
-		$bar += [Math]::Floor(($tk - $t0) / ($tpb * $num))
-		$beat = 1 + [Math]::Floor((($tk - $t0) % ($tpb * $num)) / $tpb)
-		"bar $bar, beat $beat"
-	}
+	$where = { param($tk) $bb = Get-BarBeat $tk $ppq $sigs; "bar $($bb[0]), beat $($bb[1])" } # midi_normalize.ps1
 	foreach ($tr in $tracks) {
 		$ch = $tr[0]; $active = @{}; $reported = @{}
 		# offs before ons at the same tick, so back-to-back notes aren't chords
@@ -269,7 +256,8 @@ function ConvertMidi {
 			$plain = "The converter couldn't read your MIDI. It said: $first"
 			if ($first -match '(?i)Measure (\d+), beat (\d+).*overlaps') {
 				# Test-Midi already ruled out chords, so this is a marker inside a note.
-				$plain = "At bar $($Matches[1]), beat $($Matches[2]) a note has a begin/end marker or effect inside it. Markers must sit at the start of a note or in a rest."
+				# The loop point is handled (held notes are split), so it's an effect marker.
+				$plain = "At bar $($Matches[1]), beat $($Matches[2]) a note has an effect marker (like duty_cycle) inside it. Effect markers must sit at the start of a note or in a rest."
 			} elseif ($first -match '(?i)no tracks found') {
 				$plain = 'Couldn''t find tracks named Ch1, Ch2, Ch3, Ch4. Rename your tracks (start from Template.mid).'
 			}
@@ -286,25 +274,38 @@ function ConvertMidi {
 	# it. Anything we don't recognise fails loudly: an unrenamed global label
 	# collides as soon as two songs are imported.
 
+	# A song with an intro before its loop gets subroutines for the intro's
+	# repeats ("ChN_sub_K:", called before ChN_loop), and pokemid writes those
+	# ABOVE "ChN::" (measured 2026-11-08, Template.mid with its loop at bar 2).
+	# Each ends in sound_ret, so they are held back and appended after that
+	# channel's body, where they become local labels like the rest.
 	$blocks = [ordered]@{}
+	$pending = @{}
 	$cur = $null
+	$target = $null
 	$n = 0
 	foreach ($line in $lines) {
 		$n++
-		if ($line -match '^\s*$' -or $line -match '^\s*;') { if ($cur) { $blocks[$cur].Add($line) }; continue }
+		if ($line -match '^\s*$' -or $line -match '^\s*;') { if ($target) { $target.Add($line) }; continue }
 		if ($line -match '^(Ch[1-4])::\s*$') {
 			$cur = $Matches[1]
 			if ($blocks.Contains($cur)) { Fail "The MIDI has two tracks named $cur. Each of Ch1-Ch4 can be used once." }
 			$blocks[$cur] = New-Object System.Collections.Generic.List[string]
 			$blocks[$cur].Add("${Label}_${cur}::")
+			$target = $blocks[$cur]
 			continue
 		}
-		if (-not $cur) { Fail "Unexpected converter output before the first channel (line $n)." ($lines -join "`r`n") }
 		if ($line -match '^(Ch[1-4])_(\w+):\s*$') {
-			if ($Matches[1] -ne $cur) { Fail "Converter label $($Matches[1])_$($Matches[2]) appeared inside $cur (line $n)." ($lines -join "`r`n") }
-			$blocks[$cur].Add(".$($Matches[2]):")
+			if ($Matches[1] -ne $cur) {
+				if ($blocks.Contains($Matches[1])) { Fail "Converter label $($Matches[1])_$($Matches[2]) appeared inside $cur (line $n)." ($lines -join "`r`n") }
+				$cur = $Matches[1]
+				if (-not $pending.ContainsKey($cur)) { $pending[$cur] = New-Object System.Collections.Generic.List[string] }
+				$target = $pending[$cur]
+			}
+			$target.Add(".$($Matches[2]):")
 			continue
 		}
+		if (-not $target) { Fail "Unexpected converter output before the first channel (line $n)." ($lines -join "`r`n") }
 		if ($line -match '^\S') { Fail "Unrecognised converter label '$line' (line $n)." ($lines -join "`r`n") }
 		# operands: ChN_xxx references become .xxx (only within their own channel)
 		$fixed = [regex]::Replace($line, '\b(Ch[1-4])_(\w+)\b', {
@@ -313,7 +314,12 @@ function ConvertMidi {
 			'.' + $m.Groups[2].Value
 		})
 		if ($fixed -match '\bCh[1-4]\b') { Fail "Unrecognised channel reference '$fixed' (line $n)." ($lines -join "`r`n") }
-		$blocks[$cur].Add($fixed)
+		$target.Add($fixed)
+	}
+	foreach ($ch in @($pending.Keys)) {
+		if (-not $blocks.Contains($ch)) { Fail "Converter wrote subroutines for $ch but no $ch channel." ($lines -join "`r`n") }
+		$blocks[$ch].Add('')
+		$blocks[$ch].AddRange($pending[$ch])
 	}
 	if ($blocks.Count -eq 0) {
 		Fail 'Couldn''t find tracks named Ch1, Ch2, Ch3, Ch4. Rename your tracks (start from Template.mid).' ($lines -join "`r`n")

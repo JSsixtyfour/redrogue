@@ -295,6 +295,41 @@ NATIVE_ACCEPTS = (
 )
 
 
+# Loop-point fixtures (test_midis.loop_tests): (mid, what the window must say,
+# channels whose block must hold ".loop:"), or a failure reason when the run must fail.
+LOOP_CHECKS = [
+    ("musescore_loop.mid", ["goes back to the start of bar 3", "set by the Loop track"], ["Ch1", "Ch2", "Ch3"]),
+    ("loop_end.mid", ["plays bars 1-3 once, then goes back to the start of bar 2", "never played"], ["Ch1", "Ch2", "Ch3"]),
+    ("held_across_loop.mid", ["Ch3: a note started at bar 1, beat 3", "split it in two"], ["Ch1", "Ch2", "Ch3"]),
+    ("conductor_marker.mid", ["goes back to the start of bar 2", "set by begin/end markers"], ["Ch1", "Ch2", "Ch3"]),
+    ("one_track_marker.mid", ["goes back to the start of bar 2", "set by begin/end markers"], ["Ch1", "Ch2", "Ch3"]),
+]
+LOOP_REJECTIONS = [("conflicting_markers.mid", "Found 'begin' markers at different places")]
+
+
+def check_loops(out):
+    for mid, says, chans in LOOP_CHECKS:
+        log("check: %s loops where it should" % mid)
+        asm = os.path.join(out, mid + ".asm")
+        said = convert(os.path.join(WORK, mid), "-NoBuild", "-OutAsm", winpath(asm))
+        text = open(asm).read()
+        for want in says:
+            if want not in said:
+                sys.exit("%s: expected the window to say %r:\n%s" % (mid, want, said))
+        blocks = re.split(r"^Music_KitPreview_(Ch\d)::$", text, flags=re.M)
+        found = {blocks[i]: blocks[i + 1] for i in range(1, len(blocks), 2)}
+        for ch in chans:
+            if ".loop:" not in found.get(ch, "") or "sound_loop 0, .loop" not in found.get(ch, ""):
+                sys.exit("%s: %s should loop:\n%s" % (mid, ch, text))
+    for mid, reason in LOOP_REJECTIONS:
+        log("check: %s is rejected" % mid)
+        cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", winpath(os.path.join(ENGINE, "convert.ps1")),
+               winpath(os.path.join(WORK, mid)), "-NoBuild", "-NoLaunch", "-NoBundle", "-OutAsm", winpath(os.path.join(out, mid + ".asm"))]
+        p = subprocess.run(cmd, text=True, errors="replace", capture_output=True)
+        if p.returncode == 0 or reason not in p.stdout:
+            sys.exit("%s: expected a failure mentioning %r, got exit %d:\n%s%s" % (mid, reason, p.returncode, p.stdout, p.stderr))
+
+
 def check_native_accepts(out):
     log("check: native donor-style song (db byte, Label.local call, single-colon label) is accepted")
     path = os.path.join(WORK, "donor_style.asm")
@@ -349,7 +384,8 @@ def main():
     kit = {
         "kitDate": date, "buildHash": git, "rgbds": RGBDS_VERSION, "pokemid": "0.9", "mgba": MGBA_VERSION,
         "crystalTracker": TRACKER_VERSION,
-        "kitSchema": 2, "engine": ENGINE_ID,
+        # 3 (2026-11-08): loop set by a "Loop" track; begin/end markers are song-wide
+        "kitSchema": 3, "engine": ENGINE_ID,
         "engineHashes": engine_hashes(), "romSha256": sha256_file(os.path.join(REPO, "pokered.gbc")),
         "importBudget": budget, "songIdRoom": id_room, "romSpace": space,
         "flags": flags,
@@ -386,7 +422,17 @@ def main():
     # 3. Template: the first thing he'll try must build.
     log("check: Template.mid builds")
     shutil.copy2(os.path.join(WORK, "Template.mid"), KIT)
-    print(convert(os.path.join(KIT, "Template.mid")), end="")
+    said = convert(os.path.join(KIT, "Template.mid"))
+    print(said, end="")
+    if "goes back to the start of bar 2" not in said:
+        sys.exit("Template.mid should loop back to bar 2 (its Loop track):\n" + said)
+
+    # 3a. Loop points: the Loop track, song-wide markers, held notes, conflicts.
+    #     Runtime: the game really jumps back to the Loop track's bar.
+    check_loops(out)
+    log("check: looptime.mid plays bars 1 2 3 4 3 4")
+    print(convert(os.path.join(WORK, "looptime.mid")), end="")
+    record_title.cmd_looptime(os.path.join(out, "test.gbc"), os.path.join(out, "test.map"))
 
     # 3b. What MuseScore and FL Studio write must convert too: tracks found by
     #     order or by name, whole-song loop, timbre from the name, GM drums.

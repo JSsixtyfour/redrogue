@@ -11,7 +11,8 @@ QUICK START
 1. Before extracting the zip: right-click it, Properties, tick "Unblock", OK.
    If Windows says it protected your PC, click "More info", then "Run anyway".
 2. Open Template.mid in your program. It is a small working song with the four
-   tracks already named. Write your song in them.
+   tracks already named, plus a Loop track that says where the song repeats
+   from (see LOOPING below). Write your song in them.
 3. Export as a MIDI file (Type 1 / multi-track, not Type 0, if it asks).
 4. Drag the .mid onto "DROP YOUR SONG HERE.bat". A black window shows what
    happens, then the game opens. The song starts after the intro. Press Start
@@ -35,8 +36,8 @@ Every channel sounds at the pitch written in your program.
 
 HOW THE TESTER FINDS YOUR TRACKS
   - Any track with Ch1, Ch2, Ch3 or Ch4 in its name is used for that voice.
-    "Ch1 Square 50" and "Ch3 Wave 2 bass" both work. Other tracks are ignored
-    (the window tells you which).
+    "Ch1 Square 50" and "Ch3 Wave 2 bass" both work. A track named Loop sets
+    the loop point. Other tracks are ignored (the window tells you which).
   - If no track is named like that, it uses your tracks in order: the first
     three instruments are Ch1, Ch2, Ch3, and the drums (the track on MIDI
     channel 10, where MuseScore puts its drumset) are Ch4. If your drums are
@@ -60,9 +61,9 @@ PICKING THE SOUND: put it in the track name
                 12 soft, low           13 pure, sine-like
                 14 square (hollow)
   Example track names: "Ch1 Square 50", "Ch2 Square 25", "Ch3 Wave 2".
-  Programs that let you put text events in the MIDI can also use the effect
-  markers in Template.mid, for example "duty_cycle 2". A marker in the MIDI
-  wins over the name.
+  DAWs that put text events in the MIDI (FL Studio, not MuseScore) can also
+  use the effect markers in Template.mid, for example "duty_cycle 2". A
+  marker in the MIDI wins over the name.
 
 
 THE LIMITS
@@ -110,15 +111,26 @@ THE LIMITS
          8    snare 7         18   muted snare 4
          9    snare 8
 
-5. LOOPING. If your MIDI has no loop markers, the whole song repeats from the
-   start (the window says so). To loop only part of it, put text markers named
-   "begin" and "end" on every track; Template.mid shows how. Markers written
-   as MIDI "marker" events (some programs call them time markers) work too.
-   If your program cannot write text or marker events, the song just repeats
-   whole, which is fine for testing.
-   Never put a marker in the middle of a
-   note. If you do, you get an error mentioning notes that "overlap other
-   events".
+5. LOOPING: THE "Loop" TRACK. Game music plays once from the top, then
+   repeats a section forever. You choose where that section starts with an
+   extra track named Loop:
+     a) Template.mid already has one. In your own song, add any instrument
+        and name it Loop (MuseScore 4: Instruments panel, "+", add any
+        instrument, then rename it Loop).
+     b) Put ONE note on the Loop track, on the first beat of the bar the
+        music should jump back to. Any pitch, any length. The game never
+        plays this track.
+     c) Optional: a second note where the loop should END, if that is before
+        the end of the song. Anything after it is never played.
+     d) Drop the song. The black window says, for example:
+          Loop: plays bars 1-74 once, then goes back to the start of bar 9
+        Check that the bar number is the one you meant.
+   No Loop track: the whole song repeats from bar 1.
+   A note that is still sounding where the loop starts is split in two there
+   (the window says so); start a fresh note on that bar if you hear a bump.
+   (Typing "begin" as text in MuseScore does NOT work: MuseScore never puts
+   text into its MIDI files. In FL Studio and other DAWs, text or marker
+   events named begin and end work too, on any track.)
 
 6. SIZE. After each run, the window prints "Song size: X of Y bytes". Y is the
    biggest song the game has room for, so stay under it (the tester prints

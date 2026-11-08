@@ -45,10 +45,13 @@ def pitchtest(path):
 
 
 def template(path):
-    """Template.mid: the composer's starting point. 4 looping bars at 120 BPM
+    """Template.mid: the composer's starting point. 4 bars at 120 BPM
     (19200/120 = 160, exact), all four tracks named and playing, with one
-    effect marker per square track so he can see how markers look. Every
-    track sounds at written pitch (see make_sample_pack.py)."""
+    effect marker per square track so DAW users can see how markers look.
+    A "Loop" track with one note at bar 2: bar 1 plays once as an intro,
+    then bars 2-4 repeat. No begin/end text: MuseScore shows imported text
+    but never exports it, so text there taught the wrong way to loop.
+    Every track sounds at written pitch (see make_sample_pack.py)."""
     C, D, E, F, G, A, B = 0, 2, 4, 5, 7, 9, 11
 
     def n(name, octave):  # MIDI note, C4 = 60
@@ -57,9 +60,8 @@ def template(path):
     t0 = smf.Track()
     t0.tempo(0, 120)
     ch1, ch2, ch3, ch4 = (smf.Track("Ch%d" % i) for i in range(1, 5))
-    for t in (ch1, ch2, ch3, ch4):
-        t.text(0, "begin")
-        t.text(4 * BAR, "end")
+    loop = smf.Track("Loop")
+    loop.note(BAR, Q // 2, 72, 80)  # the loop restarts at bar 2
     ch1.text(0, "duty_cycle 2")
     ch2.text(0, "duty_cycle 1")
 
@@ -82,7 +84,7 @@ def template(path):
         for beat in range(4):
             ch4.note(bar * BAR + beat * Q, Q // 4, 14 if beat % 2 == 0 else 0, 100)
             ch4.note(bar * BAR + beat * Q + Q // 2, Q // 4, 5, 100)
-    smf.write(path, [t0, ch1, ch2, ch3, ch4])
+    smf.write(path, [t0, ch1, ch2, ch3, ch4, loop])
 
 
 def daw_like(out):
@@ -181,6 +183,75 @@ def notation_gaps(path):
     smf.write(path, [t0, lead])
 
 
+MS_Q = 96  # MuseScore 4 writes PPQ 96 (Mewtwo original.mid, 2026-11-08)
+
+
+def _musescore_song(bars, loop_bars=None, ch3_hold=False):
+    """The shape MuseScore 4 exports (measured, Mewtwo original.mid): PPQ 96, two
+    unnamed conductor tracks, part names as track names, and no text or marker
+    events at all. Each bar plays a different pitch on Ch1/Ch2/Ch3, so a loop's
+    position shows in the converted song. loop_bars: bars (1-based) that get a
+    note on a "Loop" track. ch3_hold: Ch3 holds a note from bar 1 beat 3 into
+    bar 2 (across a loop that starts at bar 2)."""
+    q, bar = MS_Q, 4 * MS_Q
+    t0, t1 = smf.Track(), smf.Track()
+    t0.tempo(0, 120)
+    t0._add(0, bytes([0xFF, 0x58, 4, 4, 2, 24, 8]), 1)
+    ch1, ch2, ch3 = smf.Track("Ch1 Square 25"), smf.Track("Ch2 Square 75"), smf.Track("Ch3 Wave 6")
+    for b in range(bars):
+        for k in range(4):
+            ch1.note(b * bar + k * q, q - 1, 60 + b, 100)  # MuseScore ends notes 1 tick early
+        ch2.note(b * bar, bar - 1, 64 + b, 90)
+        if not (ch3_hold and b < 2):
+            ch3.note(b * bar, bar - 1, 36 + b, 100)
+    if ch3_hold:
+        ch3.note(0, 2 * q, 36, 100)
+        ch3.note(2 * q, 4 * q, 43, 100)  # bar 1 beat 3 through bar 2 beat 2
+        ch3.note(bar + 2 * q, 2 * q - 1, 37, 100)
+    tracks = [t0, t1, ch1, ch2, ch3]
+    if loop_bars:
+        lp = smf.Track("Loop")
+        for b in loop_bars:
+            lp.note((b - 1) * bar, q - 1, 72, 80)
+        tracks.append(lp)
+    return tracks
+
+
+# looptime.mid: Ch1 plays one note per bar, a different pitch each bar, with a
+# Loop note at bar LOOPTIME_LOOP_BAR. record_title.py looptime hears the bars
+# in order 1 2 3 4 3 4: the game really jumps back to the Loop note's bar.
+LOOPTIME_NOTES = [57, 64, 69, 76]  # A3 E4 A4 E5
+LOOPTIME_LOOP_BAR = 3
+
+
+def looptime(path):
+    t0 = smf.Track()
+    t0.tempo(0, 120)
+    ch1 = smf.Track("Ch1 Square 50")
+    for b, note in enumerate(LOOPTIME_NOTES):
+        ch1.note(b * BAR, BAR - Q // 2, note, 127)  # half-beat gap: each bar is a separate sound
+    lp = smf.Track("Loop")
+    lp.note((LOOPTIME_LOOP_BAR - 1) * BAR, Q, 72, 80)
+    smf.write(path, [t0, ch1, lp])
+
+
+def loop_tests(out):
+    """Loop-point fixtures. Expectations live in make_music_kit.py LOOP_CHECKS."""
+    smf.write(os.path.join(out, "musescore_loop.mid"), _musescore_song(4, [3]), ppq=MS_Q)
+    smf.write(os.path.join(out, "loop_end.mid"), _musescore_song(5, [2, 4]), ppq=MS_Q)
+    smf.write(os.path.join(out, "held_across_loop.mid"), _musescore_song(3, [2], ch3_hold=True), ppq=MS_Q)
+    tracks = _musescore_song(4)
+    tracks[0].meta(4 * MS_Q, 0x06, b"begin")  # a DAW marker on the conductor track only
+    smf.write(os.path.join(out, "conductor_marker.mid"), tracks, ppq=MS_Q)
+    tracks = _musescore_song(4)
+    tracks[2].text(4 * MS_Q, "begin")  # on Ch1 only
+    smf.write(os.path.join(out, "one_track_marker.mid"), tracks, ppq=MS_Q)
+    tracks = _musescore_song(4)
+    tracks[2].text(4 * MS_Q, "begin")
+    tracks[3].text(8 * MS_Q, "begin")
+    smf.write(os.path.join(out, "conflicting_markers.mid"), tracks, ppq=MS_Q)
+
+
 def write_all(out):
     os.makedirs(out, exist_ok=True)
     drumtest(os.path.join(out, "drumtest.mid"))
@@ -191,6 +262,8 @@ def write_all(out):
     wave5(os.path.join(out, "wave5.mid"))
     format0(os.path.join(out, "format0.mid"))
     notation_gaps(os.path.join(out, "notation_gaps.mid"))
+    loop_tests(out)
+    looptime(os.path.join(out, "looptime.mid"))
 
 
 def main():

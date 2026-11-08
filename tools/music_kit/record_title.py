@@ -4,6 +4,7 @@
     python3 tools/music_kit/record_title.py wav   <test.gbc> <test.map> <seconds> <out.wav> [--stereo]
     python3 tools/music_kit/record_title.py kitswitch <test.gbc> <test.map>
     python3 tools/music_kit/record_title.py pitch <test.gbc> <test.map>
+    python3 tools/music_kit/record_title.py looptime <test.gbc> <test.map>
 
 We hook HOME PlayMusic and start the clock when it's called with the
 preview song's id (its row in the Music table, read from the ROM), so timing
@@ -213,6 +214,28 @@ def cmd_kitswitch(rom, mapfile):
     print("kitswitch: %d hits per pass, passes agree" % KITSWITCH_HITS)
 
 
+def cmd_looptime(rom, mapfile):
+    """looptime.mid: one note per bar, a different pitch each bar, looping back
+    to LOOPTIME_LOOP_BAR. Six bars of audio must be bars 1, 2, 3, 4, 3, 4 by
+    pitch: proves the Loop track's bar is where the game really jumps back to."""
+    from test_midis import LOOPTIME_NOTES, LOOPTIME_LOOP_BAR
+    n = len(LOOPTIME_NOTES)
+    order = list(range(n)) + list(range(LOOPTIME_LOOP_BAR - 1, n))
+    mono = record(rom, mapfile, 2.0 * len(order) - 0.2)  # a bar is 2 s; stop before the next one
+    spans = sounding_spans(mono)
+    if len(spans) != len(order):
+        sys.exit("looptime: expected %d notes, heard %d: %s" % (len(order), len(spans), [(s / RATE, e / RATE) for s, e in spans]))
+    print("note  start_s  expected  measured_hz  bar")
+    for k, ((s, e), want) in enumerate(zip(spans, order)):
+        hz = measure_hz(mono[s + (e - s) // 4: e - (e - s) // 4])
+        cents = [abs(1200 * math.log2(hz / (440.0 * 2 ** ((m - 69) / 12)))) if hz else 1e9 for m in LOOPTIME_NOTES]
+        got = int(np.argmin(cents))
+        print("%4d  %7.3f  bar %d     %11.2f  bar %d" % (k, s / RATE, want + 1, hz or 0, got + 1))
+        if got != want or cents[got] > 50:
+            sys.exit("looptime: note %d should be bar %d, heard bar %d (%+.0f cents off)" % (k, want + 1, got + 1, cents[got]))
+    print("looptime: plays bars %s, as the Loop track says" % " ".join(str(b + 1) for b in order))
+
+
 def main():
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     cmd = sys.argv[1]
@@ -225,6 +248,8 @@ def main():
         cmd_kitswitch(*sys.argv[2:4])
     elif cmd == "pitch":
         cmd_pitch(*sys.argv[2:4])
+    elif cmd == "looptime":
+        cmd_looptime(*sys.argv[2:4])
     else:
         sys.exit(__doc__)
 

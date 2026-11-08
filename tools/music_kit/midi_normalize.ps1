@@ -101,6 +101,36 @@ function Get-TrackChunk($events, [int]$endTick) {
 	return ,$chunk.ToArray()
 }
 
+# Where a tick falls, for messages. $sigs: time signatures as @(tick, numerator,
+# denominator), sorted by tick (4/4 when empty). Returns @(bar, beat), both 1-based.
+function Get-BarBeat([double]$tk, [int]$ppq, $sigs) {
+	$bar = 1; $t0 = 0; $num = 4; $den = 4
+	foreach ($s in $sigs) {
+		if ($s[0] -gt $tk) { break }
+		$tpb = $ppq * 4 / $den
+		$bar += [Math]::Floor(($s[0] - $t0) / ($tpb * $num))
+		$t0 = $s[0]; $num = $s[1]; $den = $s[2]
+	}
+	$tpb = $ppq * 4 / $den
+	$bar += [Math]::Floor(($tk - $t0) / ($tpb * $num))
+	$beat = 1 + [Math]::Floor((($tk - $t0) % ($tpb * $num)) / $tpb)
+	return @([int]$bar, [int]$beat)
+}
+
+# The first bar line at or after a tick.
+function Get-BarLine([double]$tk, [int]$ppq, $sigs) {
+	$t0 = 0; $num = 4; $den = 4
+	foreach ($s in $sigs) { if ($s[0] -gt $tk) { break }; $t0 = $s[0]; $num = $s[1]; $den = $s[2] }
+	$len = $ppq * 4 / $den * $num
+	return [int]($t0 + [Math]::Ceiling(($tk - $t0) / $len) * $len)
+}
+
+function Format-BarBeat([double]$tk, [int]$ppq, $sigs) {
+	$bb = Get-BarBeat $tk $ppq $sigs
+	if ($bb[1] -eq 1) { return "the start of bar $($bb[0])" }
+	return "bar $($bb[0]), beat $($bb[1])"
+}
+
 function New-MetaBytes([int]$kind, [byte[]]$data) {
 	$l = New-Object System.Collections.Generic.List[byte]
 	$l.Add(0xFF); $l.Add([byte]$kind)
@@ -136,6 +166,35 @@ function ConvertTo-CleanMidi([byte[]]$d, [hashtable]$GmDrums) {
 
 	$midi = Read-MidiFile $d
 	$tracks = $midi.Tracks
+
+	# ---- the loop point. Two sources, both song-wide (one loop for every channel):
+	#   1. a track named "Loop": its 1st note is where the loop starts, an optional
+	#      2nd note where it ends. Every program exports notes. MuseScore exports no
+	#      text at all (measured 2026-11-08, Mewtwo original.mid: zero text or
+	#      marker events), so this is the only way a notation program can set it.
+	#   2. begin/end text or marker events on ANY track, conductor included
+	#      (DAWs put markers there). They used to count only on ChN tracks, and a
+	#      marker on one track looped that channel alone.
+	$loopRe = '(?i)(?<![a-z])loop(?![a-z])'
+	$loopTracks = @($tracks | Where-Object { $_.Name -match $loopRe })
+	if ($loopTracks.Count -gt 1) { $problems.Add("There are $($loopTracks.Count) tracks named Loop. Keep one: its first note is where the song loops back to."); return @{ Bytes = $d; Notes = $notes; Problems = $problems } }
+	$loopNotes = @()
+	if ($loopTracks.Count -eq 1) {
+		$loopNotes = @($loopTracks[0].Events | Where-Object { $_.Kind -eq 'on' } | ForEach-Object { [int]$_.Tick } | Sort-Object -Unique)
+		$tracks = @($tracks | Where-Object { $_ -ne $loopTracks[0] })
+	}
+	$markBegin = New-Object System.Collections.Generic.List[int]
+	$markEnd = New-Object System.Collections.Generic.List[int]
+	$allTracks = New-Object System.Collections.Generic.List[object]
+	foreach ($t in $tracks) { $allTracks.Add($t) }
+	foreach ($t in $loopTracks) { $allTracks.Add($t) }
+	foreach ($t in $allTracks) {
+		foreach ($e in $t.Events) {
+			if ($e.Kind -ne 'text') { continue }
+			$s = $e.Text.Trim()
+			if ($s -ieq 'begin') { $markBegin.Add($e.Tick) } elseif ($s -ieq 'end') { $markEnd.Add($e.Tick) }
+		}
+	}
 
 	# Format 0 keeps every channel in one track: split it into one track per channel.
 	if ($midi.Format -eq 0 -and $tracks.Count -eq 1) {
@@ -186,7 +245,6 @@ function ConvertTo-CleanMidi([byte[]]$d, [hashtable]$GmDrums) {
 	# ---- events per channel: [Tick, Order, Seq, Bytes]; Order puts offs, then text, then ons
 	$chan = [ordered]@{}
 	$seq = 0
-	$sawLoop = $false
 	$hasTimbre = @{}
 	$typoSeen = 0
 	foreach ($ch in $used.Keys) {
@@ -201,8 +259,7 @@ function ConvertTo-CleanMidi([byte[]]$d, [hashtable]$GmDrums) {
 			if ($e.Kind -eq 'text') {
 				$s = $e.Text.Trim()
 				if ($s -ieq 'begin' -or $s -ieq 'end') {
-					$sawLoop = $true
-					$evs.Add([pscustomobject]@{ Tick = $e.Tick; Order = $(if ($s -ieq 'begin') { 0.9 } else { 1 }); Seq = $seq++; Bytes = (New-MetaBytes 0x01 $script:Latin1.GetBytes($s.ToLower())) })
+					# collected song-wide above; placed on every channel below
 				} elseif ($s -match $script:EffectCommand) {
 					if ($s -match '^duty_cycle\b') { $hasTimbre["$ch/duty"] = 1 } elseif ($s -match '^note_type\b') { $hasTimbre["$ch/note_type"] = 1 }
 					$evs.Add([pscustomobject]@{ Tick = $e.Tick; Order = 1; Seq = $seq++; Bytes = (New-MetaBytes 0x01 $script:Latin1.GetBytes($s)) })
@@ -317,12 +374,92 @@ function ConvertTo-CleanMidi([byte[]]$d, [hashtable]$GmDrums) {
 		$chan[$ch].EndTick = $last
 		if ($last -gt $songEnd) { $songEnd = $last }
 	}
-	if (-not $sawLoop -and $songEnd -gt 0) {
-		foreach ($ch in $chan.Keys) {
-			$chan[$ch].Events.Add([pscustomobject]@{ Tick = 0; Order = 0.9; Seq = $seq++; Bytes = (New-MetaBytes 0x01 $script:Latin1.GetBytes('begin')) })
-			$chan[$ch].Events.Add([pscustomobject]@{ Tick = $songEnd; Order = 1; Seq = $seq++; Bytes = (New-MetaBytes 0x01 $script:Latin1.GetBytes('end')) })
+	# ---- one loop for the whole song (sources: see the top of this function)
+	$sigs = @($midi.Cond | Where-Object { $_.Kind -eq 0x58 -and $_.Data.Length -ge 2 } | Sort-Object Tick |
+		ForEach-Object { ,@([int]$_.Tick, [int]$_.Data[0], [int][Math]::Pow(2, $_.Data[1])) })
+	$at = { param($tk) Format-BarBeat $tk $ppq $sigs }
+	$lastBar = { param($tk) (Get-BarBeat ([Math]::Max(0, $tk - 1)) $ppq $sigs)[0] }
+	# The song ends at the end of its last bar. Programs that stop the file at the
+	# last note-off would otherwise cut a closing rest out of the loop, and the
+	# loop would come back early (measured 2026-11-08: looptime.mid jumped back
+	# half a beat early, its last rest gone).
+	$songEnd = Get-BarLine $songEnd $ppq $sigs
+	$begin = $null; $end = $null; $how = $null
+	if ($loopNotes.Count -gt 0) {
+		$begin = & $snap $loopNotes[0]
+		if ($loopNotes.Count -gt 1) { $end = & $snap $loopNotes[1] }
+		if ($loopNotes.Count -gt 2) { $notes.Add("The Loop track has $($loopNotes.Count) notes. Only the first two count (loop start, loop end); the rest were ignored.") }
+		if ($markBegin.Count -or $markEnd.Count) { $notes.Add('The song has begin/end markers and a Loop track. The Loop track wins; the markers were ignored.') }
+		$how = 'set by the Loop track'
+	} elseif ($markBegin.Count -or $markEnd.Count) {
+		$bs = @($markBegin | ForEach-Object { & $snap $_ } | Sort-Object -Unique)
+		$es = @($markEnd | ForEach-Object { & $snap $_ } | Sort-Object -Unique)
+		if ($bs.Count -gt 1) { $problems.Add("Found 'begin' markers at different places ($(($bs | ForEach-Object { & $at $_ }) -join ' and ')). The whole song loops back to one place, so keep one.") }
+		if ($es.Count -gt 1) { $problems.Add("Found 'end' markers at different places ($(($es | ForEach-Object { & $at $_ }) -join ' and ')). Keep one.") }
+		if ($problems.Count) { return @{ Bytes = $d; Notes = $notes; Problems = $problems } }
+		if ($bs.Count) { $begin = $bs[0] }
+		if ($es.Count) { $end = $es[0] }
+		$how = 'set by begin/end markers'
+	}
+	if ($null -ne $end -and $end -ge $songEnd) { $end = $null } # at or past the last note = the song's end
+	$stop = if ($null -ne $end) { $end } else { $songEnd }
+	if ($null -ne $begin -and $begin -ge $stop) {
+		$problems.Add("The loop starts at $(& $at $begin), which is at or after where it ends ($(& $at $stop)). Put the Loop track's first note earlier.")
+		return @{ Bytes = $d; Notes = $notes; Problems = $problems }
+	}
+	if ($null -eq $begin -and $null -eq $end -and $null -eq $how) { $begin = 0; $how = 'nothing set it, so the whole song repeats' }
+
+	# A note held across the loop start would be half inside the loop: pokemid
+	# can't write that ("overlaps other events"). Split it there (drums: end the
+	# hit there). At the loop end, cut held notes; pokemid drops everything after
+	# 'end' without a word (measured 2026-11-08), so say how much that is.
+	$cuts = @()
+	if ($null -ne $begin -and $begin -gt 0) { $cuts += ,@($begin, $true) }
+	if ($null -ne $end) { $cuts += ,@($end, $false) }
+	foreach ($ch in $chan.Keys) {
+		$evs = $chan[$ch].Events
+		foreach ($cut in $cuts) {
+			$x = $cut[0]; $split = $cut[1]
+			$open = @{}
+			$held = New-Object System.Collections.Generic.List[object]
+			foreach ($e in ($evs | Sort-Object Tick, Order, Seq)) {
+				if ($e.Tick -ge $x) { break }
+				if ($e.Bytes[0] -eq 0x90) { $open[[int]$e.Bytes[1]] = $e }
+				elseif ($e.Bytes[0] -eq 0x80) { $open.Remove([int]$e.Bytes[1]) }
+			}
+			foreach ($on in $open.Values) {
+				$off = $evs | Where-Object { $_.Bytes[0] -eq 0x80 -and $_.Bytes[1] -eq $on.Bytes[1] -and $_.Tick -ge $x } | Sort-Object Tick | Select-Object -First 1
+				if (-not $off -or $off.Tick -eq $x) { continue }
+				$held.Add($on)
+				$evs.Add([pscustomobject]@{ Tick = $x; Order = 0; Seq = $seq++; Bytes = [byte[]]@(0x80, $on.Bytes[1], 0) })
+				if ($split -and $ch -ne 'Ch4') { $evs.Add([pscustomobject]@{ Tick = $x; Order = 2; Seq = $seq++; Bytes = [byte[]]@(0x90, $on.Bytes[1], $on.Bytes[2]) }) }
+			}
+			if ($held.Count) {
+				$what = if ($split -and $ch -ne 'Ch4') { 'split it in two there (you may hear it start again)' } else { 'cut it short there' }
+				$notes.Add("${ch}: a note started at $(& $at $held[0].Tick) is still playing at the loop $(if ($split) { 'start' } else { 'end' }) ($(& $at $x)), so I $what.")
+			}
 		}
-		$notes.Add('No begin/end loop markers found, so the whole song repeats from the start. (Add "begin" and "end" text markers to loop only part of it.)')
+		$chan[$ch].Events = $evs
+	}
+	if ($null -ne $end) {
+		$after = 0
+		foreach ($ch in $chan.Keys) { $after += @($chan[$ch].Events | Where-Object { $_.Bytes[0] -eq 0x90 -and $_.Tick -ge $end }).Count }
+		if ($after) { $notes.Add("$after notes come after the loop end ($(& $at $end)) and are never played. The game only plays up to there.") }
+	}
+
+	foreach ($ch in $chan.Keys) {
+		if ($null -ne $begin) { $chan[$ch].Events.Add([pscustomobject]@{ Tick = $begin; Order = 0.9; Seq = $seq++; Bytes = (New-MetaBytes 0x01 $script:Latin1.GetBytes('begin')) }) }
+		$chan[$ch].Events.Add([pscustomobject]@{ Tick = $stop; Order = 1; Seq = $seq++; Bytes = (New-MetaBytes 0x01 $script:Latin1.GetBytes('end')) })
+	}
+	$endBar = & $lastBar $stop
+	$bars = if ($endBar -eq 1) { 'bar 1' } else { "bars 1-$endBar" }
+	if ($null -eq $begin) {
+		$notes.Add("Loop: none. The song plays once and stops after bar $endBar (${how}: there is an end but no begin).")
+	} elseif ($begin -eq 0) {
+		$tail = if ($how -like 'nothing*') { ' Add a track named Loop with one note where it should restart to loop only part of it (see READ ME FIRST).' } else { '' }
+		$notes.Add("Loop: plays $bars, then repeats from bar 1 ($how).$tail")
+	} else {
+		$notes.Add("Loop: plays $bars once, then goes back to $(& $at $begin) and repeats from there ($how).")
 	}
 
 	# ---- write it back out: tempo track, then Ch1-Ch4
