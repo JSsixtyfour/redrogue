@@ -77,7 +77,8 @@ class MiniBossBandTest(HarnessTestCase):
                 party, levels = self._build("GIOVANNI_MINIBOSS", tier, 3)
                 self.assertEqual(levels, expected_levels(tier))
                 runs = POOLS[f"POOL_BAND_GiovanniMiniBoss_Ace{band_of(tier)}"]
-                aces = {SPECIES[s] for run in runs.values() for s in run}
+                # Form aces come back as "URSARING#1"; the party byte is the base species.
+                aces = {SPECIES[s.split("#")[0]] for run in runs.values() for s in run}
                 self.assertIn(party[-1], aces, f"tier {tier} last slot is not an ace: {party}")
 
     def test_rival_ace_is_his_starter_on_the_round_curve(self):

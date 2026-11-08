@@ -63,20 +63,24 @@ RarityJohto:
 	rarity_tier JohtoPokeball
 	rarity_tier JohtoGreatball, JohtoGreatball.defaultEvos
 	rarity_tier JohtoUltraball
-	rarity_tier JohtoMasterball
+	rarity_tier JohtoMasterball, JohtoMasterball.defaultEvos
 	rarity_tier JohtoUber
 
-; When Johto AND Warp are active, Swinub's and Teddiursa's whole lines become
-; Great Ball: Warp adds Mamoswine and Ursaluna to the end of them. Skip their
-; two leading Poke Ball pairs and include their extra Great Ball pairs.
-; The other three Johto tiers are unchanged and use RarityJohto directly.
+; When Johto AND Warp are active, Warp adds Mamoswine and Ursaluna to the ends
+; of the Swinub and Teddiursa lines, so both lines leave Poke Ball: Swinub's
+; becomes Great Ball and Teddiursa's Master Ball (Ursaluna is that strong).
+; Skip their two leading Poke Ball pairs and include their conditional pairs
+; in the Great Ball and Master Ball rows. Uber is unchanged and uses
+; RarityJohto directly.
 RarityJohtoWarp:
 	db (JohtoPokeball_Evos - JohtoPokeball.withoutBoosted) / 2
 	db (JohtoPokeball_End - JohtoPokeball.withoutBoosted) / 2
 	dw JohtoPokeball.withoutBoosted
 	rarity_tier JohtoGreatball
+	rarity_tier JohtoUltraball
+	rarity_tier JohtoMasterball
 RarityJohtoWarpEnd:
-ASSERT RarityJohtoWarpEnd - RarityJohtoWarp == 2 * RARITY_TIER_ENTRY_SIZE
+ASSERT RarityJohtoWarpEnd - RarityJohtoWarp == 4 * RARITY_TIER_ENTRY_SIZE
 
 ; Kanto Time Warp - unlocked after the second champion win. Populated in Phase 2.
 RarityWarp:
@@ -289,7 +293,7 @@ KantoUber_End:
 ; Base form of the Johto pokeball tier - common early-route mons.
 JohtoPokeball:
 	rarity_mon SWINUB ; Great Ball instead when Johto + Warp are both active
-	rarity_mon TEDDIURSA ; likewise (evolves through Ursaluna)
+	rarity_mon TEDDIURSA ; Master Ball instead with Johto + Warp (evolves through Ursaluna)
 .withoutBoosted:
 	rarity_mon SENTRET
 	rarity_mon HOOTHOOT
@@ -317,7 +321,7 @@ JohtoPokeball_Evos:
 	rarity_mon QUAGSIRE
 	rarity_mon FORRETRESS
 	rarity_mon GRANBULL
-	rarity_mon URSARING ; classified as Great Ball with Johto + Warp
+	rarity_mon URSARING ; classified as Master Ball with Johto + Warp
 	rarity_mon MAGCARGO
 	rarity_mon PILOSWINE ; classified as Great Ball with Johto + Warp
 	rarity_mon OCTILLERY
@@ -361,7 +365,6 @@ JohtoGreatball:
 .defaultEvos:
 ; Conditional direct pick: excluded by the default RarityJohto row above.
 	rarity_mon SWINUB ; direct only with Johto + Warp; evolves through Mamoswine
-	rarity_mon TEDDIURSA ; direct only with Johto + Warp; evolves through Ursaluna
 JohtoGreatball_Evos:
 ; rarity_mon JOLTEON, 1 ; Eevee + Sun Stone -> Espeon (evolution only)
 ; rarity_mon JOLTEON, 2 ; Eevee + Dusk Stone -> Umbreon (evolution only)
@@ -436,6 +439,9 @@ JohtoMasterball:
 	rarity_mon RAIKOU
 	rarity_mon ENTEI
 	rarity_mon SUICUNE
+.defaultEvos:
+; Conditional direct pick: excluded by the default RarityJohto row above.
+	rarity_mon TEDDIURSA ; direct only with Johto + Warp; evolves through Ursaluna
 JohtoMasterball_Evos:
 JohtoMasterball_End:
 
@@ -474,7 +480,6 @@ WarpPokeball_Evos:
 ; rarity_mon ARCANINE, 1 ; Hisuian Growlithe -> Hisuian Arcanine
 ; rarity_mon ELECTRODE, 1 ; Hisuian Voltorb -> Hisuian Electrode
 ; rarity_mon SANDSLASH, 1 ; Alolan Sandshrew -> Alolan Sandslash
-; rarity_mon URSARING, 1 ; Ursaring (Johto POKEBALL) + Moon Stone -> Ursaluna
 ; from Primeape/Magneton (Kanto POKEBALL evolved forms) and Farfetch'd
 ; (Kanto POKEBALL base) - see PrimeapeEvosMoves/MagnetonEvosMoves/
 ; FarfetchdEvosMoves - and Piloswine (Johto POKEBALL).
@@ -549,6 +554,8 @@ WarpMasterball:
 	rarity_mon JIGGLYPUFF, 1 ; Scream Tail; never evolves
 WarpMasterball_Evos:
 ; Evolution-only form references. Commented entries are NOT direct picks.
+; rarity_mon URSARING, 1 ; Ursaring + Moon Stone -> Ursaluna; classifies by
+; its base species, so Master Ball with Johto + Warp (see RarityJohtoWarp)
 ; rarity_mon TENTACRUEL, 1 ; Toedscool -> Toedscruel
 ; rarity_mon EXEGGUTOR, 1 ; Exeggcute + Moon Stone -> Alolan Exeggutor
 WarpMasterball_End:
@@ -591,7 +598,7 @@ RogueGetTierEntry::
 	cp SPECIES_GROUP_JOHTO
 	jr nz, .ordinaryGroup
 	ld a, b
-	cp RARITY_TIER_GREATBALL + 1
+	cp RARITY_TIER_MASTERBALL + 1
 	jr nc, .ordinaryGroup
 	call RogueSwinubRarityBoostActive
 	jr nz, .ordinaryGroup
@@ -628,7 +635,8 @@ RogueGetTierEntry::
 	ret
 
 ; Z SET only if both expansions are unlocked AND enabled for this run: the
-; Swinub and Teddiursa lines are then Great Ball (see RarityJohtoWarp).
+; Swinub line is then Great Ball and the Teddiursa line Master Ball
+; (see RarityJohtoWarp).
 ; The same condition owns pool selection and family classification.
 ; CLOBBERS af only; bc/de/hl preserved by RogueGetActiveGroupMask.
 RogueSwinubRarityBoostActive::
@@ -1065,9 +1073,14 @@ RogueClassifySpecies::
 	cp MAMOSWINE
 	jr z, .swinubFamily
 	cp TEDDIURSA
-	jr z, .swinubFamily
+	jr z, .teddiursaFamily
 	cp URSARING                  ; Ursaluna is URSARING form 1
 	jr nz, .classified
+.teddiursaFamily
+	call RogueSwinubRarityBoostActive
+	jr nz, .classified
+	ld b, RARITY_TIER_MASTERBALL
+	jr .classified
 .swinubFamily
 	call RogueSwinubRarityBoostActive
 	jr nz, .classified

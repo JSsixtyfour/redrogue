@@ -5,14 +5,16 @@
 ; Ground/Normal, both valid Gen 1 types.
 ; No reference fork carries Ursaluna; stats are canon (130/140/105, Spe 50,
 ; SpA 45 / SpD 80 -> spc 80, the higher). Canon base exp 275 does not fit a
-; byte, so 255. Catch rate 20 (canon).
+; byte, so 255. Catch rate 20 (canon). However, a Special of 80 gives it a higher
+; BST total than Dragonite, so this was reduced to 70 to give it 5 less, could
+; be adjusted further.
 ; Growth rate must match Ursaring's: the evolution keeps the experience total.
 	form_record URSARING, 1
 
 	db DEX_URSARING ; pokedex id (documentation only - GetMonHeader overwrites
 	              ; byte 0 with the species index right after the patch)
 
-	db 130, 140, 105,  50,  80
+	db 130, 140, 105,  50,  70
 	;   hp  atk  def  spd  spc
 
 	db GROUND, NORMAL ; type

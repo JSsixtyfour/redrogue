@@ -1096,7 +1096,16 @@
 	band_mon HOUNDOUR
 	band_warp
 	band_end
-	band_same Giovanni_Ace3, Giovanni_Ace2
+	band_pool Giovanni_Ace3
+	band_ace NIDOKING
+	band_ace RHYDON
+	band_ace PERSIAN
+	band_ace NIDOQUEEN
+	band_ace GOLEM
+	band_johto
+	band_warp
+	band_ace URSARING, 1
+	band_end
 	band_pool Giovanni_Fod3
 	band_mon NIDORAN_M
 	band_mon NIDORAN_F
@@ -1137,8 +1146,28 @@
 	band_mon HOUNDOUR
 	band_warp
 	band_end
-	band_same Giovanni_Ace4, Giovanni_Ace2
-	band_same Giovanni_Fod4, Giovanni_Fod3
+	band_same Giovanni_Ace4, Giovanni_Ace3
+	band_pool Giovanni_Fod4
+	band_mon NIDORAN_M
+	band_mon NIDORAN_F
+	band_mon RHYHORN
+	band_mon ONIX
+	band_mon DIGLETT
+	band_mon SANDSHREW
+	band_mon GEODUDE
+	band_mon CUBONE
+	band_johto
+	band_mon PHANPY
+	band_mon WOOPER
+	band_mon LARVITAR
+	band_mon SWINUB
+	band_mon GLIGAR
+	band_warp
+	band_mon WOOPER, 1
+	band_mon TENTACOOL, 1
+	band_mon MAGNETON, 1
+	band_mon URSARING, 1
+	band_end
 	band_pool Giovanni_Off4
 	band_mon MEOWTH
 	band_mon KANGASKHAN
@@ -1196,6 +1225,7 @@
 	band_ace SKARMORY
 	band_ace MANTINE
 	band_warp
+	band_ace MURKROW, 1
 	band_end
 	band_pool Falkner_Fod2
 	band_mon PIDGEY
@@ -1233,6 +1263,7 @@
 	band_ace XATU
 	band_ace MANTINE
 	band_warp
+	band_ace MURKROW, 1
 	band_end
 	band_pool Falkner_Fod3
 	band_mon PIDGEY
@@ -1534,6 +1565,7 @@
 	band_ace PORYGON2
 	band_warp
 	band_ace LICKILICKY
+	band_ace URSARING, 1
 	band_end
 	band_pool Whitney_Fod3
 	band_mon RATTATA
@@ -1589,6 +1621,7 @@
 	band_ace PORYGON_Z
 	band_ace MOLTRES, 1
 	band_ace JIGGLYPUFF, 1
+	band_ace URSARING, 1
 	band_end
 	band_pool Whitney_Fod4
 	band_mon CLEFAIRY
@@ -2448,7 +2481,19 @@
 	band_mon HOUNDOUR
 	band_warp
 	band_end
-	band_same GiovanniMiniBoss_Ace3, GiovanniMiniBoss_Ace2
+	band_pool GiovanniMiniBoss_Ace3
+	band_ace NIDOKING
+	band_ace NIDOQUEEN
+	band_ace RHYDON
+	band_ace DUGTRIO
+	band_ace MAROWAK
+	band_ace SANDSLASH
+	band_ace PERSIAN
+	band_ace KANGASKHAN
+	band_johto
+	band_warp
+	band_ace URSARING, 1
+	band_end
 	band_pool GiovanniMiniBoss_Fod3
 	band_mon NIDORAN_M
 	band_mon NIDORAN_F
@@ -2489,8 +2534,28 @@
 	band_mon HOUNDOUR
 	band_warp
 	band_end
-	band_same GiovanniMiniBoss_Ace4, GiovanniMiniBoss_Ace2
-	band_same GiovanniMiniBoss_Fod4, GiovanniMiniBoss_Fod3
+	band_same GiovanniMiniBoss_Ace4, GiovanniMiniBoss_Ace3
+	band_pool GiovanniMiniBoss_Fod4
+	band_mon NIDORAN_M
+	band_mon NIDORAN_F
+	band_mon RHYHORN
+	band_mon ONIX
+	band_mon DIGLETT
+	band_mon SANDSHREW
+	band_mon GEODUDE
+	band_mon CUBONE
+	band_johto
+	band_mon PHANPY
+	band_mon WOOPER
+	band_mon LARVITAR
+	band_mon SWINUB
+	band_mon GLIGAR
+	band_warp
+	band_mon WOOPER, 1
+	band_mon TENTACOOL, 1
+	band_mon MAGNETON, 1
+	band_mon URSARING, 1
+	band_end
 	band_same GiovanniMiniBoss_Off4, GiovanniMiniBoss_Off3
 
 ; --- KarateMiniBoss ----------------------------------------------------------
@@ -3378,6 +3443,7 @@
 	band_ace HOUNDOOM
 	band_ace JOLTEON, 2
 	band_warp
+	band_ace MURKROW, 1
 	band_end
 	band_pool Karen_Fod1
 	band_mon GENGAR

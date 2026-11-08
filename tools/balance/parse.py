@@ -415,9 +415,12 @@ def load_rarity() -> dict[str, list[Tier]]:
     return out
 
 
-# Johto + Warp moves these lines to Great Ball (RarityJohtoWarp / RogueClassifySpecies).
-BOOSTED_ROOTS = ('SWINUB', 'TEDDIURSA')
-BOOSTED_FAMILY = {'SWINUB', 'PILOSWINE', 'MAMOSWINE', 'TEDDIURSA', 'URSARING'}
+# Johto + Warp moves these lines out of Poke Ball (RarityJohtoWarp /
+# RogueClassifySpecies): Swinub's to Great Ball, Teddiursa's to Master Ball.
+BOOSTED_ROOT_TIER = {'SWINUB': 1, 'TEDDIURSA': 3}
+BOOSTED_ROOTS = tuple(BOOSTED_ROOT_TIER)
+BOOSTED_FAMILY = {'SWINUB': 1, 'PILOSWINE': 1, 'MAMOSWINE': 1,
+                  'TEDDIURSA': 3, 'URSARING': 3}
 
 
 def base_species_for_tier(rarity, group, tier, groups):
@@ -426,8 +429,7 @@ def base_species_for_tier(rarity, group, tier, groups):
     if group == 'JOHTO' and {'JOHTO', 'WARP'} <= set(groups):
         if tier == 0:
             return [species for species in picks if species not in BOOSTED_ROOTS]
-        if tier == 1:
-            return picks + list(BOOSTED_ROOTS)
+        return picks + [root for root, t in BOOSTED_ROOT_TIER.items() if t == tier]
     return picks
 
 
@@ -443,7 +445,7 @@ def classify(rarity: dict[str, list[Tier]], species: str, groups=()) -> tuple[st
         for t, tier in enumerate(rarity[group]):
             if species in tier.all:
                 if species in BOOSTED_FAMILY and {'JOHTO', 'WARP'} <= set(groups):
-                    return group, 1
+                    return group, BOOSTED_FAMILY[species]
                 return group, t
     return None
 

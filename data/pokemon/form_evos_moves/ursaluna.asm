@@ -11,7 +11,6 @@ UrsalunaFormEvosMoves:
 	db 27, REST
 	db 37, SLASH
 	db 45, BODY_SLAM
-	db 48, DIG
 	db 50, THRASH
 	db 52, EARTHQUAKE
 	db 0

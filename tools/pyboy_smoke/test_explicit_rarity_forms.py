@@ -77,7 +77,7 @@ class ExplicitRarityFormsTest(unittest.TestCase):
             table = self.rom_bytes('Rarity' + group, 5 * 4)
             for tier_id, tier in enumerate(('Pokeball', 'Greatball', 'Ultraball', 'Masterball', 'Uber')):
                 label = group + tier
-                body = source.split(label + ':\n', 1)[1].split(label + '_End:', 1)[0]
+                body = source.split('\n' + label + ':\n', 1)[1].split('\n' + label + '_End:', 1)[0]
                 before, after = body.split(label + '_Evos:', 1)
                 def pairs(text):
                     return [(SPECIES[m[0]], int(m[1] or 0)) for m in
@@ -97,7 +97,10 @@ class ExplicitRarityFormsTest(unittest.TestCase):
                     self.reset()
                     self.h.pyboy.register_file.E = species
                     self.h.call_routine('RogueGetSpeciesTierFar')
-                    expected_tier = 1 if species in {SPECIES[n] for n in ('SWINUB', 'PILOSWINE', 'MAMOSWINE', 'TEDDIURSA', 'URSARING')} else tier_id
+                    # The harness state has Johto + Warp on: boosted families.
+                    expected_tier = {SPECIES['SWINUB']: 1, SPECIES['PILOSWINE']: 1,
+                                     SPECIES['MAMOSWINE']: 1, SPECIES['TEDDIURSA']: 3,
+                                     SPECIES['URSARING']: 3}.get(species, tier_id)
                     self.assertEqual(self.h.last_call_registers['E'], expected_tier,
                                      (label, species))
                 for index, pair in enumerate(direct):

@@ -1,8 +1,13 @@
-"""Swinub's and Teddiursa's conditional family rarity (Johto + Warp -> Great Ball)
-must change both picks and classification."""
+"""Swinub's and Teddiursa's conditional family rarity (Johto + Warp -> Swinub's
+line Great Ball, Teddiursa's line Master Ball) must change both picks and
+classification."""
 
-ROOTS = ('SWINUB', 'TEDDIURSA')
-FAMILY = ('SWINUB', 'PILOSWINE', 'MAMOSWINE', 'TEDDIURSA', 'URSARING')
+# Root -> boosted tier id (0 = Poke Ball when not boosted).
+ROOTS = {'SWINUB': 1, 'TEDDIURSA': 3}
+FAMILY = {'SWINUB': 1, 'PILOSWINE': 1, 'MAMOSWINE': 1, 'TEDDIURSA': 3, 'URSARING': 3}
+# Johto direct counts per tier (Poke, Great, Ultra, Master).
+COUNTS_BOOSTED = {0: 14, 1: 19, 3: 4}
+COUNTS_DEFAULT = {0: 16, 1: 18, 3: 3}
 import io
 from pathlib import Path
 import sys
@@ -23,12 +28,14 @@ class SwinubRarityModelTest(unittest.TestCase):
         rarity = balance_parse.load_rarity()
         for groups in (('KANTO',), ('KANTO', 'JOHTO'), ('KANTO', 'WARP'), ('KANTO', 'JOHTO', 'WARP')):
             boosted = {'JOHTO', 'WARP'} <= set(groups)
-            for tier in (0, 1):
+            for tier in (0, 1, 3):
                 picks = balance_parse.base_species_for_tier(rarity, 'JOHTO', tier, groups)
-                for root in ROOTS:
-                    self.assertEqual(picks.count(root), int(tier == int(boosted)), root)
-            for species in FAMILY:
-                self.assertEqual(balance_parse.classify(rarity, species, groups)[1], int(boosted))
+                for root, boosted_tier in ROOTS.items():
+                    self.assertEqual(picks.count(root),
+                                     int(tier == (boosted_tier if boosted else 0)), root)
+            for species, boosted_tier in FAMILY.items():
+                self.assertEqual(balance_parse.classify(rarity, species, groups)[1],
+                                 boosted_tier if boosted else 0)
 
 
 class SwinubRarityTest(unittest.TestCase):
@@ -78,13 +85,14 @@ class SwinubRarityTest(unittest.TestCase):
             for enabled in (1, 3, 5, 7):
                 boosted = unlocked & enabled & 6 == 6
                 roots = []
-                for tier in (0, 1):
+                for tier in (0, 1, 3):
                     self.configure(unlocked, enabled)
                     count, direct = self.entry(1, tier)
-                    expected = (14, 20) if boosted else (16, 18)
+                    expected = COUNTS_BOOSTED if boosted else COUNTS_DEFAULT
                     self.assertEqual(count, expected[tier], (unlocked, enabled, tier))
-                    for root in ROOTS:
-                        self.assertEqual(direct.count((SPECIES[root], 0)), int(tier == int(boosted)), root)
+                    for root, boosted_tier in ROOTS.items():
+                        self.assertEqual(direct.count((SPECIES[root], 0)),
+                                         int(tier == (boosted_tier if boosted else 0)), root)
                     roots.extend(direct)
                 self.assertEqual(len(roots), len(set(roots)))
 
@@ -92,9 +100,10 @@ class SwinubRarityTest(unittest.TestCase):
         for unlocked in (1, 3, 5, 7):
             for enabled in (1, 3, 5, 7):
                 boosted = unlocked & enabled & 6 == 6
-                for species in FAMILY:
-                    for routine, expected in (('RogueGetSpeciesTierFar', int(boosted)),
-                                              ('RogueClassifySpeciesFar', 1 + int(boosted))):
+                for species, boosted_tier in FAMILY.items():
+                    tier = boosted_tier if boosted else 0
+                    for routine, expected in (('RogueGetSpeciesTierFar', tier),
+                                              ('RogueClassifySpeciesFar', 1 + tier)):
                         self.configure(unlocked, enabled)
                         self.h.pyboy.register_file.E = SPECIES[species]
                         self.h.call_routine(routine)
@@ -108,17 +117,18 @@ class SwinubRarityTest(unittest.TestCase):
         rng_bank, rng_entry = h.symbols.get('Rangerandom')
         _, roll_start, roll_end = h.symbols.routine_range('RogueRollGroupForTier')
         for mask in (1, 3, 5, 7):
-            for tier in (0, 1):
+            for tier in (0, 1, 3):
                 # Pool sizes come from the ROM's own pool getter, not literals:
                 # hardcoded Kanto/Warp sizes went stale every time a form was
-                # added to a pool. The Swinub/Teddiursa boost itself (Johto 14/20 vs
-                # 16/18) stays pinned in test_pool_membership_and_weights_...
+                # added to a pool. The Swinub/Teddiursa boost itself (Johto
+                # COUNTS_BOOSTED vs COUNTS_DEFAULT) stays pinned in
+                # test_pool_membership_and_weights_...
                 counts = []
                 for group in range(3):
                     self.configure(7, mask)
                     counts.append(self.entry(group, tier)[0] if mask & (1 << group) else 0)
                 if mask & 2:
-                    self.assertEqual(counts[1], ((14, 20) if mask == 7 else (16, 18))[tier])
+                    self.assertEqual(counts[1], (COUNTS_BOOSTED if mask == 7 else COUNTS_DEFAULT)[tier])
                 start = 0
                 for group, count in enumerate(counts):
                     if not count:
