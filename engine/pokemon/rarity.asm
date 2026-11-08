@@ -66,13 +66,14 @@ RarityJohto:
 	rarity_tier JohtoMasterball
 	rarity_tier JohtoUber
 
-; When Johto AND Warp are active, Swinub's whole line becomes Great Ball.
-; Skip its first pair in Poke Ball and include its extra Great Ball pair.
+; When Johto AND Warp are active, Swinub's and Teddiursa's whole lines become
+; Great Ball: Warp adds Mamoswine and Ursaluna to the end of them. Skip their
+; two leading Poke Ball pairs and include their extra Great Ball pairs.
 ; The other three Johto tiers are unchanged and use RarityJohto directly.
 RarityJohtoWarp:
-	db (JohtoPokeball_Evos - JohtoPokeball.withoutSwinub) / 2
-	db (JohtoPokeball_End - JohtoPokeball.withoutSwinub) / 2
-	dw JohtoPokeball.withoutSwinub
+	db (JohtoPokeball_Evos - JohtoPokeball.withoutBoosted) / 2
+	db (JohtoPokeball_End - JohtoPokeball.withoutBoosted) / 2
+	dw JohtoPokeball.withoutBoosted
 	rarity_tier JohtoGreatball
 RarityJohtoWarpEnd:
 ASSERT RarityJohtoWarpEnd - RarityJohtoWarp == 2 * RARITY_TIER_ENTRY_SIZE
@@ -288,7 +289,8 @@ KantoUber_End:
 ; Base form of the Johto pokeball tier - common early-route mons.
 JohtoPokeball:
 	rarity_mon SWINUB ; Great Ball instead when Johto + Warp are both active
-.withoutSwinub:
+	rarity_mon TEDDIURSA ; likewise (evolves through Ursaluna)
+.withoutBoosted:
 	rarity_mon SENTRET
 	rarity_mon HOOTHOOT
 	rarity_mon LEDYBA
@@ -300,7 +302,6 @@ JohtoPokeball:
 	rarity_mon WOOPER
 	rarity_mon PINECO
 	rarity_mon SNUBBULL
-	rarity_mon TEDDIURSA
 	rarity_mon SLUGMA
 	rarity_mon CORSOLA
 	rarity_mon REMORAID
@@ -316,7 +317,7 @@ JohtoPokeball_Evos:
 	rarity_mon QUAGSIRE
 	rarity_mon FORRETRESS
 	rarity_mon GRANBULL
-	rarity_mon URSARING
+	rarity_mon URSARING ; classified as Great Ball with Johto + Warp
 	rarity_mon MAGCARGO
 	rarity_mon PILOSWINE ; classified as Great Ball with Johto + Warp
 	rarity_mon OCTILLERY
@@ -360,6 +361,7 @@ JohtoGreatball:
 .defaultEvos:
 ; Conditional direct pick: excluded by the default RarityJohto row above.
 	rarity_mon SWINUB ; direct only with Johto + Warp; evolves through Mamoswine
+	rarity_mon TEDDIURSA ; direct only with Johto + Warp; evolves through Ursaluna
 JohtoGreatball_Evos:
 ; rarity_mon JOLTEON, 1 ; Eevee + Sun Stone -> Espeon (evolution only)
 ; rarity_mon JOLTEON, 2 ; Eevee + Dusk Stone -> Umbreon (evolution only)
@@ -472,6 +474,7 @@ WarpPokeball_Evos:
 ; rarity_mon ARCANINE, 1 ; Hisuian Growlithe -> Hisuian Arcanine
 ; rarity_mon ELECTRODE, 1 ; Hisuian Voltorb -> Hisuian Electrode
 ; rarity_mon SANDSLASH, 1 ; Alolan Sandshrew -> Alolan Sandslash
+; rarity_mon URSARING, 1 ; Ursaring (Johto POKEBALL) + Moon Stone -> Ursaluna
 ; from Primeape/Magneton (Kanto POKEBALL evolved forms) and Farfetch'd
 ; (Kanto POKEBALL base) - see PrimeapeEvosMoves/MagnetonEvosMoves/
 ; FarfetchdEvosMoves - and Piloswine (Johto POKEBALL).
@@ -506,6 +509,7 @@ WarpGreatball_Evos:
 ; rarity_mon SLOWBRO, 1 ; Galarian Slowpoke -> Galarian Slowbro
 ; rarity_mon SLOWKING, 1 ; Galarian Slowpoke + Water Stone -> Galarian Slowking
 ; rarity_mon QUAGSIRE, 1 ; Paldean Wooper -> Clodsire
+; rarity_mon MURKROW, 1 ; Murkrow (Johto GREATBALL) + Dusk Stone -> Honchkrow
 ; rarity_mon FLAREON, 1 ; Eevee + Leaf Stone -> Leafeon
 ; rarity_mon VAPOREON, 1 ; Eevee + Ice Stone -> Glaceon
 ; rarity_mon VAPOREON, 2 ; Eevee + Moon Stone -> Sylveon
@@ -623,7 +627,8 @@ RogueGetTierEntry::
 	and a
 	ret
 
-; Z SET only if both expansions are unlocked AND enabled for this run.
+; Z SET only if both expansions are unlocked AND enabled for this run: the
+; Swinub and Teddiursa lines are then Great Ball (see RarityJohtoWarp).
 ; The same condition owns pool selection and family classification.
 ; CLOBBERS af only; bc/de/hl preserved by RogueGetActiveGroupMask.
 RogueSwinubRarityBoostActive::
@@ -754,8 +759,8 @@ RogueGetSpeciesTierFar::
 ; ⚠ This is NOT the same as asking whether a form's BASE species is in an
 ; unlocked group, and that distinction is the whole reason this exists: most
 ; form records hang off KANTO species (Meowth, Dugtrio, Vulpix, Moltres,
-; Tauros...), and Kanto is always active. Only gslowking, pwooper and clodsire
-; have Johto bases.
+; Tauros...), and Kanto is always active. Only gslowking, pwooper, clodsire,
+; honchkrow and ursaluna have Johto bases.
 ; Without an explicit gate, Alolan Meowth shows up on
 ; turn one of a fresh run - which is exactly what happened in testing.
 ; ---------------------------------------------------------------------------
@@ -1058,6 +1063,10 @@ RogueClassifySpecies::
 	cp PILOSWINE
 	jr z, .swinubFamily
 	cp MAMOSWINE
+	jr z, .swinubFamily
+	cp TEDDIURSA
+	jr z, .swinubFamily
+	cp URSARING                  ; Ursaluna is URSARING form 1
 	jr nz, .classified
 .swinubFamily
 	call RogueSwinubRarityBoostActive

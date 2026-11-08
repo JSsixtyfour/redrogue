@@ -500,3 +500,22 @@ _GSlowkingFormDexEntryText::
 	page "smart that it now"
 	next "controls SLOWKING."
 	dex
+
+_HonchkrowFormDexEntryText::
+	text "It is merciless by"
+	next "nature. It is said"
+	next "that it never"
+
+	page "forgives the"
+	next "mistakes of its"
+	next "MURKROW followers."
+	dex
+
+_UrsalunaFormDexEntryText::
+	text "The swamps of its"
+	next "homeland gave it a"
+	next "burly body and the"
+
+	page "power to control"
+	next "peat at will."
+	dex

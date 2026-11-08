@@ -309,6 +309,8 @@ DexDisplayRowsNumbered::
 	dw DEX_ROW_NUMBERED | DEX_FORM_UMBREON
 	dw DEX_ROW_NUMBERED | DEX_FORM_LEAFEON
 	dw DEX_ROW_NUMBERED | DEX_FORM_CLODSIRE
+	dw DEX_ROW_NUMBERED | DEX_FORM_HONCHKROW
+	dw DEX_ROW_NUMBERED | DEX_FORM_URSALUNA
 DexDisplayRowsEnd::
 	ASSERT (DexDisplayRowsEnd - DexDisplayRows) / 2 == NUM_DEX_IDENTITIES, \
 	       "every identity needs exactly one Pokedex row"

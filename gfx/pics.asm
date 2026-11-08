@@ -835,6 +835,15 @@ ShucklePicBack::      INCBIN "gfx/pokemon/back/shuckleb.lz"
 PhanpyPicFront::      INCBIN "gfx/pokemon/front/phanpy.lz"
 PhanpyPicBack::       INCBIN "gfx/pokemon/back/phanpyb.lz"
 
+; Honchkrow (MURKROW form 1) and Ursaluna (URSARING form 1), added 2026-11-07.
+; Here rather than the form banks: "Pics 15" ($37) shares its bank with
+; "Player Back Pics", whose open trainer-back imports need that room. Each form
+; record carries its own pic-bank byte, so any bank works.
+HonchkrowPicFront::   INCBIN "gfx/pokemon/front/honchkrow.lz"
+HonchkrowPicBack::    INCBIN "gfx/pokemon/back/honchkrowb.lz"
+UrsalunaPicFront::    INCBIN "gfx/pokemon/front/ursaluna.lz"
+UrsalunaPicBack::     INCBIN "gfx/pokemon/back/ursalunab.lz"
+
 
 SECTION "Pics 19", ROMX ; pinned to $36 in layout.link
 ; Species pairs moved here (2026-10-07) when LZ pics (+13% over Gen 1 .pic)

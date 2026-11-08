@@ -415,14 +415,19 @@ def load_rarity() -> dict[str, list[Tier]]:
     return out
 
 
+# Johto + Warp moves these lines to Great Ball (RarityJohtoWarp / RogueClassifySpecies).
+BOOSTED_ROOTS = ('SWINUB', 'TEDDIURSA')
+BOOSTED_FAMILY = {'SWINUB', 'PILOSWINE', 'MAMOSWINE', 'TEDDIURSA', 'URSARING'}
+
+
 def base_species_for_tier(rarity, group, tier, groups):
     """Effective direct picks, including RogueGetTierEntry's conditional view."""
     picks = rarity[group][tier].base
     if group == 'JOHTO' and {'JOHTO', 'WARP'} <= set(groups):
         if tier == 0:
-            return [species for species in picks if species != 'SWINUB']
+            return [species for species in picks if species not in BOOSTED_ROOTS]
         if tier == 1:
-            return picks + ['SWINUB']
+            return picks + list(BOOSTED_ROOTS)
     return picks
 
 
@@ -437,7 +442,7 @@ def classify(rarity: dict[str, list[Tier]], species: str, groups=()) -> tuple[st
     for group in GROUPS:
         for t, tier in enumerate(rarity[group]):
             if species in tier.all:
-                if species in {'SWINUB', 'PILOSWINE', 'MAMOSWINE'} and {'JOHTO', 'WARP'} <= set(groups):
+                if species in BOOSTED_FAMILY and {'JOHTO', 'WARP'} <= set(groups):
                     return group, 1
                 return group, t
     return None

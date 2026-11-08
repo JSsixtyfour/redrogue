@@ -91,6 +91,8 @@ ENDM
 ;   KABUTOPS    Fossil        -             -      (cemetery ghost boss only)
 ;   WOOPER      Paldean       -             -
 ;   QUAGSIRE    Clodsire      -             -
+;   MURKROW     Honchkrow     -             -
+;   URSARING    Ursaluna      -             -
 ;   (every other Group R base) its one regional variant
 ;
 ; Hisuian Sneasel and Hisuian Qwilfish were cut 2026-10-15: placeholder art
@@ -154,6 +156,8 @@ INCLUDE "data/pokemon/forms/fossilaerodactyl.asm"
 INCLUDE "data/pokemon/forms/fossilkabutops.asm"
 INCLUDE "data/pokemon/forms/pwooper.asm"
 INCLUDE "data/pokemon/forms/clodsire.asm"
+INCLUDE "data/pokemon/forms/honchkrow.asm"
+INCLUDE "data/pokemon/forms/ursaluna.asm"
 
 	db 0 ; terminator
 
@@ -177,7 +181,8 @@ FormJohtoPairs::
 FormJohtoPairsEnd::
 ; Everything else is Time Warp: Glaceon/Leafeon (Gen 4), Sylveon (Gen 6), all
 ; Alolan (Gen 7), Galarian/Hisuian/Perrserker (Gen 8), Paldean and the
-; convergents/paradoxes (Gen 9).
+; convergents/paradoxes (Gen 9). Honchkrow (Gen 4) and Ursaluna (Gen 8) are Warp
+; forms on Johto bases, so they need both groups, as Mamoswine does.
 
 ; ===========================================================================
  ; Rarity picks are explicit in engine/pokemon/rarity.asm. There is no form

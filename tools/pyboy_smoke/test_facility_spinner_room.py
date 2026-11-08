@@ -34,6 +34,7 @@ class FacilitySpinnerRoomTest(unittest.TestCase):
     def setUp(self) -> None:
         self.maps = parse_map_constants(ROOT / "constants/map_constants.asm")
         self.toggles = parse_rgbds_constants(ROOT / "constants/toggle_constants.asm")
+        self.ram = parse_rgbds_constants(ROOT / "constants/ram_constants.asm")
         pieces, errors = spin.load()
         self.assertFalse(errors, errors)
         self.pieces = pieces
@@ -55,7 +56,12 @@ class FacilitySpinnerRoomTest(unittest.TestCase):
             h.tick(offset * 5)
             h.preload_and_enter_wild_area(facility, "facility")
             ox, oy, key, ball = h.read_sram_bytes("sProcFacilityGenScratch", 6)[2:6]
-            if key == 0x80 | index:
+            # Psychic Psyduck (~9% of Facilities) wanders and starts its battle
+            # from any tile beside the player, which this walk does not play.
+            # Its roll spends preload RNG, so which entry carries it moves with
+            # unrelated pool changes; skip those entries rather than plan around it.
+            psyduck = h.read8("wOptionalEncounterPackage") >= self.ram["OPTIONAL_PACKAGE_PSYCHIC"]
+            if key == 0x80 | index and not psyduck:
                 return self.pieces[index], (2 * ox, 2 * oy), ball
         self.fail(f"no Facility with {self.pieces[index].name} in {ENTRY_ATTEMPTS} entries")
 

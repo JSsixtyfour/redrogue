@@ -97,7 +97,7 @@ class ExplicitRarityFormsTest(unittest.TestCase):
                     self.reset()
                     self.h.pyboy.register_file.E = species
                     self.h.call_routine('RogueGetSpeciesTierFar')
-                    expected_tier = 1 if species in {SPECIES['SWINUB'], SPECIES['PILOSWINE'], SPECIES['MAMOSWINE']} else tier_id
+                    expected_tier = 1 if species in {SPECIES[n] for n in ('SWINUB', 'PILOSWINE', 'MAMOSWINE', 'TEDDIURSA', 'URSARING')} else tier_id
                     self.assertEqual(self.h.last_call_registers['E'], expected_tier,
                                      (label, species))
                 for index, pair in enumerate(direct):
@@ -113,9 +113,11 @@ class ExplicitRarityFormsTest(unittest.TestCase):
                         self.h.pyboy.hook_deregister(bank, entry)
                     regs = self.h.last_call_registers
                     self.assertEqual((regs['D'], regs['E']), pair, (label, index))
-        # Swinub has two physical placements; the active tier view exposes one.
-        self.assertEqual(len(ordinary), 253)
+        # Swinub and Teddiursa have two physical placements each; the active
+        # tier view exposes one.
+        self.assertEqual(len(ordinary), 254)
         self.assertEqual(ordinary.count(SPECIES['SWINUB']), 2)
+        self.assertEqual(ordinary.count(SPECIES['TEDDIURSA']), 2)
         self.assertEqual(len(set(ordinary)), 252)
         self.assertEqual(len(direct_forms), 25)
         self.assertEqual(len(set(direct_forms)), 25)
@@ -123,7 +125,7 @@ class ExplicitRarityFormsTest(unittest.TestCase):
         # evolution references, never silently through a substitution rule.
         references = {(SPECIES[sp], int(form)) for sp, form in
                       re.findall(r'^; rarity_mon (\w+),\s*(\d+)', source, re.M)}
-        records = self.rom_bytes('FormOverrides', 54 * 41)
+        records = self.rom_bytes('FormOverrides', 56 * 41)
         active = {(records[i], records[i+1]) for i in range(0, len(records), 41)}
         # Forms no pool ever rolls: Armored Mewtwo is Giovanni's Challenge 11
         # ace and its trade only (legendary_boss_helpers.asm); the Fossil forms
@@ -132,6 +134,8 @@ class ExplicitRarityFormsTest(unittest.TestCase):
                         (SPECIES['KABUTOPS'], 1)}
         self.assertIn((SPECIES['WOOPER'], 1), active)  # Paldean Wooper restored 2026-10-29
         self.assertIn((SPECIES['QUAGSIRE'], 1), active)  # Clodsire added 2026-10-29
+        self.assertIn((SPECIES['MURKROW'], 1), active)  # Honchkrow added 2026-11-07
+        self.assertIn((SPECIES['URSARING'], 1), active)  # Ursaluna added 2026-11-07
         self.assertFalse(set(direct_forms) & references)
         self.assertFalse((set(direct_forms) | references) & never_rolled)
         self.assertEqual(set(direct_forms) | references | never_rolled, active)

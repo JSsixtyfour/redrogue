@@ -1,4 +1,8 @@
-"""Swinub's conditional family rarity must change both picks and classification."""
+"""Swinub's and Teddiursa's conditional family rarity (Johto + Warp -> Great Ball)
+must change both picks and classification."""
+
+ROOTS = ('SWINUB', 'TEDDIURSA')
+FAMILY = ('SWINUB', 'PILOSWINE', 'MAMOSWINE', 'TEDDIURSA', 'URSARING')
 import io
 from pathlib import Path
 import sys
@@ -21,8 +25,9 @@ class SwinubRarityModelTest(unittest.TestCase):
             boosted = {'JOHTO', 'WARP'} <= set(groups)
             for tier in (0, 1):
                 picks = balance_parse.base_species_for_tier(rarity, 'JOHTO', tier, groups)
-                self.assertEqual(picks.count('SWINUB'), int(tier == int(boosted)))
-            for species in ('SWINUB', 'PILOSWINE', 'MAMOSWINE'):
+                for root in ROOTS:
+                    self.assertEqual(picks.count(root), int(tier == int(boosted)), root)
+            for species in FAMILY:
                 self.assertEqual(balance_parse.classify(rarity, species, groups)[1], int(boosted))
 
 
@@ -76,9 +81,10 @@ class SwinubRarityTest(unittest.TestCase):
                 for tier in (0, 1):
                     self.configure(unlocked, enabled)
                     count, direct = self.entry(1, tier)
-                    expected = (15, 19) if boosted else (16, 18)
+                    expected = (14, 20) if boosted else (16, 18)
                     self.assertEqual(count, expected[tier], (unlocked, enabled, tier))
-                    self.assertEqual(direct.count((SPECIES['SWINUB'], 0)), int(tier == int(boosted)))
+                    for root in ROOTS:
+                        self.assertEqual(direct.count((SPECIES[root], 0)), int(tier == int(boosted)), root)
                     roots.extend(direct)
                 self.assertEqual(len(roots), len(set(roots)))
 
@@ -86,7 +92,7 @@ class SwinubRarityTest(unittest.TestCase):
         for unlocked in (1, 3, 5, 7):
             for enabled in (1, 3, 5, 7):
                 boosted = unlocked & enabled & 6 == 6
-                for species in ('SWINUB', 'PILOSWINE', 'MAMOSWINE'):
+                for species in FAMILY:
                     for routine, expected in (('RogueGetSpeciesTierFar', int(boosted)),
                                               ('RogueClassifySpeciesFar', 1 + int(boosted))):
                         self.configure(unlocked, enabled)
@@ -105,14 +111,14 @@ class SwinubRarityTest(unittest.TestCase):
             for tier in (0, 1):
                 # Pool sizes come from the ROM's own pool getter, not literals:
                 # hardcoded Kanto/Warp sizes went stale every time a form was
-                # added to a pool. The Swinub boost itself (Johto 15/20 vs
-                # 16/19) stays pinned in test_pool_membership_and_weights_...
+                # added to a pool. The Swinub/Teddiursa boost itself (Johto 14/20 vs
+                # 16/18) stays pinned in test_pool_membership_and_weights_...
                 counts = []
                 for group in range(3):
                     self.configure(7, mask)
                     counts.append(self.entry(group, tier)[0] if mask & (1 << group) else 0)
                 if mask & 2:
-                    self.assertEqual(counts[1], ((15, 19) if mask == 7 else (16, 18))[tier])
+                    self.assertEqual(counts[1], ((14, 20) if mask == 7 else (16, 18))[tier])
                 start = 0
                 for group, count in enumerate(counts):
                     if not count:

@@ -115,6 +115,10 @@ FormEvosMovesPointers::
 	dw PwooperFormEvosMoves
 	db QUAGSIRE, 1
 	dw ClodsireFormEvosMoves
+	db MURKROW, 1
+	dw HonchkrowFormEvosMoves
+	db URSARING, 1
+	dw UrsalunaFormEvosMoves
 	db 0 ; terminator
 
 	INCLUDE "data/pokemon/form_evos_moves/ameowth.asm"
@@ -171,3 +175,5 @@ FormEvosMovesPointers::
 	INCLUDE "data/pokemon/form_evos_moves/fossilkabutops.asm"
 	INCLUDE "data/pokemon/form_evos_moves/pwooper.asm"
 	INCLUDE "data/pokemon/form_evos_moves/clodsire.asm"
+	INCLUDE "data/pokemon/form_evos_moves/honchkrow.asm"
+	INCLUDE "data/pokemon/form_evos_moves/ursaluna.asm"

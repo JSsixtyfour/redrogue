@@ -334,6 +334,8 @@ DEF NUM_POKEMON EQU const_value - 1
 	const DEX_FORM_P_WOOPER      ; 30
 	const DEX_FORM_CLODSIRE      ; 31
 	const DEX_FORM_G_SLOWKING    ; 32
+	const DEX_FORM_HONCHKROW     ; 33
+	const DEX_FORM_URSALUNA      ; 34
 DEF NUM_DEX_FORMS EQU const_value
 ; Saved capacity: fixed, so adding an identity does not move the save layout
 ; until it overflows. 56 bits = 7 B per array.

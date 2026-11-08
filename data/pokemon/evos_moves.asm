@@ -4250,6 +4250,7 @@ QuagsireEvosMoves:
 
 MurkrowEvosMoves:
 ; Evolutions
+	evo_item_form 1, DUSK_STONE, 1, MURKROW ; Honchkrow (MURKROW form 1)
 	db 0
 ; Learnset - PECK already granted at level 1; PURSUIT/FAINT_ATTACK/
 ; MEAN_LOOK do not exist in Gen 1, replaced with GUST/SWIFT/SCREECH.
@@ -4558,6 +4559,7 @@ TeddiursaEvosMoves:
 
 UrsaringEvosMoves:
 ; Evolutions
+	evo_item_form 1, MOON_STONE, 1, URSARING ; Ursaluna (URSARING form 1)
 	db 0
 ; Learnset - SCRATCH/LEER/LICK/FURY_SWIPES already granted at level 1;
 ; FAINT_ATTACK/SNORE do not exist in Gen 1, replaced with SWIFT/BODY_SLAM.
