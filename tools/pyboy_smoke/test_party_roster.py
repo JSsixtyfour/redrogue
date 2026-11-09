@@ -201,10 +201,11 @@ class CurveBlockTest(unittest.TestCase):
         self.assertIn("| 1 | 1-2 | 2-2 | 9-15 | 11-18 |", rows)
         self.assertIn("| 4 | 7-8 | 5-6 | 43-47 | 51-57 |", rows)
 
-    # The live curve (Curve G, 2026-10-10). ROUNDS above is Curve F, kept as a
+    # The live curve (Curve G, 2026-10-10, with rounds 5-8 base lowered by 1 in the
+    # Plan K phase 3 rebalance, 2026-11-08). ROUNDS above is Curve F, kept as a
     # fixed fixture for the formatting tests.
     CURRENT = {1: (2, 11, 2), 2: (2, 17, 3), 3: (3, 21, 3), 4: (3, 26, 2),
-               5: (4, 31, 2), 6: (4, 38, 2), 7: (5, 40, 2), 8: (6, 45, 2)}
+               5: (4, 30, 2), 6: (4, 37, 2), 7: (5, 39, 2), 8: (6, 44, 2)}
 
     def test_block_tracks_the_constants(self):
         loaded = gpr.load_curve()
