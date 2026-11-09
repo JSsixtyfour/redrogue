@@ -116,11 +116,12 @@ PFRestHouseGamblerText:
 ; In battle: he lost.
 ; Line 1 already holds "GAMBLER: " (9 of 18).
 PFRestHouseGamblerBeatenText:
-	text "Ah ha!"
+	text "Ah!"
 	para "You earned this!"
 	prompt
 
 ; In battle: he won.
 PFRestHouseGamblerWonText:
-	text "House wins!"
+	para "My hot"
+	line "streak continues!"
 	prompt

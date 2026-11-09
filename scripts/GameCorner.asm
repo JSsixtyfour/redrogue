@@ -307,11 +307,11 @@ GameCornerTrainerHeaders:
 GameCornerTrainerHeader0:
 	trainer EVENT_BEAT_GAME_CORNER_TRAINER_0, 1, GameCornerGamblerBattleText, GameCornerGamblerEndBattleText, GameCornerGamblerAfterBattleText
 GameCornerTrainerHeader1:
-	trainer EVENT_BEAT_GAME_CORNER_TRAINER_1, 2, GameCornerGamblerBattleText, GameCornerGamblerEndBattleText, GameCornerGamblerAfterBattleText
+	trainer EVENT_BEAT_GAME_CORNER_TRAINER_1, 2, GameCornerGambler2BattleText, GameCornerGambler2EndBattleText, GameCornerGambler2AfterBattleText
 GameCornerTrainerHeader2:
-	trainer EVENT_BEAT_GAME_CORNER_TRAINER_2, 4, GameCornerGamblerBattleText, GameCornerGamblerEndBattleText, GameCornerGamblerAfterBattleText
+	trainer EVENT_BEAT_GAME_CORNER_TRAINER_2, 4, GameCornerGambler3BattleText, GameCornerGambler3EndBattleText, GameCornerGambler3AfterBattleText
 GameCornerTrainerHeader3:
-	trainer EVENT_BEAT_GAME_CORNER_TRAINER_3, 5, GameCornerGamblerBattleText, GameCornerGamblerEndBattleText, GameCornerGamblerAfterBattleText
+	trainer EVENT_BEAT_GAME_CORNER_TRAINER_3, 5, GameCornerGambler4BattleText, GameCornerGambler4EndBattleText, GameCornerGambler4AfterBattleText
 	db -1 ; end
 
 GameCornerGamblerBattleText:
@@ -324,6 +324,42 @@ GameCornerGamblerEndBattleText:
 
 GameCornerGamblerAfterBattleText:
 	text_far _GameCornerGamblerAfterBattleText
+	text_end
+
+GameCornerGambler2BattleText:
+	text_far _GameCornerGambler2BattleText
+	text_end
+
+GameCornerGambler2EndBattleText:
+	text_far _GameCornerGambler2EndBattleText
+	text_end
+
+GameCornerGambler2AfterBattleText:
+	text_far _GameCornerGambler2AfterBattleText
+	text_end
+
+GameCornerGambler3BattleText:
+	text_far _GameCornerGambler3BattleText
+	text_end
+
+GameCornerGambler3EndBattleText:
+	text_far _GameCornerGambler3EndBattleText
+	text_end
+
+GameCornerGambler3AfterBattleText:
+	text_far _GameCornerGambler3AfterBattleText
+	text_end
+
+GameCornerGambler4BattleText:
+	text_far _GameCornerGambler4BattleText
+	text_end
+
+GameCornerGambler4EndBattleText:
+	text_far _GameCornerGambler4EndBattleText
+	text_end
+
+GameCornerGambler4AfterBattleText:
+	text_far _GameCornerGambler4AfterBattleText
 	text_end
 
 ; Text IDs for the 4 trainer NPCs — all call TalkToTrainer with their header

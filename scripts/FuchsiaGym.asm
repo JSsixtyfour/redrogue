@@ -247,13 +247,21 @@ FuchsiaGymKogaText:
 	text_end
 
 .ReceivedSoulBadgeText:
-    text_asm
-    SetEvent EVENT_BEAT_KOGA
-    ld hl, .FuchsiaGymKogaReceivedSoulBadgeText
+	text_asm
+	SetEvent EVENT_BEAT_KOGA
+	call FuchsiaGymIsJanine
+	ld hl, .KogaReceivedSoulBadgeText
+	ret nz
+	ld hl, .JanineReceivedSoulBadgeText
 	ret
 
-    .FuchsiaGymKogaReceivedSoulBadgeText
-    text_far _FuchsiaGymKogaReceivedSoulBadgeText
+.KogaReceivedSoulBadgeText:
+	text_far _FuchsiaGymKogaReceivedSoulBadgeText
+	sound_get_key_item
+	text_end
+
+.JanineReceivedSoulBadgeText:
+	text_far _FuchsiaGymJanineReceivedSoulBadgeText
 	sound_get_key_item
 	text_end
 

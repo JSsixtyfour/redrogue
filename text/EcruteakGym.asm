@@ -137,14 +137,15 @@ _EcruteakGymTrainer3AfterBattleText::
 	done
 
 _EcruteakGymGuideAdviceText::
-	text "The trainers here"
-	line "have secret mo-"
-	cont "tives."
+	text "Yo! Champ in"
+	line "making!"
 
-	para "If you win, they"
-	line "may tell you some"
+	para "MORTY uses GHOST"
+	line "#MON."
 
-	para "deep secrets."
+	para "NORMAL #MON"
+	line "can't touch"
+	cont "them!"
 	done
 
 _EcruteakGymGuideVictoryText::

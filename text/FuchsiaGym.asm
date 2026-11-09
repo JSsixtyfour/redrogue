@@ -17,19 +17,13 @@ _FuchsiaGymKogaBeforeBattleText::
 	done
 
 _FuchsiaGymJanineBeforeBattleText::
-	text "JANINE: So, you"
-	line "got past the"
-	cont "others!"
+	text "JANINE of FUCHSIA"
+	line "GYM, that's me!"
 
-	para "My father KOGA"
-	line "left this GYM to"
-	cont "me. I won't let"
-	cont "his name down!"
-
-	para "I'll show you a"
-	line "ninja's poison"
-	cont "techniques are"
-	cont "not just his!"
+	para "I'm sorry to"
+	line "disappoint you,"
+	cont "but your journey"
+	cont "ends with me."
 	done
 
 _FuchsiaGymKogaReceivedSoulBadgeText::
@@ -40,3 +34,12 @@ _FuchsiaGymKogaReceivedSoulBadgeText::
 	para "Here! Take the"
 	line "SOULBADGE!"
 	prompt
+
+_FuchsiaGymJanineReceivedSoulBadgeText::
+    text "You're a"
+	line "tough one. You"
+	cont "definitely won…"
+
+	para "Here's SOULBADGE."
+	line "Take it."
+    prompt

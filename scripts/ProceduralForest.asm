@@ -510,12 +510,6 @@ ProceduralForestBossBattleText:
 	; StartTrainerBattle increments it again. Setting it here corrupts
 	; the state machine and causes a post-battle freeze.
 
-PFBossBlocksText:
-	text_ram wNameBuffer
-	text " blocks"
-	line "the path!"
-	prompt
-
 PFBossJoinText:
 	text_far _PCBossJoinText
 	text_end

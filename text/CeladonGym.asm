@@ -74,8 +74,8 @@ _CeladonGymTM21NoRoomText::
 _CeladonGymBattleText2::
 	text "Hey!"
 
-	para "You are not"
-	line "allowed in here!"
+	para "Are you allowed in"
+	line "here?"
 	done
 
 _CeladonGymEndBattleText2::
@@ -110,8 +110,10 @@ _CeladonGymAfterBattleText3::
 	done
 
 _CeladonGymBattleText4::
-	text "Aren't you the"
-	line "peeping Tom?"
+	text "Are you just"
+	line "gawking or are"
+	cont "you looking"
+	cont "to fight?"
 	done
 
 _CeladonGymEndBattleText4::

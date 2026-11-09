@@ -1,12 +1,15 @@
 _FlorasGrottoFloraText::
-	text "I'm FLORA. This"
-	line "grotto nurtures"
-	cont "life and growth."
+	text "I'm FLORA, the"
+	line "keeper of this"
+	cont "grove."
+
+	para "May I offer some"
+	line "of its plenty?"
 	prompt
 
 _FlorasGrottoFloraAlreadyGotText::
-	text "May your team"
-	line "keep flourishing!"
+	text "May sun shine down"
+	line "upon you!"
 	done
 
 _FloraGift2Desc::

@@ -150,79 +150,113 @@ _ChampionsRoomOakComeWithMeText::
 ; ============================================================
 
 _ChampionsRoomLanceIntroText::
-	text "LANCE: <PLAYER>!"
+	text "LANCE: I've been"
+	line "waiting for you."
 
-	para "You made it"
-	line "through the"
-	cont "ELITE FOUR!"
+	para "<PLAYER>!"
 
-	para "I am LANCE, the"
-	line "DRAGON master!"
+	para "I knew that you,"
+	line "with your skills,"
 
-	para "My #MON have"
-	line "never lost to"
-	cont "a challenger!"
+	para "would eventually"
+	line "reach me here."
 
-	para "Show me the bond"
-	line "you share with"
-	cont "your own #MON!"
+	para "There's no need"
+	line "for words now."
+
+	para "We will battle"
+	line "to determine who"
+
+	cont "is the stronger"
+	cont "of the two of us."
+
+	para "As the most"
+	line "powerful trainer"
+	cont "and as the"
+	cont "#MON LEAGUE"
+	cont "CHAMPION…"
+
+	para "I, LANCE the"
+	line "dragon master,"
+	cont "accept your"
+	cont "challenge!"
 	done
 
 _LanceDefeatedText::
-	text "What?!"
-	line "My dragons..."
-	cont "defeated?!"
+	text "…It's"
+	line "over."
 
-	para "I trained them"
-	line "with all my"
-	cont "heart!"
+	para "But it's an odd"
+	line "feeling."
 
-	para "You are truly a"
-	line "#MON master!"
+	para "I'm not angry"
+	line "that I lost. In"
+	cont "fact, I feel"
+	cont "happy."
+
+	para "Happy that I"
+	line "witnessed the"
+	cont "rise of a great"
+	cont "new CHAMPION!"
 	prompt
 
 _LanceVictoryText::
-	text "Ha!"
-
-	para "My DRAGONITE is"
-	line "unbeatable!"
-
-	para "Come back when"
-	line "you're ready,"
-	cont "<PLAYER>!"
+	text "Well"
+	line "fought! Come"
+	cont "challenge me"
+	cont "again when you"
+	cont "are ready."
 	prompt
 
 _ChampionsRoomLanceAfterBattleText::
-	text "LANCE: Amazing!"
+	text "…Whew."
 
-	para "Not even my"
-	line "dragons could"
-	cont "stop you!"
+	para "You have become"
+	line "truly powerful,"
+	cont "<PLAYER>."
 
-	para "You are the new"
-	line "#MON LEAGUE"
-	cont "champion!"
+	para "Your #MON have"
+	line "responded to your"
+
+	para "strong and up-"
+	line "standing nature."
+
+	para "As a trainer, you"
+	line "will continue to"
+
+	para "grow strong with"
+	line "your #MON."
 	done
 
 _ChampionsRoomOakDisappointedWithLanceText::
-	text "OAK: LANCE! I'm"
-	line "surprised!"
+	text "PROF.OAK: Ah,"
+	line "<PLAYER>!"
 
-	para "I heard you"
-	line "swept the"
-	cont "ELITE FOUR!"
+	para "It's been a long"
+	line "while."
 
-	para "But <PLAYER> has"
-	line "bested you here!"
+	para "You certainly"
+	line "look more mature."
 
-	para "LANCE, this is"
-	line "how #MON"
-	cont "training should"
-	cont "always be!"
+	para "Your conquest of"
+	line "the LEAGUE is"
+	cont "just fantastic!"
 
-	para "Never stop"
-	line "striving to"
-	cont "improve!"
+	para "Your dedication,"
+	line "trust and love"
+	cont "for your #MON"
+	cont "made this happen."
+
+	para "Your #MON were"
+	line "outstanding too."
+
+	para "Because they"
+	line "believed in you"
+	cont "as a trainer,"
+	cont "they persevered."
+
+	para "Congratulations,"
+	line "<PLAYER>!"
 	done
 
 ; ============================================================

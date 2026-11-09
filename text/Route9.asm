@@ -101,7 +101,7 @@ _Route9Hiker2AfterBattleText::
 
 _Route9Hiker3BattleText::
 	text "Hahahaha!"
-	line "Come on, dude!"
+	line "Come on!"
 	done
 
 _Route9Hiker3EndBattleText::

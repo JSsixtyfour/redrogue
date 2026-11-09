@@ -208,7 +208,7 @@ RewardRoomDoor2SignText:
 	text_end
 	
 RewardRoomLobbySignText:
-	text "TO THE LOBBY@"
+	text "LOBBY@"
 	text_end
 
 PlayerEntryMovementRLE:

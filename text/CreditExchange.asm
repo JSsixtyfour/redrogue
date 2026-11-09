@@ -10,6 +10,6 @@ _CreditExchangeCooltrainerText::
 _CreditExchangeScientistText::
 	text "Exchange your"
 	line "credits for"
-    cont "prizes at the"
+    cont "rewards at the"
     cont "three windows."
 	done

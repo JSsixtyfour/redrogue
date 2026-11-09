@@ -10,13 +10,7 @@ _FuchsiaGymKogaPostBattleAdviceText::
 	done
 
 _FuchsiaGymKogaSoulBadgeInfoText::
-	text "Now that you have"
-	line "the SOULBADGE,"
-	cont "the DEFENSE of"
-	cont "your #MON"
-	cont "increases!"
-
-	para "Ah! Take this"
+	text "Ah! Take this"
 	line "too!"
 	done
 
@@ -90,7 +84,7 @@ _FuchsiaGymRocker4BattleText::
 
 _FuchsiaGymRocker4EndBattleText::
 	text "Whoa!"
-	line "He's got it!"
+	line "You've got it!"
 	prompt
 
 _FuchsiaGymRocker4AfterBattleText::

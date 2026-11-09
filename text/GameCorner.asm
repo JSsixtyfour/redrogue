@@ -1,17 +1,69 @@
 _GameCornerGamblerBattleText::
-	text "All in! Let's see"
-	line "what you've got!"
+	text "Let's see who"
+	line "luck favors"
+	cont "today."
 	done
 
 _GameCornerGamblerEndBattleText::
-	text "Ha!"
-	line "Beginner's luck..."
+	text "Ugh!"
+	line "Bad break."
 	prompt
 
 _GameCornerGamblerAfterBattleText::
-	text "The house doesn't"
-	line "always win, I"
-	cont "suppose."
+	text "Looks like luck"
+	line "wasn't my lady"
+	cont "today."
+	done
+
+_GameCornerGambler2BattleText::
+	text "I'm going for"
+	line "broke, it's the"
+	cont "only way!"
+	done
+
+_GameCornerGambler2EndBattleText::
+	text "Well, I"
+	line "went broke..."
+	prompt
+
+_GameCornerGambler2AfterBattleText::
+	text "Guess it's time"
+	line "to go home"
+	cont "then..."
+	done
+
+_GameCornerGambler3BattleText::
+	text "I'm going for"
+	line "broke, it's the"
+	cont "only way!"
+	done
+
+_GameCornerGambler3EndBattleText::
+	text "Skill"
+	line "conquered luck"
+	cont "today!"
+	prompt
+
+_GameCornerGambler3AfterBattleText::
+	text "The faster the"
+	line "#MON, the"
+	cont "luckier!"
+	done
+
+_GameCornerGambler4BattleText::
+	text "I'm all in, look"
+	line "out!"
+	done
+
+_GameCornerGambler4EndBattleText::
+	text "I never"
+	line "saw your ace"
+	cont "coming!"
+	prompt
+
+_GameCornerGambler4AfterBattleText::
+	text "You've got a good"
+	line "poker face."
 	done
 
 _GameCornerBeauty1Text::
@@ -126,9 +178,9 @@ _GameCornerGamblerText::
 	done
 
 _GameCornerClerk2WantSomeCoinsText::
-	text "What's up? Just"
-	line "here to watch"
-	cont "the reels."
+	text "What's up?"
+	line "Looking to play"
+	cont "the slots?"
 	done
 
 _GameCornerGentlemanThrowingMeOffText::

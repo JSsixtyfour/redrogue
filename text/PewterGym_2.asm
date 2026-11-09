@@ -145,7 +145,7 @@ _PewterGymYoungsterBattleText::
 _PewterGymYoungsterEndBattleText::
 	text "Okay!"
 
-	para "You dealth with"
+	para "You dealt with"
 	line "me!"
 	prompt
 
