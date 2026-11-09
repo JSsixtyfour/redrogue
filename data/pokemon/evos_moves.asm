@@ -2151,7 +2151,7 @@ DratiniEvosMoves:
 
 DragonairEvosMoves:
 ; Evolutions
-	db EVOLVE_LEVEL, 55, DRAGONITE
+	db EVOLVE_LEVEL, 52, DRAGONITE
 	db 0
 ; Learnset
     db 9, BUBBLE
@@ -4976,7 +4976,7 @@ LarvitarEvosMoves:
 
 PupitarEvosMoves:
 ; Evolutions
-	db EVOLVE_LEVEL, 55, TYRANITAR
+	db EVOLVE_LEVEL, 52, TYRANITAR
 	db 0
 ; Learnset - BITE/LEER/SCREECH already granted at level 1; SANDSTORM/
 ; SCARY_FACE/CRUNCH do not exist in Gen 1, replaced with TAIL_WHIP/ROCK_SLIDE/

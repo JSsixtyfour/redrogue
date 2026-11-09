@@ -211,8 +211,8 @@ class EndlessScalingTest(HarnessTestCase):
         for depth, count in [(1, 1), (1, 60), (3, 40), (3, 39), (4, 5), (12, 3)]:
             self.at(depth, count)
             h.call_routine("GetRewardMonLevel")
-            # Endless reads the last row uncapped: route 0x31 + 4/2 or gym 0x34 + 4/2.
-            base = 51 if count % ROUND_BATTLES < 4 else 54
+            # Endless reads the last row uncapped: route 0x30 + 4/2 or gym 0x33 + 4/2.
+            base = 50 if count % ROUND_BATTLES < 4 else 53
             want = min(MAX_LEVEL, base + self.row(depth, count))
             self.assertEqual(h.read8("wCurEnemyLevel"), want, (depth, count))
             self.assertEqual(self.regs()["A"], want, "callers read the level from a")

@@ -12,13 +12,13 @@ PCBossLevelTable:
 ; (Victory Road) is 57.
 	db 11  ; round 0
 	db 19  ; round 1
-	db 23  ; round 2
+	db 24  ; round 2
 	db 28  ; round 3
-	db 34  ; round 4
+	db 33  ; round 4
 	db 40  ; round 5
-	db 43  ; round 6
-	db 50  ; round 7
-	db 56  ; round 8
+	db 42  ; round 6
+	db 51  ; round 7
+	db 55  ; round 8
 
 ; Campaign boss Master Ball widths out of 256, indexed by the same round.
 ; Any Master rolls above this cap become Ultra Ball.
