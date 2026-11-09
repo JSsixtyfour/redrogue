@@ -5,10 +5,19 @@
 ; animations, not this. InitBattleVariables has just forced single speed, so
 ; restoring single on exit returns to exactly that state. SetCPUSpeed honours
 ; the 60 FPS option: with it off, neither call switches.
+; It also starts the battle music: a trainer's song can depend on the party
+; just built (Mewtwo), so InitBattleVariables leaves trainer battles to here.
+; Cost, measured 2026-11-08 (real lobby battles): the song starts later by this
+; routine's run time, 1-12 frames on CGB at 60 FPS and 2-31 on DMG (worst:
+; Elite Four/Rival3 in late rounds, about 0.5 s). Nothing is added to the time
+; before the transition: the encounter music plays through the party build, and
+; the battle song now lands 2-3 frames before BattleTransition instead of
+; running ahead of it over a frozen screen.
 ReadTrainerFast:
 	predef SetCPUSpeed
 	call ReadTrainer
-	predef_jump SingleCPUSpeed
+	predef SingleCPUSpeed
+	jpfar PlayBattleMusic
 
 ReadTrainer:
 

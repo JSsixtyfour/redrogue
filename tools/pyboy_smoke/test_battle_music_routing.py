@@ -14,6 +14,7 @@ MUSIC = parse_rgbds_constants(REPO_ROOT / "constants/music_constants.asm")
 MAPS = parse_map_constants(REPO_ROOT / "constants/map_constants.asm")
 OPP = parse_trainer_constants(REPO_ROOT / "constants/trainer_constants.asm")
 EVENTS = parse_rgbds_constants(REPO_ROOT / "constants/event_constants.asm")
+SPECIES = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
 ROUND_BATTLES = parse_rgbds_constants(
     REPO_ROOT / "constants/round_constants.asm")["ROUND_BATTLES"]
 BIT_TALKED_TO_TRAINER = parse_rgbds_constants(
@@ -44,13 +45,19 @@ class BattleMusicRoutingTest(HarnessTestCase):
 
     def song(self, *, opponent=0, trainer=True, gym_leader=0, map_name="REDS_HOUSE_1F",
              johto=False, talked=False, sprite=0, cemetery_boss=False, depth=0,
-             battle_count=1, fake_ramp=None, seed=None) -> int:
+             battle_count=1, fake_ramp=None, seed=None, party=(), party_count=None,
+             wild_species=None) -> int:
         h = self.harness
         self.baseline.seek(0)
         h.load_state(self.baseline)
         if seed is not None:
             h.seed_rng(seed)
         h.write8("wCurOpponent", opponent)
+        # The Mewtwo override reads the wild species and the built trainer party.
+        h.write8("wEnemyMonSpecies2", opponent if wild_species is None else wild_species)
+        h.write8("wEnemyPartyCount", len(party) if party_count is None else party_count)
+        for offset, species in enumerate(list(party) + [0xFF]):
+            h.write8("wEnemyPartySpecies", species, offset)
         h.write8("wIsTrainerBattle", 1 if trainer else 0)
         h.write8("wGymLeaderNo", gym_leader)
         h.write8("hCurMap", MAPS[map_name])
@@ -134,6 +141,52 @@ class BattleMusicRoutingTest(HarnessTestCase):
                         cemetery_boss=True)
         self.assertEqual(self.song(**cemetery), wild)
         self.assertEqual(self.song(johto=True, **cemetery), suicune)
+
+    def test_mewtwo_overrides_all_but_the_finale(self) -> None:
+        mewtwo = MUSIC["MUSIC_MEWTWO_BATTLE"]
+        MEWTWO, PIDGEY = SPECIES["MEWTWO"], SPECIES["PIDGEY"]
+        # wild: any Mewtwo, ordinary or a stage boss, Johto or not
+        self.assertEqual(self.song(trainer=False, opponent=MEWTWO), mewtwo)
+        self.assertEqual(self.song(trainer=False, opponent=0, wild_species=MEWTWO), mewtwo)
+        self.assertEqual(self.song(trainer=False, opponent=MEWTWO, map_name="PROCEDURAL_CAVE_1",
+                                   talked=True, sprite=1, johto=True), mewtwo)
+        self.assertEqual(self.song(trainer=False, opponent=PIDGEY), MUSIC["MUSIC_WILD_BATTLE"])
+        # trainers: Mewtwo anywhere in the party, including the last slot
+        with_mewtwo = [PIDGEY] * 5 + [MEWTWO]
+        self.assertEqual(self.song(opponent=OPP["YOUNGSTER"], party=with_mewtwo), mewtwo)
+        self.assertEqual(self.song(opponent=OPP["YOUNGSTER"], party=[PIDGEY] * 6),
+                         MUSIC["MUSIC_TRAINER_BATTLE"])
+        self.assertEqual(self.song(opponent=OPP["BROCK"], gym_leader=1, map_name="PEWTER_GYM",
+                                   party=[MEWTWO]), mewtwo)
+        self.assertEqual(self.song(opponent=OPP["COOLTRAINER_M"], map_name="VIOLET_GYM",
+                                   party=[MEWTWO]), mewtwo)
+        self.assertEqual(self.song(opponent=OPP["FALKNER"], gym_leader=1, party=[MEWTWO]),
+                         mewtwo)
+        # the finale keeps its own song
+        self.assertEqual(self.song(opponent=OPP["RIVAL3"], party=[MEWTWO]),
+                         MUSIC["MUSIC_FINAL_BATTLE"])
+        self.assertEqual(self.song(opponent=OPP["PROF_OAK"], map_name="CHAMPIONS_ROOM",
+                                   party=[MEWTWO]), MUSIC["MUSIC_FINAL_BATTLE"])
+        self.assertEqual(self.song(opponent=OPP["LANCE"], map_name="CHAMPIONS_ROOM",
+                                   party=[MEWTWO]), MUSIC["MUSIC_CHAMPION_BATTLE"])
+        # a stale Mewtwo past wEnemyPartyCount is not in the party
+        self.assertEqual(self.song(opponent=OPP["YOUNGSTER"], party=[PIDGEY, MEWTWO],
+                                   party_count=1), MUSIC["MUSIC_TRAINER_BATTLE"])
+
+    def test_rocket_theme_is_johto_only(self) -> None:
+        rocket = MUSIC["MUSIC_ROCKET_BATTLE"]
+        trainer = MUSIC["MUSIC_TRAINER_BATTLE"]
+        for name in ("ROCKET", "GIOVANNI_MINIBOSS"):
+            with self.subTest(trainer=name):
+                self.assertEqual(self.song(opponent=OPP[name], johto=True), rocket)
+                self.assertEqual(self.song(opponent=OPP[name]), trainer)
+        # plain Giovanni and Jessie & James are not in the Rocket set
+        for name in ("GIOVANNI", "JESSIE_JAMES"):
+            with self.subTest(trainer=name):
+                self.assertEqual(self.song(opponent=OPP[name], johto=True), trainer)
+        # Mewtwo still outranks the Rocket theme
+        self.assertEqual(self.song(opponent=OPP["GIOVANNI_MINIBOSS"], johto=True,
+                                   party=[SPECIES["MEWTWO"]]), MUSIC["MUSIC_MEWTWO_BATTLE"])
 
     def test_ramp_walk_takes_the_last_reached_row(self) -> None:
         ramp = [0, 0x11, 2, 0x22, 5, 0x33]

@@ -54,4 +54,15 @@ InitBattleVariables:
 	ld a, BATTLE_TYPE_SAFARI
 	ld [wBattleType], a
 .notSafariBattle
+; A trainer's song can depend on its party (Mewtwo), which ReadTrainer hasn't
+; built yet: ReadTrainerFast plays it instead (its comment has the measured
+; timing cost). The debug test battle skips
+; ReadTrainer (its party is injected first), so it still plays here.
+	ld a, [wIsTrainerBattle]
+	and a
+	jr z, .playMusic
+	ld a, [wStatusFlags7]
+	bit BIT_TEST_BATTLE, a
+	ret z
+.playMusic
 	jpfar PlayBattleMusic

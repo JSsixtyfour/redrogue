@@ -1,6 +1,7 @@
 """Solve, check and record level curves against gap targets (model only).
 
-  # Record the targets: measure the curve the source holds today.
+  # Record the targets: measure the curve the source holds today (also records
+  # the trainer class mix in data/rarity_snapshot.csv; later runs warn when it drifts).
   python tools/balance/curve_solver.py --write-targets
 
   # How far is the source from the targets? (no solve)
@@ -109,7 +110,9 @@ def main() -> int:
         note = (f"Measured {time.strftime('%Y-%m-%d')} at {git_commit()} from the source as it stands "
                 f"(today's run shape, HARD), {args.runs} runs.")
         curve.write_targets(gaps, note, args.tolerance)
+        curve.write_rarity_snapshot(g0.tables, note)
         print(f"wrote {curve.TARGETS_CSV}")
+        print(f"wrote {curve.RARITY_CSV}")
         return 0
 
     targets = curve.load_targets()
@@ -130,8 +133,12 @@ def main() -> int:
     for kind, r, d in args.adjust:
         g = curve.adjust(g, kind, r, d)
 
-    _, gaps, rows = curve.run(g, cfg, args.runs)
+    runs, gaps, rows = curve.run(g, cfg, args.runs)
     misses = curve.out_of_tolerance(gaps, targets)
+    snapshot = curve.load_rarity_snapshot()
+    drift = curve.fmt_rarity_drift(curve.rarity_drift(g.tables, snapshot), cfg.skip_rounds)
+    if drift and args.out:   # the report carries it too; make a file-only run say so on the console
+        print(drift[0], file=sys.stderr)
     shape = (f"starter L{cfg.starter_level}, skipped routes {list(cfg.skip_rounds) or 'none'}, "
              f"EXP Share {cfg.exp_all}")
     out = [f"# Curve solve ({time.strftime('%Y-%m-%d %H:%M')}, {git_commit()})", "",
@@ -141,12 +148,19 @@ def main() -> int:
            f"(source {' '.join(map(str, curve.leader_aces(g0)))})",
            f"- Team average at the Champion: {rows[-1]['team_rolled']:.1f}; starter {rows[-1]['ace_rolled']:.1f}",
            f"- Spendable money (HARD, its prize bonus included): {rows[-1]['spendable']:,.0f}",
-           f"- Cells outside tolerance: {len(misses)} of {len(curve.deviations(gaps, targets))}", ""]
+           f"- Cells outside tolerance: {len(misses)} of {len(curve.deviations(gaps, targets))}",
+           f"- Curve rules broken: {len(curve.rule_violations(gaps))}", ""]
+    if not snapshot:
+        out += ["_No rarity snapshot (`tools/balance/data/rarity_snapshot.csv`): the targets' class mix "
+                "is unknown. Run `--write-targets` to record both._", ""]
+    out += drift
     if shifts:
         out += ["Per-round shift from the solve: "
                 + ", ".join(f"R{r if r < 9 else 'finale'} {d:+d}" for r, d in shifts.items()), ""]
     out += curve.fmt_gap_table("Gaps: target / this curve (`!` = outside tolerance)", gaps, rows, targets,
-                               compare=target_means)
+                               compare=target_means, tables=g.tables)
+    out += curve.fmt_rule_check(gaps)
+    out += curve.fmt_slow_payoff(curve.slow_payoff(g, runs))
     out += ["## Edits to make in the source (vs today's values)", ""] + edits(g0, g) + [""]
     text = "\n".join(out) + "\n"
     if args.out:

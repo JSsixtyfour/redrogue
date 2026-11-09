@@ -180,6 +180,7 @@ ROMX $18
 	"Cinnabar Lab Fossils"
 	"Maps 18"
 	"Hidden Events 4"
+	"Song MewtwoBattle" ; imported song, pinned by tools/music_kit/song_placement.py
 ROMX $19
 	"Tilesets 1"
 ROMX $1A

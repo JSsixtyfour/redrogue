@@ -60,4 +60,5 @@ Music:
 	dba Music_SuicuneBattle
 	dba Music_LookRocket
 	dba Music_RocketTheme
+	dba Music_MewtwoBattle
 	assert_table_length NUM_MUSIC_SONGS

@@ -20,10 +20,12 @@ from dataclasses import replace
 from pathlib import Path
 
 import model
+import parse
 from model import Config
 
 HERE = Path(__file__).resolve().parent
 TARGETS_CSV = HERE / "data" / "gap_targets.csv"
+RARITY_CSV = HERE / "data" / "rarity_snapshot.csv"
 
 GROUPS = {   # model Battle.kind -> report column
     "route": "Route", "route_final": "Route boss", "miniboss": "Mini-boss",
@@ -98,6 +100,152 @@ def deviations(gaps, targets) -> list[tuple[int, str, float, float, float]]:
 
 def out_of_tolerance(gaps, targets) -> list[tuple[int, str, float, float, float]]:
     return [d for d in deviations(gaps, targets) if abs(d[4]) > targets[d[0]][d[1]][1]]
+
+
+# --- rarity snapshot -----------------------------------------------------------
+# The gap targets assume the EXP the team earns, and the trainers' class mix
+# (trainer_levels.asm class bytes) sets that EXP: mean base EXP by Kanto class is
+# about Poke 120, Great 134, Ultra 165, Master 182. The 2026-10-28 rarity ramp
+# moved only those bytes and the team fell ~0.6 levels unnoticed for 12 days, so
+# --write-targets records the mix next to the targets and every check compares.
+
+CLASS_NAMES = ("pokeball", "greatball", "ultraball", "masterball")
+
+
+def rarity_mix(tables) -> dict[tuple[str, int, str], tuple[int, ...]]:
+    """{(table, round, trainer): class counts}; table route/gym, trainer regular/final."""
+    out = {}
+    for name, blocks in (("route", tables.route), ("gym", tables.gym)):
+        for r, b in enumerate(blocks, 1):
+            out[(name, r, "regular")] = tuple(b.counts)
+            out[(name, r, "final")] = tuple(b.final_counts)
+    return out
+
+
+def mean_class(counts) -> float:
+    """0 = all Poke Ball class .. 3 = all Master Ball class."""
+    n = sum(counts)
+    return sum(i * c for i, c in enumerate(counts)) / n if n else 0.0
+
+
+def write_rarity_snapshot(tables, note: str, path: Path = RARITY_CSV) -> None:
+    with path.open("w", newline="", encoding="utf-8") as f:
+        f.write(f"# Trainer class mix the gap targets were recorded with. {note}\n")
+        f.write("# Written by tools/balance/curve_solver.py --write-targets with gap_targets.csv; "
+                "keep the two in step.\n")
+        w = csv.writer(f, lineterminator="\n")
+        w.writerow(["table", "round", "trainer", *CLASS_NAMES])
+        for (table, r, trainer), counts in rarity_mix(tables).items():
+            w.writerow([table, r, trainer, *counts])
+
+
+def load_rarity_snapshot(path: Path = RARITY_CSV) -> dict[tuple[str, int, str], tuple[int, ...]]:
+    """Empty when the file is missing."""
+    if not path.exists():
+        return {}
+    with path.open(newline="", encoding="utf-8") as f:
+        return {(row["table"], int(row["round"]), row["trainer"]): tuple(int(row[c]) for c in CLASS_NAMES)
+                for row in csv.DictReader(line for line in f if not line.startswith("#"))}
+
+
+def rarity_drift(tables, snapshot) -> list[tuple[tuple[str, int, str], tuple[int, ...], tuple[int, ...]]]:
+    """(key, snapshot counts, source counts) for every block whose mix changed."""
+    now = rarity_mix(tables)
+    return [(k, snapshot[k], now[k]) for k in now if k in snapshot and snapshot[k] != now[k]]
+
+
+def fmt_rarity_drift(drift, skip_rounds=()) -> list[str]:
+    """Warning lines naming the rounds; empty when the mix matches the snapshot."""
+    if not drift:
+        return []
+    rounds = sorted({k[1] for k, _, _ in drift})
+    out = [f"**WARNING: the trainer class mix differs from the one the targets were recorded with "
+           f"(rounds {', '.join(map(str, rounds))}).** The gaps below are measured on a different EXP "
+           "budget than the targets assume; a level-only fix will chase it. Re-record with "
+           "`--write-targets` once the mix is intended.", ""]
+    for (table, r, trainer), old, new in drift:
+        inert = (" (route skipped in this run shape: no effect on the model)"
+                 if table == "route" and r in skip_rounds else "")
+        out.append(f"- {table} R{r} {trainer}: {'/'.join(map(str, old))} -> {'/'.join(map(str, new))} "
+                   f"(mean class {mean_class(old):.2f} -> {mean_class(new):.2f}){inert}")
+    return out + [""]
+
+
+# --- curve rules -----------------------------------------------------------------
+# Settled 2026-11-08 (BALANCE_ROUND5_PLAN_2026-11-08.md section 8.8), both by GAP to
+# the player when the fight starts, not by absolute level:
+#   1. the gym leader is the hardest trainer of every round;
+#   2. the wild-area boss is the biggest jump of its round (above the leader).
+# Curve G's per-round shifts broke rule 2 in four rounds without anything noticing.
+
+RULE_TRAINER_COLUMNS = ("Route", "Route boss", "Mini-boss", "Stage ev.", "Gym", "Gym final")
+
+
+def rule_violations(gaps) -> list[str]:
+    """One line per broken rule per round (rounds 1-8; the finale has no leader)."""
+    out = []
+    for r in range(1, 9):
+        row = gaps.get(r, {})
+        if "Leader" not in row:
+            continue
+        lead = row["Leader"]
+        for c in RULE_TRAINER_COLUMNS:
+            if c in row and row[c] >= lead:
+                out.append(f"R{r}: {c} {row[c]:+.1f} >= leader {lead:+.1f} (the leader must be the hardest trainer)")
+        if "Wild boss" in row and row["Wild boss"] <= lead:
+            out.append(f"R{r}: wild boss {row['Wild boss']:+.1f} <= leader {lead:+.1f} "
+                       "(the wild boss must be the biggest jump of its round)")
+    return out
+
+
+def fmt_rule_check(gaps) -> list[str]:
+    bad = rule_violations(gaps)
+    head = "### Curve rules (leader hardest trainer; wild boss above the leader)"
+    if not bad:
+        return [head, "", "Both rules hold in every round.", ""]
+    return [head, "", f"**{len(bad)} broken:**", ""] + [f"- {b}" for b in bad] + [""]
+
+
+# --- slow-growth payoff ----------------------------------------------------------
+# A slow-growth mon carried from the start (Dratini, Larvitar) should reach its
+# final evolution in time to matter. Read the evolution levels from the source,
+# never a literal; flag below PAYOFF_FLAG_PCT before the Champion.
+
+PAYOFF_SPECIES = ("DRAGONAIR", "PUPITAR")
+PAYOFF_FLAG_PCT = 90
+
+
+def payoff_levels(g) -> dict[int, list[str]]:
+    """{evolution level: [species that evolve there]} for PAYOFF_SPECIES."""
+    out: dict[int, list[str]] = {}
+    for sp in PAYOFF_SPECIES:
+        for method, lv, _ in g.species[sp].evos:
+            if method == parse.EVOLVE_LEVEL:
+                out.setdefault(lv, []).append(sp)
+    return out
+
+
+def slow_payoff(g, runs) -> list[dict]:
+    """Per evolution level: % of runs where a slow-growth starter has reached it
+    before the Elite Four (checkpoint 9) and before the Champion (checkpoint 10)."""
+    out = []
+    for lv, species in sorted(payoff_levels(g).items()):
+        row = {"level": lv, "species": species}
+        for key, rnd in (("e4", 9), ("champion", 10)):
+            hit = [model.ace_level(g, "GROWTH_SLOW", cp.ace_exp, cp.ace_join) >= lv
+                   for run in runs for cp in run.checkpoints if cp.rnd == rnd]
+            row[key] = 100 * sum(hit) / len(hit) if hit else float("nan")
+        out.append(row)
+    return out
+
+
+def fmt_slow_payoff(payoff) -> list[str]:
+    out = ["### Slow-growth payoff (a slow-growth starter reaches its final evolution)", ""]
+    for p in payoff:
+        flag = f" **below {PAYOFF_FLAG_PCT}%**" if p["champion"] < PAYOFF_FLAG_PCT else ""
+        out.append(f"- L{p['level']} ({', '.join(s.title() for s in p['species'])}): "
+                   f"{p['e4']:.0f}% before the Elite Four, {p['champion']:.0f}% before the Champion{flag}")
+    return out + [""]
 
 
 # --- moving level sources ----------------------------------------------------
@@ -202,9 +350,10 @@ def table_values(g) -> dict[str, list[int]]:
     }
 
 
-def fmt_gap_table(title: str, gaps, rows=None, targets=None, compare=None) -> list[str]:
+def fmt_gap_table(title: str, gaps, rows=None, targets=None, compare=None, tables=None) -> list[str]:
     """Markdown gap table. targets: mark cells outside tolerance as `+0.7!`.
-    compare: a second gap table shown as `base / this`."""
+    compare: a second gap table shown as `base / this`. tables: add a column with
+    the round's mean trainer class (route / gym regulars, finals in brackets)."""
     def cell(r, c):
         if c not in gaps.get(r, {}):
             return f"{compare[r][c]:+.1f} / -" if compare and c in compare.get(r, {}) else ""
@@ -219,13 +368,24 @@ def fmt_gap_table(title: str, gaps, rows=None, targets=None, compare=None) -> li
                 s += f" ({v - t:+.1f}!)"
         return s
 
-    out = [f"### {title}", "", "| Round | " + " | ".join(COLUMNS) + (" | Starter at leader |" if rows else " |"),
-           "|---" * (len(COLUMNS) + (2 if rows else 1)) + "|"]
+    mix = rarity_mix(tables) if tables is not None else None
+
+    def rarity(r):
+        reg = "/".join(f"{mean_class(mix[(k, r, 'regular')]):.2f}" for k in ("route", "gym"))
+        fin = "/".join(f"{mean_class(mix[(k, r, 'final')]):.2f}" for k in ("route", "gym"))
+        return f"{reg} ({fin})"
+
+    extra = (["Class route/gym (finals)"] if mix else []) + (["Starter at leader"] if rows else [])
+    out = [f"### {title}", "", "| Round | " + " | ".join(COLUMNS + extra) + " |",
+           "|---" * (len(COLUMNS) + len(extra) + 1) + "|"]
     starter = {row["round"]: row["ace_rolled"] for row in rows} if rows else {}
     for r in range(1, 9):
         cells = [cell(r, c) for c in COLUMNS]
-        tail = f" | {starter.get(r, 0):.1f} |" if rows else " |"
-        out.append(f"| {r} | " + " | ".join(cells) + tail)
+        if mix:
+            cells.append(rarity(r))
+        if rows:
+            cells.append(f"{starter.get(r, 0):.1f}")
+        out.append(f"| {r} | " + " | ".join(cells) + " |")
     fin = [f"{c} {cell(9, c)}" for c in FINALE_COLUMNS if c in gaps.get(9, {})]
     out += ["", "Finale: " + ", ".join(fin) + (f"; team average at the Champion {rows[-1]['team_rolled']:.1f}."
                                                 if rows else "."), ""]

@@ -15,6 +15,8 @@
 	const BMUSIC_JOHTO_LEADER   ; Johto gym leader (not Janine), Will, Karen
 	const BMUSIC_JOHTO_BOSS     ; procedural stage boss, EVENT_JOHTO_ACTIVATED set
 	const BMUSIC_JOHTO_CHAMPION ; Lance as this run's Champion
+	const BMUSIC_MEWTWO         ; a wild Mewtwo, or a trainer whose party has one
+	const BMUSIC_ROCKET         ; ROCKET or GIOVANNI_MINIBOSS, EVENT_JOHTO_ACTIVATED set
 DEF NUM_BMUSIC_CATEGORIES EQU const_value
 
 PlayBattleMusic::
@@ -105,7 +107,57 @@ GetBattleMusicSong::
 	ret
 
 ; Out: a = BMUSIC_*
+; Mewtwo on the other side overrides every category except the run's finale
+; (BMUSIC_FINAL and the alternate Champion). For a trainer this reads the
+; built party, so trainer battles pick their song after ReadTrainer (see
+; ReadTrainerFast); InitBattleVariables picks it for wild battles.
 GetBattleMusicCategory:
+	call GetBaseBattleMusicCategory
+	cp BMUSIC_FINAL
+	ret z
+	cp BMUSIC_JOHTO_CHAMPION
+	ret z
+	ld c, a
+	call OpponentHasMewtwo
+	ld a, c
+	ret nc
+	ld a, BMUSIC_MEWTWO
+	ret
+
+; Out: carry = the wild mon, or any mon in the trainer's party, is Mewtwo.
+; Species only, so every Mewtwo form counts.
+OpponentHasMewtwo:
+	ld a, [wIsTrainerBattle]
+	and a
+	jr nz, .party
+	ld a, [wEnemyMonSpecies2] ; set by InitOpponent and TryDoWildEncounter alike
+	cp MEWTWO
+	jr z, .yes
+	and a
+	ret
+.party
+	ld hl, wEnemyPartyCount
+	ld a, [hli]
+	and a
+	ret z ; carry clear
+	cp PARTY_LENGTH + 1
+	jr c, .count
+	ld a, PARTY_LENGTH
+.count
+	ld b, a
+.loop
+	ld a, [hli]
+	cp MEWTWO
+	jr z, .yes
+	dec b
+	jr nz, .loop
+	and a
+	ret
+.yes
+	scf
+	ret
+
+GetBaseBattleMusicCategory:
 	ld a, [wGymLeaderNo]
 	and a
 	jr nz, .gymLeader
@@ -125,6 +177,11 @@ GetBattleMusicCategory:
 	jr z, .johtoLeader
 	cp OPP_KAREN
 	jr z, .johtoLeader
+	cp OPP_ROCKET
+	jr z, .rocket
+	cp OPP_GIOVANNI_MINIBOSS
+	jr z, .rocket
+.johtoGymCheck
 	; Johto gym trainers by map: they are ordinary classes. Janine's Fuchsia
 	; Gym is a Kanto map, so its trainers keep the Kanto theme.
 	ldh a, [hCurMap]
@@ -140,6 +197,13 @@ GetBattleMusicCategory:
 	ret
 .normalTrainerBattle
 	ld a, BMUSIC_TRAINER
+	ret
+.rocket
+; Crystal's Rocket theme is a Johto-mode feature; without Johto, Rocket
+; battles route like any other trainer.
+	CheckEvent EVENT_JOHTO_ACTIVATED
+	jr z, .johtoGymCheck
+	ld a, BMUSIC_ROCKET
 	ret
 .gymLeader
 	ld a, [wCurOpponent]
@@ -239,6 +303,8 @@ BattleMusicRamps:
 	dw BattleMusicRampJohtoLeader
 	dw BattleMusicRampJohtoBoss
 	dw BattleMusicRampJohtoChampion
+	dw BattleMusicRampMewtwo
+	dw BattleMusicRampRocket
 	assert_table_length NUM_BMUSIC_CATEGORIES
 
 ; Each ramp: `db first round, song` rows in ascending round order, then -1.
@@ -271,4 +337,10 @@ BattleMusicRampJohtoBoss:
 	db -1
 BattleMusicRampJohtoChampion:
 	db 0, MUSIC_CHAMPION_BATTLE
+	db -1
+BattleMusicRampMewtwo:
+	db 0, MUSIC_MEWTWO_BATTLE
+	db -1
+BattleMusicRampRocket:
+	db 0, MUSIC_ROCKET_BATTLE
 	db -1

@@ -266,3 +266,7 @@ INCLUDE "crysaudio/music/imported/suicunebattle.asm"
 SECTION "Song LookRocket", ROMX
 
 INCLUDE "crysaudio/music/imported/lookrocket.asm"
+
+SECTION "Song MewtwoBattle", ROMX
+
+INCLUDE "crysaudio/music/imported/mewtwobattle.asm"

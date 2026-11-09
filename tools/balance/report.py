@@ -456,6 +456,14 @@ def history_row(g: parse.GameData, args) -> dict:
         row["gap_leader_p90_max"] = max(lv["p90"][r]["Leader"] for r in range(1, 9))
         row["team_at_champion"] = round(lv["rows"][-1]["team_rolled"], 2)
         row["leader_aces"] = " ".join(map(str, curve.leader_aces(g)))
+        # Curve rules and the slow-growth payoff (added 2026-11-08). Older rows leave them empty.
+        row["curve_rules_broken"] = len(lv["rules"])
+        # The latest final evolution of curve.PAYOFF_SPECIES (fixed column names, so a
+        # changed evolution level reads as a value change, not a new column).
+        last = max(lv["payoff"], key=lambda p: p["level"])
+        row["slow_payoff_level"] = last["level"]
+        row["slow_payoff_e4_pct"] = round(last["e4"], 1)
+        row["slow_payoff_champion_pct"] = round(last["champion"], 1)
     row["wild_levels"] = " ".join(map(str, g.tables.wild))
     row["wild_boss_levels"] = " ".join(map(str, g.tables.wild_boss))
     # EXP and run shape (added 2026-10-10): what the level columns above were
@@ -520,7 +528,9 @@ def section_levels(g: parse.GameData, args, out: Path) -> list[str]:
     p90 = curve.gap_percentile(runs, 0.9)
     targets = curve.load_targets()
     misses = curve.out_of_tolerance(gaps, targets) if targets else []
-    args.levels = {"gaps": gaps, "p90": p90, "rows": rows}
+    payoff = curve.slow_payoff(g, runs)
+    args.levels = {"gaps": gaps, "p90": p90, "rows": rows, "payoff": payoff,
+                   "rules": curve.rule_violations(gaps)}
     lines = ["## 2. Level gaps vs targets (HARD, EXP Share on)\n",
              "Gap = enemy top level - the rolled starter's level when the battle starts. Targets: "
              f"`{curve.TARGETS_CSV.relative_to(ROOT).as_posix()}` (cells marked `!` are outside their "
@@ -529,7 +539,14 @@ def section_levels(g: parse.GameData, args, out: Path) -> list[str]:
         lines.append(f"**{len(misses)} of {len(curve.deviations(gaps, targets))} cells outside tolerance.**\n")
     else:
         lines.append("_No targets file: run `curve_solver.py --write-targets`._\n")
-    lines += curve.fmt_gap_table("Mean gap per round", gaps, rows, targets or None)
+    snapshot = curve.load_rarity_snapshot()
+    if targets and not snapshot:
+        lines.append("_No rarity snapshot: the targets' class mix is unknown "
+                     "(`curve_solver.py --write-targets` records both)._\n")
+    lines += curve.fmt_rarity_drift(curve.rarity_drift(g.tables, snapshot), cfg.skip_rounds)
+    lines += curve.fmt_gap_table("Mean gap per round", gaps, rows, targets or None, tables=g.tables)
+    lines += curve.fmt_rule_check(gaps)
+    lines += curve.fmt_slow_payoff(payoff)
     lines += ["### The hardest 10% of fights (90th-percentile gap)\n",
               "| Round | " + " | ".join(("Route boss", "Wild boss", "Gym final", "Leader")) + " |",
               "|---|---|---|---|---|"]
