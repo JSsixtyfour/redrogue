@@ -47,7 +47,7 @@ from __future__ import annotations
 
 import argparse
 import re
-from collections import deque
+from collections import Counter, deque
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -330,6 +330,7 @@ class FullRoomResult:
         self.socket_mask = socket_mask
         self.exit_safe = exit_safe
         self.spawn_safe = spawn_safe
+        self.anywhere = ""   # plan phase 1a; report-only until the table adopts it
 
 
 def discover_fullroom_files(maps_dir: Path = MAPS_DIR) -> list[Path]:
@@ -526,6 +527,49 @@ def _spawn_safe(
         if not (reachable(cells, next(iter(entrance))) & reference):
             return False
     return True
+
+
+def _side_positions(side: str, w: int, h: int) -> list[tuple[int, int]]:
+    """Every non-corner ring cell on one side, in footprint coordinates."""
+    if side == "N":
+        return [(col, 0) for col in range(1, w - 1)]
+    if side == "S":
+        return [(col, h - 1) for col in range(1, w - 1)]
+    if side == "W":
+        return [(0, row) for row in range(1, h - 1)]
+    return [(w - 1, row) for row in range(1, h - 1)]
+
+
+def _anywhere_sides(grid: list[list[int]], blockset: bytes, w: int, h: int) -> str:
+    """Sides on which an opening at ANY non-corner position connects (plan phase 1a).
+
+    The corrected form of the C2 exit / C3 spawn measurement. Those cut all four
+    canonical sockets AND the opening, so an opening could "borrow" a path
+    through a socket that is still solid art on the real map (C9 in
+    PFacCarveEdgeOpenings). Here each ring cell is cut ALONE, nothing else open.
+
+    The reference is every walkable quadrant of the uncut payload. A payload
+    that reaches this test has passed _diagonal_split, so those quadrants are
+    one connected component: an opening that reaches any of them reaches all of
+    them, and so reaches every other opening that passes too. That is what makes
+    the bit composable: whatever set of sides the corridors cut at runtime, all
+    the openings are mutually connected through the room.
+
+    The cut cell is modelled as $0E, the same assumption every other socket test
+    here makes about what the corridor leaves in the ring.
+    """
+    uncut = _expanded_cells_wh(grid, blockset, w, h, set())
+    safe = ""
+    for side in "NESW":
+        for px, py in _side_positions(side, w, h):
+            cells = _expanded_cells_wh(grid, blockset, w, h, {(px, py)})
+            opening = {(px * 2 + dx, py * 2 + dy) for dx in (0, 1) for dy in (0, 1)}
+            reference = uncut - opening
+            if not (reachable(cells, next(iter(opening))) & reference):
+                break
+        else:
+            safe += side
+    return safe
 
 
 def _socket_component(
@@ -751,6 +795,7 @@ def evaluate_fullroom(path: Path, blockset: bytes, block_count: int) -> FullRoom
         grid, blockset, w, h, sockets,
         _socket_component(grid, blockset, w, h, sockets, edge_cells, passed),
     )
+    result.anywhere = _anywhere_sides(grid, blockset, w, h)
     if item_anchor_safe(grid, hub_x, hub_y):
         result.roles = ("item", "explore")
         result.item_anchor = hub
@@ -828,14 +873,53 @@ def format_report(results: list[FullRoomResult]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def format_anywhere_report(results: list[FullRoomResult]) -> str:
+    """Plan phase 1a gate: corrected per-side 'opening anywhere' vs today's bits."""
+    ok = sorted((r for r in results if r.status == "OK"), key=lambda r: (r.w, r.h, r.filename))
+    lines = ["# per payload: sockets | today exit/spawn | corrected anywhere-NESW"]
+    for r in ok:
+        old_s = "S" if r.spawn_safe else ""
+        lost = "".join(c for c in r.exit_safe + old_s if c not in r.anywhere)
+        gained = "".join(c for c in r.anywhere if c in "NWE" + "S" and c not in r.exit_safe + old_s)
+        lines.append(
+            f"{r.filename:52s} sockets={r.socket_mask:4s} today={r.exit_safe or '-':3s}"
+            f"{'+S' if r.spawn_safe else '  '} anywhere={r.anywhere or '-':4s}"
+            + (f" LOST={lost}" if lost else "") + (f" GAINED={gained}" if gained else "")
+        )
+    lines.append("")
+    lines.append("# per footprint: payloads | today N/W/E/spawn | corrected N/W/E/S | full NESW")
+    groups: dict[tuple[int, int], list[FullRoomResult]] = {}
+    for r in ok:
+        groups.setdefault((r.w, r.h), []).append(r)
+    tot = Counter()
+    for (w, h), m in sorted(groups.items()):
+        t = [sum(c in r.exit_safe for r in m) for c in "NWE"] + [sum(r.spawn_safe for r in m)]
+        n = [sum(c in r.anywhere for r in m) for c in "NWES"]
+        full = sum(r.anywhere == "NESW" for r in m)
+        tot.update({"n": len(m), "full": full,
+                    **{f"t{i}": v for i, v in enumerate(t)}, **{f"c{i}": v for i, v in enumerate(n)}})
+        lines.append(f"{w}x{h}: {len(m):2d} | today {t[0]:2d} {t[1]:2d} {t[2]:2d} {t[3]:2d}"
+                     f" | corrected {n[0]:2d} {n[1]:2d} {n[2]:2d} {n[3]:2d} | full {full:2d}")
+    lines.append(f"total: {tot['n']} | today {tot['t0']} {tot['t1']} {tot['t2']} {tot['t3']}"
+                 f" | corrected {tot['c0']} {tot['c1']} {tot['c2']} {tot['c3']} | full {tot['full']}")
+    return "\n".join(lines) + "\n"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--report", action="store_true",
         help="Print the full-room audit table instead of running the pass/fail gate.",
     )
+    parser.add_argument(
+        "--anywhere", action="store_true",
+        help="Print the phase-1a corrected per-side opening report.",
+    )
     args = parser.parse_args()
 
+    if args.anywhere:
+        print(format_anywhere_report(scan_fullrooms()), end="")
+        return 0
     if args.report:
         print(format_report(scan_fullrooms()), end="")
         return 0

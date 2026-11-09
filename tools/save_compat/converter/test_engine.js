@@ -374,12 +374,18 @@ test("dexFormsAdded's catalog matches data/pokemon/dex_forms.asm and the schema'
   const c = fullSchema(18).constants;
   const asm = fs.readFileSync(path.join(__dirname, "..", "..", "..", "data", "pokemon", "dex_forms.asm"), "utf8");
   const rows = [...asm.matchAll(/^\s*dex_form\s+(DEX_FORM_\w+),\s*(\w+),\s*(\d)/gm)];
-  assert.equal(rows.length, c.NUM_DEX_FORMS);
+  const current = fullSchema(Number(TARGET)).constants;
+  assert.equal(rows.length, current.NUM_DEX_FORMS);
+  assert.ok(rows.length >= c.NUM_DEX_FORMS);
+  assert.ok(current.NUM_DEX_FORMS <= current.NUM_DEX_FORM_SLOTS);
+  rows.forEach(([_, id], index) => assert.equal(current[id], index, `${id} current order`));
   assert.ok(c.NUM_DEX_FORMS <= c.NUM_DEX_FORM_SLOTS);
   assert.equal(c.MON_CATCH_RATE, 7); assert.equal(c.FORM_MASK, 0x60);
   assert.equal(c.PARTYMON_STRUCT_LENGTH, 44); assert.equal(c.BOXMON_STRUCT_LENGTH, 33); assert.equal(c.MONS_PER_BOX, 20);
   const to = PKG.schemas["18"];
-  for (const [, id, species, form] of rows) {
+  // Historical schemas retain their original catalog; new identities append
+  // into reserved slots without renumbering any historical identity.
+  for (const [, id, species, form] of rows.slice(0, c.NUM_DEX_FORMS)) {
     assert.equal(c[id], rows.findIndex((r) => r[1] === id), `${id} order`);
     const bytes = new Uint8Array(api.SRAM_SIZE);
     const party = wramOffset(to, "wPartyCount");
