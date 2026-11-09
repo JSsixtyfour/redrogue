@@ -56,8 +56,8 @@ The gym leaders' team sizes and levels, straight from `constants/balance_constan
 |---|---|---|---|---|
 | 1 | 1-2 | 2-2 | 11-17 | 13-20 |
 | 2 | 3-4 | 3-3 | 21-26 | 27-30 |
-| 3 | 5-6 | 4-4 | 31-38 | 37-44 |
-| 4 | 7-8 | 5-6 | 40-45 | 48-55 |
+| 3 | 5-6 | 4-4 | 30-37 | 36-43 |
+| 4 | 7-8 | 5-6 | 39-44 | 47-54 |
 
 <!-- END GENERATED: gym curve -->
 
