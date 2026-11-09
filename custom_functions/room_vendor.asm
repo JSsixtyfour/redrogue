@@ -202,18 +202,25 @@ RoomVendorCategory:
 	ldh [hCoins + 1], a
 	call HasEnoughCoins
 	jr c, .notEnough
+	; Confirmation uses shared wBuffer scratch. Keep the selected piece on
+	; the stack until the debit completes, not in wBuffer + 9.
+	ld a, [wBuffer + 9]
+	push af
 	ld hl, .ConfirmText
 	call PrintText
 	call YesNoChoice              ; saves/restores its own screen tiles
 	ldh a, [hCurrentMenuItem]
 	and a
+	pop bc                        ; b = selected piece; preserve decision flags
 	ret nz                        ; declined
+	push bc
 	ld hl, hCoins + 1
 	ld de, wPlayerCoins + 1
 	ld c, 2
 	predef SubBCDPredef
-	ld a, [wBuffer + 9]
+	pop af                        ; a = selected piece, despite shared scratch
 	call RoomSetPieceOwned
+	rfarcall CreditPurchaseSave
 	ld a, SFX_PURCHASE
 	call PlaySoundWaitForCurrent
 	call WaitForSoundToFinish

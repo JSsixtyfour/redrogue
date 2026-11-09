@@ -576,7 +576,7 @@ class DifficultyGridBindingSmokeTest(HarnessTestCase):
         TIER_GAMBLER records, and the gambler onto the grid with its own row:
         RogueRosterMixId returns MIX_GAMBLER, whose six set units cover every
         slot. The sets are keyed on the species FIELDED, so an evolved pool
-        entry (Dragonair at 55+, Onix at 38+) must find its evolution's row.
+        entry (Dragonair at 52+, Onix at 38+) must find its evolution's row.
 
         This is the plan's "the fallback never fires" check: a slot that found
         no TIER_GAMBLER record would take MIX_GAMBLER's MSRC_RANDOM_TM fallback

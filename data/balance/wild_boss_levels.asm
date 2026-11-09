@@ -9,7 +9,7 @@ PCBossLevelTable:
 ; rule: it is a lone wild mon). 2026-10-06: every row -2, since the boss sat
 ; ~6.5 over the team average on entry; it is now ~4.5 over. Row 0 is
 ; unreachable (wild areas start at count ROUND_BATTLES); the last entry
-; (Victory Road) is 57.
+; (Victory Road) is 55.
 	db 11  ; round 0
 	db 19  ; round 1
 	db 24  ; round 2

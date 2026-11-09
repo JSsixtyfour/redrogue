@@ -237,6 +237,7 @@ CreditBuyItem:
 	push af
 	call LoadCreditPriceOfCurItem ; GiveItem may have disturbed hCoins
 	call SubtractCredits
+	call CreditPurchaseSave
 	ld a, SFX_PURCHASE
 	call PlaySoundWaitForCurrent
 	call WaitForSoundToFinish
@@ -377,6 +378,7 @@ CreditBuyUpgrade:
 	call SetKeyItemTier
 	call SubtractCredits
 	call ApplyKeyItemTierEffects
+	call CreditPurchaseSave
 	ld a, SFX_PURCHASE
 	call PlaySoundWaitForCurrent
 	call WaitForSoundToFinish
@@ -487,6 +489,24 @@ FindUpgradeRowForCurItem:
 	ret
 
 ; ============================================================
+; Commit the whole progression snapshot with the SRAM-owned purchase. Saving
+; only the balance would allow earned credits to be replayed from old progress.
+; The vendor uses the ordinary map text pointer, not a predef replacement.
+; Font/list/input state is outside Main Data; only the vendor's saved
+; NO_TEXT_DELAY flag needs normalization. Restore it for the live menu.
+; Called before success feedback, with item/tier/decoration and debit complete.
+CreditPurchaseSave::
+	push bc
+	ld a, [wStatusFlags5]
+	push af
+	res BIT_NO_TEXT_DELAY, a
+	ld [wStatusFlags5], a
+	rfarcall SaveGameData
+	pop af
+	ld [wStatusFlags5], a
+	pop bc
+	ret
+
 ; SRAM helpers. These read sKeyItemsBitfield / sKeyItemTiers directly rather
 ; than farcalling key_item_pocket.asm: farcall's Bankswitch clobbers bc on the
 ; way back, so IsKeyPocketItem's "own bit in c" return value cannot survive the

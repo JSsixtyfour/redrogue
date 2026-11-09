@@ -344,6 +344,7 @@ class CreditStoreLiveTest(unittest.TestCase):
             "flags": h.read_sram_bytes("sKeyItemsBitfield", 4),
             "tiers": h.read_sram_bytes("sKeyItemTiers", 4),
             "position": agent.position()}, indent=2))
+        h.credit_test_agent = agent
         return h
 
     def test_live_exact_funds(self):
