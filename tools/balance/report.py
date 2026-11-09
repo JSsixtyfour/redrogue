@@ -464,6 +464,12 @@ def history_row(g: parse.GameData, args) -> dict:
         row["slow_payoff_level"] = last["level"]
         row["slow_payoff_e4_pct"] = round(last["e4"], 1)
         row["slow_payoff_champion_pct"] = round(last["champion"], 1)
+    # Mean trainer class per round, 0 = Poke .. 3 = Master (added 2026-11-08): the
+    # rarity half of "what changed" when team_gymN moves. Older rows leave them empty.
+    mix = curve.rarity_mix(g.tables)
+    for r in range(1, 10):
+        row[f"class_route_r{r}"] = round(curve.mean_class(mix[("route", r, "regular")]), 2)
+        row[f"class_gym_r{r}"] = round(curve.mean_class(mix[("gym", r, "regular")]), 2)
     row["wild_levels"] = " ".join(map(str, g.tables.wild))
     row["wild_boss_levels"] = " ".join(map(str, g.tables.wild_boss))
     # EXP and run shape (added 2026-10-10): what the level columns above were
@@ -497,6 +503,36 @@ def history_row(g: parse.GameData, args) -> dict:
             bn, bk = ms["birds"].get(r, (0, 0))
             row[f"bird_rate_r{r}"] = pct(bk / bn) if bn else ""
     return row
+
+
+DRIFT_THRESHOLD = 0.3   # levels: a team_gymN move bigger than this between ledger rows is called out
+
+
+def ledger_drift(prev: dict, row: dict) -> list[str]:
+    """Name every gym where the team level moved more than DRIFT_THRESHOLD since the
+    previous ledger row, and say whether the trainer class mix, the level tables, or
+    neither changed (a model/run-shape change reads as neither)."""
+    out = []
+    for r in range(1, 9):
+        key = f"team_gym{r}"
+        try:
+            old, new = float(prev[key]), float(row[key])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if abs(new - old) <= DRIFT_THRESHOLD:
+            continue
+        mix_cols = [f"class_{t}_r{i}" for t in ("route", "gym") for i in range(1, r + 1)]
+        if any(not str(prev.get(c, "")).strip() for c in mix_cols):
+            why = "the previous row has no class columns, so the cause is unknown"
+        elif any(str(prev.get(c)) != str(row.get(c)) for c in mix_cols):
+            why = "trainer class mix changed (" + ", ".join(
+                f"{c} {prev[c]}->{row[c]}" for c in mix_cols if str(prev.get(c)) != str(row.get(c))) + ")"
+        elif any(str(prev.get(c)) != str(row.get(c)) for c in ("leader_aces", "wild_levels", "wild_boss_levels")):
+            why = "level tables changed (leader aces, wild or boss levels)"
+        else:
+            why = "neither mix nor those level tables changed (route/gym minimums, EXP, or the model)"
+        out.append(f"- Team at gym {r}: {old:.2f} -> {new:.2f} ({new - old:+.2f}); {why}.")
+    return out
 
 
 def credit_awards() -> dict:
@@ -659,6 +695,11 @@ def section_history(g: parse.GameData, args, out: Path) -> list[str]:
             w = csv.DictWriter(f, fieldnames=fields, restval="", lineterminator="\n")
             w.writeheader()
             w.writerows(history)
+    prior = history[-2] if (not (args.set or args.no_history) and len(history) > 1) else (
+        history[-1] if (args.set or args.no_history) and history else None)
+    drift = ledger_drift(prior, row) if prior else []
+    if drift:
+        lines += [f"**Team level drift vs the previous ledger row (more than {DRIFT_THRESHOLD} levels):**\n", *drift, ""]
     shown = history[-HISTORY_ROWS_SHOWN:] + ([row] if (args.set or args.no_history) else [])
     lines.append("| date | commit | spendable/run | by Gym 4 | by E4 | leaders | route | "
                  "trainer/leader base | TM B | Vitamin | PP Up | wild L (r1-r8) | boss L (r1-r8) |")

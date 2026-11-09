@@ -82,5 +82,41 @@ class SlowPayoffTest(unittest.TestCase):
         self.assertIn(40, curve.payoff_levels(replace(g, species=sp)))
 
 
+class LedgerDriftTest(unittest.TestCase):
+    def rows(self):
+        base = {f"team_gym{r}": "10.0" for r in range(1, 9)}
+        base.update({f"class_{t}_r{i}": "1.0" for t in ("route", "gym") for i in range(1, 10)})
+        base.update(leader_aces="1 2", wild_levels="3", wild_boss_levels="4")
+        return base, dict(base)
+
+    def test_small_move_is_silent(self):
+        import report
+        a, b = self.rows()
+        b["team_gym3"] = "10.2"
+        self.assertEqual(report.ledger_drift(a, b), [])
+
+    def test_names_the_mix(self):
+        import report
+        a, b = self.rows()
+        b["team_gym3"] = "9.5"
+        b["class_gym_r2"] = "0.5"
+        out = report.ledger_drift(a, b)
+        self.assertEqual(len(out), 1)
+        self.assertIn("class mix", out[0])
+        self.assertIn("class_gym_r2", out[0])
+
+    def test_names_levels_then_neither_then_unknown(self):
+        import report
+        a, b = self.rows()
+        b["team_gym3"] = "9.5"
+        b["wild_levels"] = "9"
+        self.assertIn("level tables", report.ledger_drift(a, b)[0])
+        a, b = self.rows()
+        b["team_gym3"] = "9.5"
+        self.assertIn("neither", report.ledger_drift(a, b)[0])
+        a.pop("class_gym_r1")
+        self.assertIn("unknown", report.ledger_drift(a, b)[0])
+
+
 if __name__ == "__main__":
     unittest.main()
