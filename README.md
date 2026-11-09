@@ -30,6 +30,7 @@ Pokemon & Items are awarded based on a rarity system
 - Character Class Select
 - 100+ Pokémon from Johto and Future Kanto Variants/Evolutions when playing in Johto/Time Warp Modes
 - Five Pocket Bag
+- New Music and music based progression system, with tracks from Pokémon Stadium, Pokémon Crystal, Pokémon Pinball, and the Pokémon Trading Card Games
 - And Much, Much More
 
 ## Battle Changes
@@ -111,6 +112,8 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
 - Kyle Glor: Trainer Back Sprites, Pokémon Sprites
 - TheQuickSlash
 - Sope!
+### Musicians
+- Pun
 ### Playtesters
 - 1upShyGuy
 - goombapatrol
