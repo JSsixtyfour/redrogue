@@ -17,7 +17,7 @@ _PsychicRefuseText::
 
 _PsychicNoMoneyText::
 	text "You do not have"
-	line "they money."
+	line "the money."
 	done
 
 _PsychicRevealText::
@@ -36,7 +36,7 @@ _PsychicAlreadyText::
 	text_ram wNameBuffer
 	text " awaits"
 	line "you. I have seen"
-	line "it."
+	cont "it."
 	done
 
 _PsychicNoGymText::
@@ -115,7 +115,7 @@ _WitchChallenge8Text::
 	prompt
 
 _WitchChallenge9Text::
-	text "PARTY always be"
+	text "Your TEAM stays"
 	line "poisoned in this"
 	cont "door."
 	prompt

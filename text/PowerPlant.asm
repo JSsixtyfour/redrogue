@@ -45,9 +45,9 @@ _PowerPlantPokemaniac2BattleText::
 	done
 
 _PowerPlantPokemaniac2EndBattleText::
-	text "Yikes."
+	text "Yikes"
 	line "I must be rusty."
-	done
+	prompt
 
 _PowerPlantPokemaniac2AfterBattleText::
 	text "I'm here to help"
@@ -56,11 +56,13 @@ _PowerPlantPokemaniac2AfterBattleText::
 	done
 
 _PowerPlantScientist4BattleText::
-	text "I'm all revved up!"
+	text "I'm all"
+	line "revved up!"
 	done
 
 _PowerPlantScientist4EndBattleText::
-	text "Watt happened?!"
+	text "Watt"
+	line "happened?!"
 	prompt
 
 _PowerPlantScientist4AfterBattleText::

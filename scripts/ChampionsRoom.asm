@@ -543,6 +543,7 @@ ChampionsRoomOakChampionText:
 	CheckEvent EVENT_BEAT_CHAMPION_RIVAL
 	ld hl, .IntroText
 	jr z, .printText
+	call ChampionsRoomGetStarterName
 	ld hl, ChampionsRoomOakChampionAfterBattleText
 .printText
 	call PrintText
@@ -566,12 +567,7 @@ ChampionsRoomOakChampionAfterBattleText:
 
 ChampionsRoomOakCongratulatesPlayerText:
 	text_asm
-	ld a, [wPlayerStarter]
-	ld [wNamedObjectIndex], a
-	ld [wFormContextSpecies], a ; name the starter as its form
-	ld a, [wPlayerStarterForm]
-	ld [wFormContextForm], a
-	call GetMonName
+	call ChampionsRoomGetStarterName
 	ld hl, .Text
 	call PrintText
 	jp TextScriptEnd
@@ -590,12 +586,7 @@ ChampionsRoomOakDisappointedWithLanceText:
 
 ChampionsRoomOakChampionCongratulatesText:
 	text_asm
-	ld a, [wPlayerStarter]
-	ld [wNamedObjectIndex], a
-	ld [wFormContextSpecies], a ; name the starter as its form
-	ld a, [wPlayerStarterForm]
-	ld [wFormContextForm], a
-	call GetMonName
+	call ChampionsRoomGetStarterName
 	ld hl, .Text
 	call PrintText
 	jp TextScriptEnd
@@ -603,6 +594,14 @@ ChampionsRoomOakChampionCongratulatesText:
 .Text:
 	text_far _ChampionsRoomOakChampionCongratulatesText
 	text_end
+
+ChampionsRoomGetStarterName:
+	ld a, [wPlayerStarter]
+	ld [wNamedObjectIndex], a
+	ld [wFormContextSpecies], a ; name the starter as its form
+	ld a, [wPlayerStarterForm]
+	ld [wFormContextForm], a
+	jp GetMonName
 
 ChampionsRoomOakComeWithMeText:
 	text_far _ChampionsRoomOakComeWithMeText

@@ -45,7 +45,7 @@ _SilphCoDormSnorlaxText::
 
 _SilphCoDormPikachuText::
 	text "A PIKACHU plush"
-	line "with it a nice"
+	line "with a nice"
 	cont "big tail."
 	done
 

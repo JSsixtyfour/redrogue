@@ -45,7 +45,7 @@ _SeafoamIslands1FHikerEndBattleText::
 _SeafoamIslands1FHikerAfterBattleText::
 	text "I better"
 	line "keep moving or my"
-	line "sweat is going to"
+	cont "sweat is going to"
 	cont "freeze."
 	done
     

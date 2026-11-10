@@ -243,5 +243,5 @@ DiglettsCaveNoTurningBackText:
 	text_end
 
 DiglettsCaveBossAfterText:
-	text_far _DiglettsCaveBugCatcher1AfterBattleText
+	text_far _DiglettsCaveCoolTrainerFAfterBattleText
 	text_end

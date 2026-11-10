@@ -92,7 +92,7 @@ _ChampionsRoomOakCongratulatesPlayerText::
 	cont "#MON LEAGUE"
 	cont "champion!"
 
-	para "You've grown up so"
+	para "You've grown so"
 	line "much since you"
 	cont "first left with"
 	cont "@"
@@ -229,7 +229,7 @@ _ChampionsRoomLanceAfterBattleText::
 	done
 
 _ChampionsRoomOakDisappointedWithLanceText::
-	text "PROF.OAK: Ah,"
+	text "OAK: Ah,"
 	line "<PLAYER>!"
 
 	para "It's been a long"

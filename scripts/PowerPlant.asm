@@ -181,27 +181,27 @@ PowerPlantScientist1AfterBattleText:
 	text_end
 
 PowerPlantPokemaniac1BattleText:
-	text_far _PowerPlantScientist1BattleText
+	text_far _PowerPlantPokemaniac1BattleText
 	text_end
 
 PowerPlantPokemaniac1EndBattleText:
-	text_far _PowerPlantScientist1EndBattleText
+	text_far _PowerPlantPokemaniac1EndBattleText
 	text_end
 
 PowerPlantPokemaniac1AfterBattleText:
-	text_far _PowerPlantScientist1AfterBattleText
+	text_far _PowerPlantPokemaniac1AfterBattleText
 	text_end
 
 PowerPlantPokemaniac2BattleText:
-	text_far _PowerPlantScientist1BattleText
+	text_far _PowerPlantPokemaniac2BattleText
 	text_end
 
 PowerPlantPokemaniac2EndBattleText:
-	text_far _PowerPlantScientist1EndBattleText
+	text_far _PowerPlantPokemaniac2EndBattleText
 	text_end
 
 PowerPlantPokemaniac2AfterBattleText:
-	text_far _PowerPlantScientist1AfterBattleText
+	text_far _PowerPlantPokemaniac2AfterBattleText
 	text_end
 
 PowerPlantCooltrainerMBattleText:
@@ -213,7 +213,7 @@ PowerPlantCooltrainerMBattleText:
 	ld hl, .RivalMiniBoss
 	ret
 .Normal
-	text_far _PowerPlantScientist1BattleText
+	text_far _PowerPlantScientist4BattleText
 	text_end
 .RivalMiniBoss
 	text_far _RivalMiniBossBattleText
@@ -228,7 +228,7 @@ PowerPlantCooltrainerMEndBattleText:
 	ld hl, .RivalMiniBoss
 	ret
 .Normal
-	text_far _PowerPlantScientist1EndBattleText
+	text_far _PowerPlantScientist4EndBattleText
 	text_end
 .RivalMiniBoss
 	text_far _RivalMiniBossEndBattleText
@@ -285,5 +285,5 @@ PowerPlantNoTurningBackText:
 	text_end
 
 PowerPlantBossAfterText:
-	text_far _PowerPlantScientist1AfterBattleText
+	text_far _PowerPlantScientist4AfterBattleText
 	text_end

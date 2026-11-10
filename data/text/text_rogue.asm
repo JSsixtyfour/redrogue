@@ -277,7 +277,7 @@ _CreditBuyConfirmText::
 _CreditBoughtText::
 	text "Here you are!"
 	line "Thank you!"
-	prompt
+	done
 
 ; Text-box lines fit 18 characters. Item names run to 12 (ITEM_NAME_LENGTH-1),
 ; so the name has to start its own line - "Upgrade " + a 12-char name is

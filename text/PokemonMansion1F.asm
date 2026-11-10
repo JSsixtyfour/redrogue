@@ -48,6 +48,7 @@ _PokemonMansion1FBurglar2AfterBattleText::
 _PokemonMansion1FScientist2BattleText::
 	text "It's not safe here"
 	line "for you!"
+	done
 
 _PokemonMansion1FScientist2EndBattleText::
 	text "Ugh."

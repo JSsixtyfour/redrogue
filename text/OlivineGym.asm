@@ -94,7 +94,7 @@ _OlivineGymEngineerEndBattleText::
 	prompt
 
 _OlivineGymEngineerAfterBattleText::
-	text "Maybe need to"
+	text "Maybe I need to"
 	line "workshop them a"
 	cont "bit more."
 	done
