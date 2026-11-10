@@ -131,8 +131,15 @@ class FacilityPremadeContractTest(unittest.TestCase):
     def test_table_is_item_anchor_but_not_walkable_decor(self) -> None:
         self.assertIn(0x47, validator.ITEM_ANCHOR_BLOCKS)
         self.assertNotIn(0x47, validator.FULLY_WALKABLE_DECOR_BLOCKS)
-        self.assertTrue(validator.item_anchor_safe([[0x47, 0x0E]], 0, 0))
-        self.assertFalse(validator.item_anchor_safe([[0x47, 0x31]], 0, 0))
+        # The ball shows on the table's top-left quadrant: floor to the left
+        # reaches it, floor to the right is two steps away and does not.
+        self.assertTrue(validator.item_anchor_safe([[0x0E, 0x47]], 1, 0))
+        self.assertFalse(validator.item_anchor_safe([[0x47, 0x0E]], 0, 0))
+        self.assertFalse(validator.item_anchor_safe([[0x31, 0x47]], 1, 0))
+        # Long-table middle beside the ring's left wall: the baseboard counts.
+        self.assertTrue(validator.item_anchor_safe([[0x44, 0x36]], 1, 0))
+        # Furniture other than tables never qualifies.
+        self.assertFalse(validator.item_anchor_safe([[0x0E, 0x43]], 1, 0))
 
 
 if __name__ == "__main__":

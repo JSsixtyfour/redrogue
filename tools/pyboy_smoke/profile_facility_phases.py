@@ -58,10 +58,22 @@ TAIL_PHASES = (
     "PFacFinalizeBlocks",
     "PFacRemoveIsolatedGeneratedCorners",
     "PFacNormalizeReversedCorners",
+    "PFacApplyWallEndCaps",
+    "PFacApplyCornerCaps",
+    "PFacRemoveStrandedJambs",
+    "PFacPlaceSpinnerDecor",
     "PFacPlaceLargeDecor",
     "PFacPlaceItems",
     "PFacDecorateExploreRooms",
     "PFacPlaceFakeBalls",
+    "PFacDecorateCorridorWalls",
+    # PFacFinalize's own tail after PFacGenerateFacility returns.
+    "PFacSpinnerRecord",
+    "PFacPickHideout",
+    "PFacPlacePads",
+    "PFacPlaceSubroomPad",
+    "FacSubroomGenerate",
+    "OptionalFacilityPlaceEncounter",
 )
 
 SEEDS = (

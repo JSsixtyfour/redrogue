@@ -1192,8 +1192,11 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             0x0A, 0x0B, 0x18, 0x1A, 0x20, 0x31, 0x34, 0x36,
             0x37, 0x38, 0x45, 0x77,
         }
-        item_anchor_blocks = {0x0E, 0x2C, 0x3B, 0x3F, 0x47}
-        fake_anchor_blocks = item_anchor_blocks | {0x34, 0x36, 0x37}
+        # Floor, plus the tables a real ball may rest on ($47 small table,
+        # $34/$36/$37 long table) when a walkable quadrant touches the ball's
+        # top-left one (PFacTableAnchorHasSide).
+        item_anchor_blocks = {0x0E, 0x2C, 0x3B, 0x3F, 0x47, 0x34, 0x36, 0x37}
+        fake_anchor_blocks = item_anchor_blocks
         allowed_blocks = {
             0x04,
             0x05,

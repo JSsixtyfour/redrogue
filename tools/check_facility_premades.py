@@ -68,7 +68,10 @@ VERTICAL_PASS_DECOR_BLOCKS = FULLY_WALKABLE_DECOR_BLOCKS | {
     0x20, 0x31, 0x38, 0x39, 0x45, 0x77,
 }
 HORIZONTAL_PASS_DECOR_BLOCKS = FULLY_WALKABLE_DECOR_BLOCKS | {0x19}
-ITEM_ANCHOR_BLOCKS = FULLY_WALKABLE_DECOR_BLOCKS | {0x47}
+# Tables a real ball may rest on: $47 small table, $34/$36/$37 long table
+# top/middle/bottom. Mirrors PFacItemAnchorAtCurrentValid.
+TABLE_ANCHOR_BLOCKS = {0x47, 0x34, 0x36, 0x37}
+ITEM_ANCHOR_BLOCKS = FULLY_WALKABLE_DECOR_BLOCKS | TABLE_ANCHOR_BLOCKS
 LARGE_DECOR_FIXTURES = {
     "ProceduralFacility_1x3_doubletabletree_decor.blk": (1, 3),
     "ProceduralFacility_2x1_doubletable_decor.blk": (2, 1),
@@ -198,18 +201,35 @@ def valid_large_decor_offsets(
 
 
 def item_anchor_safe(blocks: list[list[int]], x: int, y: int) -> bool:
-    """Mirror the generator's conservative block-level item-anchor rule."""
+    """Mirror PFacItemAnchorAtCurrentValid / PFacTableAnchorHasSide.
+
+    A ball shows on its block's top-left quadrant, so a table qualifies only
+    when a quadrant sharing an edge with that one is walkable: the table's own
+    TR or BL, the left block's TR, or the upper block's BL. A walkable block to
+    the right or below is two steps away and does not count.
+    """
     block = blocks[y][x]
     if block in FULLY_WALKABLE_DECOR_BLOCKS:
         return True
-    if block != 0x47:
+    if block not in TABLE_ANCHOR_BLOCKS:
         return False
-    return any(
-        0 <= nx < len(blocks[0])
-        and 0 <= ny < len(blocks)
-        and blocks[ny][nx] in FULLY_WALKABLE_DECOR_BLOCKS
-        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1))
-    )
+    blockset = _blockset()
+    _tl, tr, bl, _br = block_quadrants(blockset, block)
+    if tr or bl:
+        return True
+    if x > 0 and block_quadrants(blockset, blocks[y][x - 1])[1]:
+        return True
+    return y > 0 and block_quadrants(blockset, blocks[y - 1][x])[2]
+
+
+_BLOCKSET_CACHE: bytes | None = None
+
+
+def _blockset() -> bytes:
+    global _BLOCKSET_CACHE
+    if _BLOCKSET_CACHE is None:
+        _BLOCKSET_CACHE = BLOCKSET.read_bytes()
+    return _BLOCKSET_CACHE
 
 
 def validate() -> list[str]:
@@ -800,7 +820,8 @@ def evaluate_fullroom(path: Path, blockset: bytes, block_count: int) -> FullRoom
     # plan phase 2 (2026-11-10) PFacPlaceItems falls back to a row-major scan of
     # the interior, not the hub, so the hub need not be an anchor. Every fully
     # walkable cell is reachable (the payload's walkable set is one component),
-    # and a $47 table needs a fully walkable neighbour. The hub is reported when
+    # and a table needs a walkable quadrant beside its top-left one (see
+    # item_anchor_safe). The hub is reported when
     # it qualifies, otherwise the first anchor in scan order.
     interior = [(x, y) for y in range(1, h - 1) for x in range(1, w - 1)]
     for x, y in [hub] + interior:

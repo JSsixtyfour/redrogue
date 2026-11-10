@@ -427,7 +427,7 @@ PFacTpl3x3:
     dw PFacTplData3x3RockRoom2
     db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x3ServerRoom
-    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x3TableRoom
     db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x3TreeRoom
@@ -457,7 +457,7 @@ PFacTpl3x5:
     dw PFacTplData3x5RockRoom
     db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x5ServerrockRoom
-    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
+    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x5TablerockRoom
 PFacTpl3x5End:
 
@@ -473,7 +473,7 @@ PFacTpl3x7:
     dw PFacTplData3x7BlockrockRoom
     db 3, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x7BlocktreeRoom
-    db 3, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
+    db 3, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x7LongtableRoom
     db 3, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x7RockRoom
@@ -1152,8 +1152,6 @@ DEF wPFacCorSY        EQU 8   ; source center Y
 DEF wPFacCorElbow     EQU 9   ; column the route turns down (PFacCarveOneCorridor)
 DEF wPFacCorPX        EQU 10  ; ring corner under test by PFacRouteClipsCorner
 DEF wPFacCorPY        EQU 11
-DEF wPFacCorScan      EQU 12  ; room index while testing a candidate route
-ASSERT wPFacCorScan < wPFacRoomCount
 
 ; Full-room premade phase (PFacSelectPremadeMiddleRooms, which also stamps).
 ; Runs between the two corridor passes: room placement and the first corridor
@@ -2222,6 +2220,68 @@ PFacRemoveCornerIfIsolated:
     ret
 
 ; ============================================================
+; pfac_scan_cells handler, id[, id...]
+; Row-major sweep of the 20x20 area through a map pointer. A cell whose block
+; is one of the listed ids gets wPFacCurX/CurY set to it and `call handler`
+; with a = that block, hl = the cell's address, b = its row and c = its
+; column. hl and bc are restored after the call, so the handler may use every
+; register and read or write any cell.
+;
+; Behaviour-identical to the per-cell PFacReadBlock sweeps it replaced: the
+; same cells in the same order, each read when the sweep reaches it, so a
+; handler's write to a later cell is seen exactly as before. It exists because
+; those sweeps paid ~350 cycles of coordinate bookkeeping and block lookup per
+; cell to reject nearly all 400 cells on a single compare; that was ~16 of the
+; ~35 frames a Facility took to generate (measured 2026-11-10, ROM_BIBLE).
+; The pointer comes from wPFacTargetBase, like PFacReadBlock's.
+; ============================================================
+MACRO pfac_scan_cells
+    REDEF PFAC_SCAN_ID EQUS "\@"     ; REPT has its own \@
+    REDEF PFAC_SCAN_HANDLER EQUS "\1" ; SHIFT below consumes \1
+    ld hl, wBuffer + wPFacTargetBaseLo
+    ld a, [hli]
+    ld h, [hl]
+    ld l, a
+    ld b, 0                       ; row
+.scanRow\@
+    ld c, 0                       ; column
+.scanCell\@
+    ld a, [hl]
+    REPT _NARG - 1
+        SHIFT
+        cp \1
+        jr z, .scanHit{PFAC_SCAN_ID}
+    ENDR
+.scanNext\@
+    inc hl
+    inc c
+    ld a, c
+    cp PFAC_SIZE
+    jr nz, .scanCell\@
+    ld de, PFAC_STRIDE - PFAC_SIZE
+    add hl, de
+    inc b
+    ld a, b
+    cp PFAC_SIZE
+    jr nz, .scanRow\@
+    jr .scanDone\@
+.scanHit\@
+    push hl
+    push bc
+    ld e, a
+    ld a, c
+    ld [wBuffer + wPFacCurX], a
+    ld a, b
+    ld [wBuffer + wPFacCurY], a
+    ld a, e
+    call {PFAC_SCAN_HANDLER}
+    pop bc
+    pop hl
+    jr .scanNext\@
+.scanDone\@
+ENDM
+
+; ============================================================
 ; PFacBuildCorridorWalls
 ; Classify untouched cells immediately beside corridor sentinels. Room rings
 ; are already complete and remain authoritative. This is the orthogonal subset
@@ -2229,190 +2289,141 @@ PFacRemoveCornerIfIsolated:
 ; masks become PFAC_PENDING and resolve to floor after the cascade-safe scan.
 ; ============================================================
 PFacBuildCorridorWalls:
-    xor a
-    ld [wBuffer + wPFacLoopY], a
-.row
-    xor a
-    ld [wBuffer + wPFacLoopX], a
-.col
-    ld a, [wBuffer + wPFacLoopX]
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacLoopY]
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
-    cp PFAC_UNTOUCHED
-    jr nz, .next
+    pfac_scan_cells .cell, PFAC_UNTOUCHED
+    ret
+.cell
     call PFacClassifyCorridorWall
-    call PFacWriteBlock
-.next
-    ld a, [wBuffer + wPFacLoopX]
-    inc a
-    ld [wBuffer + wPFacLoopX], a
-    cp PFAC_SIZE
-    jr nz, .col
-    ld a, [wBuffer + wPFacLoopY]
-    inc a
-    ld [wBuffer + wPFacLoopY], a
-    cp PFAC_SIZE
-    jr nz, .row
+    ld [hl], a                    ; hl is still the cell (pfac_scan_cells)
     ret
 
+; INPUT hl = an untouched cell, b = its row, c = its column (pfac_scan_cells'
+; handler registers). OUTPUT a = the block to write there. Preserves bc, hl.
+; Neighbours are read through the pointer (PFAC_STRIDE per row); every probe
+; keeps the edge test the CurX/CurY version had, because the map's padding
+; around the 20x20 area is not PFAC_WALL and must never be read as a cell.
 PFacClassifyCorridorWall:
-    ld a, [wBuffer + wPFacCurX]
-    ld [wBuffer + wPFacDX], a
-    ld a, [wBuffer + wPFacCurY]
-    ld [wBuffer + wPFacDY], a
-    xor a
-    ld [wBuffer + wPFacFlags], a
-
-    ; north
-    ld a, [wBuffer + wPFacDY]
+    ld e, 0                       ; N/S/E/W bits 1/2/4/8
+    ld a, b
     and a
     jr z, .south
-    dec a
-    ld [wBuffer + wPFacCurY], a
-    ld a, [wBuffer + wPFacDX]
-    ld [wBuffer + wPFacCurX], a
-    ld b, 1
-    call PFacMarkCorridorNeighbor
+    push hl
+    ld a, l
+    sub PFAC_STRIDE
+    ld l, a
+    jr nc, .nOk
+    dec h
+.nOk
+    ld a, [hl]
+    pop hl
+    cp PFAC_CORRIDOR
+    jr nz, .south
+    set 0, e
 .south
-    ld a, [wBuffer + wPFacDY]
+    ld a, b
     cp PFAC_SIZE - 1
     jr z, .east
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    ld a, [wBuffer + wPFacDX]
-    ld [wBuffer + wPFacCurX], a
-    ld b, 2
-    call PFacMarkCorridorNeighbor
+    push hl
+    ld a, l
+    add a, PFAC_STRIDE
+    ld l, a
+    jr nc, .sOk
+    inc h
+.sOk
+    ld a, [hl]
+    pop hl
+    cp PFAC_CORRIDOR
+    jr nz, .east
+    set 1, e
 .east
-    ld a, [wBuffer + wPFacDX]
+    ld a, c
     cp PFAC_SIZE - 1
     jr z, .west
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacDY]
-    ld [wBuffer + wPFacCurY], a
-    ld b, 4
-    call PFacMarkCorridorNeighbor
+    inc hl
+    ld a, [hld]
+    cp PFAC_CORRIDOR
+    jr nz, .west
+    set 2, e
 .west
-    ld a, [wBuffer + wPFacDX]
+    ld a, c
     and a
     jr z, .result
-    dec a
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacDY]
-    ld [wBuffer + wPFacCurY], a
-    ld b, 8
-    call PFacMarkCorridorNeighbor
+    dec hl
+    ld a, [hli]
+    cp PFAC_CORRIDOR
+    jr nz, .result
+    set 3, e
 .result
-    ld a, [wBuffer + wPFacDX]
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacDY]
-    ld [wBuffer + wPFacCurY], a
-    ld a, [wBuffer + wPFacFlags]
+    ld a, e
     and a
     jr z, PFacClassifyCorridorDiagonal
-    ld c, a
-    ld b, 0
+    push hl
+    ld d, 0
     ld hl, PFacCorridorWallTable
-    add hl, bc
+    add hl, de
     ld a, [hl]
+    pop hl
     ret
 
 ; No cardinal corridor neighbor exists. A single diagonal corridor still needs
 ; a matching corner cap so the walkable half of the adjacent straight wall
-; cannot open directly onto $2E at a path end or turn.
+; cannot open directly onto $2E at a path end or turn. Same registers as
+; PFacClassifyCorridorWall; probes run NW, NE, SW, SE and the first corridor
+; found wins.
 PFacClassifyCorridorDiagonal:
-    ld a, [wBuffer + wPFacDX]
+    ld a, c
     and a
     jr z, .northEast
-    ld a, [wBuffer + wPFacDY]
+    ld a, b
     and a
     jr z, .southWest
-    dec a
-    ld [wBuffer + wPFacCurY], a
-    ld a, [wBuffer + wPFacDX]
-    dec a
-    ld [wBuffer + wPFacCurX], a
-    call PFacReadBlock
-    cp PFAC_CORRIDOR
-    jr z, .useBR
+    ld de, -(PFAC_STRIDE + 1)
+    call .probe
+    ld a, PFAC_C_BR_SOLID
+    ret z
 .northEast
-    ld a, [wBuffer + wPFacDX]
+    ld a, c
     cp PFAC_SIZE - 1
     jr z, .southWest
-    ld a, [wBuffer + wPFacDY]
+    ld a, b
     and a
     jr z, .southEast
-    dec a
-    ld [wBuffer + wPFacCurY], a
-    ld a, [wBuffer + wPFacDX]
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    call PFacReadBlock
-    cp PFAC_CORRIDOR
-    jr z, .useBL
+    ld de, -(PFAC_STRIDE - 1)
+    call .probe
+    ld a, PFAC_C_BL_SOLID
+    ret z
 .southWest
-    ld a, [wBuffer + wPFacDX]
+    ld a, c
     and a
     jr z, .southEast
-    ld a, [wBuffer + wPFacDY]
+    ld a, b
     cp PFAC_SIZE - 1
     jr z, .none
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    ld a, [wBuffer + wPFacDX]
-    dec a
-    ld [wBuffer + wPFacCurX], a
-    call PFacReadBlock
-    cp PFAC_CORRIDOR
-    jr z, .useTR
+    ld de, PFAC_STRIDE - 1
+    call .probe
+    ld a, PFAC_C_TR_SOLID
+    ret z
 .southEast
-    ld a, [wBuffer + wPFacDX]
+    ld a, c
     cp PFAC_SIZE - 1
     jr z, .none
-    ld a, [wBuffer + wPFacDY]
+    ld a, b
     cp PFAC_SIZE - 1
     jr z, .none
-    inc a
-    ld [wBuffer + wPFacCurY], a
-    ld a, [wBuffer + wPFacDX]
-    inc a
-    ld [wBuffer + wPFacCurX], a
-    call PFacReadBlock
-    cp PFAC_CORRIDOR
-    jr z, .useTL
+    ld de, PFAC_STRIDE + 1
+    call .probe
+    ld a, PFAC_C_TL_SOLID
+    ret z
 .none
     ld a, PFAC_WALL
-    jr .restore
-.useBR
-    ld a, PFAC_C_BR_SOLID
-    jr .restore
-.useBL
-    ld a, PFAC_C_BL_SOLID
-    jr .restore
-.useTR
-    ld a, PFAC_C_TR_SOLID
-    jr .restore
-.useTL
-    ld a, PFAC_C_TL_SOLID
-.restore
-    push af
-    ld a, [wBuffer + wPFacDX]
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacDY]
-    ld [wBuffer + wPFacCurY], a
-    pop af
     ret
 
-PFacMarkCorridorNeighbor:
-    call PFacReadBlock
+; Z when the cell at hl + de is a corridor. Preserves hl.
+.probe
+    push hl
+    add hl, de
+    ld a, [hl]
+    pop hl
     cp PFAC_CORRIDOR
-    ret nz
-    ld a, [wBuffer + wPFacFlags]
-    or b
-    ld [wBuffer + wPFacFlags], a
     ret
 
 PFacCorridorWallTable:
@@ -2431,31 +2442,7 @@ PFacCorridorWallTable:
 ; doorway rule from 0640346a.
 ; ============================================================
 PFacApplyDoorJambs:
-    xor a
-    ld [wBuffer + wPFacLoopY], a
-.row
-    xor a
-    ld [wBuffer + wPFacLoopX], a
-.col
-    ld a, [wBuffer + wPFacLoopX]
-    ld [wBuffer + wPFacCurX], a
-    ld [wBuffer + wPFacDX], a
-    ld a, [wBuffer + wPFacLoopY]
-    ld [wBuffer + wPFacCurY], a
-    ld [wBuffer + wPFacDY], a
-    call PFacReadBlock
-    cp PFAC_CORRIDOR
-    call z, PFacJambDoorway
-    ld a, [wBuffer + wPFacLoopX]
-    inc a
-    ld [wBuffer + wPFacLoopX], a
-    cp PFAC_SIZE
-    jr nz, .col
-    ld a, [wBuffer + wPFacLoopY]
-    inc a
-    ld [wBuffer + wPFacLoopY], a
-    cp PFAC_SIZE
-    jr nz, .row
+    pfac_scan_cells PFacJambDoorway, PFAC_CORRIDOR
     ret
 PFacJambDoorway:
     ld a, [wBuffer + wPFacCurX]
@@ -3268,10 +3255,10 @@ PFacPlaceItems:
     jp nz, .ballLoop
     ret
 
-; Z set when the current block is an approved item-display anchor. $47 is a
-; solid table, so it is accepted only when a fully walkable cardinal neighbor
-; provides a conservative interaction position. Object-anchor safety is
-; deliberately broader than player walkability.
+; Z set when the current block is an approved item-display anchor: fully
+; walkable floor, or a table block ($47 small table, $34/$36/$37 long table
+; top/middle/bottom) with a walkable quadrant touching the ball. Tables are
+; the only furniture a ball may rest on; they read as a display surface.
 PFacItemAnchorAtCurrentValid:
     call PFacReadBlock
     cp $0E
@@ -3283,7 +3270,50 @@ PFacItemAnchorAtCurrentValid:
     cp $3F
     ret z
     cp $47
+    jr z, PFacTableAnchorHasSide
+    cp $34
+    jr z, PFacTableAnchorHasSide
+    cp $36
+    jr z, PFacTableAnchorHasSide
+    cp $37
     ret nz
+    ; fall through
+
+; In: a = the table block at CurX/CurY. A ball shows on its block's top-left
+; quadrant (tile block*2+4), so the player can take it only from a quadrant
+; sharing an edge with that one: this block's TR or BL, the left block's TR,
+; or the upper block's BL. A fully walkable block to the right or below is
+; two steps away and does not count. Z when one of the four is walkable; every
+; walkable quadrant is reachable from the entrance (stranded-quadrant audit).
+; CurX/CurY are restored. Clobbers a, de, hl.
+PFacTableAnchorHasSide:
+    call PFacQuadMask
+    and %0110                     ; own TR | own BL
+    jr nz, .yes
+    ld hl, wBuffer + wPFacCurX
+    dec [hl]
+    call PFacReadBlock
+    ld hl, wBuffer + wPFacCurX
+    inc [hl]
+    call PFacQuadMask
+    and %0010                     ; left block's TR
+    jr nz, .yes
+    ld hl, wBuffer + wPFacCurY
+    dec [hl]
+    call PFacReadBlock
+    ld hl, wBuffer + wPFacCurY
+    inc [hl]
+    call PFacQuadMask
+    and %0100                     ; upper block's BL
+    jr nz, .yes
+    or 1
+    ret
+.yes
+    xor a
+    ret
+
+; Z when a fully walkable cardinal neighbour of CurX/CurY exists. Used only by
+; the fake-encounter $36 rule now; real balls use PFacTableAnchorHasSide.
 PFacSolidAnchorHasNeighbor:
     ld a, [wBuffer + wPFacCurX]
     ld [wBuffer + wPFacItemCheckX], a
@@ -4212,31 +4242,25 @@ PFacWallRunTableEnd:
 ASSERT PFacWallRunTableEnd - PFacWallRunTable == 4 * PFAC_WALL_RUN_STRIDE
 
 PFacDecorateCorridorWalls:
-    xor a
-    ld [wBuffer + wPFacWallY], a
-.row
-    xor a
-    ld [wBuffer + wPFacWallX], a
-.col
-    ld a, [wBuffer + wPFacWallX]
-    ld [wBuffer + wPFacCurX], a
-    ld [wBuffer + wPFacWallSaveX], a
-    ld a, [wBuffer + wPFacWallY]
-    ld [wBuffer + wPFacCurY], a
-    ld [wBuffer + wPFacWallSaveY], a
-
-    call PFacReadBlock
+    ; Corners and everything else are never decorated.
+    pfac_scan_cells .cell, PFAC_W_LEFT, PFAC_W_RIGHT, PFAC_W_TOP, PFAC_W_BOTTOM
+    ret
+.cell
     ld [wBuffer + wPFacWallType], a
+    ld a, [wBuffer + wPFacCurX]
+    ld [wBuffer + wPFacWallX], a
+    ld [wBuffer + wPFacWallSaveX], a
+    ld a, [wBuffer + wPFacCurY]
+    ld [wBuffer + wPFacWallY], a
+    ld [wBuffer + wPFacWallSaveY], a
+    ld a, [wBuffer + wPFacWallType]
     ld hl, PFacWallRunTable
-    ld b, 4
 .scanType
     cp [hl]
     jr z, .foundType
     ld de, PFAC_WALL_RUN_STRIDE
     add hl, de
-    dec b
-    jr nz, .scanType
-    jr .next                    ; corners and everything else: never decorated
+    jr .scanType                ; the scan's ids are exactly this table's
 .foundType
     inc hl
     ld a, [hli]
@@ -4253,11 +4277,11 @@ PFacDecorateCorridorWalls:
     ld [wBuffer + wPFacWallDecorB], a
 
     call PFacWallRunRedundant
-    jr z, .next
+    ret z
     call PFacWallSiteBlocked
-    jr z, .next
+    ret z
     call PFacWallGateRoll
-    jr z, .next
+    ret z
 
     call Random
     bit 0, a
@@ -4265,19 +4289,7 @@ PFacDecorateCorridorWalls:
     jr z, .write
     ld a, [wBuffer + wPFacWallDecorB]
 .write
-    call PFacWriteBlock
-.next
-    ld a, [wBuffer + wPFacWallX]
-    inc a
-    ld [wBuffer + wPFacWallX], a
-    cp PFAC_SIZE
-    jp nz, .col
-    ld a, [wBuffer + wPFacWallY]
-    inc a
-    ld [wBuffer + wPFacWallY], a
-    cp PFAC_SIZE
-    jp nz, .row
-    ret
+    jp PFacWriteBlock
 
 ; NZ set with 1-in-4 probability (the C6b scatter gate), Z otherwise.
 ; Clobbers a, bc (Rangerandom's contract).
@@ -4637,18 +4649,14 @@ PFacNormalizeReversedCorners:
 ; considers the plain middle of a run, never a cap.
 ; ============================================================
 PFacApplyWallEndCaps:
-    xor a
-    ld [wBuffer + wPFacLoopY], a
-.row
-    xor a
-    ld [wBuffer + wPFacLoopX], a
-.column
-    ld a, [wBuffer + wPFacLoopX]
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacLoopY]
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
+    pfac_scan_cells .cell, PFAC_W_LEFT, PFAC_W_RIGHT, PFAC_W_TOP, PFAC_W_BOTTOM
+    ret
+.cell
     ld [wBuffer + wPFacCapWall], a
+    ld a, [wBuffer + wPFacCurX]
+    ld [wBuffer + wPFacLoopX], a
+    ld a, [wBuffer + wPFacCurY]
+    ld [wBuffer + wPFacLoopY], a
     ld hl, PFacWallEndCapTable
     ld b, PFAC_WALL_END_CAP_COUNT
 .entry
@@ -4675,24 +4683,12 @@ PFacApplyWallEndCaps:
     ld de, 3
     add hl, de
     ld a, [hl]
-    call PFacWriteBlock
-    jr .advance
+    jp PFacWriteBlock
 .nextEntry
     ld de, PFAC_WALL_END_CAP_STRIDE
     add hl, de
     dec b
     jr nz, .entry
-.advance
-    ld hl, wBuffer + wPFacLoopX
-    inc [hl]
-    ld a, [hl]
-    cp PFAC_SIZE
-    jp c, .column
-    ld hl, wBuffer + wPFacLoopY
-    inc [hl]
-    ld a, [hl]
-    cp PFAC_SIZE
-    jp c, .row
     ret
 
 ; wall block, probe dx, probe dy, capped replacement. First match wins, so a
@@ -4736,18 +4732,14 @@ DEF PFAC_WALL_END_CAP_COUNT EQU 8
 ; moved.
 ; ============================================================
 PFacApplyCornerCaps:
-    xor a
-    ld [wBuffer + wPFacLoopY], a
-.row
-    xor a
-    ld [wBuffer + wPFacLoopX], a
-.column
-    ld a, [wBuffer + wPFacLoopX]
-    ld [wBuffer + wPFacCurX], a
-    ld a, [wBuffer + wPFacLoopY]
-    ld [wBuffer + wPFacCurY], a
-    call PFacReadBlock
+    pfac_scan_cells .cell, PFAC_C_TL, PFAC_C_TR, PFAC_C_BL, PFAC_C_BR
+    ret
+.cell
     ld [wBuffer + wPFacCapWall], a
+    ld a, [wBuffer + wPFacCurX]
+    ld [wBuffer + wPFacLoopX], a
+    ld a, [wBuffer + wPFacCurY]
+    ld [wBuffer + wPFacLoopY], a
     ld hl, PFacCornerCapTable
     ld b, PFAC_CORNER_CAP_COUNT
 .entry
@@ -4758,7 +4750,7 @@ PFacApplyCornerCaps:
     add hl, de
     dec b
     jr nz, .entry
-    jr .advance
+    ret
 .found
     ld c, 0                       ; bit 0 = arm 1 ends, bit 1 = arm 2 ends
     push hl
@@ -4774,7 +4766,7 @@ PFacApplyCornerCaps:
     pop hl
     ld a, c
     and a
-    jr z, .advance                ; both arms continue, the corner is fine
+    ret z                         ; both arms continue, the corner is fine
     dec a                         ; 0 = arm 1 only, 1 = arm 2 only, 2 = both
     ld e, a
     ld d, 0
@@ -4786,19 +4778,7 @@ PFacApplyCornerCaps:
     ld a, [wBuffer + wPFacLoopY]
     ld [wBuffer + wPFacCurY], a
     ld a, [hl]
-    call PFacWriteBlock
-.advance
-    ld hl, wBuffer + wPFacLoopX
-    inc [hl]
-    ld a, [hl]
-    cp PFAC_SIZE
-    jp c, .column
-    ld hl, wBuffer + wPFacLoopY
-    inc [hl]
-    ld a, [hl]
-    cp PFAC_SIZE
-    jp c, .row
-    ret
+    jp PFacWriteBlock
 
 ; INPUT hl -> a [dx, dy] pair, with the sweep cell in LoopX/LoopY.
 ; OUTPUT Z when that neighbour is plain floor. Advances hl past the pair and
@@ -4868,23 +4848,15 @@ DEF PFAC_CORNER_CAP_COUNT EQU 4
 ; guard of their own.
 ; ============================================================
 PFacRemoveStrandedJambs:
-    xor a
-    ld [wBuffer + wPFacCurY], a
-.row
-    xor a
-    ld [wBuffer + wPFacCurX], a
-.column
-    call PFacReadBlock
+    pfac_scan_cells .cell, PFAC_J_BOTTOM_W, PFAC_J_AUTHORED_W, PFAC_J_BOTTOM_E, PFAC_J_AUTHORED_E
+    ret
+.cell
     ld c, $FF                     ; arm lies to the WEST
     cp PFAC_J_BOTTOM_W
     jr z, .probe
     cp PFAC_J_AUTHORED_W
     jr z, .probe
     ld c, 1                       ; arm lies to the EAST
-    cp PFAC_J_BOTTOM_E
-    jr z, .probe
-    cp PFAC_J_AUTHORED_E
-    jr nz, .advance
 .probe
     ld a, [wBuffer + wPFacCurX]
     ld b, a                       ; column to come back to
@@ -4896,21 +4868,9 @@ PFacRemoveStrandedJambs:
     ld [wBuffer + wPFacCurX], a
     ld a, c
     cp PFAC_FLOOR
-    jr nz, .advance
+    ret nz
     ld a, PFAC_FLOOR
-    call PFacWriteBlock
-.advance
-    ld hl, wBuffer + wPFacCurX
-    inc [hl]
-    ld a, [hl]
-    cp PFAC_SIZE
-    jr c, .column
-    ld hl, wBuffer + wPFacCurY
-    inc [hl]
-    ld a, [hl]
-    cp PFAC_SIZE
-    jr c, .row
-    ret
+    jp PFacWriteBlock
 
 ; ============================================================
 ; PFacRoomCenter
@@ -5846,30 +5806,36 @@ PFacChooseCorridorRoute:
 ; practice: PFacPremadePerimeterClear scans the full top and bottom footprint
 ; rows, so a room whose ring corner a corridor crossed is refused a template
 ; anyway and is validated as a generic room.
+;
+; The records are walked with a pointer rather than PFacRoomRecordAddr per room:
+; this runs for every candidate elbow of every corridor in both carve passes,
+; ~1500 record visits per generation (measured 2026-11-10).
 PFacRouteClipsCorner:
-    xor a
-    ld [wBuffer + wPFacCorScan], a
+    ld hl, sProcFacilityGenScratch
 .room
-    ld a, [wBuffer + wPFacCorScan]
-    cp PFAC_ROOM_MAX
-    jr nc, .clean
-    call PFacRoomRecordAddr
+    ld a, l
+    cp LOW(sProcFacilityGenScratch + PFAC_ROOM_MAX * PFAC_ROOM_STRIDE)
+    jr z, .clean
     ld a, [hli]
     ld d, a                      ; d = interior X
     ld a, [hli]
     ld e, a                      ; e = interior Y
     ld a, [hli]
     and a
-    jr z, .next                  ; unplaced slot
+    jr z, .unplaced
     ld b, a                      ; b = interior W
     ld c, [hl]                   ; c = interior H
+    inc hl
+    inc hl
+    inc hl                       ; hl -> next record
+    push hl
 
     ; Cheap per-room rejection before the four per-corner tests. The route only
     ; ever occupies row SY, row TY and column elbow, so a corner of this room
     ; can only be on it if one of the room's two ring ROWS is SY or TY, or one
     ; of its two ring COLUMNS is the elbow. Most rooms fail all six compares and
     ; never pay for a single PFacRouteHitsPoint call. hl is free here: the
-    ; record pointer has already been fully consumed.
+    ; next record's pointer is on the stack.
     ld a, e
     dec a                        ; top ring row
     ld hl, wBuffer + wPFacCorSY
@@ -5904,29 +5870,38 @@ PFacRouteClipsCorner:
     dec a
     ld [wBuffer + wPFacCorPY], a ; top ring row
     call PFacRouteHitsPoint
-    ret c
+    jr c, .hit
     ld a, d
     add a, b
     ld [wBuffer + wPFacCorPX], a ; right ring column
     call PFacRouteHitsPoint
-    ret c
+    jr c, .hit
     ld a, e
     add a, c
     ld [wBuffer + wPFacCorPY], a ; bottom ring row
     call PFacRouteHitsPoint
-    ret c
+    jr c, .hit
     ld a, d
     dec a
     ld [wBuffer + wPFacCorPX], a
     call PFacRouteHitsPoint
-    ret c
+    jr c, .hit
 .next
-    ld hl, wBuffer + wPFacCorScan
-    inc [hl]
+    pop hl
     jr .room
+.unplaced
+    inc hl
+    inc hl
+    inc hl                       ; hl -> next record
+    jr .room
+.hit
+    pop hl                       ; keeps carry
+    ret
 .clean
     and a
     ret
+ASSERT HIGH(sProcFacilityGenScratch) == HIGH(sProcFacilityGenScratch + PFAC_ROOM_MAX * PFAC_ROOM_STRIDE), \
+    "PFacRouteClipsCorner / PFacTryCutPremadeSocket end their record walk on the low byte"
 
 ; Carry set if the candidate route passes through (wPFacCorPX, wPFacCorPY).
 ; Preserves BC and DE so PFacRouteClipsCorner keeps the room rect it loaded.
@@ -6028,23 +6003,35 @@ PFacCorStampCell:
 ; bits covering the rest. Corners never qualify (a crossed corner kept the room
 ; generic), and neither does interior art: only the row or column one outside
 ; the interior is tested.
+;
+; Runs for every corridor cell that is not untouched, so the room records are
+; walked by pointer on their Type byte and only a premade's rect is loaded.
 PFacTryCutPremadeSocket:
-    ld b, 0                     ; C3: room 0 is stamped too (see C2's bug)
+    ; C3: room 0 is stamped too (see C2's bug); C2: so is room 11.
+    ld hl, sProcFacilityGenScratch + 5   ; room 0's Type byte
 .room
-    push bc
-    ld a, b
-    call PFacRoomRecordAddr
+    bit 7, [hl]
+    jr nz, .premade             ; else a generic room, or an unplaced slot
+.next
+    ld a, l
+    add a, PFAC_ROOM_STRIDE
+    ld l, a
+    cp LOW(sProcFacilityGenScratch + 5 + PFAC_ROOM_MAX * PFAC_ROOM_STRIDE)
+    jr nz, .room
+    and a
+    ret
+.premade
+    push hl
+    ld a, l
+    sub 5
+    ld l, a                     ; hl -> record +0
     ld a, [hli]
     ld d, a                     ; d = interior X
     ld a, [hli]
     ld e, a                     ; e = interior Y
     ld a, [hli]
     ld b, a                     ; b = interior W
-    ld a, [hli]
-    ld c, a                     ; c = interior H
-    inc hl                      ; hl -> record +5 (Type)
-    bit 7, [hl]
-    jr z, .next                 ; generic room, or an unplaced slot
+    ld c, [hl]                  ; c = interior H
 
     ; --- north / south: X <= CurX < X + W, on row Y - 1 or row Y + H ---
     ld a, [wBuffer + wPFacCurX]
@@ -6065,7 +6052,7 @@ PFacTryCutPremadeSocket:
     ld a, [wBuffer + wPFacCurY]
     sub e
     cp c
-    jr nc, .next
+    jr nc, .notThis
     ld a, [wBuffer + wPFacCurX]
     inc a
     cp d                        ; CurX == X - 1
@@ -6074,19 +6061,15 @@ PFacTryCutPremadeSocket:
     sub d
     cp b                        ; CurX == X + W
     jr z, .yes
-
-.next
-    pop bc
-    inc b
-    ld a, b
-    cp 12                       ; C2: room 11 is stamped too, so its socket must be cuttable
-    jr nz, .room
-    and a
-    ret
+.notThis
+    pop hl
+    jr .next
 .yes
-    pop bc
+    pop hl
     scf
     ret
+ASSERT HIGH(sProcFacilityGenScratch) == HIGH(sProcFacilityGenScratch + 5 + PFAC_ROOM_MAX * PFAC_ROOM_STRIDE), \
+    "PFacTryCutPremadeSocket ends its record walk on the low byte"
 ; ============================================================
 ; PFacCarveEdgeOpenings
 ; Stamp the fixed south entrance socket, then open the selected exit boundary
