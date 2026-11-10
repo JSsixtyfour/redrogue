@@ -264,66 +264,61 @@ _ChampionsRoomOakDisappointedWithLanceText::
 ; ============================================================
 
 _ChampionsRoomOakChampionIntroText::
-	text "OAK: <PLAYER>!"
+	text "OAK: It's been a"
+	line "long time since"
+	cont "I've walked these"
+	cont "halls."
 
-	para "I couldn't"
-	line "resist testing"
-	cont "you myself!"
+	para "Seeing your"
+	line "passion and love"
+	cont "for your #MON"
+	cont "inspired me to"
+	cont "fight once again."
 
-	para "A lifetime of"
-	line "studying #MON"
-	cont "taught me much!"
-
-	para "But knowledge"
-	line "alone won't win"
-	cont "a #MON battle!"
-
-	para "Show me what"
-	line "you've learned,"
-	cont "<PLAYER>!"
+	para "Now, <PLAYER>, show"
+	line "me everything"
+	cont "you've learned!"
 	done
 
 _OakChampionDefeatedText::
 	text "Ha ha!"
-	line "Just as I hoped!"
+	line "Thank you for"
+	cont "treating me to"
+	cont "such a grand"
+	cont "final battle."
 
-	para "You've surpassed"
-	line "your old"
-	cont "professor!"
+	para "You're even"
+	line "better than I"
+	cont "imagined!"
 	prompt
 
 _OakChampionVictoryText::
-	text "Not bad,"
-	line "<PLAYER>!"
-
-	para "But there's still"
-	line "more for you to"
-	cont "learn!"
+	text "Ha!"
+	line "Thank you!"
+	cont "I haven't felt a"
+	cont "rush like that in"
+	cont "years!"
 	prompt
 
 _ChampionsRoomOakChampionAfterBattleText::
-	text "OAK: Wonderful!"
-
-	para "You've done what"
-	line "I always"
-	cont "believed you"
-	cont "could!"
-
-	para "Congratulations,"
-	line "<PLAYER>!"
-
-	para "You are the new"
-	line "#MON LEAGUE"
+	text " "
+	line "Congratulations!"
+	cont "You're the new"
+	cont "#MON LEAGUE"
 	cont "champion!"
+
+	para "You've grown up so"
+	line "much since you"
+	cont "first left with"
+	cont "@"
+	text_ram wNameBuffer
+	text "!"
 	done
 
 ; The whole post-battle speech on an Oak-as-Champion run: three boxes, ending
 ; in the "Come with me!" his skipped COME_WITH_ME text used to carry.
 _ChampionsRoomOakChampionCongratulatesText::
 	text "OAK: <PLAYER>!"
-	line "I never thought"
-	cont "my #MON would"
-	cont "lose to you!"
 
 	para "You've grown so"
 	line "much since you"

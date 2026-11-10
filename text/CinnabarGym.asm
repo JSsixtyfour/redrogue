@@ -31,14 +31,7 @@ _CinnabarGymBlainePostBattleAdviceText::
 	done
 
 _CinnabarGymBlaineVolcanoBadgeInfoText::
-	text "Hah!"
-
-	para "The VOLCANOBADGE"
-	line "heightens the"
-	cont "SPECIAL abilities"
-	cont "of your #MON!"
-
-	para "Here, you can"
+	text "Here, you can"
 	line "have this too!"
 	done
 
@@ -52,15 +45,9 @@ _CinnabarGymBlaineReceivedTM38Text::
 _CinnabarGymBlaineTM38ExplanationText::
 	text_start
 
-	para "TM38 contains"
-	line "FIRE BLAST!"
-
-	para "Teach it to fire-"
-	line "type #MON!"
-
-	para "CHARMELEON or"
-	line "PONYTA would be"
-	cont "good bets!"
+	para "Only certain"
+	line "#MON can learn"
+	cont "any given TM."
 	done
 
 _CinnabarGymBlaineTM38NoRoomText::

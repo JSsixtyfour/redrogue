@@ -1,20 +1,11 @@
 _ViridianGymGiovanniPreBattleText::
-	text "Fwahahaha! This is"
-	line "my hideout!"
+	text "Fwahahaha! Welcome"
+	line "to my hideout!"
 
-	para "I planned to"
-	line "resurrect TEAM"
-	cont "ROCKET here!"
+	para "I won't hold back!"
 
-	para "But, you have"
-	line "caught me again!"
-	cont "So be it! This"
-	cont "time, I'm not"
-	cont "holding back!"
-
-	para "Once more, you"
-	line "shall face"
-	cont "GIOVANNI, the"
+	para "You shall face"
+	line "GIOVANNI, the"
 	cont "greatest trainer!"
 	done
 
@@ -64,14 +55,10 @@ _ViridianGymGiovanniReceivedTM27Text::
 _ViridianGymGiovanniTM27ExplanationText::
 	text_start
 
-	para "TM27 is FISSURE!"
-	line "It will take out"
-	cont "#MON with just"
-	cont "one hit!"
-
-	para "I made it when I"
-	line "ran the GYM here,"
-	cont "too long ago..."
+	para "I made that TM"
+	line "when I ran the"
+	cont "GYM here, too"
+	cont "long ago..."
 	done
 
 _ViridianGymGiovanniTM27NoRoomText::
