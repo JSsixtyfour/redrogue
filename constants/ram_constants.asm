@@ -87,6 +87,8 @@ DEF BIT_REDUCED_ANIM EQU 4
 ; hardware raw, which a real GBC LCD already softens. Off by default, and every
 ; save from before the option reads off. Meaningless while Enhanced Colors is off.
 DEF BIT_GBC_GAMMA EQU 5
+; Field bag ordering: clear = TYPE, set = ALPHA.
+DEF BIT_BAG_SORT_ALPHA EQU 6
 
 ; wLetterPrintingDelayFlags
 	const_def

@@ -8,6 +8,7 @@ PrepareOakSpeech:
 	ld a, [wOptions2]
 	push af
 	ld a, [wOptions3] ; Ironman is chosen on the same screen; same reason
+	and ~(1 << BIT_BAG_SORT_ALPHA) ; each new game starts in TYPE order
 	push af
 	; Retrieve BIT_DEBUG_MODE set in DebugMenu for StartNewGameDebug.
 	; BUG: StartNewGame carries over BIT_ALWAYS_ON_BIKE from previous save files,

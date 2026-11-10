@@ -647,6 +647,7 @@ SECTION "Item Descriptions", ROMX
 
 INCLUDE "data/items/tmhm_names.asm"
 INCLUDE "custom_functions/item_descriptions.asm"
+INCLUDE "custom_functions/bag_sort.asm"
 
 
 SECTION "Starter Dex", ROMX

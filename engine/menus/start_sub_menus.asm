@@ -121,41 +121,9 @@ StartMenu_Item::
 	call PrintText
 	jp .exitMenu
 .notInCableClubRoom
-    ;;;;;;;;;; marcelnote - check which pocket we were last in, new for bag pockets
-	ld a, [wBagPocketsFlags]
-	and POCKET_INDEX_MASK
-	cp POCKET_RECOVERY
-	jr z, .pocketRecovery
-	cp POCKET_KEY_ITEMS
-	jr z, .pocketKey
-	cp POCKET_TM_PACK
-	jr z, .pocketTM
-	cp POCKET_STAT
-	jr z, .pocketStat
-	; POCKET_VALUABLE
-	farcall BuildValuablePocketList
-	ld bc, wValuablePocketBuf
-	jr .gotBagPocket
-.pocketRecovery
-	farcall BuildRecoveryPocketList
-	ld bc, wRecoveryPocketBuf
-	jr .gotBagPocket
-.pocketKey
-	farcall BuildKeyItemPocketList
-	ld bc, wKeyItemPocketBuf
-	jr .gotBagPocket
-.pocketTM
-	farcall BuildTMPocketList
-	ld bc, wTMPocketBuf
-	jr .gotBagPocket
-.pocketStat
-	farcall BuildStatPocketList
-	ld bc, wStatPocketBuf
-.gotBagPocket
-	ld hl, wListPointer
-	ld a, c
-	ld [hli], a
-	ld [hl], b ; store item bag pointer in wListPointer (for DisplayListMenuID)
+	ld a, 1
+	ld [wFieldBagListActive], a
+	farcall BuildBagPocketList
 	xor a
 	ld [wPrintItemPrices], a
     ;;;;;;;;;; marcelnote - display bag info box, new for bag pockets
@@ -170,6 +138,8 @@ StartMenu_Item::
 	ld a, [wBagSavedMenuItem]
 	ldh [hCurrentMenuItem], a
 	call DisplayListMenuID
+	ld a, 0 ; preserve the list's carry result
+	ld [wFieldBagListActive], a
 	ldh a, [hCurrentMenuItem]
 	ld [wBagSavedMenuItem], a
     ld a, NOLISTMENU    ; no xor to preserve flag

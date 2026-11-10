@@ -298,7 +298,12 @@ PocketSwitchROMX::
 	and $F8                    ; clear bits 0-2 (pocket index), preserve bits 3-7
 	or b
 	ld [wBagPocketsFlags], a
-	ld a, b                    ; a = new pocket index
+	; fall through
+
+; Point wListPointer at the current pocket and rebuild its display buffer.
+BuildBagPocketList::
+	ld a, [wBagPocketsFlags]
+	and POCKET_INDEX_MASK
 	; Route to the right source / build the display list
 	cp POCKET_RECOVERY
 	jr z, .recoveryPocket
@@ -332,9 +337,12 @@ PocketSwitchROMX::
 	ld hl, wListPointer
 	ld [hli], a
 	ld [hl], b
+	ld a, [wFieldBagListActive]
 	and a
-	ret
-.rejected
+	ret z
+	rfarjp SortFieldBagPocket
+
+PocketSwitchROMX.rejected:
 	scf
 	ret
 
@@ -416,6 +424,8 @@ PrintBagInfoText::
 	; Row 14: the pocket label, or for a key item its upgrade tier. Rows 15-16:
 	; the highlighted item's description (PrintItemDescription). de = label.
 	push de
+	; Keep the sort mode hidden during bag redraws.
+	; rfarcall PrintFieldBagSortMode
 	hlcoord 5, 14
 	lb bc, 3, 14
 	call ClearScreenArea

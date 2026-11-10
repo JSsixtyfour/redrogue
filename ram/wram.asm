@@ -322,7 +322,9 @@ wPlayerMonNumber:: db
 ; the address of the menu cursor's current location within wTileMap
 wMenuCursorLocation:: dw
 
-	ds 2
+; Unsaved. Set only across the start-menu bag's build and blocking list call.
+wFieldBagListActive:: db
+	ds 1
 
 ; how many times should HandleMenuInput poll the joypad state before it returns?
 wMenuJoypadPollCount:: db
@@ -3123,6 +3125,7 @@ wStageEventScratch:: db
 ;   bits 1-2: BATTLE_SPEED_MASK; bit 3: BIT_EXP_SHARE
 ;   bit 4: BIT_REDUCED_ANIM - no screen shakes/waves/flashes (see constant)
 ;   bit 5: BIT_GBC_GAMMA - Enhanced Colors runs GBCGamma (ENH GAMMA option)
+;   bit 6: BIT_BAG_SORT_ALPHA - field bag ordering preference
 ;   bits 6-7: unused.
 wOptions3:: db
 

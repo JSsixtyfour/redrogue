@@ -1,4 +1,9 @@
 HandleItemListSwapping::
+	rfarcall ToggleFieldBagSort
+	jr c, .legacySwap
+	jp z, DisplayListMenuIDLoop.readInput
+	jp DisplayListMenuIDLoop
+.legacySwap
 	ld a, [wListMenuID]
 	cp ITEMLISTMENU
 	jp nz, DisplayListMenuIDLoop ; only rearrange item list menus

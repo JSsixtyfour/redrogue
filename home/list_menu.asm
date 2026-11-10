@@ -119,9 +119,9 @@ DisplayListMenuIDLoop::
 	; Only print bag info box in the bag pocket context, not mart/PC/other menus
 	ld a, [wListMenuID]
 	cp ITEMLISTMENU
-	jr nz, .skipBagInfoLoop
+	jr nz, .readInput
     rfarcall PrintBagInfoText ; in ROMX
-.skipBagInfoLoop
+.readInput::
 	call HandleMenuInput
 	push af
 	call PlaceMenuCursor
@@ -229,7 +229,7 @@ DisplayListMenuIDLoop::
 	bit B_PAD_B, a
 	jp nz, ExitListMenu ; if so, exit the menu
 	bit B_PAD_SELECT, a
-	jp nz, HandleItemListSwapping ; if so, allow the player to swap menu entries
+	jp nz, HandleItemListSwapping ; field bag sort or legacy SELECT handling
 	;;;;;;;;;; marcelnote - for bag pockets
 	bit B_PAD_RIGHT, a
 	jr nz, .switchPocketForward
