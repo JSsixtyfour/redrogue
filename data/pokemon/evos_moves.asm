@@ -4453,7 +4453,7 @@ QwilfishEvosMoves:
 ; Learnset - TACKLE/POISON_STING already granted at level 1
     db 8, BUBBLE
 	db 10, HARDEN
-	db 10, MINIMIZE
+	db 12, MINIMIZE
 	db 17, WATER_GUN
 	db 25, PIN_MISSILE
 	db 30, TAKE_DOWN
