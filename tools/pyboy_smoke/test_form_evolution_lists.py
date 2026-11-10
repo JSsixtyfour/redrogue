@@ -258,6 +258,11 @@ class GeneratedFormEvolutionTest(HarnessTestCase):
             (('JIGGLYPUFF', 1, 60), ('JIGGLYPUFF', 1)),  # Scream Tail: empty list
             (('FARFETCHD', 0, 30), ('FARFETCHD', 0)),  # plain Farfetch'd: its list is empty
             (('RATTATA', 0, 30), ('RATICATE', 0)),    # control: a base species
+            # H-Qwilfish -> Overqwil keeps the species and moves form 1 -> 2
+            (('QWILFISH', 1, 30), ('QWILFISH', 2)),
+            (('QWILFISH', 1, 29), ('QWILFISH', 1)),
+            (('QWILFISH', 2, 60), ('QWILFISH', 2)),   # Overqwil: empty list
+            (('QWILFISH', 0, 60), ('QWILFISH', 0)),   # plain Qwilfish never evolves
         )
         for (species, form, level), (want_species, want_form) in cases:
             with self.subTest(species=species, form=form, level=level):
@@ -429,6 +434,60 @@ class FormEvolutionFlowTest(HarnessTestCase):
                                         types=(TYPES['ICE'], TYPES['ICE'])))
         self.assertEqual((party[1]['species'], party[1]['form']), (SPECIES['RATTATA'], 2))
         self.assertEqual((party[2]['species'], party[2]['form']), (SPECIES['RATICATE'], 0))
+
+    def test_hisuian_qwilfish_levels_into_overqwil(self):
+        """`evo_level_form 2, 30, QWILFISH`: the first level evolution between two
+        forms of one species (form 1 -> form 2, species byte unchanged). Slot 0
+        H-Qwilfish evolves; slot 1 Overqwil (empty list) and slot 2 plain Qwilfish
+        (no evolution) must not."""
+        h = self.harness
+        mon = lambda name, level, move: dict(species=SPECIES[name], level=level, moves=[MOVES[move]])
+        h.inject_fight2_spec(
+            [mon('QWILFISH', 30, 'TACKLE')] * 3,
+            [mon('MAGIKARP', 2, 'SPLASH')] * 2,
+            trainer_class=TRAINERS['COOLTRAINER_M'], ai_tier=0,
+        )
+        h.boot_fight2(seed=1)
+        h.write8('wOptions', h.read8('wOptions') | 0x40)
+        if h.hardware_mode == 'CGB':
+            h.write8('wOptions2', h.read8('wOptions2') | 0xc0)
+        for slot, form in ((0, 1), (1, 2)):
+            a = h.address('wPartyMon1CatchRate') + slot * STRUCT
+            h.pyboy.memory[a] = (h.pyboy.memory[a] & 0x9f) | (form << 5)
+        h.write8('wBattleMonCatchRate', (h.read8('wBattleMonCatchRate') & 0x9f) | (1 << 5))
+        seeded, party = [], []
+
+        def seed_flags(_):
+            if not seeded:
+                h.write8('wCanEvolveFlags', 7)
+                seeded.append(True)
+
+        def snap(_):
+            if party:
+                return
+            for slot in range(3):
+                o = slot * STRUCT
+                rd = lambda label: h.pyboy.memory[h.address(label) + o]
+                party.append(dict(species=rd('wPartyMon1Species'),
+                                  form=(rd('wPartyMon1CatchRate') >> 5) & 3,
+                                  types=(rd('wPartyMon1Type1'), rd('wPartyMon1Type2'))))
+        h.register_hook('RogueTryMidBattleEvolution', seed_flags)
+        h.register_hook('EndOfBattle.clearBattleState', snap)
+        crash = h.hook_flag('CrashScreen')
+        for frame in range(6500):
+            if frame % 12 == 0:
+                h.pyboy.button_press('a')
+            elif frame % 12 == 2:
+                h.pyboy.button_release('a')
+            h.tick(1)
+            if party or crash['count']:
+                break
+        self.assertEqual(crash['count'], 0)
+        self.assertTrue(party, h.diagnostic_state())
+        self.assertEqual(party[0], dict(species=SPECIES['QWILFISH'], form=2,
+                                        types=(TYPES['NORMAL'], TYPES['POISON'])))
+        self.assertEqual((party[1]['species'], party[1]['form']), (SPECIES['QWILFISH'], 2))
+        self.assertEqual((party[2]['species'], party[2]['form']), (SPECIES['QWILFISH'], 0))
 
     def test_a_form_trade_evolution_also_evolves_at_its_level(self):
         """The trade-or-level rule holds for a FORM's own trade entry: A-Graveler's

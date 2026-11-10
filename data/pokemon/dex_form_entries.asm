@@ -5,8 +5,8 @@
 ;   dw weight             ; tenths of a pound
 ;   text_far _<Name>FormDexEntryText (description: 18 tiles per line, 3 lines per page)
 ;   text_end
-; STATUS 2026-11-07: all 53 entries are real (Checkpoint E, plus Honchkrow and
-; Ursaluna added 2026-11-07). Sources and the cuts made to fit
+; STATUS 2026-11-10: all 55 entries are real (Checkpoint E, plus Honchkrow and
+; Ursaluna added 2026-11-07, Hisuian Qwilfish and Overqwil 2026-11-10). Sources and the cuts made to fit
 ; the page: POKEDEX_FORMS_TEXT_SOURCES.md. Descriptions: data/pokemon/dex_form_text.asm.
 
 FormDexEntryPointers:
@@ -64,6 +64,8 @@ FormDexEntryPointers:
 	dw GSlowkingFormDexEntry
 	dw HonchkrowFormDexEntry
 	dw UrsalunaFormDexEntry
+	dw HQwilfishFormDexEntry
+	dw OverqwilFormDexEntry
 	assert_table_length NUM_DEX_FORMS
 
 MACRO form_dex_pending
@@ -444,6 +446,20 @@ UrsalunaFormDexEntry: ; DEX_FORM_URSALUNA (URSARING form 1)
 	db 7, 10
 	dw 6393
 	text_far _UrsalunaFormDexEntryText
+	text_end
+
+HQwilfishFormDexEntry: ; DEX_FORM_H_QWILFISH (QWILFISH form 1)
+	db "BALLOON@"
+	db 1, 8
+	dw 86
+	text_far _HQwilfishFormDexEntryText
+	text_end
+
+OverqwilFormDexEntry: ; DEX_FORM_OVERQWIL (QWILFISH form 2)
+	db "PINCLUSTER@"
+	db 8, 2
+	dw 1334
+	text_far _OverqwilFormDexEntryText
 	text_end
 
 _FormDexPendingText:

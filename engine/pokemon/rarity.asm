@@ -500,6 +500,7 @@ WarpGreatball:
 	rarity_mon PONYTA, 1 ; Galarian Ponyta
 	rarity_mon SLOWPOKE, 1 ; Galarian Slowpoke
 	rarity_mon WOOPER, 1 ; Paldean Wooper
+	rarity_mon QWILFISH, 1 ; Hisuian Qwilfish
 WarpGreatball_Evos:
 ; Evolution-only form references. Commented entries are NOT direct picks.
 ; rarity_mon RAICHU, 1 ; Pikachu + Moon Stone -> Alolan Raichu
@@ -514,6 +515,7 @@ WarpGreatball_Evos:
 ; rarity_mon SLOWBRO, 1 ; Galarian Slowpoke -> Galarian Slowbro
 ; rarity_mon SLOWKING, 1 ; Galarian Slowpoke + Water Stone -> Galarian Slowking
 ; rarity_mon QUAGSIRE, 1 ; Paldean Wooper -> Clodsire
+; rarity_mon QWILFISH, 2 ; Hisuian Qwilfish -> Overqwil
 ; rarity_mon MURKROW, 1 ; Murkrow (Johto GREATBALL) + Dusk Stone -> Honchkrow
 ; rarity_mon FLAREON, 1 ; Eevee + Leaf Stone -> Leafeon
 ; rarity_mon VAPOREON, 1 ; Eevee + Ice Stone -> Glaceon

@@ -3,16 +3,16 @@
 ; (MOVESET_REVISION_IMPLEMENTATION_PLAN.md). NOT wired into `make` - edit the
 ; catalog, re-run by hand and commit both. Never hand-edit this file.
 ;
-; Catalog: 2557 rows, 2377 ACTIVE, 104 ARCHIVED, 73 EXCLUDED, 1 HELD, 2 REJECTED. Emitted: 2377 sets from the ACTIVE rows.
-; Level-bumped: 19 records had lvl_min raised to the level the mon's
+; Catalog: 2571 rows, 2391 ACTIVE, 104 ARCHIVED, 73 EXCLUDED, 1 HELD, 2 REJECTED. Emitted: 2391 sets from the ACTIVE rows.
+; Level-bumped: 24 records had lvl_min raised to the level the mon's
 ;   line first learns all four moves (lvl_max raised to match if passed).
 ;   Mew, Mewtwo, Celebi, Lugia and Ho-Oh are exempt (LEVEL_BUMP_EXEMPT).
-; TM level gate: 798 records had lvl_min raised to the gate of their
-;   strongest TM-only move (TM_GATE_LEVEL_*, balance_constants.asm); 363
+; TM level gate: 807 records had lvl_min raised to the gate of their
+;   strongest TM-only move (TM_GATE_LEVEL_*, balance_constants.asm); 364
 ;   catalog segments sat wholly under it and are not emitted. Same exemption.
 ; Plus 28 character sets (levels 1-100, tagged `; roster <Prefix>`, not gated)
 ;   from the Sets tables in data/trainers/PARTY_ROSTER.md.
-; Plus 219 regional/eeveelution FORM records in their own
+; Plus 233 regional/eeveelution FORM records in their own
 ;   section, found through MovesetFormIndex. A form mon never reads its base
 ;   species' sets: a base set can carry moves the form cannot learn.
 
@@ -2975,6 +2975,21 @@ MovesetForm_SLOWKING_GALAR::
 	db AMNESIA, PSYCHIC_M, REST, THUNDER_WAVE, TIER_HARD, 2, 40, 100
 	db PSYBEAM, SLUDGE, DISABLE, WITHDRAW, TIER_NORMAL, 2, 37, 50
 	db AMNESIA, PSYCHIC_M, FIRE_BLAST, THUNDER_WAVE, TIER_ELITE, 2, 45, 100
+MovesetForm_QWILFISH_HISUI::
+	db SURF, TOXIC, THUNDER_WAVE, EXPLOSION, TIER_HARD, 2, 36, 100
+	db SURF, BODY_SLAM, TOXIC, EXPLOSION, TIER_HARD, 2, 36, 100
+	db SURF, ICE_BEAM, TOXIC, EXPLOSION, TIER_HARD, 2, 36, 100
+	db TWINEEDLE, BITE, HARDEN, MINIMIZE, TIER_BAD, 2, 17, 29
+	db TWINEEDLE, BITE, BUBBLEBEAM, HARDEN, TIER_BAD | TIER_NORMAL, 2, 23, 29
+	db PIN_MISSILE, BITE, BUBBLEBEAM, HARDEN, TIER_NORMAL, 2, 25, 29
+MovesetForm_OVERQWIL::
+	db SWORDS_DANCE, BODY_SLAM, SLUDGE, EXPLOSION, TIER_HARD | TIER_ELITE, 2, 36, 100
+	db BODY_SLAM, SLUDGE, EXPLOSION, BLIZZARD, TIER_HARD, 2, 36, 100
+	db REFLECT, BODY_SLAM, SURF, EXPLOSION, TIER_HARD, 2, 36, 100
+	db THUNDER_WAVE, BODY_SLAM, SLUDGE, EXPLOSION, TIER_HARD, 2, 36, 100
+	db SWORDS_DANCE, BODY_SLAM, EXPLOSION, HYPER_BEAM, TIER_HARD | TIER_ELITE, 2, 36, 100
+	db SUBSTITUTE, SWORDS_DANCE, BODY_SLAM, SLUDGE, TIER_HARD, 2, 36, 100
+	db PIN_MISSILE, BITE, TAKE_DOWN, SLUDGE, TIER_NORMAL, 2, 35, 100
 MovesetForm_URSALUNA::
 	db EARTHQUAKE, BODY_SLAM, HYPER_BEAM, SWORDS_DANCE, TIER_ELITE, 2, 40, 100
 	db EARTHQUAKE, BODY_SLAM, COUNTER, SWORDS_DANCE, TIER_HARD, 2, 36, 100
@@ -3144,11 +3159,17 @@ MovesetFormIndex::
 	db SLOWKING, 1
 	dw MovesetForm_SLOWKING_GALAR
 	db 4, BANK(MovesetForm_SLOWKING_GALAR)
+	db QWILFISH, 1
+	dw MovesetForm_QWILFISH_HISUI
+	db 6, BANK(MovesetForm_QWILFISH_HISUI)
+	db QWILFISH, 2
+	dw MovesetForm_OVERQWIL
+	db 7, BANK(MovesetForm_OVERQWIL)
 	db URSARING, 1
 	dw MovesetForm_URSALUNA
 	db 6, BANK(MovesetForm_URSALUNA)
 	db 0 ; end
-	ASSERT @ - MovesetFormIndex == 53 * MOVESET_FORM_ENTRY_SIZE + 1
+	ASSERT @ - MovesetFormIndex == 55 * MOVESET_FORM_ENTRY_SIZE + 1
 
 ; Blackout labels: "You were defeated / by <label>" (engine/battle/loss_origin.asm,
 ; pinned to this same bank and read with plain [hl]). A record's origin_id

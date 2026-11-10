@@ -46,7 +46,7 @@ class DexListMenuTest(unittest.TestCase):
     def test_list_scrolls_pages_to_the_numbered_rows_and_opens_a_form_page(self) -> None:
         h = self.h
         h.set_event(EVENTS["EVENT_GOT_POKEDEX"])
-        # Everything seen, nothing owned: the list runs all 305 rows.
+        # Everything seen, nothing owned: the list runs all 307 rows.
         for label, size in (("wPokedexSeen", 32), ("wPokedexFormSeen", 7)):
             for i in range(size):
                 h.write8(label, 0xFF, offset=i)
@@ -71,19 +71,19 @@ class DexListMenuTest(unittest.TestCase):
 
         self.assertEqual(self.text(1, 1, 8), "CONTENTS")
         self.assertEqual(self.text(1, 2, 3), "001")
-        self.assertEqual(self.text(16, 3, 3), "305", "SEEN = the whole collection")
+        self.assertEqual(self.text(16, 3, 3), "307", "SEEN = the whole collection")
 
         # Down past the 7th row scrolls one row at a time.
         self.press(loops, "down", 7)
         self.assertEqual(self.text(1, 2, 3), "002", "scrolled by one")
 
-        # RIGHT pages by 7; page to the end and the last page is the last 7 of the 15 numbered species.
+        # RIGHT pages by 7; page to the end and the last page is the last 7 of the 16 numbered species.
         self.press(loops, "right", 60)
         last_first = len(ROWS) - 7
         self.assertEqual([k for k, _ in ROWS[last_first:]], ["NUMBERED"] * 7)
-        self.assertEqual(self.text(1, 2, 3), f"{253 + 15 - 7:03d}", "first row of the last page")
-        self.assertEqual(self.text(1, 14, 3), "267", "the last numbered row")
-        self.assertEqual(self.text(4, 15, 8), "URSALUNA")
+        self.assertEqual(self.text(1, 2, 3), f"{253 + 16 - 7:03d}", "first row of the last page")
+        self.assertEqual(self.text(1, 14, 3), "268", "the last numbered row")
+        self.assertEqual(self.text(4, 15, 8), "OVERQWIL")
 
         # LEFT pages back; a regional row has no number above it.
         self.press(loops, "left")

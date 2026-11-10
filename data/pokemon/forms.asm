@@ -93,11 +93,13 @@ ENDM
 ;   QUAGSIRE    Clodsire      -             -
 ;   MURKROW     Honchkrow     -             -
 ;   URSARING    Ursaluna      -             -
+;   QWILFISH    Hisuian       Overqwil      -
 ;   (every other Group R base) its one regional variant
 ;
 ; Hisuian Sneasel and Hisuian Qwilfish were cut 2026-10-15: placeholder art
-; only, and their evolutions (Sneasler, Overqwil) do not exist here. Paldean
+; only, and their evolutions (Sneasler, Overqwil) did not exist yet. Paldean
 ; Wooper was cut with them and restored 2026-10-29 with real art and Clodsire.
+; Hisuian Qwilfish was restored 2026-11-10 with real art, alongside Overqwil.
 
 FormOverrides::
 ; Records must be dex-order-independent - ApplyFormOverride walks linearly and
@@ -158,6 +160,8 @@ INCLUDE "data/pokemon/forms/pwooper.asm"
 INCLUDE "data/pokemon/forms/clodsire.asm"
 INCLUDE "data/pokemon/forms/honchkrow.asm"
 INCLUDE "data/pokemon/forms/ursaluna.asm"
+INCLUDE "data/pokemon/forms/hqwilfish.asm"
+INCLUDE "data/pokemon/forms/overqwil.asm"
 
 	db 0 ; terminator
 
@@ -182,7 +186,8 @@ FormJohtoPairsEnd::
 ; Everything else is Time Warp: Glaceon/Leafeon (Gen 4), Sylveon (Gen 6), all
 ; Alolan (Gen 7), Galarian/Hisuian/Perrserker (Gen 8), Paldean and the
 ; convergents/paradoxes (Gen 9). Honchkrow (Gen 4) and Ursaluna (Gen 8) are Warp
-; forms on Johto bases, so they need both groups, as Mamoswine does.
+; forms on Johto bases, so they need both groups, as Mamoswine does. So are
+; Hisuian Qwilfish and Overqwil (Gen 8, on Johto's QWILFISH).
 
 ; ===========================================================================
  ; Rarity picks are explicit in engine/pokemon/rarity.asm. There is no form

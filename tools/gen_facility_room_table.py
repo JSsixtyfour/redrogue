@@ -44,11 +44,14 @@ def audit_report() -> str:
 OK_LINE = re.compile(
     r"^(?P<file>\S+) W=(?P<w>\d+) H=(?P<h>\d+) sockets=(?P<sockets>[NESW]+) "
     r"item=(?P<item>\S+) exitsafe=(?P<exitsafe>[NWE]+|-) "
-    r"spawnsafe=(?P<spawnsafe>[Y-]) status=OK$"
+    r"spawnsafe=(?P<spawnsafe>[Y-]) anywhere=(?P<anywhere>[NESW]+|-) status=OK$"
 )
 
-# C2: which map edges this payload may serve as the exit (boss) room on.
-EXIT_FLAGS = {"N": "PFAC_TPL_EXIT_N", "W": "PFAC_TPL_EXIT_W", "E": "PFAC_TPL_EXIT_E"}
+# Sides on which an opening at ANY non-corner ring position reaches the payload's
+# walkable set. One flag per side; it serves the exit edge, the entry's south
+# edge and off-socket corridor crossings alike. exitsafe/spawnsafe are older,
+# looser measurements (all four sockets held open) and are no longer emitted.
+ANY_FLAGS = {c: f"PFAC_TPL_ANY_{c}" for c in "NESW"}
 
 SOCKET_ORDER = "NESW"
 
@@ -67,7 +70,7 @@ def build_table() -> str:
 
     Exposed separately from main() so test_facility_premades.py can assert the
     committed table still equals what the validator measures today. Socket
-    masks, PFAC_TPL_ITEM, PFAC_TPL_EXIT_* and PFAC_TPL_SPAWN are all derived
+    masks, PFAC_TPL_ITEM and PFAC_TPL_ANY_* are all derived
     from the payload art, so a .blk edited without regenerating leaves the table
     describing art that no longer exists - and the build cannot notice.
     """
@@ -100,8 +103,7 @@ def _build() -> str | None:
             match["item"] != "-,-",
             filename,
             label_for(filename),
-            "" if match["exitsafe"] == "-" else match["exitsafe"],
-            match["spawnsafe"] == "Y",
+            "" if match["anywhere"] == "-" else match["anywhere"],
         ))
 
     if not entries:
@@ -128,11 +130,11 @@ def _build() -> str | None:
         members = groups[(w, h)]
         out.append("")
         out.append(f"PFacTpl{w}x{h}:")
-        for _, _, sockets, item, filename, label, exit_safe, spawn in members:
+        for _, _, sockets, item, filename, label, anywhere in members:
             mask = " | ".join(f"PFAC_SOCKET_{c}" for c in sockets)
             bits = (["PFAC_TPL_ITEM"] if item else []) + [
-                EXIT_FLAGS[c] for c in "NWE" if c in exit_safe
-            ] + (["PFAC_TPL_SPAWN"] if spawn else [])
+                ANY_FLAGS[c] for c in "NESW" if c in anywhere
+            ]
             flags = " | ".join(bits) if bits else "0"
             out.append(f"    db {w}, {h}, {mask}, {flags}")
             out.append(f"    dw {label}")
@@ -175,7 +177,7 @@ def _build() -> str | None:
     )
     out.append("")
     for (w, h) in sorted(groups):
-        for _, _, _, _, filename, label, _, _ in groups[(w, h)]:
+        for _, _, _, _, filename, label, _ in groups[(w, h)]:
             out.append(f"{label}:")
             out.append(f'    INCBIN "maps/{filename}"')
             out.append(f"ASSERT @ - {label} == {w * h}")

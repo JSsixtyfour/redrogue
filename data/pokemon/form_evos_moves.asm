@@ -119,6 +119,10 @@ FormEvosMovesPointers::
 	dw HonchkrowFormEvosMoves
 	db URSARING, 1
 	dw UrsalunaFormEvosMoves
+	db QWILFISH, 1
+	dw HqwilfishFormEvosMoves
+	db QWILFISH, 2
+	dw OverqwilFormEvosMoves
 	db 0 ; terminator
 
 	INCLUDE "data/pokemon/form_evos_moves/ameowth.asm"
@@ -177,3 +181,5 @@ FormEvosMovesPointers::
 	INCLUDE "data/pokemon/form_evos_moves/clodsire.asm"
 	INCLUDE "data/pokemon/form_evos_moves/honchkrow.asm"
 	INCLUDE "data/pokemon/form_evos_moves/ursaluna.asm"
+	INCLUDE "data/pokemon/form_evos_moves/hqwilfish.asm"
+	INCLUDE "data/pokemon/form_evos_moves/overqwil.asm"

@@ -217,10 +217,11 @@ DEF PFAC_ROOM_MAX    EQU 12   ; entry(0) + items(1-4) + explore(5-10) + exit(11)
 ; The root cause is NOT this constant: _spawn_safe in
 ; tools/check_facility_premades.py measures PFAC_TPL_SPAWN with all four
 ; canonical sockets held open, so a payload passes by borrowing a path through a
-; socket that is still solid art at runtime (the same defect described at
-; PFacCarveEdgeOpenings). Raising this cap merely widened the pool until a
-; payload with that property became reachable. Do not raise it again until that
-; measurement is corrected.
+; socket that is still solid art at runtime. Raising this cap merely widened the
+; pool until a payload with that property became reachable. That measurement is
+; now corrected (PFAC_TPL_SPAWN = PFAC_TPL_ANY_S, 2026-11-10), and the 6x5 table
+; rock room is the one payload that lost S under it. So the cap is no longer the
+; only guard, but raising it is still a separate decision to re-measure.
 ;
 ; The cap costs nothing anyway. Measured over 3000 simulated layouts, entry 3
 ; with exit 5 beats entry 4 with exit 5 on both room count (7.50 vs 7.46) and
@@ -338,69 +339,58 @@ PFacFakeWildLevelTable:
 ;   +2 socket mask: which of PFAC_SOCKET_N/E/S/W this payload can open
 ;   +3 flags (PFAC_TPL_ITEM = the payload's HUB is itself a legal item anchor,
 ;      so item rooms 1-4 may take it - see PFacSelectPremadeMiddleRooms for why
-;      the hub specifically is what matters; PFAC_TPL_EXIT_N/W/E = the payload is
-;      safe as the exit room against that map edge; PFAC_TPL_SPAWN = it is safe
-;      as the entry room)
+;      the hub specifically is what matters; PFAC_TPL_ANY_N/E/S/W = an opening
+;      anywhere along that side is safe, see below)
 ;   +4/+5 payload pointer, footprint W*H block ids, row-major
 DEF PFAC_TPL_STRIDE EQU 6
 DEF PFAC_TPL_ITEM   EQU 1 << 0
 
-; C2. Exit-room safety, one bit per map edge the exit can face. MEASURED by
-; tools/check_facility_premades.py exactly like the socket mask, never authored.
+; Opening-anywhere safety, one bit per side. MEASURED by
+; tools/check_facility_premades.py (_anywhere_sides) exactly like the socket
+; mask, never authored.
 ;
-; A bit is set only if EVERY opening position along that edge leaves the opening
-; connected to the payload's socket component. Testing every position rather
-; than the one that will be used is what makes the bit position-independent:
-; sProcFacilityExitI is rolled in PFacPlaceExitRoom, long before any template is
-; chosen, and lands on an arbitrary interior column (north) or row (west/east),
-; NOT the canonical centre socket that the socket mask describes. So selection
-; needs no ExitI arithmetic at all, just this bit.
+; A side's bit is set only if cutting EVERY non-corner ring cell on that side,
+; ALONE with nothing else open, reaches the payload's walkable set. The checker
+; already proves that set is one component, so each passing opening connects to
+; every other one, whatever combination of openings the map ends up with, and a
+; second opening on the same side cannot disconnect anything either.
 ;
-; Note what is deliberately NOT tested: the cell the boss stands on.
-; PFacCarveEdgeOpenings writes PFAC_CORRIDOR over it AFTER the premade stamp, so
-; it is walkable whatever the payload holds. The hazard was never the boss cell,
-; it is REACHING it: a payload that seals the interior beside the opening, on a
-; ring whose baseboard is severed there, strands the boss and both exit warp
-; tiles and the stage cannot be finished.
+; Three different runtime openings need exactly this property, which is why one
+; bit per side serves all of them:
+;   - a corridor that crosses the ring off the canonical socket
+;     (PFacPremadePerimeterClear ORs the side's bit into wPFacTplAnyNeed);
+;   - the exit opening, at sProcFacilityExitI, an arbitrary interior row or
+;     column rolled in PFacPlaceExitRoom long before any template is chosen;
+;   - the entry, at (9,19), whose column sweeps the south ring as
+;     PFacPlaceEntryRoom picks X = 9 - rand(W).
+; Testing every position rather than the one that will be used is what makes the
+; bit position-independent, so selection needs no coordinate arithmetic.
 ;
-; There is no south bit by construction: the south edge carries the fixed player
-; entrance at (9,19) and never the exit.
-DEF PFAC_TPL_EXIT_N EQU 1 << 1
-DEF PFAC_TPL_EXIT_W EQU 1 << 2
-DEF PFAC_TPL_EXIT_E EQU 1 << 3
+; What is deliberately NOT tested is the cell the opening itself becomes: it is
+; overwritten with corridor/floor after the stamp, so its art is irrelevant. The
+; hazard is REACHING the room through it: a payload that seals the interior
+; beside the opening, on a ring whose baseboard is severed there ($5C/$5D),
+; would strand whatever lies beyond (for the exit, the boss and both warps).
+;
+; Earlier EXIT_N/W/E and SPAWN bits were measured with all four sockets held
+; open at once, so a payload could pass by "borrowing" a path through a socket
+; still solid on the real map. These bits replace them; the old names remain as
+; aliases for the map-edge roles.
+;
+; Each bit is its side's PFAC_SOCKET_* bit shifted left once, so a side mask
+; converts to a flag mask with one `add a`.
+DEF PFAC_TPL_ANY_N EQU PFAC_SOCKET_N << 1
+DEF PFAC_TPL_ANY_E EQU PFAC_SOCKET_E << 1
+DEF PFAC_TPL_ANY_S EQU PFAC_SOCKET_S << 1
+DEF PFAC_TPL_ANY_W EQU PFAC_SOCKET_W << 1
+ASSERT ((PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W) & PFAC_TPL_ITEM) == 0
 
-; C3. Entry-room (slot 0) safety. MEASURED the same way, and position-independent
-; for the same reason: PFacPlaceEntryRoom bottom-aligns room 0 at Y = 19 - H and
-; picks X = 9 - rand(W), so in footprint coordinates the reserved block (9,17)
-; sits at row H_fp - 3 - a row fixed per template - and at a column that sweeps
-; the whole interior as X takes its range. The bit holds for every one of those
-; columns, so selection needs no arithmetic here either.
-;
-; THREE cells matter here and they are three different cells. Measured
-; 2026-09-16 by warping in and reading wYCoord/wXCoord:
-;
-;   (9,19) is where the player ACTUALLY arrives, standing on the south warp tile
-;          itself, which is the ordinary pokered behaviour - nothing in this
-;          file, procedural_stage_hooks.asm or scripts/ProceduralFacility.asm
-;          ever writes the player's coordinates. It is the footprint's bottom
-;          RING row, and PFacCarveEdgeOpenings overwrites it with $2C after the
-;          stamp, so its payload art is irrelevant. Only REACHING the room
-;          through it matters, exactly as for the C2 exit. This is the cell the
-;          reachability flood starts from.
-;   (9,18) is the first interior row, the cell the player steps onto. Covered
-;          transitively: the flood runs from (9,19) and must arrive at (9,17),
-;          which cannot happen without crossing it.
-;   (9,17) no longer matters at all. It was reserved as plain floor and kept out
-;          of fake-ball anchors because ONE dead branch, the defensive fallback
-;          in PFacPlaceItems, dropped a pokeball there. That branch now scans for
-;          a real room, the map's vestigial sign bg_event is gone, and the corpus
-;          assertion that pinned the cell to $0E is retired with them.
-;
-; So this flag is now exactly the C2 exit test applied to the SOUTH edge:
-; nothing about the entry room needs the payload's art, only that the player can
-; get out of the doorway they arrive in. Requiring it at every column is what
-; keeps it position-independent.
-DEF PFAC_TPL_SPAWN  EQU 1 << 4
+; Map-edge roles. The exit never faces south: that edge carries the fixed player
+; entrance at (9,19).
+DEF PFAC_TPL_EXIT_N EQU PFAC_TPL_ANY_N
+DEF PFAC_TPL_EXIT_W EQU PFAC_TPL_ANY_W
+DEF PFAC_TPL_EXIT_E EQU PFAC_TPL_ANY_E
+DEF PFAC_TPL_SPAWN  EQU PFAC_TPL_ANY_S
 
 ; Size-group index. Two bytes per (footprint W, footprint H) pair, addressed
 ; directly by (W - 3) * 7 + (H - 3) so selection never searches:
@@ -427,247 +417,247 @@ DEF PFAC_TPL_GROUP_COUNT  EQU 7 * 7
 PFacRoomDescriptors:
 
 PFacTpl3x3:
-    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x3BedRoom
-    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x3BlockRoom
-    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x3RockRoom
-    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x3RockRoom2
-    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x3ServerRoom
-    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x3TableRoom
-    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x3TreeRoom
-    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 3, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x3TreeRoom2
 PFacTpl3x3End:
 
 PFacTpl3x4:
-    db 3, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 3, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x4ServerRoom
-    db 3, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 3, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x4ServerblockRoom
-    db 3, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 3, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x4ServerrockRoom
-    db 3, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 3, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x4ServertableRoom
-    db 3, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 3, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x4TreerockRoom
 PFacTpl3x4End:
 
 PFacTpl3x5:
-    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x5BedrockRoom
-    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x5BlockRoom
-    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x5RockRoom
-    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x5ServerrockRoom
-    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 3, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x5TablerockRoom
 PFacTpl3x5End:
 
 PFacTpl3x6:
-    db 3, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 3, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x6TableserverRoom
 PFacTpl3x6End:
 
 PFacTpl3x7:
-    db 3, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 3, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x7BlockRoom
-    db 3, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 3, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x7BlockrockRoom
-    db 3, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 3, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x7BlocktreeRoom
-    db 3, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 3, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x7LongtableRoom
-    db 3, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 3, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData3x7RockRoom
 PFacTpl3x7End:
 
 PFacTpl4x3:
-    db 4, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 4, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData4x3BedRoom
-    db 4, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 4, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData4x3RockRoom
-    db 4, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 4, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData4x3TabletreeRoom
 PFacTpl4x3End:
 
 PFacTpl4x4:
-    db 4, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 4, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData4x4ServerRoom
-    db 4, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 4, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData4x4ServerRoom2
 PFacTpl4x4End:
 
 PFacTpl4x5:
-    db 4, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 4, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData4x5BlockRoom
-    db 4, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 4, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData4x5DoubletableRoom
-    db 4, 5, PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 4, 5, PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData4x5RockRoom
-    db 4, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 4, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData4x5TableserverRoom
 PFacTpl4x5End:
 
 PFacTpl4x6:
-    db 4, 6, PFAC_SOCKET_N | PFAC_SOCKET_S, PFAC_TPL_EXIT_N | PFAC_TPL_SPAWN
+    db 4, 6, PFAC_SOCKET_N | PFAC_SOCKET_S, PFAC_TPL_ANY_S
     dw PFacTplData4x6RockCombinedroom
 PFacTpl4x6End:
 
 PFacTpl4x7:
-    db 4, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 4, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData4x7DoubletableTreeCombinedroom
-    db 4, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 4, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData4x7ServerTableCombinedroom
 PFacTpl4x7End:
 
 PFacTpl5x3:
-    db 5, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 5, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData5x3BedRoom
-    db 5, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 5, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData5x3RockserverRoom
-    db 5, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 5, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData5x3ServerRoom
 PFacTpl5x3End:
 
 PFacTpl5x4:
-    db 5, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 5, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData5x4DoubletabletreeRoom
-    db 5, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 5, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData5x4ServerTableRoom
 PFacTpl5x4End:
 
 PFacTpl5x5:
-    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData5x5PooltreeRoom
-    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S
     dw PFacTplData5x5RockRoom
-    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData5x5TableBedRoom
-    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData5x5BlockRoom
-    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData5x5LongtableRoom
-    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData5x5TableRockRoom
-    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData5x5TableRoom
-    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 5, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData5x5TreeRoom
 PFacTpl5x5End:
 
 PFacTpl5x6:
-    db 5, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 5, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData5x6TableserverRoom
-    db 5, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 5, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData5x6TablestatueRoom
 PFacTpl5x6End:
 
 PFacTpl5x7:
-    db 5, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 5, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData5x7DoublebigtableserverRoom
 PFacTpl5x7End:
 
 PFacTpl6x3:
-    db 6, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 6, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData6x3BedRoom
-    db 6, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 6, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData6x3ServerRoom
 PFacTpl6x3End:
 
 PFacTpl6x4:
-    db 6, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 6, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData6x4BlockRoom
-    db 6, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 6, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData6x4TabletreeRoom
-    db 6, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 6, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData6x4TripletableRockRoom
 PFacTpl6x4End:
 
 PFacTpl6x5:
-    db 6, 5, PFAC_SOCKET_N | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_W | PFAC_TPL_SPAWN
+    db 6, 5, PFAC_SOCKET_N | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_W
     dw PFacTplData6x5TableRockRoom
 PFacTpl6x5End:
 
 PFacTpl6x6:
-    db 6, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 6, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData6x6BlockRoom
-    db 6, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 6, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData6x6WaterRoom
-    db 6, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 6, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData6x6WaterRoom2
 PFacTpl6x6End:
 
 PFacTpl6x7:
-    db 6, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 6, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData6x7TripletableTreeCombinedroom
 PFacTpl6x7End:
 
 PFacTpl7x4:
-    db 7, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 7, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S
     dw PFacTplData7x4BlockrockRoom
-    db 7, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 7, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S
     dw PFacTplData7x4RockRoom
 PFacTpl7x4End:
 
 PFacTpl7x7:
-    db 7, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 7, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData7x7BlockrockRoom
-    db 7, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 7, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData7x7DoublebigtabletreeRoom
-    db 7, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 7, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData7x7DoubletableServerCombinedroom
-    db 7, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 7, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData7x7Pool
-    db 7, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 7, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData7x7TreerockCombinedroom
 PFacTpl7x7End:
 
 PFacTpl8x3:
-    db 8, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 8, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData8x3BlockRoom
-    db 8, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 8, 3, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData8x3ServerRoom
-    db 8, 3, PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E
+    db 8, 3, PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData8x3ServerrockRoom
 PFacTpl8x3End:
 
 PFacTpl8x4:
-    db 8, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 8, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData8x4BlockserverCombinedroom
-    db 8, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 8, 4, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData8x4TableservertreeRoom
 PFacTpl8x4End:
 
 PFacTpl8x5:
-    db 8, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 8, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData8x5CombinedtableRockRoom
 PFacTpl8x5End:
 
 PFacTpl8x6:
-    db 8, 6, PFAC_SOCKET_N | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_W | PFAC_TPL_SPAWN
+    db 8, 6, PFAC_SOCKET_N | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData8x6RockCombinedroom
 PFacTpl8x6End:
 
 PFacTpl8x7:
-    db 8, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 8, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData8x7PoolRoom
 PFacTpl8x7End:
 
 PFacTpl9x5:
-    db 9, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 9, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData9x5BlockrockRoom
 PFacTpl9x5End:
 
 PFacTpl9x7:
-    db 9, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_EXIT_N | PFAC_TPL_EXIT_W | PFAC_TPL_EXIT_E | PFAC_TPL_SPAWN
+    db 9, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData9x7TreerockCombinedroom
 PFacTpl9x7End:
 
@@ -1182,8 +1172,9 @@ DEF wPFacTplNeed      EQU 19  ; N/E/S/W sockets this room's corridors actually u
 DEF wPFacTplCount     EQU 20  ; descriptors in the matching size group
 DEF wPFacTplPick      EQU 21  ; countdown to the chosen eligible descriptor
 DEF wPFacTplItemOnly  EQU 22  ; non-zero for item rooms 1-4 (hub must be an anchor)
-DEF wPFacTplExitNeed  EQU 23  ; C2/C3: flag bit this room requires, 0 for 1-10
-ASSERT wPFacTplExitNeed < wPFacRoomCount
+DEF wPFacTplAnyNeed   EQU 23  ; PFAC_TPL_ANY_* sides needing an opening anywhere:
+                              ; the map edge (rooms 0/11) + off-socket crossings
+ASSERT wPFacTplAnyNeed < wPFacRoomCount
 
 ; PFacDecorateExploreRooms. Runs after item placement; offsets 12-15 remain
 ; untouched because PFacFinalize still needs the rolled item IDs there.
@@ -1363,9 +1354,10 @@ PFacFillUntouched:
 ; Rooms 0 and 11 each differ from a middle room in one way only. Their map-edge
 ; opening is carved later, by PFacCarveEdgeOpenings, so no corridor crosses that
 ; side of the footprint yet and PFacPremadePerimeterClear cannot see the
-; requirement. It is supplied instead as wPFacTplExitNeed, a flag bit the payload
-; must carry: PFAC_TPL_EXIT_N/W/E for room 11's chosen edge, PFAC_TPL_SPAWN for
-; room 0.
+; requirement. It is seeded instead into wPFacTplAnyNeed, a flag mask the payload
+; must carry in full: PFAC_TPL_EXIT_N/W/E for room 11's chosen edge,
+; PFAC_TPL_SPAWN for room 0, nothing for 1-10. PFacPremadePerimeterClear then ORs
+; in the side of every corridor crossing that misses the canonical socket.
 ;
 ; The two predicates never collide. Room 11 is never an item room, so its
 ; wPFacTplItemOnly is 0. Room 0 falls on the item side of the same `cp 5` test,
@@ -1382,7 +1374,7 @@ PFacFillUntouched:
 ; Runs between the two PFacCarveCorridors passes, which is what makes the socket
 ; test possible: the complete corridor plan is already drawn on the map, so the
 ; room's OWN perimeter tells us which sides it actually needs, and the second
-; pass reopens the sockets the stamp covered.
+; pass reopens the ring cells the stamp covered.
 ; ============================================================
 PFacSelectPremadeMiddleRooms:
     ld b, 0                     ; C3: room 0 (entry) is included
@@ -1435,7 +1427,7 @@ PFacSelectPremadeMiddleRooms:
 .noExitNeed
     xor a
 .exitNeedStored
-    ld [wBuffer + wPFacTplExitNeed], a
+    ld [wBuffer + wPFacTplAnyNeed], a
 
     ; Footprint = interior + the one-block generic ring on each side.
     ld a, [wBuffer + wPFacRmW]
@@ -1501,8 +1493,9 @@ PFacSelectPremadeMiddleRooms:
 ; ============================================================
 ; PFacChooseTemplate
 ; Picks one descriptor uniformly from the matching size group, considering only
-; descriptors that can open every side this room's corridors actually use and,
-; for item rooms, that carry PFAC_TPL_ITEM.
+; descriptors that can open every canonical socket this room's corridors use,
+; that carry every PFAC_TPL_ANY_* side in wPFacTplAnyNeed (map edge and
+; off-socket crossings) and, for item rooms, that carry PFAC_TPL_ITEM.
 ;
 ; Two deterministic passes (count, then take the nth) rather than rejection
 ; sampling: groups are small, and a bounded retry loop would both bias the
@@ -1510,7 +1503,7 @@ PFacSelectPremadeMiddleRooms:
 ; later roll in the generation and drift the deterministic corpus.
 ;
 ; INPUT: wPFacTplFirst, wPFacTplCount, wPFacTplNeed, wPFacTplItemOnly,
-;        wPFacTplExitNeed.
+;        wPFacTplAnyNeed.
 ; OUTPUT: carry set and hl -> chosen descriptor; carry clear if none qualify.
 ; Clobbers a, bc, de, hl.
 ; ============================================================
@@ -1584,14 +1577,12 @@ PFacChooseTemplate:
     ld a, [wBuffer + wPFacTplNeed]
     and d
     jr nz, .reject              ; room needs a side this template cannot open
-    ld a, [wBuffer + wPFacTplExitNeed]
-    and a
-    jr z, .exitOK               ; not the exit room, no edge requirement
-    ld d, a
     ld a, [hl]                  ; +3 flags
+    cpl
+    ld d, a
+    ld a, [wBuffer + wPFacTplAnyNeed]
     and d
-    jr z, .reject               ; payload is not safe against this map edge
-.exitOK
+    jr nz, .reject              ; an opening lands where this payload is unproven
     ld a, [wBuffer + wPFacTplItemOnly]
     and a
     jr z, .accept
@@ -1612,22 +1603,27 @@ PFacChooseTemplate:
 ; Decides whether a template may own this footprint at all, and reports which
 ; sides it would have to open.
 ;
-; Carry CLEAR: a corridor already crosses the footprint perimeter somewhere
-; that is not one of the four canonical socket cells. The stamp would seal that
-; corridor and PFacTryCutPremadeSocket would not reopen it, so the room stays
-; generic.
+; Carry CLEAR: a corridor crosses one of the footprint's four corner cells,
+; which no payload can open, so the room stays generic.
 ;
-; Carry SET: wPFacTplNeed holds the N/E/S/W mask of sockets that carry a
-; corridor and therefore must be re-cuttable through whichever template is
+; Carry SET: wPFacTplNeed holds the N/E/S/W mask of canonical sockets that carry
+; a corridor and therefore must be re-cuttable through whichever template is
 ; chosen. Sockets sit at the room's own center row/column, which is exactly
-; where PFacRoomCenter aims corridors.
+; where PFacRoomCenter aims corridors. Every OTHER crossed ring cell ORs its
+; side's PFAC_TPL_ANY_* bit into wPFacTplAnyNeed instead: corridors route by
+; their elbow, so most rooms are entered off-centre, and a payload measured safe
+; for an opening anywhere on that side can take them. Two crossings on one side
+; are fine too (measured: up to 2, as two corridors side by side, never one
+; corridor running along the ring); see PFAC_TPL_ANY_N for why.
 ;
 ; The scan is ring-only rather than a full rect sweep because the caller runs
 ; inside the layout-retry loop, where sweeping ten whole footprints per attempt
 ; would cost real frames.
 ;
 ; INPUT: wPFacRmX/RmY/RmW/RmH (floor interior), wPFacTplW/TplH (footprint).
-; Clobbers a, bc, de, hl, wPFacCurX/CurY, wPFacTplCol/TplSX/TplSY/TplNeed.
+;        wPFacTplAnyNeed, already seeded with the map-edge bit (or 0).
+; Clobbers a, bc, de, hl, wPFacCurX/CurY, wPFacTplCol/TplSX/TplSY/TplNeed,
+; and ORs into wPFacTplAnyNeed.
 ; ============================================================
 PFacPremadePerimeterClear:
     ld a, [wBuffer + wPFacRmW]
@@ -1700,7 +1696,18 @@ PFacPremadePerimeterClear:
 .rowWall
     call PFacReadBlock
     cp PFAC_UNTOUCHED
-    jr nz, .blocked
+    jr z, .rowNext
+    ; Off-socket crossing. The row scans span the full footprint, so the
+    ; first (TplCol == TplW) and last (TplCol == 1) cells are its corners,
+    ; which no payload can open.
+    ld a, [wBuffer + wPFacTplCol]
+    dec a
+    jr z, .blocked
+    inc a
+    ld hl, wBuffer + wPFacTplW
+    cp [hl]
+    jr z, .blocked
+    call .offSocket
 .rowNext
     ld hl, wBuffer + wPFacCurX
     inc [hl]
@@ -1730,7 +1737,7 @@ PFacPremadePerimeterClear:
 .colWall
     call PFacReadBlock
     cp PFAC_UNTOUCHED
-    jr nz, .blocked
+    call nz, .offSocket         ; interior rows only, so never a corner
 .colNext
     ld hl, wBuffer + wPFacCurY
     inc [hl]
@@ -1740,6 +1747,18 @@ PFacPremadePerimeterClear:
     scf
     ret
 
+; A corridor crosses side b away from its socket: whichever payload is chosen
+; must be proven safe for an opening anywhere on that side. Preserves bc.
+.offSocket
+    ld a, b
+    add a, a                    ; PFAC_SOCKET_x << 1 == PFAC_TPL_ANY_x
+    ld hl, wBuffer + wPFacTplAnyNeed
+    or [hl]
+    ld [hl], a
+    ret
+
+; A corridor crosses a footprint corner. (Never measured to happen: 0 of 1937
+; rooms over 256 layouts, 2026-11-10.)
 .blocked
     and a
     ret
@@ -4422,7 +4441,7 @@ PFacGenerateFacility:
     call PFacCarveCorridors        ; establish the complete corridor plan
     call PFacSelectPremadeMiddleRooms
     ; PFacSelectPremadeMiddleRooms stamps in the same pass (R4).
-    call PFacCarveCorridors        ; reopen only traversed cardinal sockets
+    call PFacCarveCorridors        ; reopen the ring cells it crosses (sockets and off-socket)
     call PFacEncloseRooms
     call PFacValidateGeneratedCorners
     jr c, .layoutAccepted
@@ -5028,14 +5047,13 @@ PFacPlaceExitRoom:
     jr z, .haveRowLimit
     inc d
 .haveRowLimit
-    ; The limit must hold for the room's CENTRE row as well as the row rolled
-    ; below: if this room later takes a premade template, PFacCarveEdgeOpenings
-    ; moves the exit to its canonical socket, the centre (Y + H/2, as
-    ; PFacRoomCenter computes it). Checking only the rolled row let a low
-    ; premade exit room pull the exit to 11 steps from the entry (measured,
-    ; west edge: rolled row 16, room Y 16 H 3, centre 17). Template choice
-    ; keeps this rectangle, so the centre is already known here. Tested before
-    ; the roll so that every room that passes draws exactly what it drew before.
+    ; The CENTRE row (Y + H/2) must also pass the limit. Historical: C9 once
+    ; moved a premade exit to its centre socket, and checking only the rolled
+    ; row let a low premade exit room pull the exit to 11 steps from the entry
+    ; (measured, west edge: rolled row 16, room Y 16 H 3, centre 17). The exit
+    ; now always stays on the rolled row (see PFacCarveEdgeOpenings), so this
+    ; test is redundant, but it is kept: removing it would change which rooms
+    ; pass and therefore every placement roll after it.
     ld a, [wBuffer + wPFacCandH]
     srl a
     ld hl, wBuffer + wPFacCandY
@@ -5612,10 +5630,11 @@ PFacCorRoomPlaced:
 ; the elbow, down column elbow from SY to TY, then along row TY to TX. An elbow
 ; of TX collapses leg 3 and reproduces the original horizontal-leg-first L
 ; exactly; an elbow of SX collapses leg 1 and gives the vertical-first L; any
-; column between them gives a Z with one extra turn. All three shapes leave the
-; source along its center row and arrive at the target along a center row or
-; column, so every one of them still enters and leaves through canonical
-; sockets.
+; column between them gives a Z with one extra turn. The legs run along centre
+; rows, but the elbow column can lie anywhere inside a room's span, so the
+; vertical leg often crosses a ring away from its canonical socket (918 room
+; sides in 256 layouts, measured 2026-11-10). Premades accept those crossings
+; through PFAC_TPL_ANY_*; see PFacPremadePerimeterClear.
 ;
 ; Why this exists. PFacValidateGeneratedCorners is the ONLY gate that can throw
 ; a layout away, and measurement showed every single rejection was one corridor
@@ -5908,14 +5927,17 @@ PFacCorStampCell:
     ld a, PFAC_CORRIDOR
     jp PFacWriteBlock
 
-; Carry set if the cell the corridor wants is one of a stamped premade's four
-; canonical sockets, which may therefore be re-cut through the template's wall.
+; Carry set if the cell the corridor wants is a non-corner ring cell of a stamped
+; premade, which may therefore be re-cut through the template's wall.
 ;
-; Sockets sit on the footprint perimeter at the room's own center row/column -
-; the same cells PFacRoomCenter aims corridors at, and the same cells
-; tools/check_facility_premades.py proves cuttable through to the hub.
-; PFacPremadePerimeterClear already refused the template outright if any OTHER
-; perimeter cell had been crossed, so nothing else is ever re-cuttable here.
+; Nothing needs re-checking here. Both PFacCarveCorridors passes walk exactly the
+; same cells (PFacChooseCorridorRoute reads only room records, never the map), so
+; any ring cell reached now was crossed by the first pass too, and a template
+; only owns this footprint if PFacPremadePerimeterClear and PFacChooseTemplate
+; found its socket mask covering the canonical crossings and its PFAC_TPL_ANY_*
+; bits covering the rest. Corners never qualify (a crossed corner kept the room
+; generic), and neither does interior art: only the row or column one outside
+; the interior is tested.
 PFacTryCutPremadeSocket:
     ld b, 0                     ; C3: room 0 is stamped too (see C2's bug)
 .room
@@ -5934,47 +5956,33 @@ PFacTryCutPremadeSocket:
     bit 7, [hl]
     jr z, .next                 ; generic room, or an unplaced slot
 
-    ; --- north / south: column X + W/2, one row outside the interior ---
-    ld a, b
-    srl a
-    add a, d
-    ld h, a                     ; socket column
+    ; --- north / south: X <= CurX < X + W, on row Y - 1 or row Y + H ---
     ld a, [wBuffer + wPFacCurX]
-    cp h
-    jr nz, .horizontal
-    ld a, e
-    dec a                       ; Y - 1
-    ld h, a
+    sub d
+    cp b
+    jr nc, .horizontal          ; unsigned, so CurX < X wraps and fails too
     ld a, [wBuffer + wPFacCurY]
-    cp h
+    inc a
+    cp e                        ; CurY == Y - 1
     jr z, .yes
-    ld a, e
-    add a, c                    ; Y + H
-    ld h, a
-    ld a, [wBuffer + wPFacCurY]
-    cp h
+    dec a
+    sub e
+    cp c                        ; CurY == Y + H
     jr z, .yes
 
 .horizontal
-    ; --- west / east: row Y + H/2, one column outside the interior ---
-    ld a, c
-    srl a
-    add a, e
-    ld h, a                     ; socket row
+    ; --- west / east: Y <= CurY < Y + H, on column X - 1 or column X + W ---
     ld a, [wBuffer + wPFacCurY]
-    cp h
-    jr nz, .next
-    ld a, d
-    dec a                       ; X - 1
-    ld h, a
+    sub e
+    cp c
+    jr nc, .next
     ld a, [wBuffer + wPFacCurX]
-    cp h
+    inc a
+    cp d                        ; CurX == X - 1
     jr z, .yes
-    ld a, d
-    add a, b                    ; X + W
-    ld h, a
-    ld a, [wBuffer + wPFacCurX]
-    cp h
+    dec a
+    sub d
+    cp b                        ; CurX == X + W
     jr z, .yes
 
 .next
@@ -6004,54 +6012,21 @@ PFacCarveEdgeOpenings:
     ld a, $2C
     call PFacWriteBlock
 
-    ; C9: a PREMADE exit room must be opened at its CANONICAL socket.
+    ; Every exit room keeps its rolled sProcFacilityExitI, premade or not.
+    ; It names an arbitrary interior row (west/east) or column (north), rolled
+    ; in PFacPlaceExitRoom long before any template is chosen, so a premade's
+    ; art beside the opening could seal the boss and both exit warps away.
+    ; (Measured 2026-09-16 on ProceduralFacility_5x5__rock_room: an opening on
+    ; its first west interior row met $38 and stranded 8 quadrants.) A premade
+    ; exit room therefore carries PFAC_TPL_ANY_<edge>, which proves an opening
+    ; at EVERY position on that side reaches the payload's walkable set; the
+    ; 5x5 rock room lacks ANY_W for exactly that reason.
     ;
-    ; sProcFacilityExitI is rolled in PFacPlaceExitRoom, long before any
-    ; template is chosen, and names an arbitrary interior row (west/east) or
-    ; column (north). For a plain room that is harmless, every interior cell
-    ; being floor. For a premade it is not: the payload owns its ring AND its
-    ; interior art, so an opening can land against a cell that is solid on the
-    ; exit side, and then the boss, both exit warp tiles and the whole room
-    ; beyond are unreachable.
-    ;
-    ; Measured 2026-09-16 on ProceduralFacility_5x5__rock_room, whose west ring
-    ; is 68 5C 5C 44 48 and whose first interior column is 41 38 0E 0E 49: an
-    ; opening on its first interior row meets $38, solid on its west half, and
-    ; stranded 8 quadrants including the exit itself.
-    ;
-    ; The canonical socket is the one position that carries a guarantee. The
-    ; socket mask in PFacRoomDescriptors is measured by
-    ; tools/check_facility_premades.py as "cutting THIS cell to floor connects
-    ; to the interior without leaking", so aligning the opening with it is
-    ; exactly the case that was verified. Its coordinate is the room centre,
-    ; matching _hub_and_sockets in that tool and PFacRoomCenter here.
-    ;
-    ; NOTE the PFAC_TPL_EXIT_N/W/E bits do NOT cover this. They are measured
-    ; with all four canonical sockets held open at once, but at runtime
-    ; PFacCarveCorridors reopens only the sockets a corridor actually traversed,
-    ; so a payload can pass that check by borrowing a path through a socket that
-    ; is still solid art on the real map. Correcting that measurement moves
-    ; exit bits on 24 of 83 payloads and spawn bits on 9, so it is left alone
-    ; here and this aligns the opening instead.
-    ;
-    ; Plain and large-decor exit rooms keep their rolled position, which is what
-    ; preserves variety in where the exit sits along its edge.
-    ld a, 11
-    call PFacRoomRecordAddr
-    ld de, 5
-    add hl, de
-    bit 7, [hl]                   ; PFAC_TEMPLATE_FLAG
-    jr z, .exitIndexKept
-    ld a, 11
-    call PFacRoomCenter           ; b = centre X, c = centre Y
-    ld a, [sProcFacilityExitEdge]
-    and a
-    ld a, c                       ; west/east: the socket is a ROW
-    jr nz, .exitIndexStore
-    ld a, b                       ; north: the socket is a COLUMN
-.exitIndexStore
-    ld [sProcFacilityExitI], a
-.exitIndexKept
+    ; C9 used to move a premade exit's opening to its canonical socket here,
+    ; because the older EXIT_* bits were measured with all four sockets open
+    ; and could pass by borrowing a path through a socket still solid on the
+    ; real map. The corrected bits made that unnecessary and give premade exit
+    ; rooms back their variety in where the exit sits.
 
     ld a, [sProcFacilityExitEdge]
     and a

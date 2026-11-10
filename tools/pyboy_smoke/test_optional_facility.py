@@ -815,12 +815,27 @@ class FacilityWarpRoomFallbackTest(fs.FacilitySuperNerdTest):
         self.assertIn((mx, my), piece["walk"], "walked onto a wall")
         piece = dict(piece, mon=(mx, my))
         h.write8("wOptionalEncounterPackage", FIRST + 3)
-        for button, (dx, dy) in (("up", (0, 1)), ("down", (0, -1)), ("left", (1, 0)), ("right", (-1, 0))):
-            spot = (mx + dx, my + dy)
-            if spot in piece["walk"] and spot not in (piece["nerd"], piece["ball"]):
-                break
-        else:
+        # Standing on ANY tile beside it starts the battle (OptionalEncounterContact),
+        # so the route has to end at the first one it reaches: a path to a
+        # farther side would stop at a nearer one and wait out the contact text.
+        beside = {(mx + dx, my + dy): b for b, (dx, dy) in
+                  (("up", (0, 1)), ("down", (0, -1)), ("left", (1, 0)), ("right", (-1, 0)))}
+        free = piece["walk"] - {piece["nerd"], piece["ball"], (mx, my)} - self.taken
+        here = (h.read8("wXCoord"), h.read8("wYCoord"))
+        seen, todo, spot = {here}, [here], None
+        while todo and spot is None:
+            x, y = todo.pop(0)
+            for there in ((x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y)):
+                if there in free and there not in seen:
+                    seen.add(there)
+                    todo.append(there)
+                    if there in beside:
+                        spot = there
+                        break
+        if spot is None:
             self.fail(f"{piece['file']}: nowhere to stand beside it")
+        button = beside[spot]
+        self.taken = self.taken | (set(beside) - {spot})
         self.walk_to(piece, spot)
         h.pyboy.button_press(button)
         try:

@@ -55,7 +55,7 @@ class FormPalettesTest(unittest.TestCase):
 
     def test_form_palettes(self) -> None:
         records = self.form_records()
-        self.assertEqual(len(records), 56)  # Paldean Wooper/Clodsire 2026-10-29, Honchkrow/Ursaluna 2026-11-07
+        self.assertEqual(len(records), 58)  # Paldean Wooper/Clodsire 2026-10-29, Honchkrow/Ursaluna 2026-11-07, H-Qwilfish/Overqwil 2026-11-10
         for species, form, palette in records:
             self.assertTrue(1 <= form <= 3, (species, form))
             self.assertTrue(PAL_MEWMON <= palette <= PAL_GRAYMON, (species, form, palette))

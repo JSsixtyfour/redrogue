@@ -122,13 +122,13 @@ class ExplicitRarityFormsTest(unittest.TestCase):
         self.assertEqual(ordinary.count(SPECIES['SWINUB']), 2)
         self.assertEqual(ordinary.count(SPECIES['TEDDIURSA']), 2)
         self.assertEqual(len(set(ordinary)), 252)
-        self.assertEqual(len(direct_forms), 25)
-        self.assertEqual(len(set(direct_forms)), 25)
+        self.assertEqual(len(direct_forms), 26)
+        self.assertEqual(len(set(direct_forms)), 26)
         # All active form records occur either in direct lists or commented
         # evolution references, never silently through a substitution rule.
         references = {(SPECIES[sp], int(form)) for sp, form in
                       re.findall(r'^; rarity_mon (\w+),\s*(\d+)', source, re.M)}
-        records = self.rom_bytes('FormOverrides', 56 * 41)
+        records = self.rom_bytes('FormOverrides', 58 * 41)
         active = {(records[i], records[i+1]) for i in range(0, len(records), 41)}
         # Forms no pool ever rolls: Armored Mewtwo is Giovanni's Challenge 11
         # ace and its trade only (legendary_boss_helpers.asm); the Fossil forms
@@ -139,6 +139,8 @@ class ExplicitRarityFormsTest(unittest.TestCase):
         self.assertIn((SPECIES['QUAGSIRE'], 1), active)  # Clodsire added 2026-10-29
         self.assertIn((SPECIES['MURKROW'], 1), active)  # Honchkrow added 2026-11-07
         self.assertIn((SPECIES['URSARING'], 1), active)  # Ursaluna added 2026-11-07
+        self.assertIn((SPECIES['QWILFISH'], 1), active)  # Hisuian Qwilfish added 2026-11-10
+        self.assertIn((SPECIES['QWILFISH'], 2), active)  # Overqwil added 2026-11-10
         self.assertFalse(set(direct_forms) & references)
         self.assertFalse((set(direct_forms) | references) & never_rolled)
         self.assertEqual(set(direct_forms) | references | never_rolled, active)

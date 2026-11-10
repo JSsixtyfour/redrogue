@@ -240,6 +240,7 @@
 	band_mon PONYTA
 	band_johto
 	band_warp
+	band_mon QWILFISH, 1
 	band_end
 	band_pool Misty_Ace3
 	band_ace STARMIE
@@ -287,6 +288,7 @@
 	band_mon PONYTA
 	band_johto
 	band_warp
+	band_mon QWILFISH, 1
 	band_end
 	band_pool Misty_Ace4
 	band_ace STARMIE
@@ -336,6 +338,7 @@
 	band_mon EXEGGCUTE
 	band_johto
 	band_warp
+	band_mon QWILFISH, 1
 	band_end
 
 ; --- LtSurge -----------------------------------------------------------------
@@ -584,6 +587,7 @@
 	band_mon SLOWPOKE, 1
 	band_mon GRIMER, 1
 	band_mon WOOPER, 1
+	band_mon QWILFISH, 1
 	band_end
 	band_pool Koga_Ace2
 	band_ace WEEZING
@@ -615,6 +619,7 @@
 	band_warp
 	band_mon SLOWPOKE, 1
 	band_mon WOOPER, 1
+	band_mon QWILFISH, 1
 	band_end
 	band_pool Koga_Off2
 	band_mon PARAS
@@ -656,6 +661,7 @@
 	band_ace MUK, 1
 	band_ace SLOWKING, 1
 	band_ace SLOWBRO, 1
+	band_ace QWILFISH, 2
 	band_end
 	band_pool Koga_Fod3
 	band_mon GASTLY
@@ -676,6 +682,7 @@
 	band_warp
 	band_mon SLOWPOKE, 1
 	band_mon WEEZING, 1
+	band_mon QWILFISH, 1
 	band_end
 	band_pool Koga_Off3
 	band_mon PARAS
@@ -730,6 +737,7 @@
 	band_warp
 	band_mon SLOWPOKE, 1
 	band_mon WEEZING, 1
+	band_mon QWILFISH, 1
 	band_end
 	band_same Koga_Off4, Koga_Off3
 
@@ -1494,6 +1502,7 @@
 	band_warp
 	band_mon RATTATA, 1
 	band_mon MEOWTH, 1
+	band_mon QWILFISH, 1
 	band_end
 	band_pool Whitney_AceR1
 	band_ace RATICATE
@@ -1545,6 +1554,7 @@
 	band_warp
 	band_mon RATTATA, 1
 	band_mon MEOWTH, 1
+	band_mon QWILFISH, 1
 	band_end
 	band_pool Whitney_Off2
 	band_mon DROWZEE
@@ -1599,6 +1609,7 @@
 	band_warp
 	band_mon RATTATA, 1
 	band_mon MEOWTH, 1
+	band_mon QWILFISH, 1
 	band_end
 	band_pool Whitney_Off3
 	band_mon DROWZEE
@@ -1655,6 +1666,7 @@
 	band_mon VAPOREON, 2
 	band_mon RATTATA, 1
 	band_mon MEOWTH, 1
+	band_mon QWILFISH, 1
 	band_end
 	band_pool Whitney_Off4
 	band_mon DROWZEE
@@ -3475,4 +3487,5 @@
 	band_mon MUK, 1
 	band_mon GRIMER, 1
 	band_mon MOLTRES, 1
+	band_mon QWILFISH, 1
 	band_end

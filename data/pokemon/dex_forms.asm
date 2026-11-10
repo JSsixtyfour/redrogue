@@ -64,5 +64,7 @@ DexFormKeys::
 	dex_form DEX_FORM_G_SLOWKING,       SLOWKING,   1
 	dex_form DEX_FORM_HONCHKROW,        MURKROW,    1
 	dex_form DEX_FORM_URSALUNA,         URSARING,   1
+	dex_form DEX_FORM_H_QWILFISH,       QWILFISH,   1
+	dex_form DEX_FORM_OVERQWIL,         QWILFISH,   2
 	ASSERT (@ - DexFormKeys) / 2 == NUM_DEX_FORMS, "DexFormKeys is missing entries"
 	db 0 ; terminator

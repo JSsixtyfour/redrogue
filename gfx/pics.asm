@@ -732,6 +732,10 @@ HGrowlithePicFront::  INCBIN "gfx/pokemon/front/hgrowlithe.lz"
 HGrowlithePicBack::   INCBIN "gfx/pokemon/back/hgrowlitheb.lz"
 HVoltorbPicFront::    INCBIN "gfx/pokemon/front/hvoltorb.lz"
 HVoltorbPicBack::     INCBIN "gfx/pokemon/back/hvoltorbb.lz"
+; Overqwil (QWILFISH form 2), added 2026-11-10. Hisuian Qwilfish's pair is in
+; "Pics 18" ($24); each form record carries its own pic-bank byte.
+OverqwilPicFront::    INCBIN "gfx/pokemon/front/overqwil.lz"
+OverqwilPicBack::     INCBIN "gfx/pokemon/back/overqwilb.lz"
 
 SECTION "Pics 15", ROMX ; Paldean + convergents + eeveelutions/other - bank $37
 
@@ -843,6 +847,12 @@ HonchkrowPicFront::   INCBIN "gfx/pokemon/front/honchkrow.lz"
 HonchkrowPicBack::    INCBIN "gfx/pokemon/back/honchkrowb.lz"
 UrsalunaPicFront::    INCBIN "gfx/pokemon/front/ursaluna.lz"
 UrsalunaPicBack::     INCBIN "gfx/pokemon/back/ursalunab.lz"
+
+; Hisuian Qwilfish (QWILFISH form 1), added 2026-11-10, here for the same
+; reason as Honchkrow/Ursaluna above. Its evolution Overqwil (QWILFISH form 2)
+; is in "Pics 14": both pairs (410 + 658 B) overflowed this bank by 354 B.
+HQwilfishPicFront::   INCBIN "gfx/pokemon/front/hqwilfish.lz"
+HQwilfishPicBack::    INCBIN "gfx/pokemon/back/hqwilfishb.lz"
 
 
 SECTION "Pics 19", ROMX ; pinned to $36 in layout.link

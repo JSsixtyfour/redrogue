@@ -330,7 +330,7 @@ class FullRoomResult:
         self.socket_mask = socket_mask
         self.exit_safe = exit_safe
         self.spawn_safe = spawn_safe
-        self.anywhere = ""   # plan phase 1a; report-only until the table adopts it
+        self.anywhere = ""   # PFAC_TPL_ANY_N/E/S/W, see _anywhere_sides
 
 
 def discover_fullroom_files(maps_dir: Path = MAPS_DIR) -> list[Path]:
@@ -834,7 +834,8 @@ def format_report(results: list[FullRoomResult]) -> str:
             lines.append(
                 f"{r.filename} W={r.w} H={r.h} sockets={r.socket_mask} "
                 f"item={item} exitsafe={r.exit_safe or '-'} "
-                f"spawnsafe={'Y' if r.spawn_safe else '-'} status=OK"
+                f"spawnsafe={'Y' if r.spawn_safe else '-'} "
+                f"anywhere={r.anywhere or '-'} status=OK"
             )
         else:
             lines.append(

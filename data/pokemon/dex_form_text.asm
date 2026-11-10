@@ -519,3 +519,22 @@ _UrsalunaFormDexEntryText::
 	page "power to control"
 	next "peat at will."
 	dex
+
+_HQwilfishFormDexEntryText::
+	text "Fishers detest it"
+	next "because it sprays"
+	next "poison from its"
+
+	page "spines, getting it"
+	next "everywhere."
+	dex
+
+_OverqwilFormDexEntryText::
+	text "Its lancelike"
+	next "spikes and savage"
+	next "temperament earned"
+
+	page "it the nickname"
+	next "SEA FIEND. It"
+	next "slurps up poison."
+	dex

@@ -7,9 +7,15 @@ corridor caused it. Every bare room (no premade, no large decor, no spinner) is
 filed under one reason:
 
   no-art     the footprint's size group is empty, ChooseTemplate is never reached
-  perimeter  art exists but PFacPremadePerimeterClear saw a corridor on a ring
-             cell that is not a canonical socket
-  sockets    ChooseTemplate ran but no payload passed the socket / role bits
+  perimeter  art exists but PFacPremadePerimeterClear refused the footprint.
+             Since plan phase 1b (2026-11-10) that only happens on a corridor
+             crossing a footprint corner; before it, any off-socket crossing.
+  sockets    ChooseTemplate ran but no payload passed the socket / role /
+             PFAC_TPL_ANY_* bits
+
+Also reported per role: how many stamped premades a corridor enters away from
+the canonical socket (the openings phase 1b made possible). The exit's own
+map-edge opening is not a corridor and is not counted.
 
 Perimeter refusals are split by the corridor that stamped the offending cell:
 
@@ -124,6 +130,7 @@ def main() -> int:
     res = {r: defaultdict(Counter) for r in ROLES}
     owner = {r: Counter() for r in ROLES}
     cells = {r: Counter() for r in ROLES}
+    offsock = {r: Counter() for r in ROLES}
     layouts = 0
 
     state = 0x1234_5678
@@ -150,6 +157,16 @@ def main() -> int:
             key = (x, y, w, hh)
             if fl & 0x80:
                 why = "premade"
+                sx, sy = x + w // 2, y + hh // 2
+                ring = ([(c, y - 1) for c in range(x, x + w) if c != sx]
+                        + [(c, y + hh) for c in range(x, x + w) if c != sx]
+                        + [(x - 1, r) for r in range(y, y + hh) if r != sy]
+                        + [(x + w, r) for r in range(y, y + hh) if r != sy])
+                n_off = sum(c in cor_log for c in ring)
+                offsock[role]["premades"] += 1
+                if n_off:
+                    offsock[role]["with off-socket corridor openings"] += 1
+                    offsock[role]["off-socket cells cut"] += n_off
             elif fl & 0x40:
                 why = "largedecor"
             elif fl & 0x0C:
@@ -198,6 +215,9 @@ def main() -> int:
                 f"{k} {v}" for k, v in owner[role].most_common()))
             print("   refused ring cells: " + "; ".join(
                 f"{k} x{v}" for k, v in cells[role].most_common(8)))
+        if offsock[role]:
+            print("   premades entered off-socket by a corridor: " + ", ".join(
+                f"{k} {v}" for k, v in offsock[role].items()))
         print()
     return 0
 

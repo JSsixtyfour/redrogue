@@ -485,7 +485,14 @@ def load_rarity_groups():
 
 
 def load_evolution_targets():
-    """Every species something else evolves INTO."""
+    """Everything something else evolves INTO.
+
+    A plain EVOLVE_* entry adds the species name: it keeps the evolving mon's
+    form, so every form of that species counts as evolved. A FORM entry adds
+    only (species, form index): Murkrow + Dusk Stone -> MURKROW form 1 makes
+    Honchkrow an evolution, not plain Murkrow, and Hisuian Qwilfish -> QWILFISH
+    form 2 makes Overqwil one, not Qwilfish or Hisuian Qwilfish. Keying form
+    entries by species alone flagged those base forms as "not a base form"."""
     out = set()
     # Base lists AND the form blocks: Galarian Farfetch'd's list is now the only
     # thing that names Sirfetch'd (plain Farfetch'd's list is empty).
@@ -502,9 +509,9 @@ def load_evolution_targets():
             continue
         # FORM entries: evo_level_form / evo_trade_form <form>, <level>, <target>
         # and evo_item_form <form>, <item>, <level>, <target>
-        m = re.match(r"^\s+evo_(?:level|trade|item)_form\s+(?:[^,]+,\s*){2,3}([A-Z_][A-Z0-9_]*)", line)
+        m = re.match(r"^\s+evo_(?:level|trade|item)_form\s+(\d+)\s*,\s*(?:[^,]+,\s*){1,2}([A-Z_][A-Z0-9_]*)", line)
         if m:
-            out.add(m.group(1))
+            out.add((m.group(2), int(m.group(1))))
     return out
 
 
@@ -608,7 +615,8 @@ def lint(chars, names, groups=None, evo_targets=None, bst=None):
                                         "needs (warp)".format(where, shown)))
                     # Gamblers list evolved mons on purpose: a themed, fully
                     # evolved team, each with its own forced set.
-                    if (kind in ("Fod", "Off") and sp in evo_targets
+                    evolved = sp in evo_targets or (sp, form or 0) in evo_targets
+                    if (kind in ("Fod", "Off") and evolved
                             and c["section"] != "Gamblers"):
                         out.append(("warning", "{}: {} is not a base form".format(where, shown)))
                     if kind == "Ace" and band in WEAK_ACE_BST and c["section"] == "Gym leaders":

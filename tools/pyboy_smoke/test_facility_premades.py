@@ -25,13 +25,13 @@ class FacilityDescriptorTableFreshnessTest(unittest.TestCase):
     """The descriptor table in the generator source must equal what the
     validator currently measures.
 
-    Socket masks, PFAC_TPL_ITEM and (since C2) the PFAC_TPL_EXIT_* bits are all
+    Socket masks, PFAC_TPL_ITEM and the PFAC_TPL_ANY_* side bits are all
     MEASURED from the payload art, never authored. So editing a .blk without
     regenerating leaves the table describing art that no longer exists, and
     nothing else in the build would notice: the ROM links, every ASSERT holds,
-    and the only symptom is a wrong room at runtime. For the exit bits that is a
-    safety property - a stale bit can let the boss room stamp a payload that
-    strands the boss and both exit warp tiles.
+    and the only symptom is a wrong room at runtime. For the side bits that is a
+    safety property - a stale bit can let a room stamp a payload that a corridor
+    or the exit opening cannot get into, stranding what lies beyond it.
     """
 
     def test_committed_table_matches_the_validator(self) -> None:
@@ -66,9 +66,13 @@ class FacilityPremadeContractTest(unittest.TestCase):
         unusable = [
             r.filename
             for r in validator.scan_fullrooms()
-            if r.status == "OK" and not r.exit_safe
+            if r.status == "OK" and not any(c in r.anywhere for c in "NWE")
         ]
-        self.assertEqual(unusable, [], "template is usable by no exit edge")
+        # Measured, not a defect: an off-centre opening in its north ring is
+        # sealed by the rock art, so the corrected ANY_N bit (2026-11-10) is
+        # clear. It still serves as an entry room (ANY_S) and a middle room.
+        known = ["ProceduralFacility_4x6_rock_combinedroom.blk"]
+        self.assertEqual(unusable, known, "template is usable by no exit edge")
 
     def test_selection_and_generic_fallback(self) -> None:
         for required in range(16):

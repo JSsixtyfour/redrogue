@@ -338,8 +338,8 @@ class DexFormsTest(unittest.TestCase):
         species = [n for k, n in rows if k == "SPECIES"]
         self.assertEqual([DEX[n] for n in species], list(range(1, 253)), "species keep their numbers")
         numbered = [n for k, n in rows if k == "NUMBERED"]
-        self.assertEqual(len(numbered), 15)  # +Honchkrow, Ursaluna 2026-11-07
-        self.assertEqual([k for k, _ in rows[-15:]], ["NUMBERED"] * 15, "numbered species come last")
+        self.assertEqual(len(numbered), 16)  # +Honchkrow, Ursaluna 2026-11-07, Overqwil 2026-11-10
+        self.assertEqual([k for k, _ in rows[-16:]], ["NUMBERED"] * 16, "numbered species come last")
         for name in ("DEX_FORM_ESPEON", "DEX_FORM_UMBREON", "DEX_FORM_CLODSIRE", "DEX_FORM_PERRSERKER"):
             self.assertIn(name, numbered)
         # each regional form directly follows its base species (or a sibling form)
@@ -371,7 +371,7 @@ class DexFormsTest(unittest.TestCase):
             ("DEX_MEOWTH", (SPECIES["MEOWTH"], 0), self.text_tiles(f"{DEX['DEX_MEOWTH']:03d}"), "MEOWTH"),
             ("DEX_FORM_A_MEOWTH", (SPECIES["MEOWTH"], 1), blank, "A-MEOWTH"),
             ("DEX_FORM_ESPEON", (SPECIES["JOLTEON"], 1),
-             self.text_tiles(f"{253 + rows[-15:].index('DEX_FORM_ESPEON'):03d}"), "ESPEON"),
+             self.text_tiles(f"{253 + rows[-16:].index('DEX_FORM_ESPEON'):03d}"), "ESPEON"),
         ]
         for name, (species, form), number, label in cases:
             row = rows.index(name)
@@ -395,7 +395,7 @@ class DexFormsTest(unittest.TestCase):
         self.assertEqual(count(), 1, "nothing seen: one row of dashes")
         self.register(SPECIES["MEOWTH"], 2, SEEN)
         self.assertEqual(count(), rows.index("DEX_FORM_G_MEOWTH") + 1)
-        self.register(SPECIES["URSARING"], 1, SEEN)  # Ursaluna, the last numbered row
+        self.register(SPECIES["QWILFISH"], 2, SEEN)  # Overqwil, the last numbered row
         self.assertEqual(count(), len(rows))
 
     def load_header(self, species: int, form: int) -> list[int]:
