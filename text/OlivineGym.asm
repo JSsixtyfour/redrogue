@@ -47,22 +47,56 @@ _OlivineGymTMNoRoomText::
 	line "for this!"
 	done
 
-_OlivineGymCooltrainerMBattleText::
-	text "My #MON are"
-	line "well polished!"
+_OlivineGymGentlemanBattleText::
+	text "JASMINE may look"
+	line "gentle, but she's"
+	cont "tough as nails!"
 	done
 
-_OlivineGymCooltrainerMEndBattleText::
-	text "Ugh…"
-	line "Dented my pride!"
+_OlivineGymGentlemanEndBattleText::
+	text "Woah"
+	line "You look pretty"
+	cont "tough yourself"
 	prompt
 
-_OlivineGymCooltrainerMAfterBattleText::
-	text "JASMINE uses"
-	line "#MON with"
-	cont "unknown"
-	cont "properties"
+_OlivineGymGentlemanAfterBattleText::
+	text "Good luck, young"
+	line "one."
 	done
+    
+_OlivineGymLassBattleText::
+	text "I want to be just"
+	line "like JASMINE when"
+	cont "I grow up!"
+	done
+
+_OlivineGymLassEndBattleText::
+	text "Oh..."
+	line "I have a long way"
+	cont "to go."
+	prompt
+
+_OlivineGymLassAfterBattleText::
+	text "You're no match for"
+	line "JASMINE though!"
+    done
+
+_OlivineGymEngineerBattleText::
+	text "My #MON are"
+	line "engineered to"
+	cont "perfection."
+	done
+
+_OlivineGymEngineerEndBattleText::
+	text "Ha!."
+	line "Jynxed myself!"
+	prompt
+
+_OlivineGymEngineerAfterBattleText::
+	line "Maybe need to"
+	cont "workshop them a"
+	cont "bit more."
+    done
 
 _OlivineGymGuideAdviceText::
 	text "JASMINE seems"

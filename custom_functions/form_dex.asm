@@ -469,6 +469,13 @@ DexListSideMenu:
 	and a
 	jr nz, .formData
 	call DexSpeciesRowIndex
+	; A base-species DATA selection is a new identity, not a header refresh.
+	; GetMonName consumes pending context before the page loads its header,
+	; so invalidate the remembered form as well as any pending context.
+	xor a
+	ld [wFormContextSpecies], a
+	ld [wMonHForm], a
+	ld [wMonHFormSpecies], a
 	predef ShowPokedexData ; the ordinary page, bank $10
 	jr .shown
 .formData
