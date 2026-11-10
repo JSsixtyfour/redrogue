@@ -796,9 +796,18 @@ def evaluate_fullroom(path: Path, blockset: bytes, block_count: int) -> FullRoom
         _socket_component(grid, blockset, w, h, sockets, edge_cells, passed),
     )
     result.anywhere = _anywhere_sides(grid, blockset, w, h)
-    if item_anchor_safe(grid, hub_x, hub_y):
-        result.roles = ("item", "explore")
-        result.item_anchor = hub
+    # PFAC_TPL_ITEM: the interior holds at least one legal item anchor. Since
+    # plan phase 2 (2026-11-10) PFacPlaceItems falls back to a row-major scan of
+    # the interior, not the hub, so the hub need not be an anchor. Every fully
+    # walkable cell is reachable (the payload's walkable set is one component),
+    # and a $47 table needs a fully walkable neighbour. The hub is reported when
+    # it qualifies, otherwise the first anchor in scan order.
+    interior = [(x, y) for y in range(1, h - 1) for x in range(1, w - 1)]
+    for x, y in [hub] + interior:
+        if item_anchor_safe(grid, x, y):
+            result.roles = ("item", "explore")
+            result.item_anchor = (x, y)
+            break
     return result
 
 
