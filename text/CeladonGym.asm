@@ -62,8 +62,8 @@ _CeladonGymReceivedTM21Text::
 _TM21ExplanationText::
     text_start
 	para "That TM should"
-	line "should help you"
-	cont "on your journey"
+	line "help you on your"
+	cont "journey."
 	done
 
 _CeladonGymTM21NoRoomText::

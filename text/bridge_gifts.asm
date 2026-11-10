@@ -67,7 +67,7 @@ _SchoolGift7Desc::
 _SchoolGift8Desc::
 	text "@"
 	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
-	text "that"
+	text " that"
 	line "randomly outspeeds"
 	done
 
