@@ -2621,20 +2621,29 @@ PFacFinalizeBlocks:
 
 ; ============================================================
 ; PFacPlaceLargeDecor
-; Try the five connectivity-safe hand-authored interior payloads in a
-; room-specific cyclic order
-; for every middle room (items 1-4, exploration 5-10). A payload may sit inside
-; any interior at least as large as itself. Candidate offsets are scanned until
-; the room hub remains fully walkable and every actual doorway approach retains
-; a path in its travel direction. Authored payload connectivity is validated
-; offline. If no payload/offset is safe, the ordinary interior remains unchanged.
+; Try the connectivity-safe hand-authored interior payloads in a room-specific
+; cyclic order for every room 1-11 that holds no premade or spinner (items 1-4,
+; exploration 5-10, and the exit 11). A payload may sit inside any interior at
+; least as large as itself. Candidate offsets are scanned until the room hub
+; remains fully walkable and every actual doorway approach retains a path in its
+; travel direction. Authored payload connectivity is validated offline. If no
+; payload/offset is safe, the ordinary interior remains unchanged.
+;
+; The exit room (Phase 4, 2026-11-10) also keeps the interior cell just inside
+; its map-edge opening plain floor (PFacLargeDecorExitFront). That opening sits
+; at the rolled sProcFacilityExitI, usually off the centre lanes. Reachability
+; never depended on that cell: the generic ring's walkable baseboard joins every
+; opening (0 stranded quadrants over 400 layouts without the rule). The rule
+; keeps the exit doorway from looking blocked by furniture. Measured cost: 72 of
+; 73 decor-capable exit rooms still take a piece. Room 0 stays out: every entry
+; is a premade since phase 1b.
 ; ============================================================
 PFacPlaceLargeDecor:
     ld a, 1
     ld [wBuffer + wPFacRmIdx], a
 .roomLoop
     ld a, [wBuffer + wPFacRmIdx]
-    cp 11
+    cp 12                       ; rooms 1-11
     ret nc
     call PFacRoomRecordAddr
     ld a, [hli]
@@ -2670,6 +2679,7 @@ PFacPlaceLargeDecor:
     add a, [hl]
     ld [wBuffer + wPFacLargeCenterY], a
     call PFacLoadLargeDecorDoorMask
+    call PFacLargeDecorExitFront
 
     ; Room id supplies a deterministic rotating start so every payload appears
     ; across ordinary layouts without perturbing item RNG.
@@ -2809,6 +2819,44 @@ PFacLoadLargeDecorDoorMask:
     set 3, [hl]
     ret
 
+; wBuffer 26/27: the exit room's protected front cell. These are
+; PFacPlaceSpinnerDecor's offsets, free here because that pass has finished.
+DEF wPFacLargeFrontX EQU 26
+DEF wPFacLargeFrontY EQU 27
+ASSERT wPFacLargeFrontY < 30
+
+; Record the interior cell just inside the exit opening, which large decor must
+; leave fully walkable. Rooms 1-10 get X = $FF, which matches no cell (PFAC_SIZE
+; is 20). Edges: 0 north (column ExitI, first interior row), 1 west (first
+; interior column, row ExitI), 2 east (last interior column, row ExitI).
+; SRAM is open for the whole generation (PFacCarveEdgeOpenings reads it too).
+PFacLargeDecorExitFront:
+    ld a, $FF
+    ld [wBuffer + wPFacLargeFrontX], a
+    ld a, [wBuffer + wPFacRmIdx]
+    cp 11
+    ret nz
+    ld a, [sProcFacilityExitEdge]
+    and a
+    jr nz, .side
+    ld a, [sProcFacilityExitI]
+    ld [wBuffer + wPFacLargeFrontX], a
+    ld a, [wBuffer + wPFacRmY]
+    ld [wBuffer + wPFacLargeFrontY], a
+    ret
+.side
+    dec a
+    ld a, [wBuffer + wPFacRmX]
+    jr z, .west
+    ld hl, wBuffer + wPFacRmW
+    add a, [hl]
+    dec a                       ; X + W - 1
+.west
+    ld [wBuffer + wPFacLargeFrontX], a
+    ld a, [sProcFacilityExitI]
+    ld [wBuffer + wPFacLargeFrontY], a
+    ret
+
 PFacLargeDecorCandidateSafe:
     ld a, [wBuffer + wPFacLargePtrLo]
     ld l, a
@@ -2838,6 +2886,19 @@ PFacLargeDecorCandidateSafe:
     call PFacReadBlock
     cp PFAC_FLOOR
     jp nz, .unsafePop
+    ; The exit room's front cell (PFacLargeDecorExitFront) stays plain floor.
+    ld a, [wBuffer + wPFacCurX]
+    ld hl, wBuffer + wPFacLargeFrontX
+    cp [hl]
+    jr nz, .notFront
+    ld a, [wBuffer + wPFacCurY]
+    ld hl, wBuffer + wPFacLargeFrontY
+    cp [hl]
+    jr nz, .notFront
+    ld a, [wBuffer + wPFacLargeBlock]
+    call PFacLargeDecorBlockFullyWalkable
+    jp nz, .unsafePop
+.notFront
     ; The hub is the join between every doorway route.
     ld a, [wBuffer + wPFacCurX]
     ld hl, wBuffer + wPFacLargeCenterX
