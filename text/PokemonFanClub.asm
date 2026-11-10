@@ -150,21 +150,21 @@ _FanClubGift1Desc::
 	done
 
 _FanClubGift2Desc::
-	text "The club's"
-	line "favorite #MON!"
+	text "The CHAIRMAN's"
+	line "favorite"
 	done
 
 _FanClubGift3Desc::
-	text "Raises a level"
-	line "instantly!"
+	text "Raises a #MON's"
+	line "level by one"
 	done
 
 _FanClubGift4Desc::
-	text "The club's sleepy"
-	line "favorite #MON"
+	text "The hypnosis"
+	line "#MON"
 	done
     
  _FanClubGift5Desc::
-	text "The club's proud"
-	line "favorite #MON"
+	text "The CHAIRMAN's"
+	line "favorite"
 	done

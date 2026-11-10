@@ -100,9 +100,9 @@ OlivineGymScriptReceiveTM:
 OlivineGym_TextPointers:
 	def_text_pointers
 	dw_const OlivineGymJasmineText,            TEXT_OLIVINEGYM_JASMINE
-	dw_const OlivineGymCooltrainerM1Text,      TEXT_OLIVINEGYM_COOLTRAINER_M1
-	dw_const OlivineGymCooltrainerM2Text,      TEXT_OLIVINEGYM_COOLTRAINER_M2
-	dw_const OlivineGymCooltrainerM4Text,      TEXT_OLIVINEGYM_COOLTRAINER_M4
+	dw_const OlivineGymLassText,              TEXT_OLIVINEGYM_LASS
+	dw_const OlivineGymGentlemanText,         TEXT_OLIVINEGYM_GENTLEMAN
+	dw_const OlivineGymEngineerText,          TEXT_OLIVINEGYM_ENGINEER
 	dw_const OlivineGymGuideText,              TEXT_OLIVINEGYM_GYM_GUIDE
 	dw_const OlivineGymJasmineWaitTakeThisText, TEXT_OLIVINEGYM_JASMINE_WAIT_TAKE_THIS
 	dw_const OlivineGymReceivedTMText,         TEXT_OLIVINEGYM_RECEIVED_TM
@@ -115,11 +115,11 @@ OlivineGymTrainerHeaders:
 ; project_gametrainer_def_trainers_inheritance_bug.
 	def_trainers 2
 OlivineGymTrainerHeader0:
-	trainer EVENT_BEAT_OLIVINE_GYM_TRAINER_0, 2, OlivineGymCooltrainerM1BattleText, OlivineGymCooltrainerM1EndBattleText, OlivineGymCooltrainerM1AfterBattleText
+	trainer EVENT_BEAT_OLIVINE_GYM_TRAINER_0, 2, OlivineGymLassBattleText, OlivineGymLassEndBattleText, OlivineGymLassAfterBattleText
 OlivineGymTrainerHeader1:
-	trainer EVENT_BEAT_OLIVINE_GYM_TRAINER_1, 3, OlivineGymCooltrainerM2BattleText, OlivineGymCooltrainerM2EndBattleText, OlivineGymCooltrainerM2AfterBattleText
+	trainer EVENT_BEAT_OLIVINE_GYM_TRAINER_1, 3, OlivineGymGentlemanBattleText, OlivineGymGentlemanEndBattleText, OlivineGymGentlemanAfterBattleText
 OlivineGymTrainerHeader2:
-	trainer EVENT_BEAT_OLIVINE_GYM_TRAINER_2, 2, OlivineGymCooltrainerM4BattleText, OlivineGymCooltrainerM4EndBattleText, OlivineGymCooltrainerM4AfterBattleText
+	trainer EVENT_BEAT_OLIVINE_GYM_TRAINER_2, 2, OlivineGymEngineerBattleText, OlivineGymEngineerEndBattleText, OlivineGymEngineerAfterBattleText
 	db -1 ; end
 
 OlivineGymReceivedTMText:
@@ -192,58 +192,58 @@ ReceivedMineralBadgeText:
 	sound_get_key_item
 	text_end
 
-OlivineGymCooltrainerM1Text:
+OlivineGymLassText:
 	text_asm
 	ld hl, OlivineGymTrainerHeader0
 	call TalkToTrainer
 	jp TextScriptEnd
 
-OlivineGymCooltrainerM1BattleText:
-	text_far _OlivineGymCooltrainerMBattleText
+OlivineGymLassBattleText:
+	text_far _OlivineGymLassBattleText
 	text_end
 
-OlivineGymCooltrainerM1EndBattleText:
-	text_far _OlivineGymCooltrainerMEndBattleText
+OlivineGymLassEndBattleText:
+	text_far _OlivineGymLassEndBattleText
 	text_end
 
-OlivineGymCooltrainerM1AfterBattleText:
-	text_far _OlivineGymCooltrainerMAfterBattleText
+OlivineGymLassAfterBattleText:
+	text_far _OlivineGymLassAfterBattleText
 	text_end
 
-OlivineGymCooltrainerM2Text:
+OlivineGymGentlemanText:
 	text_asm
 	ld hl, OlivineGymTrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
-OlivineGymCooltrainerM2BattleText:
-	text_far _OlivineGymCooltrainerMBattleText
+OlivineGymGentlemanBattleText:
+	text_far _OlivineGymGentlemanBattleText
 	text_end
 
-OlivineGymCooltrainerM2EndBattleText:
-	text_far _OlivineGymCooltrainerMEndBattleText
+OlivineGymGentlemanEndBattleText:
+	text_far _OlivineGymGentlemanEndBattleText
 	text_end
 
-OlivineGymCooltrainerM2AfterBattleText:
-	text_far _OlivineGymCooltrainerMAfterBattleText
+OlivineGymGentlemanAfterBattleText:
+	text_far _OlivineGymGentlemanAfterBattleText
 	text_end
 
-OlivineGymCooltrainerM4Text:
+OlivineGymEngineerText:
 	text_asm
 	ld hl, OlivineGymTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
-OlivineGymCooltrainerM4BattleText:
-	text_far _OlivineGymCooltrainerMBattleText
+OlivineGymEngineerBattleText:
+	text_far _OlivineGymEngineerBattleText
 	text_end
 
-OlivineGymCooltrainerM4EndBattleText:
-	text_far _OlivineGymCooltrainerMEndBattleText
+OlivineGymEngineerEndBattleText:
+	text_far _OlivineGymEngineerEndBattleText
 	text_end
 
-OlivineGymCooltrainerM4AfterBattleText:
-	text_far _OlivineGymCooltrainerMAfterBattleText
+OlivineGymEngineerAfterBattleText:
+	text_far _OlivineGymEngineerAfterBattleText
 	text_end
 
 OlivineGymGuideText:

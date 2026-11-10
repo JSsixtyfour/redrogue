@@ -313,9 +313,14 @@ INCLUDE "text/AzaleaGym.asm"
 INCLUDE "text/GoldenrodGym.asm"
 INCLUDE "text/EcruteakGym.asm"
 INCLUDE "text/CianwoodGym.asm"
-INCLUDE "text/OlivineGym.asm"
 INCLUDE "text/MahoganyGym.asm"
 INCLUDE "text/BlackthornGym.asm"
+
+; Olivine's trainer dialogue pushed the floating Johto section past bank $3B.
+; The map script reaches all of these entries through text_far.
+SECTION "Text Olivine Gym", ROMX, BANK[$29]
+
+INCLUDE "text/OlivineGym.asm"
 
 ; Phase 7 Elite Four room dialogue, ported from tmp/pokegold at 17 rendered
 ; characters per line. Its own section for the same bank-fit reason that

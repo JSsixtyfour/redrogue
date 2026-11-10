@@ -77,9 +77,10 @@ _OlivineGymLassEndBattleText::
 	prompt
 
 _OlivineGymLassAfterBattleText::
-	text "You're no match for"
-	line "JASMINE though!"
-    done
+	text "You're no match"
+	line "for JASMINE"
+	cont "though!"
+	done
 
 _OlivineGymEngineerBattleText::
 	text "My #MON are"
@@ -88,15 +89,15 @@ _OlivineGymEngineerBattleText::
 	done
 
 _OlivineGymEngineerEndBattleText::
-	text "Ha!."
+	text "Ha!"
 	line "Jynxed myself!"
 	prompt
 
 _OlivineGymEngineerAfterBattleText::
-	line "Maybe need to"
-	cont "workshop them a"
+	text "Maybe need to"
+	line "workshop them a"
 	cont "bit more."
-    done
+	done
 
 _OlivineGymGuideAdviceText::
 	text "JASMINE seems"

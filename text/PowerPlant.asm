@@ -7,52 +7,56 @@ _PowerPlantZapdosBattleText::
 	text_end
 
 _PowerPlantScientist1BattleText::
-	text "The power here"
-	line "belongs to us!"
+	text "Hey! Who are you?"
 	done
 
 _PowerPlantScientist1EndBattleText::
-	text "Gah!"
+	text "Sorry!"
+	line "I thought you"
+	cont "were a scavenger."
 	prompt
 
 _PowerPlantScientist1AfterBattleText::
-	text "Our experiments"
-	line "are classified!"
-	done
+	text "I'm here to help"
+	line "repurpose this"
+	cont "POWER PLANT."
+    done
 
 _PowerPlantPokemaniac1BattleText::
-	text "You dare enter"
-	line "our facility?"
+	text "The electric"
+	line "#MON here are"
+	cont "hyper charged."
 	done
 
 _PowerPlantPokemaniac1EndBattleText::
-	text "How?!"
+	text "Wow"
+	line "I'm shocked."
 	prompt
 
 _PowerPlantPokemaniac1AfterBattleText::
-	text "The electric"
-	line "#MON will stop"
-	cont "you!"
+	text "Who knows what"
+	line "powerful #MON"
+	cont "roost here."
 	done
 
 _PowerPlantPokemaniac2BattleText::
-	text "This plant used"
-	line "to power all of"
-    cont "KANTO!"
+	text "You'll be a good"
+	line "test run."
 	done
 
 _PowerPlantPokemaniac2EndBattleText::
-	text "Outrageous!"
-	prompt
+	text "Yikes."
+	line "I must be rusty."
+	done
 
 _PowerPlantPokemaniac2AfterBattleText::
-	text "I've never seen"
-	line "such power!"
+	text "I'm here to help"
+	line "contain all the"
+	cont "wild #MON"
 	done
 
 _PowerPlantScientist4BattleText::
-	text "You won't get"
-	line "past me!"
+	text "I'm all revved up!"
 	done
 
 _PowerPlantScientist4EndBattleText::
@@ -60,20 +64,7 @@ _PowerPlantScientist4EndBattleText::
 	prompt
 
 _PowerPlantScientist4AfterBattleText::
-	text "ZAPDOS guards"
-	line "this place!"
-	done
-
-_PowerPlantCooltrainerMBattleText::
-	text "I am the chief"
-	line "researcher here!"
-	done
-
-_PowerPlantCooltrainerMEndBattleText::
-	text "Shocking defeat!"
-	prompt
-
-_PowerPlantCooltrainerMAfterBattleText::
-	text "You've earned our"
-	line "highest honor."
+	text "This POWER PLANT"
+	line "once powered the"
+	cont "whole region."
 	done

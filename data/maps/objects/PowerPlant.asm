@@ -31,7 +31,7 @@ PowerPlant_Object:
 	; (MiniBossStageSlots) and slots 6-10 keep the reward cluster. It stands
 	; below the map, so CheckSpriteAvailability never draws it.
 	object_event  0, 63, SPRITE_SCIENTIST,     STAY, DOWN,  TEXT_POWERPLANT_PADDING
-	object_event  7, 25, SPRITE_SCIENTIST,     STAY, LEFT,  TEXT_POWERPLANT_SCIENTIST1, OPP_SCIENTIST,    1
+	object_event  7, 25, SPRITE_SUPER_NERD,    STAY, LEFT,  TEXT_POWERPLANT_SCIENTIST1, OPP_ENGINEER,     1
 	object_event  1, 23, SPRITE_SUPER_NERD,    STAY, RIGHT,    TEXT_POWERPLANT_POKEMANIAC1, OPP_POKEMANIAC,   1
 	object_event  4, 17, SPRITE_SUPER_NERD,    STAY, RIGHT, TEXT_POWERPLANT_POKEMANIAC2, OPP_POKEMANIAC,   1
 	; Boss reclassed COOLTRAINER_M -> SCIENTIST (TRAINER_CUT_AUDIT.md)

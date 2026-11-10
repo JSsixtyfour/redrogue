@@ -9,62 +9,53 @@ _PokemonMansion1FScientistEndBattleText::
 	prompt
 
 _PokemonMansion1FScientistAfterBattleText::
-	text "A key? I don't"
+	text "MEW? I don't"
 	line "know what you're"
 	cont "talking about."
 	done
 
 _PokemonMansion1FBurglar1BattleText::
-	text "Hey! This place is"
-	line "my score! Go find"
-	cont "your own mansion!"
+	text "I hear this place"
+	line "has some fancy"
+	cont "equipment."
 	done
 
 _PokemonMansion1FBurglar1EndBattleText::
-	text "Busted!"
-	line "Fine, take it!"
+	text "Burned!"
+	line "Guess I'm out."
 	prompt
 
 _PokemonMansion1FBurglar1AfterBattleText::
-	text "This old mansion"
-	line "is full of loot."
-	cont "Or it used to be!"
+	text "All I've seen are"
+	line "some weird"
+	cont "statues."
 	done
 
 _PokemonMansion1FBurglar2BattleText::
-	text "Shh! Keep it down!"
-	line "The scientists"
-	cont "will hear us!"
+	text "Give me your"
+	line "valuables or else!"
 	done
 
 _PokemonMansion1FBurglar2EndBattleText::
-	text "Argh!"
-	line "Too loud!"
+	text "Urgh!"
 	prompt
 
 _PokemonMansion1FBurglar2AfterBattleText::
-	text "Leave me alone."
-	line "I'm only here for"
-	cont "the jewels."
+	text "Get lost"
 	done
 
 
 _PokemonMansion1FScientist2BattleText::
-	text "You're incredibly"
-	line "persistent!"
-	cont "One last battle!"
-	done
+	text "It's not safe here"
+	line "for you!"
 
 _PokemonMansion1FScientist2EndBattleText::
-	text "Whoa…"
-	line "Remarkable..."
+	text "Ugh."
 	prompt
 
 _PokemonMansion1FScientist2AfterBattleText::
-	text "Extraordinary!"
-	line "Our experiments"
-	cont "will be your"
-	cont "reward."
+	text "I used to work"
+	line "here..."
 	done
 
 _PokemonMansion1FSwitchText::
