@@ -1,3 +1,24 @@
+; Gym exit block: victory event, closed block, open block, x, y.
+; The map script runs this on load. A victory script can call .update
+; directly once it sets the event to open the exit immediately.
+MACRO GymExitBlock
+	ld hl, wCurrentMapScriptFlags
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	res BIT_CUR_MAP_LOADED_1, [hl]
+	ret z
+.update
+	CheckEvent \1
+	jr z, .blockExitToNextRoom
+	ld a, \3
+	jp .setExitBlock
+.blockExitToNextRoom
+	ld a, \2
+.setExitBlock
+	ld [wNewTileBlockID], a
+	lb bc, \5, \4
+	predef_jump ReplaceTileBlock
+ENDM
+
 SECTION "Maps 1", ROMX
 
 INCLUDE "data/maps/headers/CeladonCity.asm"

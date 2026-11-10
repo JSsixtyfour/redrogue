@@ -750,26 +750,40 @@ class KarateDojoSmokeTest(HarnessTestCase):
             h.event_is_set(events["EVENT_DOJO_EXCLUDED_BIT1"])
         )
         self.assertIn(excluded, (0, 1, 2))
+        species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
+        offers = [species[name] for name in ("MACHOP", "HITMONLEE", "HITMONCHAN")]
+        offers.pop(excluded)
+        self.assertEqual(h.read_bytes("wRoguePokemon1", 3), [*offers, 0])
 
-        item = toggles["TOGGLE_FIGHTING_DOJO_RANDOM_ITEM"]
-        hidden = h.read8("wToggleableObjectFlags", offset=item // 8) & (
-            1 << (item % 8)
-        )
-        self.assertFalse(hidden, "Dojo random item is hidden")
+        for name in ("TOGGLE_FIGHTING_DOJO_RANDOM_ITEM", "TOGGLE_ROGUE_REWARD_POKEBALL_1",
+                     "TOGGLE_ROGUE_REWARD_POKEBALL_2"):
+            index = toggles[name]
+            flags = h.read8("wToggleableObjectFlags", offset=index // 8)
+            self.assertFalse(flags & (1 << (index % 8)), f"{name} is hidden")
 
-        # The door stays one-way until the master falls.
+        # The south door is always one-way. Only the north gate leads back.
         self.assertEqual(
-            [warp[3] for warp in h.warp_entries()],
-            [h.WARP_NO_RETURN, h.WARP_NO_RETURN],
+            h.warp_entries(),
+            [[11, 4, 0, h.WARP_NO_RETURN], [11, 5, 0, h.WARP_NO_RETURN],
+             [0, 4, 0, maps["INDIGO_PLATEAU_LOBBY"]],
+             [0, 5, 0, maps["INDIGO_PLATEAU_LOBBY"]]],
         )
 
-        # Entrance auto-walk up the aisle from the door at y=11. RogueAutoWalkScripts
-        # writes six presses but starts hSimulatedJoypadStatesIndex at 4, so the
-        # walk is four steps and ends beside blackbelt 4 at (5, 7).
-        h.wait_until(lambda: h.read8("wYCoord") == 7, "Dojo entrance auto-walk", 600)
-        self.assertTrue(
-            h.event_is_set(events["EVENT_AUTOWALKED_INTO_FIGHTING_DOJO"])
-        )
+        # The player stays on the arrival tile until they move by hand.
+        h.tick(90)
+        self.assertEqual((h.read8("wXCoord"), h.read8("wYCoord")), (4, 11))
+        self.assertEqual(h.read8("hIsInBattle"), 0)
+        self.assertEqual(h.read8("hJoyIgnore"), 0)
+        self.assertEqual(h.read8("wFightingDojoCurScript"), 0)
+        h.move_tile("down")
+        self.assertEqual(h.read8("hCurMap"), dojo)
+        self.assertEqual(h.read8("wYCoord"), 11)
+
+        h.pyboy.button_press("up")
+        h.wait_until(lambda: h.read8("wYCoord") == 10, "manual Dojo entry", 90)
+        h.pyboy.button_release("up")
+        h.tick(30)
+        self.assertEqual((h.read8("wXCoord"), h.read8("wYCoord")), (4, 10))
 
 
 class RouteContractSmokeTest(HarnessTestCase):

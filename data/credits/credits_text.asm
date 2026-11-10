@@ -72,6 +72,8 @@ CreditsTextPointers:
 	dw CredRRSkidMarc
 	dw CredRRHalo
 	dw CredRRKyle
+	dw CredRRMusicians
+	dw CredRRPun
 	dw CredRRThanks
 	dw CredRRThanks2
 	dw CredRRPret
@@ -287,6 +289,8 @@ CredRRArtists:        credits_string "SPRITE ARTISTS"
 CredRRSkidMarc:       credits_string "SKIDMARC25"
 CredRRHalo:           credits_string "HALOFACTORY"
 CredRRKyle:           credits_string "KYLE GLOR"
+CredRRMusicians:      credits_string "MUSICIANS"
+CredRRPun:            credits_string "PUN"
 CredRRThanks:         credits_string "BUILT FROM WORK"
 CredRRThanks2:        credits_string "IN THESE PROJECTS"
 CredRRPret:           credits_string "PRET POKERED"

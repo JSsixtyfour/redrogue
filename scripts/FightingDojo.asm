@@ -11,7 +11,7 @@ FightingDojo_Script:
 	; Stage events are run-zone bits, so clear this visit's state explicitly
 	; (the endless-mode revisit fallback can bring the player back).
 	ResetEventRange EVENT_BEAT_KARATE_MASTER, EVENT_BEAT_FIGHTING_DOJO_TRAINER_3
-	ResetEvents EVENT_DEFEATED_FIGHTING_DOJO, EVENT_AUTOWALKED_INTO_FIGHTING_DOJO
+	ResetEvent EVENT_DEFEATED_FIGHTING_DOJO
 	SetEvent EVENT_FIGHTING_DOJO_VISITED ; once per run (MiniBossIsMapVisited)
 
 	; Roll which of the three Dojo #MON is NOT offered (0-2), stored in two
@@ -31,12 +31,17 @@ FightingDojo_Script:
 
 	farcall Random_Item_Selection
 	call FightingDojoShowRandomItem
-	farcall RogueRefresh
+	call FightingDojoInitRewards
 	farcall MiniBossApplyStageTrainer
 	xor a ; SCRIPT_FIGHTINGDOJO_DEFAULT
 	ld [wFightingDojoCurScript], a
 
 .normal
+	; Older in-room saves can still carry the previous stage's third offer.
+	ld a, [wRoguePokemon3]
+	and a
+	call nz, FightingDojoInitRewards
+	call FightingDojoShowOrHideExitBlock
 	call EnableAutoTextBoxDrawing
 	ld hl, FightingDojoTrainerHeaders
 	ld de, FightingDojo_ScriptPointers
@@ -69,33 +74,44 @@ FightingDojoResetScripts:
 
 FightingDojo_ScriptPointers:
 	def_script_pointers
-	dw_const FightingDojoGateScript,                   SCRIPT_FIGHTINGDOJO_DEFAULT
+	dw_const FightingDojoDefaultScript,                SCRIPT_FIGHTINGDOJO_DEFAULT
 	dw_const DisplayEnemyTrainerTextAndStartBattle,    SCRIPT_FIGHTINGDOJO_START_BATTLE
 	dw_const EndTrainerBattle,                         SCRIPT_FIGHTINGDOJO_END_BATTLE
 	dw_const FightingDojoKarateMasterPostBattleScript, SCRIPT_FIGHTINGDOJO_KARATE_MASTER_POST_BATTLE
-	dw_const FightingDojoPlayerIsMovingScript,         SCRIPT_FIGHTINGDOJO_PLAYER_IS_MOVING
+	dw FightingDojoCancelLegacyEntryWalk ; script 4 in older saves
 
-; The door is both the arrival and the exit. Its header warps are
-; WARP_NO_RETURN, so until the master falls the entrance auto-walk and the
-; "no turning back" lock apply; after that the door is pointed at the lobby
-; (rewritten every tick, so a header reload can't undo it).
-FightingDojoGateScript:
+FightingDojoShowOrHideExitBlock:
+	GymExitBlock EVENT_BEAT_KARATE_MASTER, $24, $74, 2, 0
+
+FightingDojoInitRewards:
+	ld hl, wRogueFlagsBitfield
+	res BIT_ROGUE_TRADE_ACTIVE, [hl]
+	ResetEvent EVENT_GOT_ROGUE_POKEMON
+	CheckEvent EVENT_DEFEATED_FIGHTING_DOJO
+	jr z, .publish
+	SetEvent EVENT_GOT_ROGUE_POKEMON ; preserve a claim from an older save
+.publish
+	ld e, 0
+	call FightingDojoResolveRewardSpecies
+	ld [wRoguePokemon1], a
+	ld e, 1
+	call FightingDojoResolveRewardSpecies
+	ld [wRoguePokemon2], a
+	xor a
+	ld [wRoguePokemon3], a
+	ld [wRoguePokemonForm1], a
+	ld [wRoguePokemonForm2], a
+	farjp RogueRefresh
+
+FightingDojoResolveRewardSpecies:
+	farcall KarateDojoRewardSpecies
+	farcall BridgeResolveEvolveSpeciesFar
+	ld a, e
+	ret
+
+FightingDojoDefaultScript:
 	CheckEvent EVENT_BEAT_KARATE_MASTER
-	jp z, FightingDojoDefaultScript
-	ld a, INDIGO_PLATEAU_LOBBY
-	ld [wWarpEntries + 3], a    ; warp 0 destination map
-	ld [wWarpEntries + 7], a    ; warp 1 destination map
-	jp CheckFightingMapTrainers
-
-	RogueAutoWalkScripts FightingDojo, PAD_UP, FightingDojoMasterApproachScript, EVENT_AUTOWALKED_INTO_FIGHTING_DOJO, TEXT_FIGHTINGDOJO_NO_TURNING_BACK, SCRIPT_FIGHTINGDOJO_PLAYER_IS_MOVING, wFightingDojoCurScript
-
-FightingDojoEntranceCoords:
-	dbmapcoord 4, 11
-	dbmapcoord 5, 11
-	db -1
-
-FightingDojoNoCoords:
-	db -1
+	ret nz
 
 ; Vanilla: stepping beside the master at (4, 3) makes him turn and talk.
 FightingDojoMasterApproachScript:
@@ -126,6 +142,14 @@ FightingDojoMasterApproachScript:
 	call DisplayTextID
 	ret
 
+FightingDojoCancelLegacyEntryWalk:
+	xor a
+	ldh [hSimulatedJoypadStatesIndex], a
+	ld [wSimulatedJoypadStatesEnd], a
+	ld hl, wStatusFlags5
+	res BIT_SCRIPTED_MOVEMENT_STATE, [hl]
+	jp FightingDojoResetScripts
+
 FightingDojoKarateMasterPostBattleScript:
 	ldh a, [hIsInBattle]
 	cp $ff
@@ -144,6 +168,9 @@ FightingDojoKarateMasterPostBattleScript:
 	ld a, PAD_CTRL_PAD
 	ldh [hJoyIgnore], a
 	SetEventRange EVENT_BEAT_KARATE_MASTER, EVENT_BEAT_FIGHTING_DOJO_TRAINER_3
+	call FightingDojoShowOrHideExitBlock.update
+	CheckEvent EVENT_GOT_ROGUE_POKEMON
+	jp nz, FightingDojoResetScripts
 	ld a, TEXT_FIGHTINGDOJO_KARATE_MASTER_REWARD
 	ldh [hTextID], a
 	call DisplayTextID
@@ -153,7 +180,7 @@ FightingDojoKarateMasterPostBattleScript:
 	ld [wCurMapScript], a
 	ret
 
-; The first entries must be the objects' own texts in slot order (1-6), so
+; The first entries must be the objects' own texts in slot order, so
 ; the script-fired ids below sit past wNumSprites (DisplayTextID reroute).
 FightingDojo_TextPointers:
 	def_text_pointers
@@ -161,28 +188,27 @@ FightingDojo_TextPointers:
 	dw_const FightingDojoBlackbelt1Text,         TEXT_FIGHTINGDOJO_BLACKBELT1
 	dw_const FightingDojoBlackbelt2Text,         TEXT_FIGHTINGDOJO_BLACKBELT2
 	dw_const FightingDojoBlackbelt3Text,         TEXT_FIGHTINGDOJO_BLACKBELT3
-	dw_const FightingDojoBlackbelt4Text,         TEXT_FIGHTINGDOJO_BLACKBELT4
+	dw_const FightingDojoBoulderText,            TEXT_FIGHTINGDOJO_WEST_BOULDER
 	dw_const RandomPickUpItemText,               TEXT_FIGHTINGDOJO_RANDOM_ITEM
+	dw_const FightingDojoRewardBall1Text,        TEXT_FIGHTINGDOJO_REWARD_BALL_1
+	dw_const FightingDojoRewardBall2Text,        TEXT_FIGHTINGDOJO_REWARD_BALL_2
+	dw_const FightingDojoBoulderText,            TEXT_FIGHTINGDOJO_EAST_BOULDER
 	dw_const FightingDojoKarateMasterRewardText, TEXT_FIGHTINGDOJO_KARATE_MASTER_REWARD
-	dw_const FightingDojoNoTurningBackText,      TEXT_FIGHTINGDOJO_NO_TURNING_BACK
 
 FightingDojoTrainerHeaders:
 	def_trainers 2
 FightingDojoTrainerHeader0:
-	trainer EVENT_BEAT_FIGHTING_DOJO_TRAINER_0, 4, FightingDojoBlackbelt1BattleText, FightingDojoBlackbelt1EndBattleText, FightingDojoBlackbelt1AfterBattleText
+	trainer EVENT_BEAT_FIGHTING_DOJO_TRAINER_0, 3, FightingDojoBlackbelt1BattleText, FightingDojoBlackbelt1EndBattleText, FightingDojoBlackbelt1AfterBattleText
 FightingDojoTrainerHeader1:
-	trainer EVENT_BEAT_FIGHTING_DOJO_TRAINER_1, 4, FightingDojoBlackbelt2BattleText, FightingDojoBlackbelt2EndBattleText, FightingDojoBlackbelt2AfterBattleText
+	trainer EVENT_BEAT_FIGHTING_DOJO_TRAINER_1, 3, FightingDojoBlackbelt2BattleText, FightingDojoBlackbelt2EndBattleText, FightingDojoBlackbelt2AfterBattleText
 FightingDojoTrainerHeader2:
 	trainer EVENT_BEAT_FIGHTING_DOJO_TRAINER_2, 3, FightingDojoBlackbelt3BattleText, FightingDojoBlackbelt3EndBattleText, FightingDojoBlackbelt3AfterBattleText
-FightingDojoTrainerHeader3:
-	trainer EVENT_BEAT_FIGHTING_DOJO_TRAINER_3, 3, FightingDojoBlackbelt4BattleText, FightingDojoBlackbelt4EndBattleText, FightingDojoBlackbelt4AfterBattleText
 	db -1 ; end
 
 FightingDojoKarateMasterText:
 	text_asm
-	CheckEvent EVENT_DEFEATED_FIGHTING_DOJO
-	jr nz, .defeated_dojo
-	CheckEventReuseA EVENT_BEAT_KARATE_MASTER
+	push bc
+	CheckEvent EVENT_BEAT_KARATE_MASTER
 	jr nz, .defeated_master
 	ld hl, .Text
 	call PrintText
@@ -205,9 +231,11 @@ FightingDojoKarateMasterText:
 	call PrintText
 	jr .end
 .defeated_master
-	; chose NO THANKS earlier: the same pair is offered again
+	CheckEvent EVENT_GOT_ROGUE_POKEMON
+	jr nz, .defeated_dojo
 	call FightingDojoOfferReward
 .end
+	pop bc
 	jp TextScriptEnd
 
 .Text:
@@ -224,26 +252,50 @@ FightingDojoKarateMasterText:
 
 FightingDojoKarateMasterRewardText:
 	text_asm
+	push bc
 	call FightingDojoOfferReward
+	pop bc
 	jp TextScriptEnd
 
-; The Dojo's own reward menu (custom_functions/karate_dojo.asm). It is NOT the
-; bridge gift system and touches none of its state.
 FightingDojoOfferReward:
 	ld hl, .IWillGiveYouAPokemonText
 	call PrintText
-	farcall KarateDojoRewardMenu ; carry = a #MON was given
-	ret nc
-	SetEvent EVENT_DEFEATED_FIGHTING_DOJO
-	ret
+	farjp KarateDojoRewardMenu
 
 .IWillGiveYouAPokemonText:
 	text_far _FightingDojoKarateMasterIWillGiveYouAPokemonText
 	text_end
 
-FightingDojoNoTurningBackText:
-	text_far _NoTurningBackText
+FightingDojoBoulderText:
+	text_far _IgasDojoBoulderText
 	text_end
+
+FightingDojoRewardBall1Text:
+	text_asm
+	push bc
+	ld e, 1
+	call KarateDojoChooseReward
+	pop bc
+	jp TextScriptEnd
+
+FightingDojoRewardBall2Text:
+	text_asm
+	push bc
+	ld e, 2
+	call KarateDojoChooseReward
+	pop bc
+	jp TextScriptEnd
+
+; e = offer slot (1-2), from a ball or the Master's menu.
+KarateDojoChooseReward::
+	ld a, e
+	cp 1
+	jr nz, .second
+	ld d, TOGGLE_ROGUE_REWARD_POKEBALL_1
+	farjp Rogue_Reward_Script_PokeballText_1.noTrade
+.second
+	ld d, TOGGLE_ROGUE_REWARD_POKEBALL_2
+	farjp Rogue_Reward_Script_PokeballText_2
 
 FightingDojoBlackbelt1Text:
 	text_asm
@@ -297,22 +349,4 @@ FightingDojoBlackbelt3EndBattleText:
 
 FightingDojoBlackbelt3AfterBattleText:
 	text_far _FightingDojoBlackbelt3AfterBattleText
-	text_end
-
-FightingDojoBlackbelt4Text:
-	text_asm
-	ld hl, FightingDojoTrainerHeader3
-	call TalkToTrainer
-	jp TextScriptEnd
-
-FightingDojoBlackbelt4BattleText:
-	text_far _FightingDojoBlackbelt4BattleText
-	text_end
-
-FightingDojoBlackbelt4EndBattleText:
-	text_far _FightingDojoBlackbelt4EndBattleText
-	text_end
-
-FightingDojoBlackbelt4AfterBattleText:
-	text_far _FightingDojoBlackbelt4AfterBattleText
 	text_end

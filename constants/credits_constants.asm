@@ -72,6 +72,8 @@
 	const CRED_RR_SKIDMARC
 	const CRED_RR_HALO
 	const CRED_RR_KYLE
+	const CRED_RR_MUSICIANS
+	const CRED_RR_PUN
 	const CRED_RR_THANKS
 	const CRED_RR_THANKS_2
 	const CRED_RR_PRET

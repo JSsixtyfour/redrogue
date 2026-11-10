@@ -18,21 +18,7 @@ PewterGym_Script:
 	ret
     
 BrockShowOrHideExitBlock:
-; Blocks or clears the exit to the next room.
-	ld hl, wCurrentMapScriptFlags
-	bit BIT_CUR_MAP_LOADED_1, [hl]
-	res BIT_CUR_MAP_LOADED_1, [hl]
-	ret z
-	CheckEvent EVENT_BEAT_BROCK
-	jr z, .blockExitToNextRoom
-	ld a, $5
-	jp .setExitBlock
-.blockExitToNextRoom
-	ld a, $24
-.setExitBlock
-	ld [wNewTileBlockID], a
-	lb bc, 0, 2
-	predef_jump ReplaceTileBlock
+	GymExitBlock EVENT_BEAT_BROCK, $24, $5, 2, 0
 
 ; Authored names; one-time setup runs inline above.
 PewterGymNames:

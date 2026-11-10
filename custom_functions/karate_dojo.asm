@@ -1,10 +1,8 @@
 ; Karate Master mini-boss reward (MINIBOSS_FRAMEWORK.md, KARATE_MINIBOSS_PLAN.md).
 ;
 ; The Dojo offers two of three named special-form #MON and the player takes
-; one. This is deliberately NOT the bridge gift system: no BridgeGiverMapTable
-; row, no wGift1-3, no EVENT_BRIDGE_RECEIVE_GIFT. It borrows the bridge menu's
-; layout and only calls the stateless far helpers (evolve-by-level resolve,
-; special-form finalize, stat recalc).
+; one through the standard reward ball prompt. The Master's menu selects
+; from the same two offers as the physical balls.
 ;
 ; The excluded index (0-2) is rolled by the Dojo's setup block into
 ; EVENT_DOJO_EXCLUDED_BIT0/1; the two offered rows are the other two indices
@@ -33,7 +31,6 @@ KarateDojoRewards:
 
 ; ---------------------------------------------------------------------------
 ; KarateDojoRewardMenu (farcall from the Dojo's text_asm)
-; OUT: carry = a #MON was given (party or box); nc = NO THANKS / B / full.
 ; ---------------------------------------------------------------------------
 KarateDojoRewardMenu::
 	ld hl, wStatusFlags5
@@ -83,19 +80,21 @@ KarateDojoRewardMenu::
 	ldh a, [hCurrentMenuItem]
 	cp KARATE_DOJO_OFFERED
 	jr z, .noChoice
-	call KarateDojoGive          ; carry = given
+	inc a
+	ld e, a
+	farcall KarateDojoChooseReward
 	jr .restore
 .noChoice
 	and a
 .restore
-	pop bc                       ; b = saved hUpdateSpritesEnabled; flags kept
+	pop bc                       ; b = saved hUpdateSpritesEnabled
 	ld a, b
 	ldh [hUpdateSpritesEnabled], a
-	pop bc                       ; b = saved hJoyIgnore; flags kept
+	pop bc                       ; b = saved hJoyIgnore
 	ld a, b
 	ldh [hJoyIgnore], a
 	ld hl, wStatusFlags5
-	res BIT_NO_TEXT_DELAY, [hl]  ; res leaves carry alone
+	res BIT_NO_TEXT_DELAY, [hl]
 	ret
 
 ; ---------------------------------------------------------------------------
@@ -131,10 +130,11 @@ KarateDojoEntryForMenuIndex:
 	jp AddNTimes
 
 ; in: a = base species ; out: a = species evolved to the reward level.
-KarateDojoResolveSpecies:
-	ld e, a
-	farcall BridgeResolveEvolveSpeciesFar ; e in/out; state-free helper
+; e = offer index (0-1). Return the corresponding base species in e.
+KarateDojoRewardSpecies::
 	ld a, e
+	call KarateDojoEntryForMenuIndex
+	ld e, [hl]
 	ret
 
 ; ---------------------------------------------------------------------------
@@ -146,11 +146,15 @@ KarateDojoPlaceNames:
 	cp KARATE_DOJO_OFFERED
 	jr z, .noThanks
 	push bc
-	call KarateDojoEntryForMenuIndex
-	ld a, [hli]                  ; base species
-	push hl
-	call KarateDojoResolveSpecies
+	ld hl, wRoguePokemon1
+	ld b, 0
+	add hl, bc
+	ld a, [hl]
 	ld [wNamedObjectIndex], a
+	ld a, c
+	call KarateDojoEntryForMenuIndex
+	inc hl                       ; skip the base species
+	push hl
 	xor a
 	ld [wFormContextForm], a     ; no stale form context on the name
 	call GetMonName              ; -> wNameBuffer
@@ -211,23 +215,21 @@ KarateDojoPrintDesc:
 	jp PrintText
 
 ; ---------------------------------------------------------------------------
-; in: a = menu index (0-1). Gives the resolved species at the reward level,
-; flags it as a special form, and recalculates a party Hitmonchan so the
-; Mystic stat swap lands immediately (a boxed one recalcs on withdrawal).
-; out: carry = given.
-KarateDojoGive:
-	call KarateDojoEntryForMenuIndex
-	ld a, [hl]                   ; base species
-	call KarateDojoResolveSpecies
-	push af                      ; resolved species
-	xor a
-	ld [wSpawnForm], a           ; a fixed species, never a form
-	farcall GetBridgeRewardMonLevelFar ; e = reward level (state-free)
-	pop af
-	ld b, a
-	ld c, e
-	call GivePokemon
-	ret nc                       ; party and box full
+; After a successful gift, apply the Dojo ability before the standard claim.
+RewardBallPickedUp::
+	ldh a, [hCurMap]
+	cp FIGHTING_DOJO
+	jr nz, .hideBall
+	push de
+	call .dojo
+	pop de
+.hideBall
+	ld a, d
+	ld [wToggleableObjectIndex], a
+	predef HideObject
+	SetEvent EVENT_GOT_ROGUE_POKEMON
+	ret
+.dojo
 	ld e, BRIDGE_MON_FINALIZE_SPECIAL
 	farcall BridgeFinalizeGiftMonFar ; sets BIT_SPECIAL_FORM; de = new struct
 	ld a, [wAddedToParty]
@@ -238,7 +240,7 @@ KarateDojoGive:
 	jr nz, .done
 	farcall BridgeRecalcStatsFar ; de = struct
 .done
-	scf
+	SetEvent EVENT_DEFEATED_FIGHTING_DOJO
 	ret
 
 ; ---------------------------------------------------------------------------

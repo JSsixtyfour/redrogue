@@ -193,6 +193,9 @@ IsObjectHidden:
 	jr z, .checkRewardBit
 	; slot 8+ on a wild-area map (none declare one today): fall through
 .checkMaybeGenericRoguePB
+	ldh a, [hCurMap]
+	cp FIGHTING_DOJO
+	jr z, .dojoRewardBalls
 	call GetCurMapStageClass        ; preserves bc
 	bit 1, a                        ; rogue stage map?
 	jr z, .normalCheck              ; Z set = not a stage map
@@ -239,6 +242,15 @@ IsObjectHidden:
 .hidden
 	ldh [hIsToggleableObjectOff], a
 	ret
+.dojoRewardBalls
+	ld a, b
+	sub FIGHTINGDOJO_REWARD_BALL_1
+	cp 2
+	jr nc, .normalCheck
+	ASSERT FIGHTINGDOJO_REWARD_BALL_2 == FIGHTINGDOJO_REWARD_BALL_1 + 1
+	add TOGGLE_ROGUE_REWARD_POKEBALL_1
+	ld c, a
+	jr .checkRewardBit
 
 ; IsRogueStageMap and RogueStageMapTable live in the rogue bank
 ; (custom_functions/random_stage_selection.asm) so they share one table.

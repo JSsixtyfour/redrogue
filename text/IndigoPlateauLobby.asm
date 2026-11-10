@@ -1,8 +1,8 @@
 ; Lobby Psychic (engine/events/lobby_psychic.asm). The leader's name is in
 ; wNameBuffer and the price in wPriceTemp when these print.
 _PsychicOfferText::
-	text "I sense a GYM"
-	line "beyond that door…"
+	text "A GYM challenge"
+	line "lies ahead."
 
 	para "For ¥@"
 	text_bcd wPriceTemp, 3 | LEADING_ZEROES | LEFT_ALIGN
@@ -11,13 +11,13 @@ _PsychicOfferText::
 	done
 
 _PsychicRefuseText::
-	text "The spirits can"
-	line "wait, then."
+	text "Very well, good"
+	line "luck."
 	done
 
 _PsychicNoMoneyText::
-	text "The spirits don't"
-	line "work for free."
+	text "You do not have"
+	line "they money."
 	done
 
 _PsychicRevealText::
@@ -35,13 +35,14 @@ _PsychicAlreadyText::
 	text "@"
 	text_ram wNameBuffer
 	text " awaits"
-	line "you. The spirits"
-	cont "have spoken."
+	line "you. I have seen"
+	line "it."
 	done
 
 _PsychicNoGymText::
-	text "The spirits are"
-	line "quiet today…"
+	text "Farewell traveler."
+	line "Your path is a"
+	cont "mystery to me now."
 	done
 
 ; Door 1's sign on a gym cycle once foresight is bought (LobbyDoor1SignText).
@@ -53,40 +54,40 @@ _WitchIntroText::
 	done
 
 _WitchChallenge1Text::
-	text "This zone hands"
-	line "out no #MON"
+	text "No reward #MON"
+	line "in the next door"
 	prompt
 
 _WitchChallenge2Text::
-	text "No item in"
-	line "this zone"
+	text "No item in the"
+	line "next door"
 	prompt
 
 _WitchChallenge3Text::
-	text "No money from"
-	line "battles this zone"
+	text "No trainer payouts"
+	line "from this door"
 	prompt
 
 _WitchChallenge4Text::
-	text "Worse luck for"
-	line "reward #MON"
-	cont "this zone"
+	text "Less rare reward"
+	line "#MON for this"
+	cont "door"
 	prompt
 
 _WitchChallenge5Text::
-	text "Foes will be"
-	line "tougher, higher"
-	cont "level"
+	text "Trainers will have"
+	line "higher level"
+	cont "#MON"
 	prompt
 
 _WitchChallenge6Text::
-	text "Foes will be"
-	line "rarer breeds"
+	text "Trainers will have"
+	line "rarer #MON"
 	prompt
 
 ; wPartyLimit is precomputed at roll time (WitchPrepChallengeParams).
 _WitchChallenge7Text::
-	text "Enter this stage"
+	text "Enter this door"
 	line "with at most @"
 	text_decimal wPartyLimit, 1, 1
 	text_start ; back to characters: a bare `cont` here runs as sound commands
@@ -114,9 +115,9 @@ _WitchChallenge8Text::
 	prompt
 
 _WitchChallenge9Text::
-	text "Your whole team"
-	line "will be poisoned"
-	cont "the whole zone"
+	text "PARTY always be"
+	line "poisoned in this"
+	cont "door."
 	prompt
 
 ; wBattleTurnLimit is precomputed at roll time (WitchPrepChallengeParams).
@@ -129,33 +130,28 @@ _WitchChallenge10Text::
 	prompt
 
 _WitchChallenge11Text::
-	text "This zone's boss"
-	line "keeps LEGENDARY"
-	cont "company"
+	text "The LEADER keeps a"
+	line "LEGENDARY #MON"
 	prompt
 
 _WitchChallenge12Text::
-	text "Every hit you"
-	line "land hurts you"
-	cont "too"
+	text "Recoil for all"
+	line "your attacks"
 	prompt
 
 _WitchChallenge13Text::
-	text "Step into my"
-	line "GAMBLER'S"
-	cont "PARADISE"
+	text "Face a group of"
+	line "risky GAMBLERS"
 	prompt
 
 _WitchChallenge14Text::
 	text "Repeat a move and"
-	line "my bargain bites"
-	cont "back."
+	line "take damage"
 	prompt
 
 _WitchChallenge15Text::
-	text "No medicine for"
-	line "you outside of"
-	cont "battle."
+	text "No healing items"
+	line "in this door"
 	prompt
 
 _WitchChallenge16Text::
@@ -239,9 +235,10 @@ _WitchPrize7Text::
 	done
 
 _WitchPrize8Text::
-	text "Win and foes hit"
-	line "your weak spots"
-	cont "softer this run"
+	text "Win and your foes'"
+	line "SUPER EFFECTIVE"
+	cont "hits are weaker"
+	cont "this run"
 
 	para "Do we have a"
 	line "bargain?"
@@ -258,9 +255,9 @@ _WitchPrize9Text::
 	done
 
 _WitchPrize10Text::
-	text "Win and shops"
-	line "cut you a deal"
-	cont "for this run"
+	text "Win and prices are"
+	line "10% cheaper this"
+	cont "run"
 
 	para "Do we have a"
 	line "bargain?"
@@ -269,24 +266,25 @@ _WitchPrize10Text::
 ; Challenge 11's door line (WitchLegendaryDoorLine) and her withdrawal when the
 ; door dice moved every eligible gym away (WitchLegendaryOfferCheck).
 _WitchLegendaryDoor1Text::
-	text "Its master waits"
-	line "behind DOOR 1."
-	para "Take DOOR 2 and"
-	line "the bargain"
-	cont "breaks!"
+	text "Your challenge is"
+	line "behind DOOR 1"
+
+	para "Enter DOOR 2 and"
+	line "our deal is off."
 	prompt
 
 _WitchLegendaryDoor2Text::
-	text "Its master waits"
-	line "behind DOOR 2."
-	para "Take DOOR 1 and"
-	line "the bargain"
-	cont "breaks!"
+	text "Your challenge is"
+	line "behind DOOR 2"
+
+	para "Enter DOOR 1 and"
+	line "our deal is off."
 	prompt
 
 _WitchLegendaryEitherDoorText::
-	text "Either door leads"
-	line "to its master."
+	text "You may choose"
+	line "either door for"
+	cont "your challenge."
 	prompt
 
 _WitchLegendaryWithdrawText::
@@ -438,168 +436,168 @@ _PCPokemonSalesmanNoRefundsText::
 _LobbyDoor1RivalHealingText::
 	text_far _LobbyDoor1InlineHeadingText
 	text "RIVAL"
-	line "ENCOUNTER"
+	line "RARITY BOOST"
 	cont "HEALING ITEMS@"
 	text_end
 
 _LobbyDoor1RivalStatText::
 	text_far _LobbyDoor1InlineHeadingText
 	text "RIVAL"
-	line "ENCOUNTER"
+	line "RARITY BOOST"
 	cont "STAT BOOSTS@"
 	text_end
 
 _LobbyDoor1RivalTMText::
 	text_far _LobbyDoor1InlineHeadingText
 	text "RIVAL"
-	line "ENCOUNTER"
+	line "RARITY BOOST"
 	cont "TM ITEMS@"
 	text_end
 
 _LobbyDoor1RivalMoneyText::
 	text_far _LobbyDoor1InlineHeadingText
 	text "RIVAL"
-	line "ENCOUNTER"
+	line "RARITY BOOST"
 	cont "MONEY@"
 	text_end
 
 _LobbyDoor1GiovanniHealingText::
 	text_far _LobbyDoor1InlineHeadingText
 	text "GIOVANNI"
-	line "ENCOUNTER"
+	line "RARITY BOOST"
 	cont "HEALING ITEMS@"
 	text_end
 
 _LobbyDoor1GiovanniStatText::
 	text_far _LobbyDoor1InlineHeadingText
 	text "GIOVANNI"
-	line "ENCOUNTER"
+	line "RARITY BOOST"
 	cont "STAT BOOSTS@"
 	text_end
 
 _LobbyDoor1GiovanniTMText::
 	text_far _LobbyDoor1InlineHeadingText
 	text "GIOVANNI"
-	line "ENCOUNTER"
+	line "RARITY BOOST"
 	cont "TM ITEMS@"
 	text_end
 
 _LobbyDoor1GiovanniMoneyText::
 	text_far _LobbyDoor1InlineHeadingText
 	text "GIOVANNI"
-	line "ENCOUNTER"
+	line "RARITY BOOST"
 	cont "MONEY@"
 	text_end
 
 _LobbyDoor1KarateHealingText::
 	text_far _LobbyDoor1HeadingText
 	text "KARATE MASTER"
-	cont "ENCOUNTER"
+	cont "RARITY BOOST"
 	cont "HEALING ITEMS@"
 	text_end
 
 _LobbyDoor1KarateStatText::
 	text_far _LobbyDoor1HeadingText
 	text "KARATE MASTER"
-	cont "ENCOUNTER"
+	cont "RARITY BOOST"
 	cont "STAT BOOSTS@"
 	text_end
 
 _LobbyDoor1KarateTMText::
 	text_far _LobbyDoor1HeadingText
 	text "KARATE MASTER"
-	cont "ENCOUNTER"
+	cont "RARITY BOOST"
 	cont "TM ITEMS@"
 	text_end
 
 _LobbyDoor1KarateMoneyText::
 	text_far _LobbyDoor1HeadingText
 	text "KARATE MASTER"
-	cont "ENCOUNTER"
+	cont "RARITY BOOST"
 	cont "MONEY@"
 	text_end
 
 _LobbyDoor2RivalHealingText::
 	text_far _LobbyDoor2InlineHeadingText
 	text "RIVAL"
-	line "ENCOUNTER"
+	line "RARITY BOOST"
 	cont "HEALING ITEMS@"
 	text_end
 
 _LobbyDoor2RivalStatText::
 	text_far _LobbyDoor2InlineHeadingText
 	text "RIVAL"
-	line "ENCOUNTER"
+	line "RARITY BOOST"
 	cont "STAT BOOSTS@"
 	text_end
 
 _LobbyDoor2RivalTMText::
 	text_far _LobbyDoor2InlineHeadingText
 	text "RIVAL"
-	line "ENCOUNTER"
+	line "RARITY BOOST"
 	cont "TM ITEMS@"
 	text_end
 
 _LobbyDoor2RivalMoneyText::
 	text_far _LobbyDoor2InlineHeadingText
 	text "RIVAL"
-	line "ENCOUNTER"
+	line "RARITY BOOST"
 	cont "MONEY@"
 	text_end
 
 _LobbyDoor2GiovanniHealingText::
 	text_far _LobbyDoor2InlineHeadingText
 	text "GIOVANNI"
-	line "ENCOUNTER"
+	line "RARITY BOOST"
 	cont "HEALING ITEMS@"
 	text_end
 
 _LobbyDoor2GiovanniStatText::
 	text_far _LobbyDoor2InlineHeadingText
 	text "GIOVANNI"
-	line "ENCOUNTER"
+	line "RARITY BOOST"
 	cont "STAT BOOSTS@"
 	text_end
 
 _LobbyDoor2GiovanniTMText::
 	text_far _LobbyDoor2InlineHeadingText
 	text "GIOVANNI"
-	line "ENCOUNTER"
+	line "RARITY BOOST"
 	cont "TM ITEMS@"
 	text_end
 
 _LobbyDoor2GiovanniMoneyText::
 	text_far _LobbyDoor2InlineHeadingText
 	text "GIOVANNI"
-	line "ENCOUNTER"
+	line "RARITY BOOST"
 	cont "MONEY@"
 	text_end
 
 _LobbyDoor2KarateHealingText::
 	text_far _LobbyDoor2HeadingText
 	text "KARATE MASTER"
-	cont "ENCOUNTER"
+	cont "RARITY BOOST"
 	cont "HEALING ITEMS@"
 	text_end
 
 _LobbyDoor2KarateStatText::
 	text_far _LobbyDoor2HeadingText
 	text "KARATE MASTER"
-	cont "ENCOUNTER"
+	cont "RARITY BOOST"
 	cont "STAT BOOSTS@"
 	text_end
 
 _LobbyDoor2KarateTMText::
 	text_far _LobbyDoor2HeadingText
 	text "KARATE MASTER"
-	cont "ENCOUNTER"
+	cont "RARITY BOOST"
 	cont "TM ITEMS@"
 	text_end
 
 _LobbyDoor2KarateMoneyText::
 	text_far _LobbyDoor2HeadingText
 	text "KARATE MASTER"
-	cont "ENCOUNTER"
+	cont "RARITY BOOST"
 	cont "MONEY@"
 	text_end
 

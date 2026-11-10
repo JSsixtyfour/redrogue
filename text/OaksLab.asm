@@ -88,9 +88,10 @@ _OaksLabOakChooseMonText::
 	done
 
 _OaksLabOakGoodLuckText::
-	text "OAK: Good luck on"
-	line "your journey,"
-	cont "<PLAYER>!"
+	text "OAK: <PLAYER>,"
+	line "raise your young"
+	cont "#MON by making"
+	cont "it fight!"
 	done
 
 _OaksLabGirlText::
@@ -109,18 +110,18 @@ _OaksLabScientistText::
 	done
 
 _OaksLabOakGiftIntroText::
-	text "OAK: Ah,"
-	line "<PLAYER>! Good"
-	cont "timing."
-
-	para "Take this before"
-	line "you go!"
+	text "OAK: <PLAYER>!"
+	line "I have something"
+	cont "special for you."
 	prompt
 
 _OaksLabOakAlreadyGotText::
-	text "OAK: Study hard,"
-	line "and take care of"
-	cont "your #MON!"
+	text "OAK: Come see me"
+	line "sometimes."
+
+	para "I want to know how"
+	line "your #DEX is"
+	cont "coming along."
 	done
 
 _OaksLabOakNormalText::

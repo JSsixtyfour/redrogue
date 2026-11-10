@@ -237,13 +237,15 @@ class CreditsMenuRollTest(unittest.TestCase):
             return [0x7f if char == " " else ord(char) - ord("A") + 0x80
                     for char in value]
 
-        for screen_index, y, value in ((2, 6, "BUILT FROM WORK"),
-                                       (2, 8, "IN THESE PROJECTS"),
-                                       (12, 8, "POKEFAN MARCEL"),
-                                       (14, 6, "KANTO"),
-                                       (14, 8, "EXPANSION PAK"),
-                                       (14, 10, "MEMENTOMARTHA"),
-                                       (14, 12, "ALBATROSS")):
+        for screen_index, y, value in ((2, 6, "MUSICIANS"),
+                                       (2, 8, "PUN"),
+                                       (3, 6, "BUILT FROM WORK"),
+                                       (3, 8, "IN THESE PROJECTS"),
+                                       (13, 8, "POKEFAN MARCEL"),
+                                       (15, 6, "KANTO"),
+                                       (15, 8, "EXPANSION PAK"),
+                                       (15, 10, "MEMENTOMARTHA"),
+                                       (15, 12, "ALBATROSS")):
             row = screens[screen_index][y * 20:(y + 1) * 20]
             start = (20 - len(value)) // 2
             self.assertEqual(row, [0x7f] * start + encoded(value)

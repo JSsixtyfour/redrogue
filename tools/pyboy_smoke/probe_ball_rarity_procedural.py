@@ -3,7 +3,7 @@
 For the cave, forest, cemetery, Facility, Fighting Dojo and Game Corner: enter the map for real, then check
 wBallRarityPal against the tier of the item each ball's pickup would hand over
 (RandomPickUpItem: cemetery slot 1 -> wRogueItem; wild-area slots 2-5 ->
-wRogueItem + 2*(slot-2)). Facility's fake balls (slots 6-9) must stay 0. Then
+wRogueItem + 2*(slot-2)). Check the Dojo's two Pokémon offers too. Then
 zero the cache and re-run ProcStageLoadDispatch (what a battle return or
 Continue does) and require the identical cache. Cache-level only: the
 renderer and palette paths are covered by probe_ball_rarity.py.
@@ -23,6 +23,10 @@ SPRITES = parse_rgbds_constants(REPO / "constants" / "sprite_constants.asm")
 STD = 7  # untiered balls are the red OBJ palette 7
 MAPS = parse_map_constants(REPO / "constants" / "map_constants.asm")
 ITEMS = parse_rgbds_constants(REPO / "constants" / "item_constants.asm")
+SPECIES = parse_rgbds_constants(REPO / "constants" / "pokemon_constants.asm")
+DOJO_TIERS = {SPECIES[name]: tier for name, tier in (
+    ("MACHOP", 1), ("MACHOKE", 1), ("HITMONCHAN", 1), ("HITMONLEE", 2),
+)}
 ID_TO_NAME = {v: k for v, k in names_by_value(ITEMS).items() if v < 0xC4}
 _const = (REPO / "constants" / "item_constants.asm").read_text()
 for _i, _n in enumerate(re.findall(r"^	add_hm (\w+)", _const, re.M)):
@@ -56,7 +60,7 @@ CASES = [
     ("forest", "PROCEDURAL_FOREST", "wild"),
     ("cemetery", "PROCEDURAL_CEMETERY_1", "cem"),
     ("facility", "PROCEDURAL_FACILITY", "wild"),
-    ("fighting dojo", "FIGHTING_DOJO", "item6"),  # .normalPickup maps, one item ball at slot 6
+    ("fighting dojo", "FIGHTING_DOJO", "item6"),
     ("game corner", "GAME_CORNER", "item6"),
 ]
 
@@ -83,6 +87,9 @@ def run(label, map_name, kind):
             slot(1, item_tier(items[0]))
         elif kind == "item6":
             slot(6, item_tier(items[0]))
+            if map_name == "FIGHTING_DOJO":
+                for index, species in enumerate(h.read_bytes("wRoguePokemon1", 2)):
+                    slot(7 + index, DOJO_TIERS[species])
         else:
             for i in range(4):
                 slot(2 + i, item_tier(items[i]))
@@ -109,3 +116,4 @@ for case in CASES:
 print("FAILURES:" if all_failures else "ALL CHECKS PASSED")
 for f in all_failures:
     print("  " + f)
+sys.exit(bool(all_failures))

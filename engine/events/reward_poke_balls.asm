@@ -53,12 +53,7 @@ Rogue_Reward_Script_PokeballText_1::
 	call GivePokemon
     pop de
 	jr nc, .done
-    
-    ld a, d
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-    
-    SetEvent EVENT_GOT_ROGUE_POKEMON
+	farjp RewardBallPickedUp
 
     .done
     ret
@@ -147,12 +142,7 @@ Rogue_Reward_Script_PokeballText_2::
 	call GivePokemon
     pop de
 	jr nc, .done
-    
-	ld a, d
-	ld [wToggleableObjectIndex], a
-	predef HideObject
-    
-    SetEvent EVENT_GOT_ROGUE_POKEMON
+	farjp RewardBallPickedUp
     
     .done
 	ret

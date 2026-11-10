@@ -95,7 +95,7 @@ RefreshBallRarityCache::
 	jr z, .pokemonBalls
 	cp OAKS_LAB              ; starter balls: wRoguePokemon1-3 too
 	jr z, .pokemonBalls
-	; Special maps with ONE item ball at slot 6 that are not in RogueStageMapTable:
+	; These maps have an item ball at slot 6 outside RogueStageMapTable.
 	; RandomPickUpItem's .normalPickup hands over wRogueItem. They roll it the same
 	; way as a stage (Random_Item_Selection, then RogueRefresh), so honour d.
 	cp FIGHTING_DOJO
@@ -108,7 +108,14 @@ RefreshBallRarityCache::
 	ret z
 	ld a, [wRogueItem]
 	ld c, BALL_RARITY_ITEM_SLOT
-	jr BallRarityItemSlot
+	call BallRarityItemSlot
+	ldh a, [hCurMap]
+	cp FIGHTING_DOJO
+	ret nz
+	ld c, FIGHTINGDOJO_REWARD_BALL_1
+	ld b, 2
+	ASSERT FIGHTINGDOJO_REWARD_BALL_2 == FIGHTINGDOJO_REWARD_BALL_1 + 1
+	jr .readRewardSlots
 .notItemMap
 	call GetCurMapStageClass ; preserves bc/de
 	bit 1, a                 ; rogue stage map? (Facility is not one)
@@ -143,8 +150,9 @@ RefreshBallRarityCache::
 	ld a, d
 	and a
 	ret z
-	ld hl, wRoguePokemon1
 	ld b, 3
+.readRewardSlots
+	ld hl, wRoguePokemon1
 .rewardLoop
 	ld a, [hli]
 	push hl
