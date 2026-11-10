@@ -1613,7 +1613,7 @@ WardenGift2_Text: db "KANGASKHAN@"
 WardenGift3_Text: db "SURF HM@"
 WardenGift4_Text: db "TAUROS@"
 WardenGift5_Text: db "BIG NUGGET@"
-WardenGift6_Text: db "ATTACK BADGE@"
+WardenGift6_Text: db "WILD STRENGTH@"
 WardenGift7_Text: db "STAGGERING BLOWS@"
 WardenGift8_Text: db "DETOX@"
 
@@ -1639,7 +1639,7 @@ TrashedGift2_Text: db "SQUIRTLE@"
 TrashedGift3_Text: db "BODY SLAM TM@"
 TrashedGift4_Text: db "TAKE DOWN TM@"
 TrashedGift5_Text: db "TARGET PRACTICE@"
-TrashedGift6_Text: db "DEFENSE BADGE@"
+TrashedGift6_Text: db "DEFENSE TRAINING@"
 TrashedGift7_Text: db "BODY ARMOR@"
 
 MomGift1_Text: db "FULL RESTORE@"
@@ -1670,7 +1670,7 @@ FloraGift9_Text: db "LEAF STONE@"
 
 OaksLabGift4_Text: db "LIGHT BALL PIKA@"
 OaksLabGift5_Text: db "EEVEE@"
-OaksLabGift6_Text: db "RESEARCH GRANT@"
+OaksLabGift6_Text: db "MIDAS TOUCH@"
 OaksLabGift7_Text: db "EXPERT TRAINING@"
 
 ; ---------------------------------------------------------------------------
