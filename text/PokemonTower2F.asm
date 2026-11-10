@@ -57,18 +57,61 @@ _PokemonTower2FChannelerText::
 	done
 
 _PokemonTower2FChanneler1BattleText::
-	text "I can feel the"
-	line "spirits guiding"
-	cont "my #MON!"
+	text "GHOST! No!"
+	line "Kwaaah!"
 	done
 
 _PokemonTower2FChanneler1EndBattleText::
-	text "Oh no…"
-	line "The spirits have"
-	cont "abandoned me..."
+	text "Where"
+	line "is the GHOST?"
 	prompt
 
 _PokemonTower2FChanneler1AfterBattleText::
-	text "This tower is full"
-	line "of lost souls..."
+	text "I must have been"
+	line "dreaming..."
+	done
+
+_PokemonTower2FChanneler2BattleText::
+	text "Huhuhu..."
+	line "Beat me not!"
+	done
+
+_PokemonTower2FChanneler2EndBattleText::
+	text "Huh?"
+	line "Who? What?"
+	prompt
+
+_PokemonTower2FChanneler2AfterBattleText::
+	text "May the departed"
+	line "souls of #MON"
+	cont "rest in peace..."
+	done
+    
+_PokemonTower2FChanneler3BattleText::
+	text "Give...me..."
+	line "your...soul..."
+	done
+
+_PokemonTower2FChanneler3EndBattleText::
+	text "Gasp!"
+	prompt
+
+_PokemonTower2FChanneler3AfterBattleText::
+	text "I was under"
+	line "possession!"
+	done
+    
+_PokemonTower2FChanneler4BattleText::
+	text "Urgah..."
+	line "Urff...."
+	done
+
+_PokemonTower2FChanneler4EndBattleText::
+	text "Whoo!"
+	prompt
+
+_PokemonTower2FChanneler4AfterBattleText::
+	text "I fell to evil"
+	line "spirits despite"
+	cont "my training!"
 	done

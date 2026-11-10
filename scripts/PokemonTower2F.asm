@@ -199,7 +199,7 @@ PokemonTower2F_TextPointers:
 	dw_const PokemonTower2FChanneler1Text, TEXT_POKEMONTOWER2F_CHANNELER1
 	dw_const PokemonTower2FChanneler2Text, TEXT_POKEMONTOWER2F_CHANNELER2
 	dw_const PokemonTower2FChanneler3Text, TEXT_POKEMONTOWER2F_CHANNELER3
-	dw_const PokemonTower2FChanneler5Text, TEXT_POKEMONTOWER2F_CHANNELER5
+	dw_const PokemonTower2FChanneler4Text, TEXT_POKEMONTOWER2F_CHANNELER4
 	dw_const PokemonTower2FChannelerText,  TEXT_POKEMONTOWER2F_CHANNELER
     dw_const RandomPickUpItemText,         TEXT_POKEMONTOWER2F_RANDOM
     dw_const PokemonTower2F_Rogue_Reward_Script_PokeballText_1, TEXT_POKEMONTOWER2F_ROGUE_REWARD_POKEBALL_1
@@ -220,7 +220,7 @@ PokemonTower2FTrainerHeader1:
 PokemonTower2FTrainerHeader2:
 	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_2, 3, PokemonTower2FChanneler3BattleText, PokemonTower2FChanneler3EndBattleText, PokemonTower2FChanneler3AfterBattleText
 PokemonTower2FTrainerHeader3:
-	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_3, 2, PokemonTower2FChanneler5BattleText, PokemonTower2FChanneler5EndBattleText, PokemonTower2FChanneler5AfterBattleText
+	trainer EVENT_BEAT_POKEMON_TOWER_2F_TRAINER_3, 2, PokemonTower2FChanneler4BattleText, PokemonTower2FChanneler4EndBattleText, PokemonTower2FChanneler4AfterBattleText
 	db -1 ; end
 
 ; Slot 1's padding object: never drawn or reachable, so it says nothing.
@@ -245,7 +245,7 @@ PokemonTower2FChanneler3Text:
 	call TalkToTrainer
 	jp TextScriptEnd
 
-PokemonTower2FChanneler5Text:
+PokemonTower2FChanneler4Text:
 	text_asm
 	ld hl, PokemonTower2FTrainerHeader3
 	call TalkToTrainer
@@ -264,30 +264,30 @@ PokemonTower2FChanneler1AfterBattleText:
 	text_end
 
 PokemonTower2FChanneler2BattleText:
-	text_far _PokemonTower2FChanneler1BattleText
+	text_far _PokemonTower2FChanneler2BattleText
 	text_end
 
 PokemonTower2FChanneler2EndBattleText:
-	text_far _PokemonTower2FChanneler1EndBattleText
+	text_far _PokemonTower2FChanneler2EndBattleText
 	text_end
 
 PokemonTower2FChanneler2AfterBattleText:
-	text_far _PokemonTower2FChanneler1AfterBattleText
+	text_far _PokemonTower2FChanneler2AfterBattleText
 	text_end
 
 PokemonTower2FChanneler3BattleText:
-	text_far _PokemonTower2FChanneler1BattleText
+	text_far _PokemonTower2FChanneler3BattleText
 	text_end
 
 PokemonTower2FChanneler3EndBattleText:
-	text_far _PokemonTower2FChanneler1EndBattleText
+	text_far _PokemonTower2FChanneler3EndBattleText
 	text_end
 
 PokemonTower2FChanneler3AfterBattleText:
-	text_far _PokemonTower2FChanneler1AfterBattleText
+	text_far _PokemonTower2FChanneler3AfterBattleText
 	text_end
 
-PokemonTower2FChanneler5BattleText:
+PokemonTower2FChanneler4BattleText:
 	text_asm
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_MINIBOSS_ACTIVE, a
@@ -296,13 +296,13 @@ PokemonTower2FChanneler5BattleText:
 	ld hl, .RivalMiniBoss
 	ret
 .Normal
-	text_far _PokemonTower2FChanneler1BattleText
+	text_far _PokemonTower2FChanneler4BattleText
 	text_end
 .RivalMiniBoss
 	text_far _RivalMiniBossBattleText
 	text_end
 
-PokemonTower2FChanneler5EndBattleText:
+PokemonTower2FChanneler4EndBattleText:
 	text_asm
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_MINIBOSS_ACTIVE, a
@@ -311,13 +311,13 @@ PokemonTower2FChanneler5EndBattleText:
 	ld hl, .RivalMiniBoss
 	ret
 .Normal
-	text_far _PokemonTower2FChanneler1EndBattleText
+	text_far _PokemonTower2FChanneler4EndBattleText
 	text_end
 .RivalMiniBoss
 	text_far _RivalMiniBossEndBattleText
 	text_end
 
-PokemonTower2FChanneler5AfterBattleText:
+PokemonTower2FChanneler4AfterBattleText:
 	; Reward menu only once all four are beaten; otherwise (and after the
 	; reward is claimed) the boss's own line, or the mini-boss's. See
 	; custom_functions/rogue_boss_after_battle.asm.
@@ -434,5 +434,5 @@ PokemonTower2FNoTurningBackText:
 	text_end
 
 PokemonTower2FBossAfterText:
-	text_far _PokemonTower2FChanneler1AfterBattleText
+	text_far _PokemonTower2FChanneler4AfterBattleText
 	text_end
