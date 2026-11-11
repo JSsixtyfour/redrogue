@@ -2,8 +2,13 @@ RestoreScreenTilesAndReloadTilePatterns::
 	call ClearSprites
 	ld a, $1
 	ldh [hUpdateSpritesEnabled], a
-	call ReloadMapSpriteTilePatterns
+	; Restore wTileMap BEFORE ReloadMapSpriteTilePatterns: that routine ends in
+	; UpdateSprites, whose text-box test reads the tile under each sprite. Run
+	; first, it judged the menu being closed (a party menu HP bar under the
+	; player), not the screen coming back, and a sprite under a restored text
+	; box stayed drawn in front of it until the next sprite pass.
 	call LoadScreenTilesFromBuffer2
+	call ReloadMapSpriteTilePatterns
 	call LoadTextBoxTilePatterns
 	; Reveal AFTER the bg map has finished transferring, not before it.
 	;

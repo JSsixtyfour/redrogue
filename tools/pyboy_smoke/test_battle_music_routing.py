@@ -173,6 +173,33 @@ class BattleMusicRoutingTest(HarnessTestCase):
         self.assertEqual(self.song(opponent=OPP["YOUNGSTER"], party=[PIDGEY, MEWTWO],
                                    party_count=1), MUSIC["MUSIC_TRAINER_BATTLE"])
 
+    def test_ho_oh_overrides_all_but_the_finale(self) -> None:
+        ho_oh = MUSIC["MUSIC_HO_OH_BATTLE"]
+        HO_OH, MEWTWO, PIDGEY = SPECIES["HO_OH"], SPECIES["MEWTWO"], SPECIES["PIDGEY"]
+        # wild: any Ho-Oh, ordinary or a Johto stage boss
+        self.assertEqual(self.song(trainer=False, opponent=0, wild_species=HO_OH), ho_oh)
+        self.assertEqual(self.song(trainer=False, opponent=0, wild_species=HO_OH,
+                                   map_name="PROCEDURAL_CAVE_1", talked=True, sprite=1,
+                                   johto=True), ho_oh)
+        # trainers: Ho-Oh anywhere in the party, over gym and Rocket music
+        self.assertEqual(self.song(opponent=OPP["YOUNGSTER"], party=[PIDGEY] * 5 + [HO_OH]),
+                         ho_oh)
+        self.assertEqual(self.song(opponent=OPP["FALKNER"], gym_leader=1, party=[HO_OH]), ho_oh)
+        self.assertEqual(self.song(opponent=OPP["ROCKET"], johto=True, party=[HO_OH]), ho_oh)
+        # Mewtwo wins a party with both, in either order
+        for party in ([HO_OH, MEWTWO], [MEWTWO, HO_OH]):
+            with self.subTest(party=party):
+                self.assertEqual(self.song(opponent=OPP["YOUNGSTER"], party=party),
+                                 MUSIC["MUSIC_MEWTWO_BATTLE"])
+        # the finale keeps its own song
+        self.assertEqual(self.song(opponent=OPP["RIVAL3"], party=[HO_OH]),
+                         MUSIC["MUSIC_FINAL_BATTLE"])
+        self.assertEqual(self.song(opponent=OPP["LANCE"], map_name="CHAMPIONS_ROOM",
+                                   party=[HO_OH]), MUSIC["MUSIC_CHAMPION_BATTLE"])
+        # a stale Ho-Oh past wEnemyPartyCount is not in the party
+        self.assertEqual(self.song(opponent=OPP["YOUNGSTER"], party=[PIDGEY, HO_OH],
+                                   party_count=1), MUSIC["MUSIC_TRAINER_BATTLE"])
+
     def test_rocket_theme_is_johto_only(self) -> None:
         rocket = MUSIC["MUSIC_ROCKET_BATTLE"]
         trainer = MUSIC["MUSIC_TRAINER_BATTLE"]

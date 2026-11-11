@@ -17,6 +17,7 @@
 	const BMUSIC_JOHTO_CHAMPION ; Lance as this run's Champion
 	const BMUSIC_MEWTWO         ; a wild Mewtwo, or a trainer whose party has one
 	const BMUSIC_ROCKET         ; ROCKET or GIOVANNI_MINIBOSS, EVENT_JOHTO_ACTIVATED set
+	const BMUSIC_HO_OH          ; a wild Ho-Oh, or a trainer whose party has one
 DEF NUM_BMUSIC_CATEGORIES EQU const_value
 
 PlayBattleMusic::
@@ -107,8 +108,9 @@ GetBattleMusicSong::
 	ret
 
 ; Out: a = BMUSIC_*
-; Mewtwo on the other side overrides every category except the run's finale
-; (BMUSIC_FINAL and the alternate Champion). For a trainer this reads the
+; Mewtwo or Ho-Oh on the other side overrides every category except the run's
+; finale (BMUSIC_FINAL and the alternate Champion); Mewtwo wins if a party has
+; both. For a trainer this reads the
 ; built party, so trainer battles pick their song after ReadTrainer (see
 ; ReadTrainerFast); InitBattleVariables picks it for wild battles.
 GetBattleMusicCategory:
@@ -118,20 +120,25 @@ GetBattleMusicCategory:
 	cp BMUSIC_JOHTO_CHAMPION
 	ret z
 	ld c, a
-	call OpponentHasMewtwo
-	ld a, c
-	ret nc
+	ld d, MEWTWO
+	call OpponentHasSpecies
 	ld a, BMUSIC_MEWTWO
+	ret c
+	ld d, HO_OH
+	call OpponentHasSpecies
+	ld a, BMUSIC_HO_OH
+	ret c
+	ld a, c
 	ret
 
-; Out: carry = the wild mon, or any mon in the trainer's party, is Mewtwo.
-; Species only, so every Mewtwo form counts.
-OpponentHasMewtwo:
+; In: d = species. Out: carry = the wild mon, or any mon in the trainer's
+; party, is that species. Species only, so every form counts. Keeps c and d.
+OpponentHasSpecies:
 	ld a, [wIsTrainerBattle]
 	and a
 	jr nz, .party
 	ld a, [wEnemyMonSpecies2] ; set by InitOpponent and TryDoWildEncounter alike
-	cp MEWTWO
+	cp d
 	jr z, .yes
 	and a
 	ret
@@ -147,7 +154,7 @@ OpponentHasMewtwo:
 	ld b, a
 .loop
 	ld a, [hli]
-	cp MEWTWO
+	cp d
 	jr z, .yes
 	dec b
 	jr nz, .loop
@@ -305,6 +312,7 @@ BattleMusicRamps:
 	dw BattleMusicRampJohtoChampion
 	dw BattleMusicRampMewtwo
 	dw BattleMusicRampRocket
+	dw BattleMusicRampHoOh
 	assert_table_length NUM_BMUSIC_CATEGORIES
 
 ; Each ramp: `db first round, song` rows in ascending round order, then -1.
@@ -343,4 +351,7 @@ BattleMusicRampMewtwo:
 	db -1
 BattleMusicRampRocket:
 	db 0, MUSIC_ROCKET_BATTLE
+	db -1
+BattleMusicRampHoOh:
+	db 0, MUSIC_HO_OH_BATTLE
 	db -1

@@ -151,13 +151,18 @@ ld hl, stat_pokeball_class
 ld a, CLERK_STAT_POKEBALL_ODDS
 cp b
 jr nc, stattm_item_selection
+call GetStatUltraballCount
+ld d, a                     ; save the eligible stone count for the Ultra Ball tier
+cp NUM_STAT_ULTRABALL_CLASS_KANTO
+ld a, CLERK_STAT_GREATBALL_ODDS_KANTO
+jr z, .greatBallOddsReady
+ld a, CLERK_STAT_GREATBALL_ODDS
+.greatBallOddsReady
 ld c, NUM_STAT_GREATBALL_CLASS
 ld hl, stat_greatball_class
-ld a, CLERK_STAT_GREATBALL_ODDS
 cp b
 jr nc, stattm_item_selection
-call GetStatUltraballCount  ; a = 5 Kanto stones, or 8 with Johto/Warp; keeps b
-ld c, a
+ld c, d
 ld a, CLERK_STAT_ULTRABALL_ODDS
 ld hl, stat_ultraball_class
 cp b

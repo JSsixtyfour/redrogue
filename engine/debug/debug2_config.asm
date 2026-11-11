@@ -1034,10 +1034,11 @@ ASSERT MUSIC_TCG2_GR_LEADER_DUEL == MUSIC_MEET_JESSIE_JAMES + 4
 ASSERT MUSIC_SUICUNE_BATTLE == MUSIC_MEET_JESSIE_JAMES + 8
 ASSERT MUSIC_ROCKET_THEME == MUSIC_MEET_JESSIE_JAMES + 10
 ASSERT MUSIC_MEWTWO_BATTLE == MUSIC_MEET_JESSIE_JAMES + 11
+ASSERT MUSIC_HO_OH_BATTLE == MUSIC_MEET_JESSIE_JAMES + 12
 DebugSongNames:
 	dw .jessieJames, .pinballBlue, .johtoGym, .tcgClub, .tcg2Gr
 	dw .johtoTrainer, .champion, .rocket, .suicune, .lookRocket, .rocketTheme
-	dw .mewtwo
+	dw .mewtwo, .hoOh
 .end:
 .jessieJames:  db "MEET JESSIE JAMES@"
 .pinballBlue:  db "PINBALL BLUE FIELD@"
@@ -1051,5 +1052,6 @@ DebugSongNames:
 .lookRocket:   db "LOOK ROCKET@"
 .rocketTheme:  db "ROCKET THEME@"
 .mewtwo:       db "BATTLE WITH MEWTWO@"
+.hoOh:         db "BATTLE! HO-OH@"
 
 ENDC

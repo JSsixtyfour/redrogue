@@ -1063,7 +1063,7 @@ FollowerCheckVisibility:
 	jr c, .hidden
 .sameX
 	call .getCurrentTile
-	ld d, MAP_TILESET_SIZE
+	ld_d_map_tile_limit ; movement.asm; keeps hl
 	ld a, [hli]
 	ld e, a
 	cp d

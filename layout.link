@@ -392,6 +392,7 @@ ROMX $33
 	; free after AUDIO_4, plenty of room. Pin further "Pics N" here until this
 	; bank fills too.
 	"Pics 7"
+	"Song HoOhBattle" ; imported song, pinned by tools/music_kit/song_placement.py
 ROMX $34
 	; DrainHPEffect_ is entered through the existing jpfar wrapper, keeps its
 	; text local, and reaches external code only through HOME/predef/far seams.

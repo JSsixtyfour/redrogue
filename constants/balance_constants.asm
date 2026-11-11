@@ -375,6 +375,7 @@ DEF CLERK_TM_ULTRABALL_ODDS EQU 76 + 90 + 64
 ; Stat: vitamins 35% / HP Up, PP Up 25% / evolution stones 37% / Rare Candy 3%
 DEF CLERK_STAT_POKEBALL_ODDS  EQU 88
 DEF CLERK_STAT_GREATBALL_ODDS EQU 88 + 64
+DEF CLERK_STAT_GREATBALL_ODDS_KANTO EQU 169 ; about 30% per stone in a 10-item stock
 DEF CLERK_STAT_ULTRABALL_ODDS EQU 88 + 64 + 95
 
 ; --- Lobby sink prices ------------------------------------------------------

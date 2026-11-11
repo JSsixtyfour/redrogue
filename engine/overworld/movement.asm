@@ -1,4 +1,24 @@
-DEF MAP_TILESET_SIZE EQU NUM_EXTENDED_TILESET_TILES ; $79: the Dorm draws map tiles up to $78
+; d = the first tile ID that is not map art. A sprite standing on a tile at or
+; above it has a text box in front of it and is hidden. Every tileset owns
+; $00-$5F and $60-$7F are text-box graphics (HP bars, "Lv", box borders), except
+; in DORM, which also draws map art in $60-$78 (constants/tileset_constants.asm).
+; One $79 limit for every map let the party menu's HP-bar tiles ($62-$6B) count
+; as map: the sprite pass that runs while the party menu is still in wTileMap
+; showed the player, and the reward menu restored over it kept the player drawn
+; in front of its box. Clobbers a. The follower's FollowerCheckVisibility uses
+; the macro directly (bank $2F cannot call this one).
+MACRO ld_d_map_tile_limit
+	ld d, NUM_TILESET_TILES
+	ld a, [wCurMapTileset]
+	cp DORM
+	jr nz, .notDorm\@
+	ld d, NUM_EXTENDED_TILESET_TILES
+.notDorm\@
+ENDM
+
+GetMapTileLimit:
+	ld_d_map_tile_limit
+	ret
 
 UpdatePlayerSprite:
 	ld a, [wSpritePlayerStateData2WalkAnimationCounter]
@@ -10,12 +30,13 @@ UpdatePlayerSprite:
 	ld [wSpritePlayerStateData2WalkAnimationCounter], a
 	jr .disableSprite
 ; check if a text box is in front of the sprite by checking if the lower left
-; background tile the sprite is standing on is greater than $5F, which is
-; the maximum number for map tiles
+; background tile the sprite is standing on is past the map's tiles
+; (GetMapTileLimit)
 .checkIfTextBoxInFrontOfSprite
+	call GetMapTileLimit
 	lda_coord 8, 9
 	ldh [hTilePlayerStandingOn], a
-	cp MAP_TILESET_SIZE
+	cp d
 	jr c, .lowerLeftTileIsMapTile
 .disableSprite
 	ld a, $ff
@@ -647,10 +668,10 @@ CheckSpriteAvailability:
 ; Shin Red import Phase 6: extracted from .skipXVisibilityTest so it can run
 ; against two different tile positions. hl = tile pointer from
 ; GetTileSpriteStandsOn or GetTileSpriteStandsOn_roundUP. Returns carry CLEAR if
-; the sprite is hidden (standing on a tile with ID >= MAP_TILESET_SIZE, i.e. a
+; the sprite is hidden (standing on a tile with ID >= GetMapTileLimit, i.e. a
 ; text box tile) and carry SET if it is visible. Clobbers a, bc, d, hl.
 .VisibilityTest
-	ld d, MAP_TILESET_SIZE
+	call GetMapTileLimit
 	ld a, [hli]
 	cp d
 	ret nc ; standing on tile with ID >=MAP_TILESET_SIZE (bottom left tile)

@@ -69,6 +69,7 @@
 	const MUSIC_LOOK_ROCKET ; imported: lookrocket.asm
 	const MUSIC_ROCKET_THEME ; imported: rockettheme.asm
 	const MUSIC_MEWTWO_BATTLE ; imported: mewtwo.mid ("Battle with Mewtwo")
+	const MUSIC_HO_OH_BATTLE ; imported: hooh.mid ("Battle! Ho-Oh")
 DEF NUM_MUSIC_SONGS EQU const_value
 
 	const_def

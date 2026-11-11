@@ -270,3 +270,7 @@ INCLUDE "crysaudio/music/imported/lookrocket.asm"
 SECTION "Song MewtwoBattle", ROMX
 
 INCLUDE "crysaudio/music/imported/mewtwobattle.asm"
+
+SECTION "Song HoOhBattle", ROMX
+
+INCLUDE "crysaudio/music/imported/hoohbattle.asm"
