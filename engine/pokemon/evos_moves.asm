@@ -286,13 +286,20 @@ Evolution_PartyMonLoop: ; loop over party mons
 	ld a, [hl]
 	sbc b
 	ld b, a
-	ld hl, wLoadedMonHP + 1
+	; Evolution must not revive a fainted mon with the max-HP increase.
+	ld hl, wLoadedMonHP
+	ld a, [hli]
+	or [hl]
+	jr z, .keepFaintedHP
 	ld a, [hl]
 	add c
 	ld [hld], a
 	ld a, [hl]
 	adc b
 	ld [hl], a
+	inc hl
+.keepFaintedHP
+	dec hl
 	dec hl
 	pop bc
 	call CopyData
