@@ -607,6 +607,16 @@ PFacTpl7x4:
     dw PFacTplData7x4RockRoom
 PFacTpl7x4End:
 
+PFacTpl7x5:
+    db 7, 5, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
+    dw PFacTplData7x5StatueRoom
+PFacTpl7x5End:
+
+PFacTpl7x6:
+    db 7, 6, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
+    dw PFacTplData7x6RockRoom
+PFacTpl7x6End:
+
 PFacTpl7x7:
     db 7, 7, PFAC_SOCKET_N | PFAC_SOCKET_E | PFAC_SOCKET_S | PFAC_SOCKET_W, PFAC_TPL_ITEM | PFAC_TPL_ANY_N | PFAC_TPL_ANY_E | PFAC_TPL_ANY_S | PFAC_TPL_ANY_W
     dw PFacTplData7x7BlockrockRoom
@@ -663,7 +673,7 @@ PFacTpl9x7End:
 
 PFacRoomDescriptorsEnd:
 DEF PFAC_TPL_TOTAL EQU (PFacRoomDescriptorsEnd - PFacRoomDescriptors) / PFAC_TPL_STRIDE
-ASSERT PFAC_TPL_TOTAL == 79
+ASSERT PFAC_TPL_TOTAL == 81
 
 ; An empty size group is two zero bytes; a populated one names its run.
 MACRO pfac_tpl_group ; \1 = group label, \2 = group end label
@@ -711,8 +721,8 @@ PFacRoomGroupTable:
     ; footprint width 7
     pfac_tpl_no_group ; 7x3
     pfac_tpl_group PFacTpl7x4, PFacTpl7x4End ; 7x4, 2
-    pfac_tpl_no_group ; 7x5
-    pfac_tpl_no_group ; 7x6
+    pfac_tpl_group PFacTpl7x5, PFacTpl7x5End ; 7x5, 1
+    pfac_tpl_group PFacTpl7x6, PFacTpl7x6End ; 7x6, 1
     pfac_tpl_group PFacTpl7x7, PFacTpl7x7End ; 7x7, 5
     pfac_tpl_no_group ; 7x8
     pfac_tpl_no_group ; 7x9
@@ -926,6 +936,12 @@ ASSERT @ - PFacTplData7x4BlockrockRoom == 28
 PFacTplData7x4RockRoom:
     INCBIN "maps/ProceduralFacility_7x4_rock_room.blk"
 ASSERT @ - PFacTplData7x4RockRoom == 28
+PFacTplData7x5StatueRoom:
+    INCBIN "maps/ProceduralFacility_7x5_statue_room.blk"
+ASSERT @ - PFacTplData7x5StatueRoom == 35
+PFacTplData7x6RockRoom:
+    INCBIN "maps/ProceduralFacility_7x6_rock_room.blk"
+ASSERT @ - PFacTplData7x6RockRoom == 42
 PFacTplData7x7BlockrockRoom:
     INCBIN "maps/ProceduralFacility_7x7_blockrock_room.blk"
 ASSERT @ - PFacTplData7x7BlockrockRoom == 49

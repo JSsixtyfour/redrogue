@@ -480,8 +480,15 @@ class FacilityTripBase(unittest.TestCase):
         self.lobby = io.BytesIO()
         h.save_state(self.lobby)
 
-    def enter(self, force, spot=None, seed=(23, 201, 77, 9), hold=None):
+    # Layout seeds plan_spot tries in order. New premade art reshuffles every
+    # layout, so one fixed seed can lose its last usable spot near the entrance.
+    PLAN_SEEDS = ((23, 201, 77, 9), (5, 9, 131, 17), (211, 40, 66, 3), (90, 180, 2, 41))
+
+    def enter(self, force, spot=None, seed=None, hold=None):
+        """seed=None means the seed plan_spot chose, else the first PLAN_SEEDS entry."""
         h = self.h
+        if seed is None:
+            seed = getattr(self, "plan_seed", self.PLAN_SEEDS[0])
         h.load_state(self.lobby)
         h.seed_rng(seed)
         self.context.update(force=force, spot=spot, hold=hold)
@@ -536,16 +543,36 @@ class FacilityTripBase(unittest.TestCase):
         return cells - {(x, y), (x, y - 1), (x - 1, y), (x + 1, y)}
 
     def plan_spot(self):
-        """A block near the entrance whose quadrant tile can be approached from below.
+        """A plain-floor block near the entrance whose quadrant tile can be approached from below.
 
-        Forced here too: the preload's roll spends RNG, and the layout must match."""
+        Plain floor only, as OptionalFacilityPlaceEncounter's own search requires
+        (test_a_real_search_finds_a_valid_block). And on screen from the arrival
+        tile (x -4..+5, y -4..+4): an off-screen sprite has ImageIndex $FF and the
+        overworld engine never moves it, so the wander test would see one tile.
+        Measured 2026-11-10: spots at dx -5 and dy -6 froze, dx -1/+1 at dy -4 wandered.
+
+        Forced here too: the preload's roll spends RNG, and the layout must match.
+        Tries each PLAN_SEEDS layout in turn and records the one used in
+        self.plan_seed, which later enter() calls in the test reuse."""
+        for seed in self.PLAN_SEEDS:
+            self.plan_seed = seed
+            found = self._plan_spot_in_current_layout()
+            if found:
+                return found
+        self.fail("no spot near the entrance in any PLAN_SEEDS layout")
+
+    def _plan_spot_in_current_layout(self):
         self.enter(force=True)
         cells, start = self.cells(), self.here()
+        layout = self.h.read_bytes("wOverworldMap", 601)
         seen, todo = {start}, deque([start])
         while todo:
             cur = todo.popleft()
             x, y = cur
-            if x & 1 and y & 1 and (x, y + 1) in cells and abs(x - start[0]) + abs(y - start[1]) >= 4:
+            if (x & 1 and y & 1 and (x, y + 1) in cells
+                    and abs(x - start[0]) + abs(y - start[1]) >= 4
+                    and -4 <= x - start[0] <= 4 and -4 <= y - start[1] <= 4
+                    and layout[81 + (y // 2) * 26 + x // 2] == 0x0E):
                 # The route to the tile below must not pass through it.
                 try:
                     self.route(self.clear_of((x, y), cells), start, (x, y + 1))
@@ -558,7 +585,7 @@ class FacilityTripBase(unittest.TestCase):
                 if nxt in cells and nxt not in seen:
                     seen.add(nxt)
                     todo.append(nxt)
-        self.fail("no spot near the entrance")
+        return None
 
     def step(self, button):
         h = self.h
@@ -776,7 +803,7 @@ class FacilityEncounterTripTest(FacilityTripBase):
 
     def test_a_real_search_finds_a_valid_block(self):
         h = self.h
-        for seed in ((23, 201, 77, 9), (5, 9, 131, 17), (211, 40, 66, 3), (90, 180, 2, 41)):
+        for seed in self.PLAN_SEEDS:
             with self.subTest(seed=seed):
                 self.enter(force=True, seed=seed)
                 self.assertEqual(h.read8("wOptionalEncounterMap"), self.maps["PROCEDURAL_FACILITY"])

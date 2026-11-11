@@ -1434,6 +1434,18 @@ class RedRogueHarness:
         # mid-update, and outside an update the byte is dead scratch, so restore it.
         saved_cur_channel = (self.read8("wCurChannel")
                              if "wCurChannel" in self.symbols._symbols else None)
+        # The park can also interrupt mainline Predef between GetPredefPointer
+        # storing the target bank in wPredefBank and PredefContinue reading it
+        # back. A hijacked callee that runs any predef (e.g. _AddPartyMon)
+        # rewrites it, and the resumed Predef maps the wrong bank and jp hl's into
+        # data. Measured 2026-11-10: text-only commits moved the park there, and
+        # test_witch_party_entry froze pyboy.tick() for good after _AddPartyMon;
+        # restoring wPredefBank alone fixed it. The game never runs a predef
+        # inside VBlank, and none of these bytes is aliased, so restore them all.
+        saved_predef = [(label, size, bytes(self.read_bytes(label, size)))
+                        for label, size in (("wPredefID", 7), ("wPredefParentBank", 1),
+                                            ("wPredefBank", 1))
+                        if label in self.symbols._symbols]
         enter_bank, enter_address = self.symbols.get("Bankswitch")
         return_bank, return_address = self.symbols.get("Bankswitch.Return")
         expected_return_sp = (saved_registers["SP"] - 2) & 0xFFFF
@@ -1550,6 +1562,9 @@ class RedRogueHarness:
             self.write8("wVBlankSavedROMBank", saved_vblank_bank)
             if saved_cur_channel is not None:
                 self.write8("wCurChannel", saved_cur_channel)
+            for label, size, value in saved_predef:
+                for offset in range(size):
+                    self.write8(label, value[offset], offset=offset)
             restore_vblank_mask()
             for name, value in saved_registers.items():
                 setattr(self.pyboy.register_file, name, value)

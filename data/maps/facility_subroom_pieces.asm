@@ -5,7 +5,7 @@
 ; bank); db footprint w, h, top-left block x, y, landing index, Super Nerd tile
 ; x, y, ball tile x, y. Every row is proven by the tool: the pad reaches the
 ; whole room, and neither object blocks any path.
-DEF FACSUB_NUM_PIECES EQU 62
+DEF FACSUB_NUM_PIECES EQU 64
 DEF FACSUB_PIECE_STRIDE EQU 11
 
 FacSubroomLandings:
@@ -24,10 +24,10 @@ FacSubroomPieces:
 	db 3, 4, 4, 2, 1, 11, 7, 9, 10
 	ASSERT BANK(PFacTplData3x4ServerRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData3x4ServerblockRoom
-	db 3, 4, 4, 2, 5, 10, 6, 9, 10
+	db 3, 4, 4, 2, 2, 10, 6, 9, 10
 	ASSERT BANK(PFacTplData3x4ServerblockRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData3x4ServertableRoom
-	db 3, 4, 4, 2, 5, 12, 8, 9, 5
+	db 3, 4, 4, 2, 2, 12, 8, 9, 5
 	ASSERT BANK(PFacTplData3x4ServertableRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData3x4TreerockRoom
 	db 3, 4, 4, 2, 1, 11, 7, 9, 5
@@ -141,10 +141,10 @@ FacSubroomPieces:
 	db 6, 6, 2, 1, 0, 10, 8, 14, 3
 	ASSERT BANK(PFacTplData6x6BlockRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData6x6WaterRoom
-	db 6, 6, 2, 1, 6, 13, 8, 5, 3
+	db 6, 6, 2, 1, 3, 13, 8, 14, 3
 	ASSERT BANK(PFacTplData6x6WaterRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData6x6WaterRoom2
-	db 6, 6, 2, 1, 6, 13, 8, 5, 3
+	db 6, 6, 2, 1, 3, 13, 8, 13, 3
 	ASSERT BANK(PFacTplData6x6WaterRoom2) == BANK(PFacRoomDescriptors)
 	dw PFacTplData6x7TripletableTreeCombinedroom
 	db 6, 7, 2, 1, 0, 10, 9, 14, 3
@@ -155,32 +155,38 @@ FacSubroomPieces:
 	dw PFacTplData7x4RockRoom
 	db 7, 4, 2, 2, 2, 11, 8, 6, 10
 	ASSERT BANK(PFacTplData7x4RockRoom) == BANK(PFacRoomDescriptors)
+	dw PFacTplData7x5StatueRoom
+	db 7, 5, 2, 2, 0, 11, 8, 16, 5
+	ASSERT BANK(PFacTplData7x5StatueRoom) == BANK(PFacRoomDescriptors)
+	dw PFacTplData7x6RockRoom
+	db 7, 6, 2, 1, 2, 9, 8, 5, 3
+	ASSERT BANK(PFacTplData7x6RockRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData7x7BlockrockRoom
-	db 7, 7, 2, 1, 2, 11, 9, 5, 14
+	db 7, 7, 2, 1, 3, 11, 9, 15, 4
 	ASSERT BANK(PFacTplData7x7BlockrockRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData7x7DoublebigtabletreeRoom
 	db 7, 7, 2, 1, 1, 10, 9, 5, 3
 	ASSERT BANK(PFacTplData7x7DoublebigtabletreeRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData7x7DoubletableServerCombinedroom
-	db 7, 7, 2, 1, 2, 10, 9, 5, 14
+	db 7, 7, 2, 1, 5, 10, 9, 5, 3
 	ASSERT BANK(PFacTplData7x7DoubletableServerCombinedroom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData7x7Pool
-	db 7, 7, 2, 1, 2, 15, 9, 5, 14
+	db 7, 7, 2, 1, 3, 15, 9, 16, 3
 	ASSERT BANK(PFacTplData7x7Pool) == BANK(PFacRoomDescriptors)
 	dw PFacTplData7x7TreerockCombinedroom
 	db 7, 7, 2, 1, 0, 11, 8, 16, 3
 	ASSERT BANK(PFacTplData7x7TreerockCombinedroom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData8x3BlockRoom
-	db 8, 3, 1, 3, 3, 12, 9, 15, 8
+	db 8, 3, 1, 3, 6, 12, 9, 15, 8
 	ASSERT BANK(PFacTplData8x3BlockRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData8x3ServerRoom
-	db 8, 3, 1, 3, 3, 12, 9, 15, 8
+	db 8, 3, 1, 3, 6, 12, 9, 15, 8
 	ASSERT BANK(PFacTplData8x3ServerRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData8x3ServerrockRoom
-	db 8, 3, 1, 3, 3, 9, 9, 16, 7
+	db 8, 3, 1, 3, 5, 9, 9, 3, 10
 	ASSERT BANK(PFacTplData8x3ServerrockRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData8x4BlockserverCombinedroom
-	db 8, 4, 1, 2, 2, 11, 8, 3, 10
+	db 8, 4, 1, 2, 5, 11, 8, 3, 5
 	ASSERT BANK(PFacTplData8x4BlockserverCombinedroom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData8x4TableservertreeRoom
 	db 8, 4, 1, 2, 2, 10, 6, 3, 10
@@ -195,7 +201,7 @@ FacSubroomPieces:
 	db 8, 7, 1, 1, 4, 10, 11, 3, 3
 	ASSERT BANK(PFacTplData8x7PoolRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData9x5BlockrockRoom
-	db 9, 5, 1, 2, 5, 11, 5, 3, 12
+	db 9, 5, 1, 2, 2, 11, 5, 3, 12
 	ASSERT BANK(PFacTplData9x5BlockrockRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData9x7TreerockCombinedroom
 	db 9, 7, 1, 1, 0, 11, 9, 17, 3
@@ -204,7 +210,7 @@ FacSubroomPieces:
 ; Weighted by interior area / 3 (larger rooms preferred): a uniform pick from
 ; this list names a row.
 FacSubroomPicks:
-	db 203
+	db 214
 	db 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
 	db 16, 17, 17, 18, 18, 19, 19, 20, 20, 20, 21, 21, 21, 22, 23, 24
 	db 24, 25, 25, 26, 26, 26, 27, 27, 27, 28, 28, 28, 29, 29, 29, 30
@@ -212,9 +218,10 @@ FacSubroomPicks:
 	db 35, 35, 35, 35, 35, 36, 37, 37, 38, 38, 39, 39, 40, 40, 40, 40
 	db 41, 41, 41, 41, 41, 42, 42, 42, 42, 42, 43, 43, 43, 43, 43, 44
 	db 44, 44, 44, 44, 44, 45, 45, 45, 46, 46, 46, 47, 47, 47, 47, 47
-	db 47, 47, 47, 48, 48, 48, 48, 48, 48, 48, 48, 49, 49, 49, 49, 49
-	db 49, 49, 49, 50, 50, 50, 50, 50, 50, 50, 50, 51, 51, 51, 51, 51
-	db 51, 51, 51, 52, 52, 53, 53, 54, 54, 55, 55, 55, 55, 56, 56, 56
-	db 56, 57, 57, 57, 57, 57, 57, 58, 58, 58, 58, 58, 58, 58, 58, 59
-	db 59, 59, 59, 59, 59, 59, 59, 59, 59, 60, 60, 60, 60, 60, 60, 60
-	db 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61
+	db 48, 48, 48, 48, 48, 48, 49, 49, 49, 49, 49, 49, 49, 49, 50, 50
+	db 50, 50, 50, 50, 50, 50, 51, 51, 51, 51, 51, 51, 51, 51, 52, 52
+	db 52, 52, 52, 52, 52, 52, 53, 53, 53, 53, 53, 53, 53, 53, 54, 54
+	db 55, 55, 56, 56, 57, 57, 57, 57, 58, 58, 58, 58, 59, 59, 59, 59
+	db 59, 59, 60, 60, 60, 60, 60, 60, 60, 60, 61, 61, 61, 61, 61, 61
+	db 61, 61, 61, 61, 62, 62, 62, 62, 62, 62, 62, 63, 63, 63, 63, 63
+	db 63, 63, 63, 63, 63, 63

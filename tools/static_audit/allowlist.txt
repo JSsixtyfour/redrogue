@@ -13,6 +13,7 @@ B5	home/overworld.asm	OverworldLoopLessDelay	WarpFound2's `sub c` derives wWarpe
 B7	custom_functions/procedural_cave_gen.asm	PFStoreBossOWSpriteToSRAM	"(A preserved)" in the header describes the in-bank PCGetBossOWSprite call, not this routine's contract.
 B7	custom_functions/procedural_cave_gen.asm	PFacStoreBossOWSpriteToSRAM	Same as PFStoreBossOWSpriteToSRAM: the "A preserved" note is about the callee.
 B7	engine/battle/ai/ai_plans.asm	AIPlanQualifies	hl IS preserved: `ld a, [hli]` then `dec hl` restores it arithmetically, which the value-set analysis cannot prove.
+B7	custom_functions/procedural_facility_gen.asm	PFacClassifyCorridorWall	hl IS preserved: the E probe is `inc hl` / `ld a, [hld]` and the W probe `dec hl` / `ld a, [hli]` (net zero), N/S and the table lookup push/pop hl, and the tail-jump PFacClassifyCorridorDiagonal's .probe push/pops it. Only a, d, e change. PFacBuildCorridorWalls' `ld [hl], a` depends on it; generation output was byte-identical to the pre-pointer version over 300 seeds (checked 2026-11-10).
 B7	engine/battle/experience.asm	WitchBoostExp10Percent	The "preserves bc/de/hl" sentence is about Divide (verified: Divide clobbers only a); this routine uses de itself and documents no contract.
 B7	engine/gfx/cgb_attributes.asm	LoadBGMapAttributes	"preserves DE" refers to Bankswitch in home/bankswitch.asm, not to this routine.
 B7	engine/pokemon/random_pokemon_selection.asm	Random_Pokemon_Selection	"Preserves every register" describes the RoguePrismSetRerollBudget call on the next line, not this routine.
