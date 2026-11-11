@@ -125,7 +125,7 @@ OlivineGymTrainerHeader2:
 OlivineGymReceivedTMText:
 	text_far _OlivineGymReceivedTMText
 	sound_get_item_1
-	text_far _TM34ExplanationText
+	text_far _OlivineGymTMExplanationText
 	text_end
 
 OlivineGymJasmineText:

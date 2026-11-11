@@ -125,7 +125,7 @@ CianwoodGymTrainerHeader2:
 CianwoodGymReceivedTMText:
 	text_far _CianwoodGymReceivedTMText
 	sound_get_item_1
-	text_far _TM34ExplanationText
+	text_far _CianwoodGymTMExplanationText
 	text_end
 
 CianwoodGymChuckText:

@@ -145,7 +145,7 @@ EcruteakGymTrainerHeader2:
 EcruteakGymReceivedTMText:
 	text_far _EcruteakGymReceivedTMText
 	sound_get_item_1
-	text_far _TM34ExplanationText
+	text_far _EcruteakGymTMExplanationText
 	text_end
 
 EcruteakGymMortyText:

@@ -62,6 +62,15 @@ _VioletGymReceivedTMText::
 	text "!@"
 	text_end
 
+_VioletGymTMExplanationText::
+	text_start
+
+	para "Use that TM to"
+	line "peck your"
+	cont "opponents apart!"
+    
+	done
+
 _VioletGymTMNoRoomText::
 	text "You have no room"
 	line "for this!"

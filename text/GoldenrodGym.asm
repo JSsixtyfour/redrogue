@@ -47,6 +47,17 @@ _GoldenrodGymReceivedTMText::
 	text "!@"
 	text_end
 
+_GoldenrodGymTMExplanationText::
+	text_start
+
+	para "You can take that"
+	line "old TM, I've got"
+	cont "something new and"
+	cont "super-cute on the"
+	cont "way."
+    
+	done
+
 _GoldenrodGymTMNoRoomText::
 	text "You have no room"
 	line "for this!"

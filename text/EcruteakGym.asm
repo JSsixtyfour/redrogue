@@ -72,6 +72,15 @@ _EcruteakGymReceivedTMText::
 	text "!@"
 	text_end
 
+_EcruteakGymTMExplanationText::
+	text_start
+
+	para "That TM is only"
+	line "used by the"
+	cont "wisest of"
+	cont "trainers."
+	done
+
 _EcruteakGymTMNoRoomText::
 	text "You have no room"
 	line "for this!"

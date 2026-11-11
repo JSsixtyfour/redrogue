@@ -63,6 +63,18 @@ _BlackthornGymReceivedTMText::
 	text "!@"
 	text_end
 
+_BlackthornGymTMExplanationText::
+	text_start
+
+	para "When using a TM"
+	line "make sure you"
+	cont "think hard,"
+	cont "fighting is more"
+	cont "than just raw"
+	cont "power."
+    
+	done
+
 _BlackthornGymTMNoRoomText::
 	text "You have no room"
 	line "for this!"

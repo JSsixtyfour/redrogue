@@ -58,6 +58,15 @@ _CianwoodGymReceivedTMText::
 	text "!@"
 	text_end
 
+_CianwoodGymTMExplanationText::
+	text_start
+
+	para "I know that TM's a"
+	line "good one, I had"
+	cont "my #MON test"
+	cont "it on me! HAHAHA."
+	done
+
 _CianwoodGymTMNoRoomText::
 	text "You have no room"
 	line "for this!"

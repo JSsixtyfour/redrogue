@@ -128,7 +128,7 @@ GoldenrodGymTrainerHeader2:
 GoldenrodGymReceivedTMText:
 	text_far _GoldenrodGymReceivedTMText
 	sound_get_item_1
-	text_far _TM34ExplanationText
+	text_far _GoldenrodGymTMExplanationText
 	text_end
 
 GoldenrodGymWhitneyText:

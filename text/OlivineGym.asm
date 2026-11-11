@@ -42,6 +42,14 @@ _OlivineGymReceivedTMText::
 	text "!@"
 	text_end
 
+_OlivineGymTMExplanationText::
+	text_start
+    
+    para "Uh well...I hope"
+	line "you like it..."
+	
+	done
+
 _OlivineGymTMNoRoomText::
 	text "You have no room"
 	line "for this!"

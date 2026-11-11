@@ -125,7 +125,7 @@ AzaleaGymTrainerHeader2:
 AzaleaGymReceivedTMText:
 	text_far _AzaleaGymReceivedTMText
 	sound_get_item_1
-	text_far _TM34ExplanationText
+	text_far _AzaleaGymTMExplanationText
 	text_end
 
 AzaleaGymBugsyText:

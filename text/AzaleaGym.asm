@@ -52,6 +52,15 @@ _AzaleaGymReceivedTMText::
 	text "!@"
 	text_end
 
+_AzaleaGymTMExplanationText::
+	text_start
+
+	para "Always be mindful"
+	line "of which move you"
+	cont "replace with a"
+	cont "TM."
+	done
+
 _AzaleaGymTMNoRoomText::
 	text "You have no room"
 	line "for this!"

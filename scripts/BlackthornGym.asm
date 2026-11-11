@@ -125,7 +125,7 @@ BlackthornGymTrainerHeader2:
 BlackthornGymReceivedTMText:
 	text_far _BlackthornGymReceivedTMText
 	sound_get_item_1
-	text_far _TM34ExplanationText
+	text_far _BlackthornGymTMExplanationText
 	text_end
 
 BlackthornGymClairText:

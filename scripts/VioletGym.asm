@@ -145,7 +145,7 @@ VioletGymTrainerHeader2:
 VioletGymReceivedTMText:
 	text_far _VioletGymReceivedTMText
 	sound_get_item_1
-	text_far _TM34ExplanationText
+	text_far _VioletGymTMExplanationText
 	text_end
 
 VioletGymFalknerText:

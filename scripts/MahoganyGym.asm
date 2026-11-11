@@ -145,7 +145,7 @@ MahoganyGymTrainerHeader2:
 MahoganyGymReceivedTMText:
 	text_far _MahoganyGymReceivedTMText
 	sound_get_item_1
-	text_far _TM34ExplanationText
+	text_far _MahoganyGymTMExplanationText
 	text_end
 
 MahoganyGymPryceText:

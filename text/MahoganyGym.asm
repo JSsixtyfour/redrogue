@@ -72,6 +72,18 @@ _MahoganyGymReceivedTMText::
 	text "!@"
 	text_end
 
+_MahoganyGymTMExplanationText::
+	text_start
+
+	para "You never know"
+	line "when a TM might"
+	cont "come in handy."
+
+	para "One move could tip"
+	line "the scales."
+    
+	done
+
 _MahoganyGymTMNoRoomText::
 	text "You have no room"
 	line "for this!"
