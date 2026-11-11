@@ -802,17 +802,28 @@ class FacilityEncounterTripTest(FacilityTripBase):
         self.assertGreater(len(seen), 1, f"it never moved: {seen}")
 
     def test_a_real_search_finds_a_valid_block(self):
+        # A seed's layout also depends on every VBlank Random draw before
+        # generation, so any timing change reshuffles which layout a seed gives.
+        # About 3% of Facilities have no valid block and no pad site and go
+        # without (measured 2026-11-10: 3/100 and 2/100 before and after a
+        # sprite-pass change that moved two of these four seeds' layouts). So
+        # one seed going without is allowed; every seed that places it is checked.
         h = self.h
+        placed = 0
         for seed in self.PLAN_SEEDS:
             with self.subTest(seed=seed):
                 self.enter(force=True, seed=seed)
-                self.assertEqual(h.read8("wOptionalEncounterMap"), self.maps["PROCEDURAL_FACILITY"])
+                if h.read8("wOptionalEncounterMap") != self.maps["PROCEDURAL_FACILITY"]:
+                    continue
+                placed += 1
                 raw = h.read_sram_bytes("sProcFacilityGenScratch", SCRATCH_Y + 1)
                 x, y = raw[SCRATCH_X], raw[SCRATCH_Y]
                 self.assertTrue(1 <= x <= 18 and 3 <= y <= 18, (x, y))
                 layout = h.read_bytes("wOverworldMap", 601)
                 self.assertEqual(layout[81 + y * 26 + x], 0x0E, "not plain floor")
                 self.assertNotIn((2 * x + 1, 2 * y + 1), self.object_tiles(), "shares a tile")
+        self.assertGreaterEqual(placed, len(self.PLAN_SEEDS) - 1,
+                                "too few seeds placed it in the Facility to be drift")
 
 
 class FacilityWarpRoomFallbackTest(fs.FacilitySuperNerdTest):

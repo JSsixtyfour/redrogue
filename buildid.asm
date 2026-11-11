@@ -24,6 +24,13 @@ IF DEF(_DEBUG)
 BuildDateText::
 	db "{BUILD_DATE_TEXT}@"
 
+; Fixed width: a clean build ("1100c800") and a dirty one ("1100c800-dirty")
+; would otherwise differ by 6 bytes and shift every later section in this
+; bank, which tools/music_kit/import_music.py reads as its pin moving them.
+DEF BUILD_ID_FIELD EQU 18 ; an 11-character hash, "-dirty" and the terminator
+
 BuildIdText::
 	db "{BUILD_ID_TEXT}@"
+	ASSERT @ - BuildIdText <= BUILD_ID_FIELD, "build id is longer than BUILD_ID_FIELD"
+	ds BUILD_ID_FIELD - (@ - BuildIdText), 0 ; never read: the text ends at its "@"
 ENDC

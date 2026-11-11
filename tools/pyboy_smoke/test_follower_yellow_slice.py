@@ -469,7 +469,8 @@ class YellowFollowerSliceTests(unittest.TestCase):
             "; Yellow UpdatePikachuWalkingSprite", 1
         )[0]
         self.assertIn("call .getCurrentTile", visibility)
-        self.assertIn("ld d, MAP_TILESET_SIZE", visibility)
+        # The limit depends on the tileset ($79 in the Dorm, $60 elsewhere).
+        self.assertIn("ld_d_map_tile_limit", visibility)
         self.assertGreaterEqual(visibility.count("cp d"), 4)
         self.assertIn("ld [wSprite15StateData2 + SPRITESTATEDATA2_GRASSPRIORITY], a", visibility)
         trainer_info = (ROOT / "engine" / "menus" / "start_sub_menus.asm").read_text()
