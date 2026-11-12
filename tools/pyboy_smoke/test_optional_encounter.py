@@ -9,6 +9,16 @@ import test_forest_grotto as geometry
 from source_constants import parse_rgbds_constants
 import save_reload
 SNORLAX=parse_rgbds_constants(geometry.ROOT/'constants/pokemon_constants.asm')['SNORLAX']
+_MONS=parse_rgbds_constants(geometry.ROOT/'constants/pokemon_constants.asm')
+_SPRITES=parse_rgbds_constants(geometry.ROOT/'constants/sprite_constants.asm')
+# The overworld sheet each optional-encounter species must stand as. Written
+# out, not derived from the ROM's resolver, so a regression to one generic
+# picture fails. Golduck and Onix have no dedicated sheet: the monster is right.
+OPTIONAL_OW_SPRITE={_MONS[m]:_SPRITES[s] for m,s in (
+    ('BUTTERFREE','SPRITE_BUTTERFREE'),('PSYDUCK','SPRITE_PSYDUCK'),
+    ('GOLDUCK','SPRITE_MONSTER'),('ONIX','SPRITE_MONSTER'),('SNORLAX','SPRITE_SNORLAX'))}
+def optional_sprite(h):
+    return OPTIONAL_OW_SPRITE[h.read8('wOptionalEncounterSpecies')]
 
 
 def direct_call(h, label):
@@ -89,7 +99,7 @@ class OptionalEncounterTest(ForestWalk, unittest.TestCase):
         self.walk_room((6,6),self.grid)
         h.tap('up'); h.tick(20)
         self.assertEqual((h.read8('wXCoord'),h.read8('wYCoord')),(6,6))
-        self.assertEqual(h.read8('wSprite01StateData1'),5)
+        self.assertEqual(h.read8('wSprite01StateData1'),optional_sprite(h))
         return h
 
     def mash_until(self,predicate,description,limit=1800):
@@ -201,7 +211,7 @@ class OptionalEncounterTest(ForestWalk, unittest.TestCase):
         self.mash_until(lambda:len(offers)==1,'full storage offer returns')
         self.assertEqual(h.read8('wOptionalEncounterState')&7,3)
         self.assertEqual(h.read_bytes('wBoxMon1',33*20),before)
-        self.assertEqual(h.read8('wSprite01StateData1'),5)
+        self.assertEqual(h.read8('wSprite01StateData1'),optional_sprite(h))
         self.mash_until(lambda:h.read8('wOptionalEncounterScript')==0,'battle script idle')
         h.tap('b');h.tick(60)
         self.assertTrue(save_reload.settle(h));h.park_before_hijack();h.call_routine('SaveGameData')
@@ -210,7 +220,7 @@ class OptionalEncounterTest(ForestWalk, unittest.TestCase):
             reboot.load();self.assertTrue(reboot.overworld)
             self.assertTrue(save_reload.settle(reboot.h))
             self.assertEqual(reboot.h.read8('wOptionalEncounterState')&7,3)
-            self.assertEqual(reboot.h.read8('wSprite01StateData1'),5)
+            self.assertEqual(reboot.h.read8('wSprite01StateData1'),optional_sprite(reboot.h))
         finally:reboot.close()
         # Make exactly one box slot available, then talk to the survivor.
         h.write8('wBoxCount',19);h.write8('wBoxSpecies',255,offset=19)

@@ -334,7 +334,14 @@ OptionalEncounterPatchSprite::
 	bit BIT_OPTIONAL_RESOLVED, a
 	ld a, 0
 	jr nz, .store
-	ld a, SPRITE_MONSTER
+	; The species' own overworld sheet, resolved like the stage bosses'. A fixed
+	; SPRITE_MONSTER here drew Butterfree, Psyduck and Snorlax as the generic
+	; monster although each has its own sheet.
+	ld a, [wOptionalEncounterSpecies]
+	ld e, a
+	ld d, 0                         ; base appearance: the package is not a form
+	farcall PCGetSpeciesOWSprite
+	ld a, e
 .store
 	push af
 	call OptionalSpriteAddress

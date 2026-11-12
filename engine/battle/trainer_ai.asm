@@ -338,6 +338,15 @@ AIExplosionWorthIt:
 	ld a, [wAIReliableKOFound]
 	and c
 	ret z ; not a reliable KO (and carry clear)
+	jr AIPlayerOnLastMon
+.no
+	and a
+	ret
+
+; Carry set if the player's active mon is their last live one, so KOing it wins
+; the battle. Shared by AIExplosionWorthIt and AIPossibleKOEndsBattle (#61).
+; Clobbers af, bc, de, hl.
+AIPlayerOnLastMon:
 ; OR every party mon's HP except the active one (wPlayerMonNumber, which d
 ; counts down to).
 	ld hl, wPartyMon1HP
@@ -369,9 +378,6 @@ AIExplosionWorthIt:
 	and a
 	ret nz ; a reserve is alive: the KO does not end the battle
 	scf
-	ret
-.no
-	and a
 	ret
 
 ; A reliable KO always wins outright (2026-10-21, AI review). AI_DAMAGE gives a
@@ -1052,6 +1058,17 @@ AIMoveChoiceModification2:
 	; Phase 2b: was `dec [hl]`.
 	ld a, AI_STRONG
 	call AIEncourage
+; Record the slot (FOLLOWUPS #61): AI_DAMAGE withdraws this encourage when a
+; possible KO would end the battle, where the boost could never be used. b counts
+; down from NUM_MOVES, as in AILayerDamage, and AI_DAMAGE rewrites CURSLOT
+; before it reads it. AIMarkSlotBit preserves bc and de.
+	ld a, NUM_MOVES
+	sub b
+	ld [wBuffer + AI_BUF_CURSLOT], a
+	push hl
+	ld hl, wBuffer + AI_BUF_SETUPMASK
+	call AIMarkSlotBit
+	pop hl
 	jr .nextMove
 
 ; Sets wBuffer + AI_BUF_PHYSICAL to 1 if the active enemy mon owns at least one

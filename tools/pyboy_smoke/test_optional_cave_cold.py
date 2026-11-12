@@ -48,7 +48,7 @@ class CaveColdEncounterTest(unittest.TestCase):
         h.register_hook('OptionalRollColdPackage',force)
         self.enter_subroom_as('nerd' if resident_after else 'gambler',room)
         self.assertEqual((h.read8('wSprite06StateData2MapX')-4,h.read8('wSprite06StateData2MapY')-4),self.position)
-        self.assertEqual(h.read8('wSprite06StateData1'),5)
+        self.assertEqual(h.read8('wSprite06StateData1'),encounter.optional_sprite(h))
         self.walk_in_room((self.position[0],self.position[1]+1))
         h.tap('up');h.tick(20)
         count=h.read8('wBattleCount');boss=h.read8('wRoguePokemon1');package=h.read8('wOptionalEncounterPackage')

@@ -46,7 +46,9 @@ AILayerPlan:
 ; directive, and ParaSweep's Thunder Wave (SMART 3 + PLAN 3) tied a Thunderbolt
 ; that KOs (AI_KILL 5 + best nudge 1). Selection and execute above still ran,
 ; so plan state advances as on any kill-override turn (AIRun_AgilityWrap counts
-; ATTEMPTS for exactly this case); only this turn's push is withheld.
+; ATTEMPTS for exactly this case); only this turn's push is withheld. The same
+; byte's AI_KO_ENDS_BATTLE_BIT (FOLLOWUPS #61) also withholds it: a possible KO
+; on the player's last live mon, where a plan's setup could never pay off.
 	ld a, [wAIReliableKOFound] ; ld a, [nn] leaves l intact
 	and a
 	ret nz

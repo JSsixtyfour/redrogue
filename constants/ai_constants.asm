@@ -257,6 +257,16 @@ DEF AI_SEND_OUT_SPENT EQU $fe
 ; for the scarce-PP tiebreak at .applyBest. Shares +18 with the send-out ranking,
 ; which runs at switch time, never inside a move-scoring pass.
 DEF AI_BUF_POSSKO EQU AI_BUF_BESTPARTYSCORE
+; FOLLOWUPS #61 (2026-11-12): the slots AI_SETUP encouraged this decision, one bit
+; per slot, so AI_DAMAGE can withdraw that encourage when a possible KO would end
+; the battle. Cleared at decision start; AI_SETUP (bit 3) writes it and AI_DAMAGE
+; (bit 5) reads it, with only AI_SMART between. Shares +19 with the send-out
+; ranking, which AI_THREAT (bit 6, after the read) may overwrite.
+DEF AI_BUF_SETUPMASK EQU AI_BUF_BESTPARTYSLOT
+; wAIReliableKOFound bit 7 (bits 0-3 are the reliable-KO slots): a live,
+; this-turn possible KO on the player's LAST live mon, i.e. one hit could win the
+; battle. AI_PLAN reads the whole byte, so it withholds its push for this too.
+DEF AI_KO_ENDS_BATTLE_BIT EQU 7
 DEF AI_SCARCE_PP EQU 2 ; at or below this, the best-damage nudge looks elsewhere
 DEF AI_SCARCE_MAX_HITS EQU 8 ; a best move needing more hits than this keeps its nudge
 ; Phase 5: the four per-slot MOVE CLASS masks, two bytes each, little-endian.

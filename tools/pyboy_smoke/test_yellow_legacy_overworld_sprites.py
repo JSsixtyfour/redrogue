@@ -76,10 +76,18 @@ class YellowLegacyOverworldSpriteContracts(unittest.TestCase):
         for sprite in SPRITES:
             self.assertIn(f"db {sprite}, SPRITE_{sprite}", lookup)
         self.assertIn("ld a, [wRoguePokemonForm1]", procedural)
+        # Bosses and optional encounters share one resolver: dedicated first.
         self.assertRegex(
             procedural,
-            r"(?s)call PCGetDedicatedPokemonSprite\s+jr nc, \.categoryFallback\s+"
-            r"ld a, e\s+ret\s+\.categoryFallback\s+call PCGetPokemonSpriteCategory",
+            r"(?s)PCGetSpeciesOWSprite::\s+call PCGetDedicatedPokemonSprite\s+"
+            r"ret c\s+call PCGetPokemonSpriteCategory",
+        )
+        self.assertRegex(procedural, r"(?s)PCGetBossOWSprite::.*?call PCGetSpeciesOWSprite")
+        optional = (ROOT / "custom_functions/optional_encounter.asm").read_text()
+        self.assertRegex(
+            optional,
+            r"(?s)OptionalEncounterPatchSprite::.*?ld a, \[wOptionalEncounterSpecies\].*?"
+            r"farcall PCGetSpeciesOWSprite",
         )
         self.assertIn("farcall PCGetDedicatedPokemonSprite", follower)
         self.assertIn("and FORM_MASK | %00001010", follower)

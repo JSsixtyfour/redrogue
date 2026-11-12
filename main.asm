@@ -599,7 +599,6 @@ INCLUDE "engine/battle/shinred_turn_fixes.asm" ; predefs only, so placement is f
 
 SECTION "Hidden Events 2", ROMX
 
-INCLUDE "engine/events/card_key.asm"
 INCLUDE "engine/events/rogue_reward_menu.asm"
 INCLUDE "engine/events/hidden_events/fighting_dojo.asm"
 INCLUDE "engine/events/hidden_events/indigo_plateau_hq.asm"
@@ -614,6 +613,15 @@ INCLUDE "engine/events/bridge_gift_menu.asm"
 SECTION "School Notebooks", ROMX
 
 INCLUDE "engine/events/hidden_events/school_notebooks.asm"
+
+
+; Split from "Hidden Events 2" for the same reason (2026-11-12, FOLLOWUPS #61's
+; AI growth in $0E). Keep this file whole: CardKeySuccessText and CardKeyFailText
+; are text predefs (raw dw) printed by PrintCardKeyText, which bookshelves.asm
+; reaches by farjp.
+SECTION "Card Key", ROMX
+
+INCLUDE "engine/events/card_key.asm"
 
 
 SECTION "Battle Engine 9", ROMX

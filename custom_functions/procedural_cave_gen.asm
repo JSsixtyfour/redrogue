@@ -775,11 +775,24 @@ PCGetBossOWSprite::
 	ld e, a
 	ld a, [wRoguePokemonForm1]
 	ld d, a
-	call PCGetDedicatedPokemonSprite
-	jr nc, .categoryFallback
+	call PCGetSpeciesOWSprite
 	ld a, e
 	ret
-.categoryFallback
+
+; ============================================================
+; PCGetSpeciesOWSprite
+; INPUT:  E = valid species, D = form (PCGetDedicatedPokemonSprite's encoding;
+;         0 = base appearance)
+; OUTPUT: E = the SPRITE_* constant a standing overworld Pokemon of that species
+;         shows: its dedicated sheet when one exists, else its category's sheet
+; CLOBBERS: a, b, d, hl
+; Farcall-safe (the result is in E). Every static overworld Pokemon that is
+; not a follower resolves here: the cave/forest/facility bosses and the
+; optional encounters, so a new dedicated sheet reaches all of them at once.
+; ============================================================
+PCGetSpeciesOWSprite::
+	call PCGetDedicatedPokemonSprite
+	ret c
 	call PCGetPokemonSpriteCategory
 	ld a, e
 	; a = neutral Pokemon sprite category -> boss SPRITE_* constant
@@ -789,7 +802,7 @@ PCGetBossOWSprite::
 	jr nc, .noCarry
 	inc h
 .noCarry
-	ld a, [hl]
+	ld e, [hl]
 	ret
 
 ; ============================================================

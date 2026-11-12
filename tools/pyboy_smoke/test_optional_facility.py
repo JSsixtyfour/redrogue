@@ -30,7 +30,6 @@ FIRST = RAM["OPTIONAL_PACKAGE_PSYCHIC"]
 SUPPORT = ("AGILITY", "BARRIER", "HYPNOSIS", "KINESIS", "MEDITATE", "CONFUSE_RAY")
 PACKAGES = range(FIRST, FIRST + len(SUPPORT))
 FLAGS = 12  # BIT_SPECIAL_FORM | BIT_TYPE_VARIANT
-MON_SPRITE = 5  # SPRITE_MONSTER
 SLOT = 13  # FACILITY_OPTIONAL_MON
 SCRATCH_X, SCRATCH_Y = 8, 9  # FACSUB_SCRATCH_MON_X/Y
 DOWN, UP, LEFT, RIGHT = 0, 4, 8, 12  # SPRITE_FACING_*
@@ -681,7 +680,7 @@ class FacilityEncounterTripTest(FacilityTripBase):
         self.assertEqual(h.read8("wOptionalEncounterMap"), self.maps["PROCEDURAL_FACILITY"])
         self.assertEqual((h.read8(f"wSprite{SLOT}StateData2MapX") - 4, h.read8(f"wSprite{SLOT}StateData2MapY") - 4), tile)
         # On the first entry: the sprite is patched before generation runs.
-        self.assertEqual(h.read8(f"wSprite{SLOT}StateData1"), MON_SPRITE)
+        self.assertEqual(h.read8(f"wSprite{SLOT}StateData1"), encounter.optional_sprite(h))
         h.write8("wOptionalEncounterPackage", FIRST)
         bubbles = h.hook_flag("EmotionBubble")
         self.walk_below(tile)
@@ -760,7 +759,7 @@ class FacilityEncounterTripTest(FacilityTripBase):
             reboot.load()
             self.assertTrue(reboot.overworld)
             self.assertTrue(save_reload.settle(reboot.h))
-            self.assertEqual(reboot.h.read8(f"wSprite{SLOT}StateData1"), MON_SPRITE)
+            self.assertEqual(reboot.h.read8(f"wSprite{SLOT}StateData1"), encounter.optional_sprite(reboot.h))
             self.assertEqual(reboot.h.read8("wOptionalEncounterPackage"), package)
         finally:
             reboot.close()
@@ -841,7 +840,7 @@ class FacilityWarpRoomFallbackTest(fs.FacilitySuperNerdTest):
         h.register_hook("OptionalForcePink.level", lambda _: setattr(h.pyboy.register_file, "A", self.level))
         piece = self.enter_subroom()
         self.assertEqual(h.read8("wOptionalEncounterMap"), self.maps["PROCEDURAL_FACILITY_SUBROOM"])
-        self.assertEqual(h.read8("wSprite03StateData1"), MON_SPRITE)
+        self.assertEqual(h.read8("wSprite03StateData1"), encounter.optional_sprite(h))
         # It has been wandering since the room loaded: stop it, then go by where it is.
         h.write8("wSprite03StateData2MovementByte1", 0xFF)
         h.write8("wMapSpriteData", RANGE[RIGHT], offset=2 * 2)

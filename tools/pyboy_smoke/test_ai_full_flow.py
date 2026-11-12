@@ -553,11 +553,13 @@ class AIFullFlowTest(unittest.TestCase):
         # decision happens INSIDE boot_fight2 (see the previous test's note),
         # before a hook registered after boot could ever see it.
         h = self.h
-        kill_branch, flag = [], []
+        kill_branch, flag, possko = [], [], []
         container = {}
         def before_boot():
             h.hook_flag("AILayerDamage.kill", action=lambda: kill_branch.append(1))
             h.hook_flag("AILayerPlan", action=lambda: flag.append(h.read8("wAIReliableKOFound")))
+            h.hook_flag("AIPossibleKOEndsBattle", action=lambda: possko.append(
+                h.read8("wBuffer", self.ai["AI_BUF_POSSKO"])))
             container["decisions"] = h.hook_ai_scores()
         self.boot([self.mon("GOLEM", ["SPLASH"])],
                   [self.mon("VENUSAUR", ["SOLARBEAM", "VINE_WHIP"])],
@@ -570,10 +572,14 @@ class AIFullFlowTest(unittest.TestCase):
         self.assertTrue(self.drive_turns(lambda: len(executed) >= 1), f"executed={executed}")
         first = decisions[0]
         damage = [t["delta"] for t in first["layer_trace"] if t["layer"] == "DAMAGE"]
-        print(f"\nL3 two-turn kill scores={first['scores']} damage={damage} executed={executed}")
+        print(f"\nL3 two-turn kill scores={first['scores']} damage={damage} "
+              f"ko={flag[:1]} possko={possko[:1]} executed={executed}")
         self.assertTrue(kill_branch)  # Solar Beam really is in KO range
         self.assertGreater(damage[0][0], -self.ai["AI_KILL"])  # ...and capped below it
-        self.assertEqual(flag[:1], [0])
+        self.assertEqual(flag[0] & 0x0F, 0)  # no slot is a reliable KO
+        # #61: a two-turn move is no "win this turn", so Solar Beam (slot 0) never
+        # joins the possible-KO mask.
+        self.assertEqual(possko[0] & 1, 0)
         self.assertEqual(executed[0], self.moves["VINE_WHIP"])
 
     def test_attack_that_can_ko_beats_a_pointless_speed_boost(self):
@@ -617,6 +623,88 @@ class AIFullFlowTest(unittest.TestCase):
         take_down = first["scores"][0]
         self.assertTrue(all(take_down < s for s in first["scores"][1:]), first["scores"])
         self.assertEqual(executed[0], self.moves["TAKE_DOWN"])
+
+    # FOLLOWUPS #61 part (2): the seed-17 board with Agility swapped for Swords
+    # Dance, which the speed-boost gate does not cover. Measured before the fix:
+    # Take Down 18 vs Swords Dance 15 (AI_SETUP -2, SwordsDance plan -3) on every
+    # board below, at any Golbat HP. Pidgeot (L50, Atk 113, Spd 124) is faster
+    # than Golbat (L45, Def 76, Spd 95); Take Down does 76-90 to it, so at 47 HP
+    # every hit KOs and only the 85% accuracy roll stands in the way.
+    PIDGEOT_SET = ["TAKE_DOWN", "SWORDS_DANCE", "SKY_ATTACK", "MIRROR_MOVE"]
+    GOLBAT_SET = ["SLUDGE", "BITE", "CONFUSE_RAY", "WING_ATTACK"]
+
+    def setup_vs_ko_decision(self, golbat_hp, reserves=()):
+        """Turn 1's decision and first executed move on the #61 board. Returns
+        (scores, per-layer deltas, wAIReliableKOFound as AI_PLAN saw it, move)."""
+        h = self.h
+        primed, ko_flag, container = [], [], {}
+
+        def prime():
+            if not primed:
+                primed.append(1)
+                if golbat_hp is not None:
+                    self.word("wBattleMonHP", golbat_hp)
+
+        def before_boot():
+            h.hook_flag("AIEnemyTrainerChooseMoves", action=prime)
+            h.hook_flag("AILayerPlan", action=lambda: ko_flag.append(h.read8("wAIReliableKOFound")))
+            container["decisions"] = h.hook_ai_scores()
+
+        player = [self.mon("GOLBAT", self.GOLBAT_SET, level=45)]
+        player += [self.mon(name, ["BITE"], level=45) for name in reserves]
+        self.boot(player, [self.mon("PIDGEOT", self.PIDGEOT_SET)],
+                  trainer="COOLTRAINER_M", tier=3, before_boot=before_boot)
+        self.no_items()
+        executed = []
+        h.hook_flag("ExecuteEnemyMove", action=lambda: executed.append(
+            h.read8("wEnemySelectedMove")))
+        self.assertTrue(self.drive_turns(lambda: len(executed) >= 1), f"executed={executed}")
+        first = container["decisions"][0]
+        layers = {t["layer"]: t["delta"] for t in first["layer_trace"]}
+        print(f"\n#61 hp={golbat_hp} reserves={list(reserves)} scores={first['scores']} "
+              f"setup={layers['SETUP']} damage={layers['DAMAGE']} plan={layers['PLAN']} "
+              f"ko={ko_flag[:1]} executed={executed}")
+        return first["scores"], layers, ko_flag[0], executed[0]
+
+    def assert_take_down_wins_over_setup(self, golbat_hp):
+        scores, layers, ko_flag, executed = self.setup_vs_ko_decision(golbat_hp)
+        ends_battle = 1 << self.ai["AI_KO_ENDS_BATTLE_BIT"]
+        self.assertEqual(ko_flag, ends_battle)  # possible, not reliable (85% accuracy)
+        self.assertLess(layers["SETUP"][1], 0)  # the turn-1 encourage still fires...
+        self.assertEqual(layers["SETUP"][1] + layers["DAMAGE"][1], 0)  # ...and is withdrawn
+        self.assertEqual(layers["PLAN"], [0, 0, 0, 0])  # the SwordsDance plan stands down
+        self.assertTrue(all(scores[0] < s for s in scores[1:]), scores)
+        self.assertEqual(executed, self.moves["TAKE_DOWN"])
+
+    def test_attack_that_can_win_beats_a_setup_move_on_the_last_mon(self):
+        # Golbat at 47 HP is the player's last mon: one hit wins the battle,
+        # and the +2 would never be used. Was SD 15 vs TD 18; now TD 18 vs 20.
+        self.assert_take_down_wins_over_setup(47)
+
+    def test_high_roll_win_also_beats_a_setup_move_on_the_last_mon(self):
+        # At 85 HP Take Down KOs only on a high roll (~38% of hits). Still
+        # better than Swords Dance, which wins nothing this turn and gives
+        # Golbat a free action before the same Take Down next turn.
+        self.assert_take_down_wins_over_setup(85)
+
+    def test_setup_bait_is_kept_when_the_player_has_reserves(self):
+        # The same possible KO, but two reserves remain: the +2 carries into
+        # the next fight, so setting up on a mon that cannot hurt us is allowed.
+        scores, layers, ko_flag, executed = self.setup_vs_ko_decision(
+            47, reserves=("ARBOK", "RATICATE"))
+        self.assertEqual(ko_flag, 0)
+        self.assertEqual(layers["DAMAGE"][1], 0)  # nothing withdrawn
+        self.assertLess(layers["SETUP"][1], 0)
+        self.assertLess(layers["PLAN"][1], 0)
+        self.assertEqual(executed, self.moves["SWORDS_DANCE"])
+
+    def test_setup_move_keeps_its_encourage_when_nothing_can_ko(self):
+        # Control: full HP, last mon, no possible KO. Both pushes stay.
+        scores, layers, ko_flag, executed = self.setup_vs_ko_decision(None)
+        self.assertEqual(ko_flag, 0)
+        self.assertEqual(layers["DAMAGE"][1], 0)
+        self.assertLess(layers["SETUP"][1], 0)
+        self.assertLess(layers["PLAN"][1], 0)
 
 
 if __name__ == "__main__":

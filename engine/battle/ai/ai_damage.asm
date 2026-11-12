@@ -210,8 +210,6 @@ AILayerDamage:
 ; ranking above overwrote, so it comes back from bc (2026-09-30: this used to
 ; re-run AIEstimateDamage, a whole damage formula per killing move, for an
 ; identical result). The loop's hl/de/bc are on the stack.
-	ld hl, wBuffer + AI_BUF_POSSKO ; hl is the loop's score pointer, stacked
-	call AIMarkSlotBit ; preserves bc, the one-hit max
 ;
 ; Two-turn moves (CHARGE_EFFECT: Solar Beam, Razor Wind, Skull Bash, Sky Attack,
 ; Dig; FLY_EFFECT: Fly) deal nothing THIS turn, so they never earn a kill tier
@@ -227,6 +225,11 @@ AILayerDamage:
 	jr z, .unreliableKill
 	cp FLY_EFFECT
 	jr z, .unreliableKill
+; Only a move that lands THIS turn joins the possible-KO mask (#61 reads it as
+; "could win now"). The scarce-PP rule never used a two-turn slot's bit: its
+; stored damage is 0, so it can be neither the best nor a stand-in.
+	ld hl, wBuffer + AI_BUF_POSSKO ; hl is the loop's score pointer, stacked
+	call AIMarkSlotBit ; preserves bc, the one-hit max
 	ld a, b
 	ld [wAIDamageEstimate], a
 	ld a, c
@@ -324,6 +327,7 @@ AILayerDamage:
 ; reads the mask: the scarce-PP rule below and AI_PLAN after this layer. The
 ; scores are still set after the last layer (AIExplosionTradeVeto).
 	call AIExplosionVetoMask
+	call AIPossibleKOEndsBattle
 	ld a, [wBuffer + AI_BUF_BESTSLOT]
 	cp NUM_MOVES
 	ret nc ; still $ff: no damaging move in this set
@@ -384,6 +388,42 @@ AILayerDamage:
 	ld [wBuffer + AI_BUF_BESTDMG + 1], a
 	ld a, [wBuffer + AI_BUF_CURSLOT]
 	ld [wBuffer + AI_BUF_BESTSLOT], a
+	ret
+
+; FOLLOWUPS #61 (2026-11-12): a hit that could win the battle beats setting up.
+; Measured: a faster Pidgeot whose Take Down KOs a 47-HP last-mon Golbat on ANY
+; hit (minimum roll 76) scored Take Down 18 against Swords Dance 15 (AI_SETUP's
+; turn-1 encourage -2, the SwordsDance plan -3) and set up, giving Golbat a free
+; turn for a boost the battle would end before using. Reliable kills already beat
+; plans (#55); this extends that to possible KOs, but only on the player's LAST
+; live mon. With a reserve left, a boost carries into the next fight, so setting
+; up on a mon that cannot hurt us stays allowed.
+; INPUT a = the Explosion slots vetoed this decision (AIExplosionVetoMask); such
+; a slot is no win. If a live slot that lands this turn can possibly KO the last
+; mon: set AI_KO_ENDS_BATTLE_BIT, so AI_PLAN (which reads the whole byte, later)
+; withholds its push, and take back AI_SETUP's encourage here, since AI_SETUP ran
+; before this layer. Clobbers af, bc, de, hl.
+AIPossibleKOEndsBattle:
+	cpl
+	ld hl, wBuffer + AI_BUF_POSSKO
+	and [hl]
+	ret z ; no possible KO that is allowed to land this turn
+	call AIPlayerOnLastMon ; trainer_ai.asm, same bank
+	ret nc ; a reserve is alive
+	ld hl, wAIReliableKOFound
+	set AI_KO_ENDS_BATTLE_BIT, [hl]
+	ld a, [wBuffer + AI_BUF_SETUPMASK]
+	ld hl, wBuffer
+.withdraw ; srl leaves z once the mask is spent; push/pop af keeps those flags
+	srl a
+	jr nc, .next
+	push af
+	ld a, AI_STRONG ; AI_SETUP's magnitude
+	call AIDiscourage
+	pop af
+.next
+	inc hl
+	jr nz, .withdraw
 	ret
 
 ; B9 scarce-PP tiebreak (2026-10-21 AI review). Enemies spend PP and a party

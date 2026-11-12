@@ -97,11 +97,21 @@ class ReliableKOWinsTest(unittest.TestCase):
 
     def test_a_dead_slot_is_never_marked_as_a_kill(self) -> None:
         # S2: slots are FIRE_BLAST, BODY_SLAM, GROWL, TACKLE. At 1 HP, Body Slam and
-        # Tackle kill reliably; Fire Blast can miss (85%).
-        self.assertEqual(self.damage_mask(), 0b1010)
-        self.assertEqual(self.damage_mask(pp=(PP_FULL, 0, PP_FULL, PP_FULL)), 0b1000)
-        self.assertEqual(self.damage_mask(disabled=0x41), 0b0010)  # slot 4 disabled
-        self.assertEqual(self.damage_mask(pp=(PP_FULL, 0, PP_FULL, 0)), 0)
+        # Tackle kill reliably; Fire Blast can miss (85%). Bits 0-3 only: bit 7 is
+        # the separate "a possible KO ends the battle" flag (#61), tested below.
+        self.assertEqual(self.damage_mask() & 0x0F, 0b1010)
+        self.assertEqual(self.damage_mask(pp=(PP_FULL, 0, PP_FULL, PP_FULL)) & 0x0F, 0b1000)
+        self.assertEqual(self.damage_mask(disabled=0x41) & 0x0F, 0b0010)  # slot 4 disabled
+        self.assertEqual(self.damage_mask(pp=(PP_FULL, 0, PP_FULL, 0)) & 0x0F, 0)
+
+    def test_a_possible_ko_on_the_last_mon_flags_the_battle_as_winnable(self) -> None:
+        # FOLLOWUPS #61: Snorlax is the player's only mon, so any live slot that
+        # can KO this turn sets bit 7, a reliable kill or not (Fire Blast alone
+        # still can, at 85%); with every damaging slot dead, nothing can.
+        ends_battle = 0x80
+        self.assertEqual(self.damage_mask() & ends_battle, ends_battle)
+        self.assertEqual(self.damage_mask(pp=(PP_FULL, 0, PP_FULL, 0)) & ends_battle, ends_battle)
+        self.assertEqual(self.damage_mask(pp=(0, 0, PP_FULL, 0)) & ends_battle, 0)
 
     def test_mark_sets_one_bit_per_slot(self) -> None:
         h = self.h
