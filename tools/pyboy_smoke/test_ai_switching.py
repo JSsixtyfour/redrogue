@@ -569,7 +569,7 @@ class AIShouldSwitchTest(unittest.TestCase):
     # to the rescan fallback.
     RESERVE_HALF = {"NO": 0, "KEEPS": 1, "UNKNOWN": 0xFF}
 
-    def half_answers(self, player_moves: list[str], reserve_hps) -> list[dict[str, int]]:
+    def half_answers(self, player_moves: list[str], reserve_hps, reserve: str = "WIGGLYTUFF") -> list[dict[str, int]]:
         """Per reserve HP: the derived answer, B4's largest delivery, the
         rescan's answer (1 keeps half, 0 not), and how often B5's gate itself
         fell back to the rescan. reserve_hps(hit) maps the measured full-HP
@@ -578,7 +578,7 @@ class AIShouldSwitchTest(unittest.TestCase):
         assert h is not None
         h.inject_fight2_spec(
             [self.mon("RATICATE", player_moves)],
-            [self.mon("PIKACHU"), self.mon("WIGGLYTUFF")],
+            [self.mon("PIKACHU"), self.mon(reserve)],
             trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=2,
         )
         h.boot_fight2(seed=1)
@@ -624,7 +624,9 @@ class AIShouldSwitchTest(unittest.TestCase):
 
     def test_derived_half_answer_matches_the_rescan_at_even_hp(self) -> None:
         # HP 2 x hit: the hit takes exactly half (NO); 2 x hit + 2 keeps more.
-        results = self.half_answers(["BODY_SLAM"], lambda hit: (2 * hit, 2 * hit + 2))
+        # Electrode outspeeds the player's Raticate, so the half test applies
+        # (B5 v2: a faster reserve acts right after the entry hit).
+        results = self.half_answers(["BODY_SLAM"], lambda hit: (2 * hit, 2 * hit + 2), reserve="ELECTRODE")
         self.assert_derived_matches_rescan(results)
         self.assertEqual([r["derived"] for r in results],
                          [self.RESERVE_HALF["NO"], self.RESERVE_HALF["KEEPS"]], results)
@@ -633,11 +635,21 @@ class AIShouldSwitchTest(unittest.TestCase):
         # Both scans round HP / 2 down: at 2 x hit + 1 the half is the hit
         # itself (NO), at 2 x hit - 1 it is below it (NO), and 2 x hit + 3 keeps.
         results = self.half_answers(
-            ["BODY_SLAM"], lambda hit: (2 * hit - 1, 2 * hit + 1, 2 * hit + 3))
+            ["BODY_SLAM"], lambda hit: (2 * hit - 1, 2 * hit + 1, 2 * hit + 3), reserve="ELECTRODE")
         self.assert_derived_matches_rescan(results)
         self.assertEqual([r["derived"] for r in results],
                          [self.RESERVE_HALF["NO"], self.RESERVE_HALF["NO"],
                           self.RESERVE_HALF["KEEPS"]], results)
+
+    def test_slower_reserve_must_survive_two_hits_and_a_crit(self) -> None:
+        # B5 v2: Wigglytuff is slower than the player's Raticate, so it takes the
+        # entry hit and next turn's before it acts. It must keep 3 x hit < HP:
+        # 2 x hit + 2 kept "half" before v2 and is now a NO; 3 x hit is still a
+        # NO; 3 x hit + 1 KEEPS. (The Super Fang rescan keeps the half rule.)
+        results = self.half_answers(
+            ["BODY_SLAM"], lambda hit: (2 * hit + 2, 3 * hit, 3 * hit + 1))
+        self.assertEqual([r["derived"] for r in results],
+                         [self.RESERVE_HALF["NO"], self.RESERVE_HALF["NO"], self.RESERVE_HALF["KEEPS"]], results)
 
     def test_reserve_ko_is_a_no_without_a_rescan(self) -> None:
         # HP = hit: B4 stops at the KO and never measures the rest; NO, as the
@@ -689,6 +701,26 @@ class AIShouldSwitchTest(unittest.TestCase):
             prime={"wEnemyMon2HP": 0},  # high byte; the low byte is set below
             post_boot=lambda h: h.write8("wEnemyMon2HP", 1, offset=1),
         ))
+
+    def reserve_slot_hit(self, h, slot: int, move: str = "BODY_SLAM") -> int:
+        """The player's `move` one-hit maximum into enemy party slot `slot` (1-based)."""
+        saved = {label: h.read_bytes(label, 2)
+                 for label in ("wEnemyMonType1", "wEnemyMonDefense", "wEnemyMonSpecial", "wPlayerMoveNum")}
+        for live, field in (("wEnemyMonType1", "Type1"), ("wEnemyMonDefense", "Defense"),
+                            ("wEnemyMonSpecial", "Special")):
+            for offset, value in enumerate(h.read_bytes(f"wEnemyMon{slot}{field}", 2)):
+                h.write8(live, value, offset=offset)
+        bank, address = h.symbols.get("Moves")
+        rom = (REPO_ROOT / "pokeblue_debug.gbc").read_bytes()
+        start = bank * 0x4000 + address - 0x4000 + (self.moves[move] - 1) * 6
+        for offset, value in enumerate(rom[start:start + 6]):
+            h.write8("wPlayerMoveNum", value, offset=offset)
+        h.call_routine("AIEstimatePlayerDamage")
+        hit = int.from_bytes(bytes(h.read_bytes("wAIDamageEstimate", 2)), "big")
+        for label, values in saved.items():
+            for offset, value in enumerate(values):
+                h.write8(label, value, offset=offset)
+        return hit
 
     def test_no_emergency_switch_into_a_reserve_no_better_off(self) -> None:
         # Review F5 (2026-09-29): Rattata takes Body Slam exactly as Pikachu

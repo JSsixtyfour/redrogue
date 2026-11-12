@@ -371,6 +371,7 @@ def main(argv: list[str] | None = None) -> int:
         "player": args.player,
         "ai_telemetry": args.ai_telemetry,
         "errands": args.errands,
+        "ai_greedy": os.environ.get("AI_GREEDY") == "1",  # ai_greedy.py control AI
     }
     rows = []
     for row in run_all(seeds, options, max(1, args.jobs), args.timeout):

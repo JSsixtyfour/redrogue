@@ -125,7 +125,13 @@ class RevisitedExitTest(unittest.TestCase):
         agent.near_arrival = lambda step: step == (9,9)
         agent.talk_goal = lambda *args: interaction
         self.assertEqual(agent.goal_groups(None), [interaction, arrival])
+        used_ladder = autoplay.Goal({(7, 37): (None, "warp_back")}, warp=True)
+        onward = autoplay.Goal({(1, 3): (None, "warp_exit")}, warp=True)
+        agent.exit_goals = lambda: [onward, used_ladder, arrival]
+        self.assertEqual(agent.goal_groups(None), [onward, interaction, used_ladder, arrival])
         agent.talked = {1}
+        self.assertEqual(agent.goal_groups(None), [onward, used_ladder, arrival])
+        agent.exit_goals = lambda: [arrival]
         self.assertEqual(agent.goal_groups(None), [arrival])
 
     def test_revisited_forward_exit_precedes_arrival_but_backtracking_remains(self):

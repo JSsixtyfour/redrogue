@@ -1843,13 +1843,13 @@
       ],
       "expect": {
         "scores": [
-          11,
           10,
+          11,
           20,
           20
         ]
       },
-      "note": "Rebaselined 2026-09-02 for AI_OVERHAUL_PLAN.md follow-up F16: both slots shifted by exactly -4, which is AI_KILL_FIRST (9) minus AI_KILL (5). The player is primed into one-shot range and the enemy (Electrode) outspeeds Snorlax, so BOTH Quick Attack and Slash are lethal AND act first, and both now earn the priority-kill magnitude. This fixture's own subject is UNCHANGED and re-verified: layer_trace shows RISKY's delta is [0,0,0,0], so AI_RISKY is still correctly silent because a guaranteed win exists. The uniform -4 across both slots is itself the tell that nothing but AI_DAMAGE moved."
+      "note": "Re-baselined 2026-11-12. Both moves are reliable KOs that act first; since the 2026-09-29 owner-HP damage cap they rank equal, so the best-damage nudge and the pick go to slot 0. The 'bigger kill' this scenario was written for no longer exists as a distinction, and either pick wins the same way."
     },
     {
       "name": "plan_steers_toward_setup_when_nothing_is_dying",
@@ -1933,8 +1933,8 @@
       ],
       "expect": {
         "scores": [
-          18,
-          15,
+          21,
+          17,
           10,
           20
         ]
@@ -2021,7 +2021,7 @@
       ],
       "expect": {
         "scores": [
-          17,
+          15,
           20,
           20,
           20
@@ -2126,7 +2126,7 @@
       "required_cases": [
         "positive"
       ],
-      "note": "Below half HP: AmnesiaRest heals rather than boosts, per its execute routine.",
+      "note": "The AI is told the player's whole moveset (wAISeenPlayerMoveMask), as this scenario assumed before fair play: otherwise the type guess gives the player an unrevealed STAB attack that changes the plan's fitness. With the whole moveset seen (only Splash), the setup gate no longer guesses Snorlax's Self-Destruct, so Amnesia keeps AI_SETUP's -2 (18); Recover is still the pick.",
       "ai_tier": 3,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -2163,6 +2163,9 @@
           20,
           20
         ]
+      },
+      "prime": {
+        "wAISeenPlayerMoveMask": 15
       }
     },
     {
@@ -2177,15 +2180,15 @@
       "required_cases": [
         "positive"
       ],
-      "note": "No RECOVERY-class move, so AmnesiaRest's required mask rejects it and plain Amnesia wins.",
+      "note": "Player is a special attacker (2026-11-12): against Snorlax, which can Self-Destruct and only hits physically, the setup gate rightly withholds Amnesia - it neither shortens Chansey's KO (Tackle is physical) nor blunts the hit.",
       "ai_tier": 3,
       "trainer_class": "COOLTRAINER_M",
       "player": [
         {
-          "species": "SNORLAX",
+          "species": "ALAKAZAM",
           "level": 50,
           "moves": [
-            "TACKLE"
+            "PSYCHIC_M"
           ]
         }
       ],
@@ -2201,7 +2204,7 @@
       ],
       "expect": {
         "scores": [
-          15,
+          16,
           19,
           20,
           20
@@ -2287,7 +2290,7 @@
       ],
       "expect": {
         "scores": [
-          17,
+          14,
           79,
           20,
           20
@@ -2330,7 +2333,7 @@
       ],
       "expect": {
         "scores": [
-          18,
+          15,
           18,
           20,
           20
@@ -2349,7 +2352,7 @@
       "required_cases": [
         "positive"
       ],
-      "note": "Splash deals no damage, so AISubWouldSurvive holds trivially; SubStall(RECOVERY) qualifies over bare SubSetup because its required mask (SUB|RECOVERY) is a superset.",
+      "note": "The AI is told the player's whole moveset (wAISeenPlayerMoveMask), as this scenario assumed before fair play: otherwise the type guess gives the player an unrevealed STAB attack that changes the plan's fitness.",
       "ai_tier": 3,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -2378,6 +2381,9 @@
           20,
           20
         ]
+      },
+      "prime": {
+        "wAISeenPlayerMoveMask": 15
       }
     },
     {
@@ -2392,7 +2398,7 @@
       "required_cases": [
         "positive"
       ],
-      "note": "Same shape as the recovery variant with the SUB|POISON required mask instead. Rebaselined 2026-09-02 for F14 (AISmart_Poison): slot 1 (TOXIC) moved 20 -> 18. Same mechanism as plan_toxicstall_poisons_then_would_heal's rebaseline in this file - AISmart_Poison now independently encourages Toxic against a healthy, unstatused target (Electrode, full HP, AI_STRONG). The plan is still at step 0 here (Substitute has not gone up yet), so the plan layer has not yet touched TOXIC's slot at all - this -2 is entirely AI_SMART's own contribution, not a stack with the plan.",
+      "note": "The AI is told the player's whole moveset (wAISeenPlayerMoveMask), as this scenario assumed before fair play: otherwise the type guess gives the player an unrevealed STAB attack that changes the plan's fitness.",
       "ai_tier": 3,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -2421,6 +2427,9 @@
           20,
           20
         ]
+      },
+      "prime": {
+        "wAISeenPlayerMoveMask": 15
       }
     },
     {
@@ -2435,7 +2444,7 @@
       "required_cases": [
         "positive"
       ],
-      "note": "No RECOVERY or POISON class present, so both SubStall entries' required masks reject it and bare SubSetup (SUB only, gated on a boost move existing) wins instead.",
+      "note": "The AI is told the player's whole moveset (wAISeenPlayerMoveMask), as this scenario assumed before fair play: otherwise the type guess gives the player an unrevealed STAB attack that changes the plan's fitness.",
       "ai_tier": 3,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -2464,6 +2473,9 @@
           20,
           20
         ]
+      },
+      "prime": {
+        "wAISeenPlayerMoveMask": 15
       }
     },
     {
@@ -2510,7 +2522,7 @@
       ],
       "expect": {
         "scores": [
-          9,
+          12,
           19,
           20,
           20
@@ -3083,7 +3095,7 @@
         "positive",
         "negative"
       ],
-      "note": "AI_OVERHAUL_PLAN.md follow-up F14. Double Team (EVASION_UP1_EFFECT) against a healthy, unstatused player. AI_SETUP's existing blanket AI_STRONG encouragement fires unconditionally (delta [-2,0,0,0], unchanged by F14 - see the fixture's paired case for the same SETUP contribution), and the NEW AISmart_Evasion handler partially tempers it with a mild AI_NUDGE discourage since evasion has not yet been shown to matter - confirmed via layer_trace: SMART's delta is [1,0,0,0].",
+      "note": "Re-baselined 2026-11-12 for the setup gate (ai_setup_gate.asm): Snorlax can Self-Destruct, which takes half of Electrode's HP, and evasion costs a turn, so AI_SETUP's -2 is taken back (decided: evasion is not exempt). Outside a stall Mist now edges Double Team; inside one (evasion_strongly_encouraged_when_stalling) Double Team is still the pick.",
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -3107,7 +3119,7 @@
       ],
       "expect": {
         "scores": [
-          19,
+          21,
           20,
           20,
           20
@@ -3128,7 +3140,7 @@
         "positive",
         "negative"
       ],
-      "note": "Same board as the positive case, player primed poisoned. AISmart_Evasion flips from a mild temper to a strong encouragement, since a lost turn costs nothing extra while the player is already losing HP/turns regardless - confirmed via layer_trace: SMART's delta flips from [1,0,0,0] to [-2,0,0,0], stacking with AI_SETUP's unchanged [-2,0,0,0].",
+      "note": "Re-baselined 2026-11-12 for the setup gate (ai_setup_gate.asm): Snorlax can Self-Destruct, which takes half of Electrode's HP, and evasion costs a turn, so AI_SETUP's -2 is taken back (decided: evasion is not exempt). Outside a stall Mist now edges Double Team; inside one (evasion_strongly_encouraged_when_stalling) Double Team is still the pick.",
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -3155,7 +3167,7 @@
       },
       "expect": {
         "scores": [
-          16,
+          18,
           20,
           20,
           20
@@ -3768,8 +3780,8 @@
       ],
       "expect": {
         "scores": [
-          11,
-          14,
+          10,
+          15,
           20,
           20
         ],
@@ -3789,7 +3801,7 @@
         "positive",
         "negative"
       ],
-      "note": "The mirror of the positive case, and the reason AI_KILL_FIRST is safe to apply unconditionally rather than only when slower: the enemy is now the FAST one (Electrode vs Slowpoke), so AIEnemyActsFirstWith is true for BOTH moves, both earn AI_KILL_FIRST, and the bigger move correctly wins on the best-expected-damage nudge plus its own rider. Priority is only worth something when it actually changes who moves first. Confirmed via layer_trace: DAMAGE delta [-9,-10,0,0]. Rebaselined 2026-09-02 for follow-up F22: same cause as its paired positive case - Body Slam lost its rider bonus on a lethal board, 8 -> 10. It still correctly wins (10 < 11), so the point this fixture exists to make - that priority buys nothing when you already outspeed - is unchanged.",
+      "note": "Re-baselined 2026-11-12. Both moves are reliable KOs that act first; since the 2026-09-29 owner-HP damage cap they rank equal, so the best-damage nudge and the pick go to slot 0. The 'bigger kill' this scenario was written for no longer exists as a distinction, and either pick wins the same way.",
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -3821,12 +3833,12 @@
       ],
       "expect": {
         "scores": [
-          11,
           10,
+          11,
           20,
           20
         ],
-        "pick_slot": 1
+        "pick_slot": 0
       }
     },
     {
@@ -3867,7 +3879,7 @@
       ],
       "expect": {
         "scores": [
-          16,
+          15,
           21,
           20,
           20
@@ -4036,6 +4048,363 @@
           20
         ]
       }
+    },
+    {
+      "name": "personality_offense_leans_to_the_attack",
+      "phase": "E",
+      "heuristic": "personality_offense",
+      "case": "positive",
+      "tags": [
+        "personality",
+        "personality_offense"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 0,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "RATTATA",
+          "level": 50,
+          "moves": [
+            "GROWL",
+            "TACKLE"
+          ]
+        }
+      ],
+      "personality": {
+        "profile": "OFFENSE",
+        "coin": "lean"
+      },
+      "expect": {
+        "scores": [
+          20,
+          19,
+          20,
+          20
+        ],
+        "pick_slot": 1
+      },
+      "note": "T0: only AI_REDUNDANT scores, so the two moves tie at 20 and the one-point lean decides."
+    },
+    {
+      "name": "personality_offense_tails_plays_neutral",
+      "phase": "E",
+      "heuristic": "personality_offense",
+      "case": "negative",
+      "tags": [
+        "personality",
+        "personality_offense"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 0,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "RATTATA",
+          "level": 50,
+          "moves": [
+            "GROWL",
+            "TACKLE"
+          ]
+        }
+      ],
+      "personality": {
+        "profile": "OFFENSE",
+        "coin": "neutral"
+      },
+      "expect": {
+        "scores": [
+          20,
+          20,
+          20,
+          20
+        ]
+      },
+      "note": "F4: a profile applies on half of its decisions; on tails nothing moves."
+    },
+    {
+      "name": "personality_control_leans_to_disruption",
+      "phase": "E",
+      "heuristic": "personality_control",
+      "case": "positive",
+      "tags": [
+        "personality",
+        "personality_control"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 0,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "PIKACHU",
+          "level": 50,
+          "moves": [
+            "TACKLE",
+            "THUNDER_WAVE"
+          ]
+        }
+      ],
+      "personality": {
+        "profile": "CONTROL",
+        "coin": "lean"
+      },
+      "expect": {
+        "scores": [
+          20,
+          19,
+          20,
+          20
+        ],
+        "pick_slot": 1
+      }
+    },
+    {
+      "name": "personality_control_leaves_setup_alone",
+      "phase": "E",
+      "heuristic": "personality_control",
+      "case": "negative",
+      "tags": [
+        "personality",
+        "personality_control"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 0,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "RATTATA",
+          "level": 50,
+          "moves": [
+            "TACKLE",
+            "SWORDS_DANCE"
+          ]
+        }
+      ],
+      "personality": {
+        "profile": "CONTROL",
+        "coin": "lean"
+      },
+      "expect": {
+        "scores": [
+          20,
+          20,
+          20,
+          20
+        ]
+      },
+      "note": "CONTROL nudges disruption only; boosts, screens and healing are left to their own layers."
+    },
+    {
+      "name": "personality_defensive_heals_below_half",
+      "phase": "E",
+      "heuristic": "personality_defensive",
+      "case": "positive",
+      "tags": [
+        "personality",
+        "personality_defensive"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 0,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "TACKLE",
+            "SOFTBOILED"
+          ]
+        }
+      ],
+      "personality": {
+        "profile": "DEFENSIVE",
+        "coin": "lean"
+      },
+      "expect": {
+        "scores": [
+          20,
+          19,
+          20,
+          20
+        ],
+        "pick_slot": 1
+      },
+      "prime_hp": [
+        {
+          "current_label": "wEnemyMonHP",
+          "max_label": "wEnemyMonMaxHP",
+          "numerator": 1,
+          "denominator": 3
+        }
+      ]
+    },
+    {
+      "name": "personality_defensive_no_heal_above_half",
+      "phase": "E",
+      "heuristic": "personality_defensive",
+      "case": "negative",
+      "tags": [
+        "personality",
+        "personality_defensive"
+      ],
+      "required_cases": [
+        "positive",
+        "negative"
+      ],
+      "ai_tier": 0,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "CHANSEY",
+          "level": 50,
+          "moves": [
+            "TACKLE",
+            "SOFTBOILED"
+          ]
+        }
+      ],
+      "personality": {
+        "profile": "DEFENSIVE",
+        "coin": "lean"
+      },
+      "expect": {
+        "scores": [
+          20,
+          20,
+          20,
+          20
+        ]
+      },
+      "prime_hp": [
+        {
+          "current_label": "wEnemyMonHP",
+          "max_label": "wEnemyMonMaxHP",
+          "numerator": 2,
+          "denominator": 3
+        }
+      ]
+    },
+    {
+      "name": "personality_never_overturns_a_reliable_ko",
+      "phase": "E",
+      "heuristic": "personality_vs_kill",
+      "case": "negative",
+      "tags": [
+        "personality",
+        "personality_vs_kill"
+      ],
+      "required_cases": [
+        "negative"
+      ],
+      "ai_tier": 2,
+      "trainer_class": "COOLTRAINER_M",
+      "player": [
+        {
+          "species": "SNORLAX",
+          "level": 50,
+          "moves": [
+            "SPLASH"
+          ]
+        }
+      ],
+      "enemy": [
+        {
+          "species": "RATTATA",
+          "level": 50,
+          "moves": [
+            "SWIFT",
+            "LEER"
+          ]
+        }
+      ],
+      "personality": {
+        "profile": "CONTROL",
+        "coin": "lean"
+      },
+      "expect": {
+        "pick_slot": 0,
+        "never_pick": [
+          1
+        ]
+      },
+      "note": "Swift never misses and the player is at 1 HP: a reliable KO, which CONTROL's lean on Leer must not beat.",
+      "prime_hp": [
+        {
+          "current_label": "wBattleMonHP",
+          "max_label": "wBattleMonMaxHP",
+          "numerator": 1,
+          "denominator": 1000
+        }
+      ]
     }
   ]
 }

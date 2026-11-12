@@ -6,9 +6,16 @@
 ;   (a) it costs a turn: it does not cut our best move's hits-to-KO on the
 ;       player's current HP by at least one (only Attack and Special boosts of
 ;       the best move's own category can do that: +2 counts x2, +1 counts x1.5);
-;   (b) that turn hurts: the foe's best hit takes half our current HP or more,
-;       believed (AIPlayerWouldKO's fair-play scan, max roll) or the Explosion
-;       its species can learn (AIPlayerSpeciesCanExplode).
+;   (b) that turn hurts: we would not live to act again. A faster mon sets up,
+;       takes ONE hit and acts first next turn; a slower one takes this turn's
+;       hit and next turn's before it acts, so TWO. The hit is the foe's best
+;       believed one (AIPlayerWouldKO's fair-play scan, max roll). An Explosion
+;       its species can learn (AIPlayerSpeciesCanExplode) counts once, since the
+;       foe faints using it: it hurts only if it KOs outright.
+; v2 (2026-11-12, measured on 250 autoplay seeds of setups that ran, T2+): a
+; slower mon wasted 41-42% of its boosts, a faster one 11-16%; the first gate
+; used the two-hit rule for both and cut the two alike, so its wasted rate did
+; not move.
 ; Measured on a faster Pidgeot (157 HP, Take Down / Swords Dance) with reserves
 ; behind the foe: Swords Dance was picked into everything. Electabuzz takes 70%
 ; a hit, but Take Down needs 2 hits now and 1 after +2, so the boost costs no
@@ -16,9 +23,9 @@
 ; anyway, and hits for 59-70%: withheld. A 30-HP Gengar hits for only 29% with
 ; what the AI believes it has, but its Explosion does 52-61%: withheld.
 ;
-; EXEMPT: we have a Substitute up (the hit lands on it), or the boost blunts the
-; hurting hit (Defense vs a physical attacker or an Explosion, Special vs a
-; special one: a boost whose point is to take that hit is not a wasted turn).
+; EXEMPT: we have a Substitute up (the hit lands on it). v2 dropped the old
+; "blunts the hit" exemption (Defense vs physical, Special vs special): those
+; defensive boosts were the most wasted kind of all, 59% in the same data.
 ;
 ; WHO ASKS. AI_DAMAGE takes back AI_SETUP's turn-1 encourage (AISetupGate), and
 ; AI_PLAN drops a boost class from its directive (AIPlanFilterBoosts). T1 has no
@@ -185,6 +192,28 @@ AIHitsToKO:
 ; Clobbers af, bc, de, hl.
 AISetupWithheld:
 	ld b, a ; b = effect
+; Only stat raises and drops are setup in this sense. AI_SETUP's vanilla ranges
+; also take in Recover/Rest, Reflect, Light Screen, Haze, Transform and
+; Conversion: healing when the foe hits hard is the point of healing, and a
+; screen is the answer to it (found by the AI scenarios, 2026-11-12: a 1/3-HP
+; Chansey's Recover lost its encourage). Those are left to their own layers.
+	cp ATTACK_UP1_EFFECT
+	jr c, .allow
+	cp EVASION_UP1_EFFECT + 1
+	jr c, .statMove
+	cp ATTACK_DOWN1_EFFECT
+	jr c, .allow
+	cp EVASION_DOWN1_EFFECT + 1
+	jr c, .statMove
+	cp ATTACK_UP2_EFFECT
+	jr c, .allow
+	cp EVASION_UP2_EFFECT + 1
+	jr c, .statMove
+	cp ATTACK_DOWN2_EFFECT
+	jr c, .allow
+	cp EVASION_DOWN2_EFFECT + 1
+	jr nc, .allow
+.statMove
 	ld a, [wEnemyBattleStatus2]
 	bit HAS_SUBSTITUTE_UP, a
 	jr nz, .allow ; the extra hit lands on our Substitute
@@ -201,34 +230,7 @@ AISetupWithheld:
 	and c
 	jr nz, .allow ; it cuts a hit off our KO
 .costsATurn
-	push bc
-	call AISetupExtraHitHurts
-	pop bc
-	ret nc ; the extra hit is affordable
-	ld a, b
-	cp DEFENSE_UP1_EFFECT
-	jr z, .defense
-	cp DEFENSE_UP2_EFFECT
-	jr z, .defense
-	cp SPECIAL_UP1_EFFECT
-	jr z, .special
-	cp SPECIAL_UP2_EFFECT
-	jr z, .special
-.withhold
-	scf
-	ret
-.defense ; blunts a physical hit; Explosion is physical
-	ld a, [wBuffer + AI_BUF_SETUPGATE]
-	bit AI_SG_BOOM_BIT, a
-	jr nz, .allow
-	call AIPlayerIsPhysicalThreat ; carry = physical
-	ccf
-	ret
-.special ; blunts a special hit (Gen 1 Special is offence and defence), not Explosion
-	ld a, [wBuffer + AI_BUF_SETUPGATE]
-	bit AI_SG_BOOM_BIT, a
-	jr nz, .withhold
-	jp AIPlayerIsPhysicalThreat ; carry = physical: withhold
+	jp AISetupExtraHitHurts ; carry = we would not live to act again: withhold
 .allow
 	and a
 	ret
@@ -240,9 +242,9 @@ AISetupWithheld:
 	db SPECIAL_UP1_EFFECT, 1 << AI_SG_SPC1_FREE_BIT
 	db 0 ; NO_ADDITIONAL_EFFECT is never a setup effect
 
-; Carry SET if the foe's extra hit takes half our current HP or more: its best
-; believed move (AIPlayerWouldKO's scan, max roll; a KO counts), or Explosion if
-; its species can learn it. Cached in AI_BUF_SETUPGATE for the decision, so AI_DAMAGE
+; Carry SET if we would not live to act again after setting up (see the header):
+; the foe's best believed hit (AIPlayerWouldKO's scan, max roll) KOs us, or, when
+; we are slower, two of them do; or the Explosion its species can learn KOs us. Cached in AI_BUF_SETUPGATE for the decision, so AI_DAMAGE
 ; and AI_PLAN pay once. Clobbers af, bc, de, hl.
 AISetupExtraHitHurts:
 	ld hl, wBuffer + AI_BUF_SETUPGATE
@@ -256,12 +258,22 @@ AISetupExtraHitHurts:
 	ld d, a
 	ld a, [wAIPlayerKOMaxDamage + 1]
 	ld e, a ; de = the largest believed delivery (a full scan: no KO was found)
-	call AIDamageTakesHalf
+	push de
+	call AIEnemyIsFaster ; carry = we act first; clobbers af, bc, de
+	pop de
+	jr c, .explosion ; faster: one hit before we act, and it does not KO
+	call AIDamageTakesHalf ; slower: two hits
 	jr c, .hurts
+.explosion
+; When the AI knows the whole moveset, the scan above already weighed every real
+; move, Explosion included if it is one: the species guess would only add a move
+; the player has been seen not to carry.
+	call AIPlayerMovesetKnown
+	jr c, .answer
 	farcall AIPlayerSpeciesCanExplode ; flags survive the farcall return
 	jr nc, .answer
 	call AIEstimatePlayerExplosion
-	call AIDamageTakesHalf
+	call AIDamageKillsUs ; once: the foe faints using it
 	jr nc, .answer
 	ld hl, wBuffer + AI_BUF_SETUPGATE
 	set AI_SG_BOOM_BIT, [hl]
@@ -275,11 +287,52 @@ AISetupExtraHitHurts:
 	scf
 	ret
 
+; Carry SET if the AI knows the player's whole active moveset: an omniscient
+; class (AIPlayerMovesAreKnown), or this party member has used every move it
+; holds (wAISeenPlayerMoveMask, laid out as in AIGetPlayerMoveN).
+; Clobbers af, bc, de, hl.
+AIPlayerMovesetKnown:
+	call AIPlayerMovesAreKnown
+	ret c
+	ld a, [wPlayerMonNumber]
+	ld e, a
+	srl a ; a = mask byte
+	ld hl, wAISeenPlayerMoveMask
+	add l
+	ld l, a
+	jr nc, .gotByte
+	inc h
+.gotByte
+	ld a, [hl]
+	bit 0, e
+	jr z, .gotNibble
+	swap a ; odd party slot: its bits are the high nibble
+.gotNibble
+	and $0f
+	ld c, a ; c = this mon's seen slots
+	ld hl, wBattleMonMoves
+	ld b, 1 ; b = this slot's bit
+.slot
+	ld a, [hli]
+	and a
+	jr z, .next ; no move in this slot
+	ld a, c
+	and b
+	ret z ; a move not yet seen (and `and` cleared the carry)
+.next
+	sla b
+	bit 4, b
+	jr z, .slot
+	scf
+	ret
+
 ; Carry SET if 2 * de >= our (the enemy mon's) current HP. de is a damage value
 ; of at most $1383, so 2de fits. Clobbers af, de, hl.
 AIDamageTakesHalf:
 	sla e
 	rl d
+; Carry SET if de >= our current HP. Clobbers af, hl.
+AIDamageKillsUs:
 	ld hl, wEnemyMonHP + 1
 	ld a, e
 	sub [hl]

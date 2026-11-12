@@ -703,21 +703,28 @@ class AIFullFlowTest(unittest.TestCase):
     # costs a turn (it does not cut Take Down's hits-to-KO) AND the foe's best
     # hit takes half Pidgeot's HP or more. Before the gate every board below
     # picked Swords Dance (15 vs 18).
-    def setup_gate_decision(self, species, moves, hp=None):
-        """Turn 1's scores, layer deltas, AI_BUF_SETUPGATE as AI_PLAN saw it,
-        and the move executed."""
+    def setup_gate_decision(self, species, moves, hp=None, revealed=False, pidgeot_hp=None):
+        """Turn 1's scores, layer deltas, AI_BUF_SETUPGATE at the decision's end,
+        and the move executed. revealed: the AI has seen all the player's moves."""
         h = self.h
         primed, gate, container = [], [], {}
 
         def prime():
+            if revealed:
+                h.write8("wAISeenPlayerMoveMask", 0x0F)  # party slot 0: all four seen
             if not primed:
                 primed.append(1)
                 if hp is not None:
                     self.word("wBattleMonHP", hp)
+                if pidgeot_hp is not None:
+                    self.word("wEnemyMonHP", pidgeot_hp)
 
         def before_boot():
             h.hook_flag("AIEnemyTrainerChooseMoves", action=prime)
-            h.hook_flag("AIPlanFilterBoosts", action=lambda: gate.append(
+            # Read at the end of the decision: AI_PLAN may not run its filter (no
+            # plan qualifies when the player can KO), and nothing after AI_DAMAGE
+            # writes +29.
+            h.hook_flag("AIEnemyTrainerChooseMoves.loopFindMinimumEntries", action=lambda: gate.append(
                 h.read8("wBuffer", self.ai["AI_BUF_SETUPGATE"])))
             container["decisions"] = h.hook_ai_scores()
 
@@ -756,13 +763,78 @@ class AIFullFlowTest(unittest.TestCase):
         self.assertEqual(executed, self.moves["TAKE_DOWN"])
 
     def test_setup_gate_counts_the_explosion_a_species_can_learn(self):
-        # A 30-HP Gengar's believed moves (Ghost/Poison guesses) take only 45 of
-        # 157, but Gengar can learn Explosion, which takes over half: withheld.
+        # A 30-HP Gengar's believed moves (Ghost/Poison guesses) do only 45, but
+        # Gengar can learn Explosion (82-96), which KOs a Pidgeot at 80 HP: the
+        # Explosion counts once (the foe faints using it), so only a KO hurts.
         # Take Down cannot touch a Ghost, so Sky Attack is the attack left.
         scores, layers, gate, executed = self.setup_gate_decision(
-            "GENGAR", ["NIGHT_SHADE", "HYPNOSIS", "EXPLOSION", "CONFUSE_RAY"], hp=30)
+            "GENGAR", ["NIGHT_SHADE", "HYPNOSIS", "EXPLOSION", "CONFUSE_RAY"], hp=30, pidgeot_hp=80)
         self.assertTrue(gate & self.bit("AI_SG_BOOM_BIT"))
         self.assert_setup_withheld(layers, executed)
+
+    def test_setup_gate_trusts_a_fully_seen_moveset_without_explosion(self):
+        # The same 30-HP Gengar, but the AI has seen all four of its moves and
+        # none is Explosion: the species guess must not add one. Its real hits
+        # (Night Shade 45 of 157) do not hurt, so Swords Dance stays encouraged.
+        scores, layers, gate, executed = self.setup_gate_decision(
+            "GENGAR", ["NIGHT_SHADE", "HYPNOSIS", "CONFUSE_RAY", "LICK"], hp=30, revealed=True)
+        self.assertEqual(gate & self.bit("AI_SG_BOOM_BIT"), 0)
+        self.assertEqual(gate & self.bit("AI_SG_HURTS_BIT"), 0)
+        self.assertEqual(layers["DAMAGE"][1], 0)
+        self.assertLess(layers["PLAN"][1], 0)
+
+    def test_setup_gate_counts_a_seen_explosion_through_the_believed_scan(self):
+        # All four seen, Explosion among them: the believed scan weighs the real
+        # move, so the hit hurts without the species guess (no BOOM bit).
+        scores, layers, gate, executed = self.setup_gate_decision(
+            "GENGAR", ["NIGHT_SHADE", "HYPNOSIS", "EXPLOSION", "CONFUSE_RAY"], hp=30, revealed=True,
+            pidgeot_hp=80)
+        self.assertTrue(gate & self.bit("AI_SG_HURTS_BIT"))
+        self.assertEqual(gate & self.bit("AI_SG_BOOM_BIT"), 0)
+        self.assert_setup_withheld(layers, executed)
+
+    def test_setup_gate_v2_a_faster_mon_affords_a_hit_that_does_not_ko(self):
+        # Gate v2: Pidgeot outspeeds a 30-HP Cloyster, so after Swords Dance it
+        # takes ONE hit (110 of 157, believed) and acts first next turn. That
+        # does not KO, so the boost stays encouraged; the first gate used the
+        # two-hit rule for every speed and withheld it.
+        scores, layers, gate, executed = self.setup_gate_decision(
+            "CLOYSTER", ["CLAMP", "AURORA_BEAM", "EXPLOSION", "WITHDRAW"], hp=30)
+        self.assertEqual(gate & self.bit("AI_SG_HURTS_BIT"), 0)
+        self.assertEqual(layers["DAMAGE"][1], 0)
+        self.assertLess(layers["SETUP"][1], 0)
+
+    def test_setup_gate_never_withholds_a_heal(self):
+        # AI_SETUP's vanilla ranges also encourage Recover (HEAL_EFFECT). The gate
+        # first treated it as setup and took it back exactly when the foe hits
+        # hard, which is when healing matters (found by the AI scenarios,
+        # 2026-11-12). Chansey at 1/3 HP vs Snorlax (believed STAB hit, and it can
+        # Self-Destruct): Amnesia's encourage is taken back, Recover's stays.
+        h = self.h
+        primed, container = [], {}
+
+        def prime():
+            if not primed:
+                primed.append(1)
+                max_hp = h.read8("wEnemyMonMaxHP") << 8 | h.read8("wEnemyMonMaxHP", 1)
+                self.word("wEnemyMonHP", max_hp // 3)
+                h.write8("wAIRandomPersonality", 1)  # personality NONE
+
+        def before_boot():
+            h.hook_flag("AIEnemyTrainerChooseMoves.beforeLayers", action=prime)
+            container["decisions"] = h.hook_ai_scores()
+
+        self.boot([self.mon("SNORLAX", ["SPLASH"])],
+                  [self.mon("CHANSEY", ["AMNESIA", "RECOVER"])],
+                  trainer="COOLTRAINER_M", tier=3, before_boot=before_boot)
+        self.no_items()
+        first = container["decisions"][0]
+        layers = {t["layer"]: t["delta"] for t in first["layer_trace"]}
+        print(f"\nheal gate scores={first['scores']} setup={layers['SETUP']} damage={layers['DAMAGE']}")
+        self.assertLess(layers["SETUP"][0], 0)
+        self.assertLess(layers["SETUP"][1], 0)  # AI_SETUP encourages both...
+        self.assertEqual(layers["SETUP"][0] + layers["DAMAGE"][0], 0)  # ...Amnesia's is taken back
+        self.assertEqual(layers["DAMAGE"][1], 0)  # Recover's is not
 
     def test_setup_gate_allows_a_boost_that_saves_a_hit(self):
         # Electabuzz takes 110 of 157 a hit, but Take Down needs 2 hits now and 1

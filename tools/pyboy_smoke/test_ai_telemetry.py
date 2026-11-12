@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import unittest
 
-from ai_telemetry import STATUS_SPAM_STREAK, battle_record, classify_setup, parse_setup_moves, summarize
+from ai_telemetry import STATUS_SPAM_STREAK, b5_summary, battle_record, classify_b5, classify_setup, parse_setup_moves, summarize
 from run_ai_benchmark import FRAME_CYCLES, parse_move_powers
 from source_constants import parse_rgbds_constants
 
@@ -54,6 +54,49 @@ def act(move, *, hp=100, faster=False, reserves=1):
 
 
 FAINT, SWITCH = {"kind": "faint"}, {"kind": "switch"}
+
+
+class ClassifyB5Test(unittest.TestCase):
+    """B5 (AISacrificeBeatsSwitch) verdicts followed through the enemy-side trace."""
+
+    @staticmethod
+    def decision(verdict, *, pos=0, reserve=1, reserve_hp=100):
+        return {"kind": "b5", "verdict": verdict, "pos": pos, "reserve": reserve, "reserve_hp": reserve_hp,
+                "active_hp_pct": 40, "active_faster": False, "reserve_hp_pct": 100,
+                "reserve_faster": False, "reserve_half": 1, "reserves": 2}
+
+    def test_switch_counts_hits_until_the_reserve_moves(self):
+        events = [self.decision("switch"),
+                  {"kind": "switch", "pos": 0, "hp": 30},
+                  {"kind": "turn", "pos": 1, "hp": 60},   # the entry hit
+                  {"kind": "turn", "pos": 1, "hp": 20},   # slower: hit again
+                  {"kind": "act", "pos": 1, "hp": 20},
+                  {"kind": "act", "pos": 0, "hp": 30}]    # the saved mon moves later
+        (record,) = classify_b5(events)
+        self.assertEqual((record["acted"], record["hits_before_act"], record["saved_later_acted"]), (True, 2, True))
+
+    def test_switch_into_a_reserve_that_faints_first(self):
+        events = [self.decision("switch"), {"kind": "switch", "pos": 0, "hp": 30},
+                  {"kind": "turn", "pos": 1, "hp": 40}, {"kind": "faint", "pos": 1, "hp": 0}]
+        (record,) = classify_b5(events)
+        self.assertEqual((record["acted"], record["hits_before_act"]), (False, 2))
+
+    def test_sacrifice_follows_the_free_replacement(self):
+        events = [self.decision("sacrifice"),
+                  {"kind": "act", "pos": 0, "hp": 30},    # faster: its last attack lands
+                  {"kind": "faint", "pos": 0, "hp": 0},
+                  {"kind": "turn", "pos": 2, "hp": 90},   # enters free
+                  {"kind": "act", "pos": 2, "hp": 90}]
+        (record,) = classify_b5(events)
+        self.assertEqual((record["active_acted_first"], record["active_fainted"],
+                          record["replacement_acted"], record["replacement_hits_before_act"]), (True, True, True, 0))
+
+    def test_summary_groups_by_verdict_and_reserve_speed(self):
+        events = [self.decision("switch"), {"kind": "switch", "pos": 0, "hp": 30},
+                  {"kind": "turn", "pos": 1, "hp": 60}, {"kind": "act", "pos": 1, "hp": 60}]
+        summary = b5_summary(classify_b5(events))
+        self.assertEqual(summary["decisions"], 1)
+        self.assertEqual(summary["switch/reserve_slower"]["reserve_acted_rate"], 1.0)
 
 
 class ClassifySetupTest(unittest.TestCase):

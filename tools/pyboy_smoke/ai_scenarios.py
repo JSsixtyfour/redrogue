@@ -49,6 +49,25 @@ class AIScenario:
     # AI_REDUNDANT's own full-HP/quarter-HP checks run, so they see the same
     # primed HP as AI_SMART does rather than the fixture's real, undamaged HP.
     prime_hp: tuple[dict[str, object], ...] = ()
+    # Optional soft personality (Checkpoint E) for this decision: the profile id
+    # (AI_PERSONALITY_*, 0 = NONE) and whether its half-the-time coin leans
+    # ("lean") or plays neutral ("neutral"). None = NONE, as the runner pins for
+    # every other scenario so the personality's nudges never leak into them.
+    personality: int | None = None
+    personality_lean: bool = True
+
+
+PERSONALITY_NAMES = {"NONE": 0, "OFFENSE": 1, "CONTROL": 2, "DEFENSIVE": 3}
+PERSONALITY_COINS = {"lean": True, "neutral": False}
+
+
+def parse_personality(raw: object) -> tuple[int | None, bool]:
+    if raw is None:
+        return None, True
+    if not isinstance(raw, dict) or raw.get("profile") not in PERSONALITY_NAMES             or raw.get("coin", "lean") not in PERSONALITY_COINS:
+        raise ValueError(f"personality must be {{profile: {sorted(PERSONALITY_NAMES)}, "
+                         f"coin: lean|neutral}}, got {raw!r}")
+    return PERSONALITY_NAMES[raw["profile"]], PERSONALITY_COINS[raw.get("coin", "lean")]
 
 
 VALID_CASES = {"positive", "negative", "boundary", "regression"}
@@ -129,6 +148,7 @@ def load_scenarios(path: Path, repo_root: Path) -> list[AIScenario]:
         if raw["name"] in names:
             raise ValueError(f"duplicate scenario name: {raw['name']}")
         names.add(raw["name"])
+        personality, personality_lean = parse_personality(raw.get("personality"))
         scenarios.append(
             AIScenario(
                 name=str(raw["name"]),
@@ -144,6 +164,8 @@ def load_scenarios(path: Path, repo_root: Path) -> list[AIScenario]:
                 required_cases=tuple(str(value) for value in raw.get("required_cases", [])),
                 prime=dict(raw.get("prime", {})),
                 prime_hp=tuple(dict(entry) for entry in raw.get("prime_hp", [])),
+                personality=personality,
+                personality_lean=personality_lean,
             )
         )
     validate_scenario_coverage(scenarios)

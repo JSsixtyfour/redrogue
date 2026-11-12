@@ -133,8 +133,21 @@ Supported keys are `enemy_move_slots`, exact `scores`, `tier`, `pick_slot`
 (one allowed slot or a list), `never_pick`, `score_lt` and `score_lte` (lists of slot
 pairs), `switch`, and `no_switch`. Results are written to
 `artifacts/ai_scenarios.json`.
-Use `--trials N` for repeated save-state-reset trials; the runner emits both
+Use `--trials N` to repeat each scenario from a fresh boot; the runner emits both
 JSON details and a flat CSV beside it.
+
+What is judged (2026-11-12): the battle's FIRST AI decision, turn 1 on the
+untouched board. Since 2026-10-22 the enemy plans that turn inside `boot_fight2`,
+and judging the decision after boot (turn 2, after a turn of RNG-dependent
+damage) had silently failed 45 of 86 scenarios. The optional personality pass is
+pinned to NONE (`wAIRandomPersonality` = 1) for every scenario, since its random
+nudges are not what any scenario asserts; `layer_trace` charges the personality
+pass to the last layer slot, RISKY. The runner reports every failing scenario
+and exits non-zero, instead of stopping at the first. A scenario may carry a
+free-text `note` (ignored by the runner) recording why its numbers changed. A
+scenario that assumes the AI knows the player's moves sets
+`"prime": {"wAISeenPlayerMoveMask": 15}`; without it, fair play gives each
+unrevealed player slot a guessed STAB attack.
 
 Every scenario also declares `phase`, `heuristic`, `case`, `tags`, and
 `required_cases`. Cases are `positive`, `negative`, `boundary`, or `regression`.

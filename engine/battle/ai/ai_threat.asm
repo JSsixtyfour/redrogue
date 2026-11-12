@@ -416,6 +416,29 @@ _AIBestReserveThreatScan:
 	inc b
 	dec b
 	jr nz, .storeHalf
+; B5 v2 (2026-11-12): a reserve SLOWER than the player takes the entry hit and
+; then next turn's before it acts, so it must survive two hits with room for a
+; crit: keep 3de < HP. Measured on 250 autoplay seeds: 18% of slower reserves
+; that "kept half" fainted before acting, against 2% of faster ones, which keep
+; the half test (they act right after the entry hit).
+	push de
+	call .reserveIsFaster
+	pop de
+	jr c, .halfTest
+	ld hl, wBuffer + AI_BUF_EFFHP
+	ld a, [hli]
+	ld b, a
+	ld c, [hl] ; bc = HP
+	ld h, d
+	ld l, e
+	add hl, hl
+	add hl, de ; 3de: at most 3 x $1383, no overflow
+	ld a, l
+	sub c
+	ld a, h
+	sbc b ; carry iff 3de < HP
+	jr .gotHalf
+.halfTest
 	ld hl, wBuffer + AI_BUF_EFFHP
 	ld a, [hli]
 	ld b, a
@@ -426,6 +449,7 @@ _AIBestReserveThreatScan:
 	sub c
 	ld a, d
 	sbc b ; carry iff de < HP / 2
+.gotHalf
 	ld a, AI_RESERVE_HALF_NO
 	adc 0 ; AI_RESERVE_HALF_KEEPS on carry
 	ASSERT AI_RESERVE_HALF_KEEPS == AI_RESERVE_HALF_NO + 1
@@ -462,6 +486,27 @@ _AIBestReserveThreatScan:
 	ld a, l
 	ld [wEnemyMonHP + 1], a
 	pop af ; the entry flag; e survives
+	ret
+
+; Carry SET if the ranked reserve (wBuffer + AI_BUF_BESTPARTYSLOT) is strictly
+; faster than the player's active mon: its party Speed against the live
+; wBattleMonSpeed. A tie counts as slower. Clobbers af, bc, de, hl.
+_AIBestReserveThreatScan.reserveIsFaster:
+	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
+	ld hl, wEnemyMon1Speed
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld a, [hli]
+	ld d, a
+	ld e, [hl] ; de = the reserve's Speed
+	ld hl, wBattleMonSpeed
+	ld a, [hli]
+	ld b, a
+	ld c, [hl] ; bc = the player's
+	ld a, c
+	sub e
+	ld a, b
+	sbc d ; carry iff player < reserve
 	ret
 
 ; e = 1 if the best-ranked reserve would keep MORE than half its current HP

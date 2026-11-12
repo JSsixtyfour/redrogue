@@ -131,6 +131,92 @@ def classify_setup(events: list[dict[str, object]], setup_moves: dict[int, str])
     return entries
 
 
+def _hits_until_act(events: list[dict[str, object]], start: int, pos: int, hp: int) -> dict[str, object]:
+    """Follow party slot `pos` from events[start:]: player hits it took (HP drops)
+    before its first move, and whether it moved or fainted first."""
+    hits = 0
+    for event in events[start:]:
+        if event["kind"] == "b5" or event.get("pos") != pos:
+            continue
+        if event["hp"] < hp:
+            hits += 1
+        hp = event["hp"]
+        if event["kind"] == "act":
+            return {"acted": True, "hits_before_act": hits}
+        if event["kind"] == "faint":
+            return {"acted": False, "hits_before_act": hits}
+    return {"acted": None, "hits_before_act": hits}  # the battle ended first
+
+
+def classify_b5(events: list[dict[str, object]]) -> list[dict[str, object]]:
+    """One record per AISacrificeBeatsSwitch verdict (ai_switching.asm, B5) with what
+    followed. switch: the reserve comes in and is followed until it moves or faints;
+    `saved_later_acted` says whether the mon it replaced ever moved again.
+    sacrifice: whether the doomed mon moved before fainting (a faster one gets its
+    attack in), whether it fainted at all, and the replacement that came in free."""
+    out = []
+    for index, decision in enumerate(events):
+        if decision["kind"] != "b5":
+            continue
+        record = {key: decision[key] for key in ("verdict", "active_hp_pct", "active_faster", "reserve_hp_pct",
+                                                  "reserve_faster", "reserve_half", "reserves")}
+        active = decision["pos"]
+        rest = events[index + 1:]
+        if decision["verdict"] == "switch":
+            entry = next((i for i, e in enumerate(rest) if e["kind"] == "switch"), None)
+            if entry is None:
+                record["outcome"] = "no_switch_seen"
+            else:
+                record.update(_hits_until_act(rest, entry + 1, decision["reserve"], decision["reserve_hp"]))
+                record["saved_later_acted"] = any(e["kind"] == "act" and e["pos"] == active for e in rest[entry + 1:])
+        else:
+            faint = next((i for i, e in enumerate(rest) if e["kind"] == "faint" and e["pos"] == active), None)
+            record["active_acted_first"] = any(e["kind"] == "act" and e["pos"] == active
+                                               for e in rest[:faint if faint is not None else len(rest)][:6])
+            record["active_fainted"] = faint is not None
+            if faint is not None:
+                follow = next((i for i, e in enumerate(rest[faint + 1:], faint + 1)
+                               if e["kind"] != "b5" and e.get("pos") != active), None)
+                if follow is not None:
+                    pos = rest[follow]["pos"]
+                    sub = _hits_until_act(rest, follow, pos, rest[follow]["hp"])
+                    record["replacement_acted"] = sub["acted"]
+                    record["replacement_hits_before_act"] = sub["hits_before_act"]
+        out.append(record)
+    return out
+
+
+def b5_summary(items: list[dict[str, object]]) -> dict[str, object]:
+    """B5 verdicts grouped by verdict and the reserve's speed, with what followed."""
+    groups: dict[str, list] = {}
+    for item in items:
+        speed = {True: "reserve_faster", False: "reserve_slower"}.get(item.get("reserve_faster"), "reserve_unknown")
+        groups.setdefault(f"{item['verdict']}/{speed}", []).append(item)
+    out: dict[str, object] = {"decisions": len(items)}
+    for key, group in sorted(groups.items()):
+        if key.startswith("switch"):
+            acted = [g for g in group if g.get("acted") is not None]
+            out[key] = {
+                "n": len(group),
+                "reserve_acted_rate": _rate(sum(bool(g["acted"]) for g in acted), len(acted)),
+                "mean_hits_before_act": _mean([g["hits_before_act"] for g in acted if g["acted"]]),
+                "saved_mon_later_acted_rate": _rate(sum(bool(g.get("saved_later_acted")) for g in group), len(group)),
+            }
+        else:
+            reps = [g for g in group if g.get("replacement_acted") is not None]
+            out[key] = {
+                "n": len(group),
+                "active_acted_first_rate": _rate(sum(bool(g.get("active_acted_first")) for g in group), len(group)),
+                "active_fainted_rate": _rate(sum(bool(g.get("active_fainted")) for g in group), len(group)),
+                "replacement_acted_rate": _rate(sum(bool(g["replacement_acted"]) for g in reps), len(reps)),
+                "mean_replacement_hits_before_act": _mean([g["replacement_hits_before_act"] for g in reps
+                                                           if g["replacement_acted"]]),
+                "reserve_half_counts": dict(Counter(g["reserve_half"] for g in group)),
+                "active_below_quarter": sum(g["active_hp_pct"] < 25 for g in group),
+            }
+    return out
+
+
 def _p95(values: list[int]) -> int | None:
     ordered = sorted(values)
     return ordered[max(0, ceil(0.95 * len(ordered)) - 1)] if ordered else None
@@ -398,6 +484,7 @@ def summarize(records: list[dict[str, object]], flagged_cap: int = 50) -> dict[s
             "trainer_ai_move_max_cycles": max(move_cycles, default=None),
             "trainer_ai_move_over_frame_calls": sum(c > FRAME_CYCLES for c in move_cycles),
         },
+        "b5": b5_summary([item for r in records for item in r.get("b5", [])]),
         "flag_counts": dict(flag_counts.most_common()),
         "flagged": [
             {
@@ -441,6 +528,17 @@ class BattleAITelemetry:
         try:  # a ROM from before the turn plan has no such labels
             harness.register_hook("AIPlanEnemyTurn", self._guarded(self._plan))
             harness.register_hook("AICommitEnemyTurn", self._guarded(self._commit))
+        except KeyError:
+            pass
+        # B5 sacrifice-or-switch telemetry (2026-11-12): every AISacrificeBeatsSwitch
+        # verdict, then a per-turn trace of the enemy side to see what it cost.
+        self.b5_events: list[dict[str, object]] = []
+        self._b5_pending: dict[str, object] | None = None
+        try:
+            harness.register_hook("AISacrificeBeatsSwitch", self._guarded(self._b5_decision))
+            harness.register_hook("AIShouldSwitch.stay", self._guarded(lambda _c: self._b5_verdict("sacrifice")))
+            harness.register_hook("AIShouldSwitch.switch", self._guarded(lambda _c: self._b5_verdict("switch")))
+            harness.register_hook("MainInBattleLoop", self._guarded(self._b5_turn))
         except KeyError:
             pass
         self._start: dict[str, int] | None = None
@@ -500,12 +598,51 @@ class BattleAITelemetry:
 
     def _acted(self, _context) -> None:
         self._setup_event("act", self.h.read8("wEnemyMoveNum"))
+        self._b5_mark("act")
 
     def _fainted(self, _context) -> None:
         self.setup_events.append({"kind": "faint"})
+        self._b5_mark("faint")
 
     def _switched(self, _context) -> None:
         self.setup_events.append({"kind": "switch"})
+        self._b5_mark("switch")
+
+    # --- B5 ---------------------------------------------------------------
+    def _party_word(self, slot: int, label: str) -> int:
+        h = self.h
+        address = h.address(label) - h.address("wEnemyMon1") + h.address("wEnemyMons") + slot * PARTYMON_STRUCT_LENGTH
+        return h.pyboy.memory[address] << 8 | h.pyboy.memory[address + 1]
+
+    def _b5_mark(self, kind: str) -> None:
+        self.b5_events.append({"kind": kind, "pos": self.h.read8("wEnemyMonPartyPos"),
+                               "hp": self._word("wEnemyMonHP")})
+
+    def _b5_turn(self, _context) -> None:
+        self._b5_mark("turn")
+
+    def _b5_decision(self, _context) -> None:
+        h = self.h
+        reserve = h.read8("wBuffer", 19)  # AI_BUF_BESTPARTYSLOT, the survivor B4 just checked
+        player_speed = self._word("wBattleMonSpeed")
+        active_max = self._word("wEnemyMonMaxHP")
+        reserve_max = self._party_word(reserve, "wEnemyMon1MaxHP") if reserve < 6 else 0
+        self._b5_pending = {
+            "kind": "b5", "pos": h.read8("wEnemyMonPartyPos"), "reserve": reserve,
+            "active_hp_pct": round(100 * self._word("wEnemyMonHP") / active_max) if active_max else 0,
+            "active_faster": self._word("wEnemyMonSpeed") > player_speed,
+            "reserve_hp_pct": round(100 * self._party_word(reserve, "wEnemyMon1HP") / reserve_max) if reserve_max else 0,
+            "reserve_faster": (self._party_word(reserve, "wEnemyMon1Speed") > player_speed) if reserve < 6 else None,
+            "reserve_half": h.read8("wBuffer", 20),  # AI_BUF_RESERVEHALF: 0 takes half+, 1 keeps half, $ff unknown
+            "reserve_hp": self._party_word(reserve, "wEnemyMon1HP") if reserve < 6 else 0,
+            "reserves": self._enemy_reserves(),
+        }
+
+    def _b5_verdict(self, verdict: str) -> None:
+        if self._b5_pending is not None:
+            self._b5_pending["verdict"] = verdict
+            self.b5_events.append(self._b5_pending)
+            self._b5_pending = None
 
     def _selected(self, _context) -> None:
         h = self.h
@@ -563,6 +700,7 @@ class BattleAITelemetry:
                 "selections": len(self.selections),
                 "plan_turns": len(self.plan_turns),
                 "setup_events": len(self.setup_events),
+                "b5_events": len(self.b5_events),
                 "switches": self.switches["count"],
                 "turns": self.turn_count["value"],
                 "party": self._party_hp(),
@@ -605,6 +743,10 @@ class BattleAITelemetry:
         except Exception as error:
             self.errors.append(f"end_battle: {error!r}")
             return None
+        try:
+            record["b5"] = classify_b5(self.b5_events[start["b5_events"]:])
+        except Exception as error:
+            self.errors.append(f"classify_b5: {error!r}")
         if len(self.errors) > self._errors_at_start:
             record["flags"].append("telemetry_error")
         return record

@@ -1995,7 +1995,10 @@ class AutoplayAgent:
         forward = [goal for goal in exits if goal not in arrival]
         if self.h.pyboy.frame_count - self.last_progress_frame > EXPLORE_AFTER_FRAMES:
             return groups + explore + forward + arrival
-        return groups + forward + explore + arrival
+        onward = [goal for goal in forward
+                  if any(target[1] != "warp_back" for target in goal.spots.values())]
+        back = [goal for goal in forward if goal not in onward]
+        return groups + onward + explore + back + arrival
 
     def talk_goal(self, grid: world.WalkGrid, targets: dict[int, dict[str, int]], kind: str) -> Goal:
         spots = {}
@@ -2246,6 +2249,7 @@ def play(
     discard_test_sram: bool = False,
     phase_callback=None,
     errands: str | frozenset[str] | None = None,
+    ai_greedy: bool = False,
 ) -> dict[str, object]:
     """Boot (Debug 2 lobby, or a real new game), play and return the report.
     A failure (see FAILURES) also writes a screenshot and state dump under
@@ -2313,6 +2317,8 @@ def play(
             import ai_telemetry as ai_telemetry_module
 
             telemetry = ai_telemetry_module.BattleAITelemetry(harness, ROOT)
+        import ai_greedy as ai_greedy_module  # the "go for the kill" control AI (ai_greedy.py)
+        greedy_stats = ai_greedy_module.install(harness) if ai_greedy or ai_greedy_module.enabled() else None
         phase('detector_initialization')
         agent = AutoplayAgent(harness, seed=seed, ai_telemetry=telemetry, battle_policy=battle_policy,
                               door_policy=door_policy, stall_frames=stall_frames, log=log,
@@ -2359,6 +2365,8 @@ def play(
         data["player"] = player
         data["hardware_mode"] = harness.hardware_mode
         data["cgb_wram_wait_frames"] = agent.cgb_wram_wait_frames
+        if greedy_stats is not None:
+            data["ai_greedy"] = dict(greedy_stats)
         if telemetry is not None:
             data["ai_battles"] = [{**battle, "seed": seed} for battle in agent.ai_battles]
             data["ai_telemetry_errors"] = telemetry.errors[:20]
