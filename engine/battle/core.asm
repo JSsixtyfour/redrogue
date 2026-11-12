@@ -6538,16 +6538,18 @@ MoveHitTest:
 	ld a, [wEnemyMoveAccuracy]
 	ld b, a
 .doAccuracyCheck
-; if the random number generated is greater than or equal to the scaled accuracy, the move misses
-; note that this means that even the highest accuracy is still just a 255/256 chance, not 100%
+; A move hits when the random byte is at most the final accuracy threshold.
+; Vanilla required a strictly lower roll. Accepting equality adds one hit
+; out of 256 at every threshold and makes a threshold of 255 a guaranteed hit.
+; Base thresholds are floor(255 * listed percent / 100). At neutral stages
+; with no bonuses, accepting equality brings all listed accuracies in Moves
+; closer to their stated percentages. It's an overall small increase in accuracy
+; originally ported from Pokemon Shin Red
 	ld e, b
 	farcall BridgeAdjustAccuracyThreshold
 	ld b, e
 	call BattleRandom
 	cp b
-	; Shin Red import Phase 4 (4.1): a scaled accuracy of 255 should always
-	; hit. Without this, `cp b` treats a roll equal to b as a miss, so even
-	; the highest accuracy is a 255/256 chance instead of a true 100%.
 	jr z, .move_hit
 	jr nc, .moveMissed
 .move_hit
