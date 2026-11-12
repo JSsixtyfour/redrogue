@@ -256,6 +256,11 @@ class RunReport:
 
 
 class AutoplayAgent:
+    # "No directed errands" defaults, so unit tests that build the agent with
+    # object.__new__ (skipping __init__) still take the default path.
+    directed_kinds: frozenset[str] = frozenset()
+    directed: "autoplay_errands.DirectedErrand | None" = None
+
     def __init__(
         self,
         harness: RedRogueHarness,

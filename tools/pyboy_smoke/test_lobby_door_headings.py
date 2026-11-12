@@ -39,8 +39,9 @@ class LobbyDoorHeadingTest(HarnessTestCase):
                         for i in range(360):
                             h.write8('wTileMap', 0x7f, offset=i)
                         pending['label'] = f'LobbyDoor{door}SignText.{category}Text'
-                        h.call_routine('TextCommandProcessor')
-                        grid = h.read_bytes('wTileMap', 360)
+                        # Read at the return: the parked battle menu redraws wTileMap.
+                        grid = h.call_routine('TextCommandProcessor',
+                                              capture=lambda h: h.read_bytes('wTileMap', 360))
                         reward = [0x7f if c == ' ' else ord(c) - ord('A') + 0x80 for c in expected]
                         row = 16 if numbered else 14
                         self.assertEqual(grid[row * 20 + 1:row * 20 + 1 + len(reward)], reward)

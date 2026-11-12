@@ -43,7 +43,10 @@ class DataTest(unittest.TestCase):
             return match.group(1).rstrip("@").split("<NEXT>")
         match = re.search(r"^\.%s\n((?:\s+(?:db|next)\s+\"[^\"]*\"\n?)+)" % label, DATA, re.M)
         self.assertIsNotNone(match, label)
-        return [line.rstrip("@") for line in re.findall(r"\"([^\"]*)\"", match.group(1))]
+        lines = re.findall(r"\"([^\"]*)\"", match.group(1))
+        # Without the @ the string runs on into whatever the ROM holds next.
+        self.assertTrue(lines[-1].endswith("@"), f"{label} has no @ terminator")
+        return [line.rstrip("@") for line in lines]
 
     def test_every_identity_has_a_row_in_id_order_and_fits_the_page(self):
         rows = self.entries()

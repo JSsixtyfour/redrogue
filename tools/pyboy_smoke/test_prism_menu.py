@@ -81,8 +81,10 @@ class PrismMenuTest(HarnessTestCase):
             h.write8('wKeyItemPocketBuf',count)
             h.write8('wListScrollOffset',scroll)
             h.write8('hCurrentMenuItem',cursor)
-            h.call_routine('PlayerPCClampSelection')
-            self.assertEqual((h.read8('wListScrollOffset'),h.read8('hCurrentMenuItem')),expected)
+            # Read at the return: the parked battle menu owns hCurrentMenuItem.
+            got = h.call_routine('PlayerPCClampSelection',
+                                 capture=lambda h: (h.read8('wListScrollOffset'),h.read8('hCurrentMenuItem')))
+            self.assertEqual(got,expected)
         self.restore()
         for i in range(36): h.write8('wTextBoxBuffer',0x80,offset=i)
         h.call_routine('PlayerPCBlankTransferText')
@@ -138,6 +140,7 @@ class PrismMenuTest(HarnessTestCase):
         menus=h.hook_flag('HandleMenuInput')
         h.write_sram_bytes('sPrismCartridges',[0,0])
         h.write_sram_bytes('sElementPrismType',[255])
-        h.call_routine('RoguePrismCartridgeMenu')
-        self.assertEqual(menus['count'],0)
+        # Count at the return: the parked battle menu runs HandleMenuInput too.
+        count = h.call_routine('RoguePrismCartridgeMenu', capture=lambda _: menus['count'])
+        self.assertEqual(count,0)
         self.assertEqual(h.read_sram_bytes('sElementPrismType',1),[255])

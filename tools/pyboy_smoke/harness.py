@@ -1380,7 +1380,8 @@ class RedRogueHarness:
                 return True
         return False
 
-    def call_routine(self, label: str, limit: int = 12000, *, nested_vblank: bool = False) -> None:
+    def call_routine(self, label: str, limit: int = 12000, *, nested_vblank: bool = False,
+                     capture=None):
         """Call a ROM routine through the engine's bank trampoline.
 
         PRECONDITION: the CPU must already be parked somewhere safe to
@@ -1392,9 +1393,19 @@ class RedRogueHarness:
         The injected routine must not wait for VBlank/a frame or otherwise
         require interrupts: the defined parking boundary is inside VBlank and
         therefore runs with interrupt servicing unavailable.
+
+        capture(harness), if given, runs at the callee's own return, before the
+        parked game runs out the rest of the frame, and call_routine returns
+        its result. Read results this way whenever the parked mainline could
+        touch them: measured 2026-11-12, a battle-animation timing change moved
+        boot_fight2's park so the battle menu's leftover frame rewrote
+        hCurrentMenuItem, redrew wTileMap and called UpdateSprites/
+        HandleMenuInput after correct callees had returned (test_prism_menu,
+        test_key_swap_checkpoint, test_lobby_door_headings).
         """
         bank, address = self.symbols.get(label)
         self._assert_parked_machine_sane(label)
+        captured = {}
         self._call_streak += 1
         self._last_call_label = label
         # A direct call is a fresh AI decision: real decisions empty the
@@ -1540,6 +1551,8 @@ class RedRogueHarness:
             self.last_call_registers = {
                 name: getattr(self.pyboy.register_file, name) for name in register_names
             }
+            if capture is not None:
+                captured["value"] = capture(self)
             restoring["value"] = True
             if restore_vblank_ime:
                 self.pyboy.register_file.PC = di_address
@@ -1608,6 +1621,7 @@ class RedRogueHarness:
             self.pyboy.hook_deregister(di_bank, di_address + 1)
             self.pyboy.hook_deregister(enter_bank, enter_address)
             self.pyboy.hook_deregister(return_bank, return_address)
+        return captured.get("value")
 
     # Routines that point SP at a data buffer to copy it with `pop`. A park
     # point inside one legitimately has SP outside the stack.

@@ -54,7 +54,7 @@ SpecialEntries:
 	db "A CUBONE with a"
 	next "large club,"
 	next "doubling its"
-	next "ATTACK."
+	next "ATTACK.@"
 
 .lightName db "LIGHT BALL PIKACHU@"
 .lightEffect
@@ -66,7 +66,7 @@ SpecialEntries:
 
 .guardName db "NO GUARD MACHOP@"
 .guardEffect
-	text "Its moves never"
+	db "Its moves never"
 	next "miss, but neither"
 	next "do its opponents.@"
 
@@ -93,12 +93,12 @@ SpecialEntries:
 .clawEffect
 	db "A NIDORAN♀ with a"
 	next "25% chance to"
-	next "always go first.@"
+	next "go first.@"
 
 .fierceName db "INT. GROWLITHE@"
 .fierceEffect
 	db "Lowers the"
-	next "opponents ATTACK"
+	next "opponent's ATTACK"
 	next "on entry.@"
 
 .pinkName db "PINK BUTTERFREE@"
@@ -109,10 +109,9 @@ SpecialEntries:
 
 .dittoName db "SUPER DITTO@"
 .dittoEffect
-	db "Knows SUPER"
-	next "TRANSFORM, coping"
-	next "all opponent's"
-	next "stats.@"
+	db "Copies opposing"
+	next "#MON entirely,"
+	next "including HP.@"
 
 .crystalName db "CRYSTAL ONIX@"
 .crystalEffect
@@ -126,9 +125,8 @@ SpecialEntries:
 
 .dragonName db "DRAGON CHARMANDER@"
 .dragonEffect
-	db "Has DRAGON type"
-	next "instead of"
-	next "FLYING.@"
+	db "Has DRAGON as its"
+	next "secondary typing.@"
 
 .psychicName db "PSYCHIC PSYDUCK@"
 .psychicEffect
@@ -136,4 +134,4 @@ SpecialEntries:
 	next "experimental"
 	next "#MON with"
 	next "heightened"
-	next "PSYCHIC powers."
+	next "PSYCHIC powers.@"
