@@ -157,9 +157,31 @@ def hook_plan(labels: list[dict[str, object]], rom: bytes) -> tuple[dict[str, tu
                 return min(others), certain
         return None
 
+    def dynamic(name: str) -> bool:
+        """ret / reti / ret cc / jp hl: where they go is known only at run
+        time, so whether they land on another hook cannot be checked, and they
+        do. Measured 2026-11-11 (seed 3 --errands pc --coverage):
+        PFScanCellWalls.scwNoE's `ret` returned onto .bpColLoop's hook, which
+        `move` had put just past its `call PFScanCellWalls`, and wedged PyBoy
+        (bisected to that one hook). Unhooking only the rets whose routine has
+        a hooked call-return address also cleared that seed, but cannot see
+        tail calls or pushed return addresses, so every such hook goes: the
+        covered run is then frame-identical to the uncovered one (345,361
+        frames, debug ROM 320bdb15). ~200 labels become untracked."""
+        opcode = sm83.first_step(rom, *hooks[name]).opcode
+        return opcode in sm83.NO_SUCCESSOR or opcode in sm83.RET_COND
+
+    for name in sorted(hooks):
+        if dynamic(name):
+            unhook(name)
+
     for _ in range(8):
         changed = False
         for name in sorted(hooks):
+            if name in hooks and dynamic(name):  # a move can land a hook on one too
+                unhook(name)
+                changed = True
+                continue
             while name in hooks and (found := conflict(name)):
                 target, certain = found
                 if movable(name, ("call",)):

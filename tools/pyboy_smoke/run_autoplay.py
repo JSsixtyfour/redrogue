@@ -87,6 +87,7 @@ def run_seed(seed: int, options: dict[str, object]) -> dict[str, object]:
         "coverage": (data.get("coverage") or {}).get("hit"),
         "ai_battles": data.get("ai_battles"),
         "ai_telemetry_errors": data.get("ai_telemetry_errors"),
+        "directed_errands": data.get("directed_errands"),
         "hardware_mode": data.get("hardware_mode", "CGB" if cgb_mode else "DMG"),
         "screen_checks": data.get("screen_checks"),
         "report": str(path),
@@ -322,6 +323,9 @@ def build_parser() -> argparse.ArgumentParser:
                         help="run the emulator in CGB mode (default: DMG)")
     parser.add_argument("--player", choices=autoplay.PLAYERS, default="basic",
                         help="strong: rewards and gifts on merit, matchup switches")
+    parser.add_argument("--errands", default=None,
+                        help="directed errands once per run (autoplay_errands.py): "
+                             "comma list of pc,rental,lobby,roompc or all; default none")
     parser.add_argument("--ai-telemetry", action="store_true",
                         help="record the enemy AI's choices per trainer battle and add an \"ai\" block "
                              "to the summary (ai_telemetry.py); flags are findings, not failures")
@@ -366,6 +370,7 @@ def main(argv: list[str] | None = None) -> int:
         "cgb_mode": args.cgb,
         "player": args.player,
         "ai_telemetry": args.ai_telemetry,
+        "errands": args.errands,
     }
     rows = []
     for row in run_all(seeds, options, max(1, args.jobs), args.timeout):

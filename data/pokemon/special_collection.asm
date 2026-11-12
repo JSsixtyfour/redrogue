@@ -44,95 +44,96 @@ SpecialEntries:
 
 .armoredName db "ARMORED MEWTWO@"
 .armoredEffect
-	db   "An armored look."
-	next "It fights like any"
-	next "other MEWTWO.@"
+	db "Armor meant to"
+	next "restrain MEWTWO."
+	next "It was"
+	next "unsuccessful.@"
 
 .clubName db "THICK CLUB CUBONE@"
 .clubEffect
-	db   "Its ATTACK is"
-	next "doubled. MAROWAK"
-	next "keeps the club.@"
+	db "A CUBONE with a"
+	next "large club,"
+	next "doubling its"
+	next "ATTACK."
 
 .lightName db "LIGHT BALL PIKACHU@"
 .lightEffect
-	db   "ATTACK and SPECIAL"
-	next "are doubled, but"
-	next "it can't evolve.@"
+	db "A strong willed"
+	next "PIKACHU with"
+	next "double the normal"
+	next "SPECIAL and"
+	next "ATTACK strength.@"
 
 .guardName db "NO GUARD MACHOP@"
 .guardEffect
-	db   "Its moves and the"
-	next "foe's never miss!"
-	next "Lasts through its"
-	next "evolutions.@"
+	text "Its moves never"
+	next "miss, but neither"
+	next "do its opponents.@"
 
 .limberName db "LIMBER HITMONLEE@"
 .limberEffect
-	db   "Can't be"
-	next "paralyzed.@"
+	db "A HITMONLEE that"
+	next "cannot be"
+	next "PARALYZED.@"
 
 .mysticName db "MYSTIC HITMONCHAN@"
 .mysticEffect
-	db   "Swaps its ATTACK"
-	next "and SPECIAL stats.@"
+	db "A HITMONCHAN that"
+	next "swaps its ATTACK"
+	next "power for"
+	next "SPECIAL.@"
 
-.critName db "SHARP FARFETCH'D@"
+.critName db "LUCKY DUCK@"
 .critEffect
-	db   "Every hit it lands"
-	next "is a critical hit."
-	next "Has perfect stats.@"
+	db "Every move it"
+	next "lands is a"
+	next "critical hit.@"
 
-.clawName db "Q.CLAW NIDORAN♀@"
+.clawName db "QUICK NIDORAN♀@"
 .clawEffect
-	db   "A 25% chance to"
-	next "move first, like"
-	next "a QUICK CLAW. Its"
-	next "evolutions keep"
-	next "it.@"
+	db "A NIDORAN♀ with a"
+	next "25% chance to"
+	next "always go first.@"
 
-.fierceName db "FIERCE GROWLITHE@"
+.fierceName db "INT. GROWLITHE@"
 .fierceEffect
-	db   "Lowers the foe's"
-	next "ATTACK on entry."
-	next "Has perfect stats"
-	next "and knows QUICK"
-	next "ATTACK and LICK.@"
+	db "Lowers the"
+	next "opponents ATTACK"
+	next "on entry.@"
 
 .pinkName db "PINK BUTTERFREE@"
 .pinkEffect
-	db   "Its moves are"
-	next "about 30% more"
-	next "accurate.@"
+	db "BUTTERFREE that"
+	next "has 30% more"
+	next "accurate moves.@"
 
 .dittoName db "SUPER DITTO@"
 .dittoEffect
-	db   "Has perfect stats."
-	next "SUPER TRANSFORM"
-	next "copies HP too.@"
+	db "Knows SUPER"
+	next "TRANSFORM, coping"
+	next "all opponent's"
+	next "stats.@"
 
 .crystalName db "CRYSTAL ONIX@"
 .crystalEffect
-	db   "An ICE and GROUND"
-	next "type that knows"
-	next "MIST or HAZE.@"
+	db "A rare ICE type"
+	next "ONIX.@"
 
-.iceName db "ICE SNORLAX@"
+.iceName db "SNOWLAX@"
 .iceEffect
-	db   "A pure ICE type"
-	next "that knows MIST"
-	next "or HAZE.@"
+	db "A rare ICE type"
+	next "SNORLAX.@"
 
 .dragonName db "DRAGON CHARMANDER@"
 .dragonEffect
-	db   "A FIRE and DRAGON"
-	next "type, at every"
-	next "stage.@"
+	db "Has DRAGON type"
+	next "instead of"
+	next "FLYING.@"
 
 .psychicName db "PSYCHIC PSYDUCK@"
 .psychicEffect
-	db   "A WATER and"
-	next "PSYCHIC type that"
-	next "knows a PSYCHIC"
-	next "attack and a"
-	next "support move.@"
+	db "An abandoned"
+	next "experimental"
+	next "#MON with"
+	next "heightened"
+	next "PSYCHIC powers."

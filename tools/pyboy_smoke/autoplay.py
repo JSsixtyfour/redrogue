@@ -48,6 +48,7 @@ from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
 import autoplay_checks
+import autoplay_errands
 import autoplay_team
 import autoplay_world as world
 import benchmark_policies
@@ -133,6 +134,7 @@ DIFFICULTIES = ("VERY_EASY", "EASY", "NORMAL", "HARD", "VERY_HARD")
 # Errands (--vary): a short stretch of random menu answers at something the
 # agent would never choose itself, after which it backs out with B.
 ERRAND_PRESSES = 40  # random answers, then B until the errand ends
+DIRECTED_NO_RESPONSE_FRAMES = 120  # a directed errand's A that opened nothing
 ERRAND_GIVE_UP = 120  # presses in all before it is abandoned (a run still has the watchdog)
 ERRAND_BUTTONS = (("a", 40), ("down", 20), ("up", 12), ("b", 12), ("left", 8), ("right", 8))
 STARTER_SLOTS = (1, 2, 3)
@@ -272,6 +274,7 @@ class AutoplayAgent:
         player: str = "basic",
         ai_telemetry=None,
         capture_active_save: bool = False,
+        errands: frozenset[str] = frozenset(),
     ):
         if profile is not None:
             battle_policy = profile.battle_policy
@@ -321,6 +324,13 @@ class AutoplayAgent:
         self.party_menu_repeats = 0  # party menus shown outside battle since the overworld last polled
         self.exchange_visited = False  # this trip through the hub, under --vary
         self.errand_counts: dict[str, int] = {}
+        # --errands (autoplay_errands.py): directed errands, once per run each.
+        # Empty by default, and then nothing below draws or changes anything.
+        self.directed_kinds = autoplay_errands.expand_kinds(errands)
+        self.directed: autoplay_errands.DirectedErrand | None = None
+        self.directed_attempts: dict[tuple[str, int], int] = {}  # (kind, run) -> attempts started
+        self.rest_house_entered_run = -1  # the run whose forest rest house the rental errand entered
+        self.directed_log: list[dict[str, object]] = []
 
         self.rules = benchmark_policies.load_rules(ROOT)
         self.player = player
@@ -360,12 +370,22 @@ class AutoplayAgent:
         self.pair_collisions = self._read_pair_collisions()
         self.ledges = self._read_ledges()
         self.bridge_rooms = self._read_bridge_rooms()
+        self.bridge_pc_tiles = autoplay_errands.bridge_pc_tiles(ROOT) if "pc" in errands else {}
+        if "rental" in errands:
+            self.rental_text = {
+                self.lobby_map: lobby_text_id("TEXT_PC_RENTAL_OFFICIAL"),
+                maps["PROCEDURAL_FOREST_REST_HOUSE"]: autoplay_errands.map_text_id(
+                    ROOT, "scripts/ProceduralForestRestHouse.asm", "TEXT_PFRESTHOUSE_RENTAL_OFFICIAL"),
+            }
+            self.rest_house = maps["PROCEDURAL_FOREST_REST_HOUSE"]
+            self.procedural_forest = maps["PROCEDURAL_FOREST"]
 
         # Written by hooks.
         self.last_overworld_frame = -1  # JoypadOverworld polled
         self.last_ui_frame = -1  # the text engine or a menu started
         self.last_wait_frame = -1  # JoypadLowSensitivity polled: a button is wanted
         self.last_menu_caller = ""
+        self.last_wait_caller = ""  # JoypadLowSensitivity's caller, kept only during a directed errand
         self.naming_screen = False
         self.naming_letters = 0
         self.quantity_waiting = False
@@ -470,6 +490,14 @@ class AutoplayAgent:
 
     def _on_wait(self, _context) -> None:
         self.last_wait_frame = self.h.pyboy.frame_count
+        if self.directed is not None:  # who polls: a directed errand's screen context
+            self.last_wait_caller = self.caller_label()
+
+    def caller_label(self) -> str:
+        sp = self.h.pyboy.register_file.SP
+        ret = self.mem[sp] | self.mem[sp + 1] << 8
+        bank = 0 if ret < 0x4000 else self.h.read8("hLoadedROMBank")
+        return self.h.symbols.nearest(bank, ret) or f"{bank:02x}:{ret:04x}"
 
     def _on_text(self, _context) -> None:
         self.last_ui_frame = self.h.pyboy.frame_count
@@ -1297,6 +1325,10 @@ class AutoplayAgent:
             self.party_menu_repeats = 0
             if self.errand is not None and self.errand["kind"] != "battle" and self.errand["presses"]:
                 self.end_errand("back in the overworld")
+            if self.directed is not None and (
+                    self.directed.presses
+                    or self.h.pyboy.frame_count - self.directed.start_frame > DIRECTED_NO_RESPONSE_FRAMES):
+                self.finish_directed("back in the overworld" if self.directed.presses else "no response")
             self.overworld_step()
         elif mode == "busy":
             self.busy_step()
@@ -1355,6 +1387,8 @@ class AutoplayAgent:
             self.plan = None
         if self.errand is not None and self.errand["kind"] != "battle":
             self.end_errand("map changed")
+        if self.directed is not None:
+            self.finish_directed("map changed")
         self.party_menu_repeats = 0
         self.blocked_steps.clear()
         self.script_steps.clear()
@@ -1365,6 +1399,8 @@ class AutoplayAgent:
             self.arrival = None
         self.event("enter_map", map=self.map_name(current_map))
         self.checks.on_map_change()
+        if self.directed_kinds and current_map == getattr(self, "rest_house", None):
+            self.rest_house_entered_run = len(self.report.runs)
         if current_map == self.credit_exchange:
             self.exchange_visited = True
             self.errand_target = False
@@ -1414,6 +1450,8 @@ class AutoplayAgent:
             return
         if self.menu_goal_step():
             pass
+        elif self.directed is not None:
+            self.press(self.directed.next_button(self))
         elif self.party_menu_waiting and self.menu_input == "cursor":
             self.party_menu_waiting = False
             self.press(self.party_menu_action)
@@ -1445,6 +1483,9 @@ class AutoplayAgent:
             # Polling outside the text engine (a Pokedex page), or nothing at
             # all for a long while: answer or nudge with A.
             self.busy_since = now
+            if self.directed is not None and now - self.last_wait_frame <= 2:
+                self.press(self.directed.next_button(self))  # its own screens (Bill's PC)
+                return
             self.press("a")
             return
         self.h.tick(2)
@@ -1698,6 +1739,8 @@ class AutoplayAgent:
         elif kind == "errand":
             self.errand_target = None  # done for this visit
             self.start_errand("npc", target=int(slot))
+        elif kind == "directed":
+            self.start_directed(slot)
         self.press("a", 2, 8)
 
     def enter_warp(self, face: str | None) -> None:
@@ -1723,7 +1766,90 @@ class AutoplayAgent:
         self.h.tick(30)
 
     def goal_groups(self, grid: world.WalkGrid) -> list[Goal]:
-        """Goal groups for the current room, highest priority first."""
+        """Goal groups for the current room, highest priority first: a due
+        directed errand (--errands), then the room's own goals."""
+        directed = self.directed_goals(grid)
+        if self.directed_kinds and self.h.read8("hCurMap") == self.rest_house_map():
+            # Entered only for the rental errand. Its other residents (a mart
+            # clerk the default A answers forever, a gambler's money match)
+            # are not this errand's, so leave once it is done.
+            return directed + self.exit_goals()
+        return directed + self.room_goal_groups(grid)
+
+    # ------------------------------------------------------- directed errands
+
+    def directed_due(self, kind: str) -> bool:
+        return (kind in self.directed_kinds and self.directed is None
+                and self.directed_attempts.get((kind, len(self.report.runs)), 0)
+                < autoplay_errands.ERRAND_CLASSES[kind].ATTEMPTS)
+
+    def slot_with_text(self, sprites: dict[int, dict[str, int]], text_id: int) -> int | None:
+        """The visible sprite slot whose map text is text_id, if any."""
+        texts = self.h.read_bytes("wMapSpriteData", 2 * SPRITE_SLOTS)
+        return next((slot for slot in sprites if texts[2 * (slot - 1) + 1] == text_id), None)
+
+    def directed_talk_goal(self, grid: world.WalkGrid, sprite: dict[str, int], kind: str) -> Goal:
+        counters = self.counter_tiles()
+        return Goal({step: (face, f"directed:{kind}")
+                     for step, face in world.adjacent_facing((sprite["x"], sprite["y"]), counters, grid).items()})
+
+    def directed_goals(self, grid: world.WalkGrid) -> list[Goal]:
+        if not self.directed_kinds:
+            return []
+        current = self.h.read8("hCurMap")
+        goals = []
+        if (self.directed_due("pc") and current in self.bridge_rooms
+                and self.h.read8("wWarpedFromWhichMap") == self.lobby_map):
+            tiles = self.bridge_pc_tiles.get(self.map_name(current), [])
+            spots = {(x, y + 1): ("up", "directed:pc") for x, y in tiles if grid.walkable(x, y + 1)}
+            if spots:
+                goals.append(Goal(spots))
+        # The lobby official and the rest house official run separate schedules.
+        rental_kind = "rental_forest" if current in (self.rest_house_map(), self.forest_map()) else "rental"
+        if self.directed_due(rental_kind):
+            text_id = self.rental_text.get(current)
+            if text_id is not None:
+                sprites = self.sprites()
+                slot = self.slot_with_text(sprites, text_id)
+                if slot is not None:
+                    goals.append(self.directed_talk_goal(grid, sprites[slot], rental_kind))
+            elif current == self.forest_map() and self.rest_house_entered_run != len(self.report.runs):
+                doors = [(x, y) for y, x, _, dest in self.h.warp_entries() if dest == self.rest_house]
+                if doors:
+                    goals.append(self.warp_goal(doors, "warp_rest_house"))
+        return goals
+
+    def rest_house_map(self) -> int | None:
+        return getattr(self, "rest_house", None)
+
+    def forest_map(self) -> int | None:
+        return getattr(self, "procedural_forest", None)
+
+    def start_directed(self, kind: str) -> None:
+        run_index = len(self.report.runs)
+        attempt = self.directed_attempts.get((kind, run_index), 0)
+        self.directed_attempts[(kind, run_index)] = attempt + 1
+        self.last_menu_caller = self.last_wait_caller = ""  # earlier screens are not this errand's
+        self.directed = autoplay_errands.ERRAND_CLASSES[kind](
+            kind=kind, run_index=run_index + 1, start_frame=self.h.pyboy.frame_count,  # 1-based, as events
+            attempt=attempt,
+            before=autoplay_errands.roster_identity(self.h))
+        self.event("directed_errand", phase="start", errand=kind, attempt=attempt,
+                   map=self.map_name(self.h.read8("hCurMap")))
+
+    def finish_directed(self, why: str) -> None:
+        errand, self.directed = self.directed, None
+        violations = errand.contract_violations(autoplay_errands.roster_identity(self.h))
+        record = {"errand": errand.kind, "run_index": errand.run_index, "attempt": errand.attempt, "why": why,
+                  "presses": errand.presses, "frames": self.h.pyboy.frame_count - errand.start_frame,
+                  "reached": sorted(errand.reached), "notes": errand.notes, "violations": violations}
+        self.directed_log.append(record)
+        self.event("directed_errand", phase="end", **record)
+        for problem in violations:
+            self.checks.anomaly("directed_errand", f"{errand.kind}: {problem}")
+
+    def room_goal_groups(self, grid: world.WalkGrid) -> list[Goal]:
+        """The current room's own goal groups, highest priority first."""
         sprites = self.sprites()
         current = self.h.read8("hCurMap")
         groups = []
@@ -2062,6 +2188,7 @@ def play(
     ai_telemetry: bool = False,
     discard_test_sram: bool = False,
     phase_callback=None,
+    errands: str | frozenset[str] | None = None,
 ) -> dict[str, object]:
     """Boot (Debug 2 lobby, or a real new game), play and return the report.
     A failure (see FAILURES) also writes a screenshot and state dump under
@@ -2079,6 +2206,8 @@ def play(
         raise ValueError(f"{rom} has no Debug 2 menu; play it with new_game")
     ROM = rom
     CGB_MODE = cgb_mode
+    if not isinstance(errands, frozenset):
+        errands = autoplay_errands.parse_errands(errands)
     # --vary: this seed's own profile (battle policy, ironman, errands, starter).
     profile = draw_profile(seed) if vary else None
     # HARD, the balance baseline, unless asked; --vary mixes difficulties.
@@ -2131,7 +2260,7 @@ def play(
         agent = AutoplayAgent(harness, seed=seed, ai_telemetry=telemetry, battle_policy=battle_policy,
                               door_policy=door_policy, stall_frames=stall_frames, log=log,
                               heartbeat=heartbeat, menu_input=menu_input, menu_chaos=menu_chaos,
-                              profile=profile, player=player,
+                              profile=profile, player=player, errands=errands,
                               capture_active_save=new_game and save_checks,
                               snapshot=None if reel is None else lambda kind, info: reel.offer(
                                   kind, harness.pyboy.frame_count,
@@ -2164,6 +2293,8 @@ def play(
             data["traceback"] = error
         data["anomalies"] = agent.checks.anomalies
         data["menus"] = agent.menu_stats
+        if errands:
+            data["directed_errands"] = agent.directed_log
         data["checks"] = agent.checks.summary()
         data["screen_checks"] = agent.checks.screen.summary()
         data['coverage_inventory_error'] = inventory_error
@@ -2266,6 +2397,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--report", type=Path, default=None,
                         help="report path (default artifacts/autoplay_seed<N>[_cgb].json)")
     parser.add_argument("--quiet", action="store_true", help="do not print events as they happen")
+    parser.add_argument("--errands", default=None,
+                        help="directed errands to run once per run: comma list of "
+                             f"{','.join(autoplay_errands.ERRAND_KINDS)} or all (autoplay_errands.py)")
     return parser
 
 
@@ -2281,7 +2415,7 @@ def main(argv: list[str] | None = None) -> int:
         branches=args.branches, snapshots=args.snapshots, branch_frames=args.branch_frames,
         coverage=args.coverage, difficulty=args.difficulty, vary=args.vary, save_checks=args.save_checks,
         rom=args.rom, cgb_mode=args.cgb, player=args.player, ai_telemetry=args.ai_telemetry,
-        log=None if args.quiet else print,
+        errands=args.errands, log=None if args.quiet else print,
     )
     path = args.report or ARTIFACTS / f"{stem(args.seed)}.json"
     path.parent.mkdir(parents=True, exist_ok=True)

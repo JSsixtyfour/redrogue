@@ -44,7 +44,13 @@ class CoverageInventoryTest(unittest.TestCase):
                     pairs.append(name)
         self.assertEqual(pairs, [])
         self.assertNotIn("PCemFillOneRow", inferred)  # moved, still hooked
-        self.assertGreater(len(hooks), 0.98 * len(self.labels))
+        # No hook on a ret / reti / ret cc / jp hl: their run-time targets
+        # can be hooks (seed 3 --errands pc wedged on PFScanCellWalls.scwNoE's
+        # ret, 2026-11-11). That leaves ~2% of labels untracked, hence 0.97.
+        dynamic = [name for name, key in hooks.items()
+                   if sm83.first_step(rom, *key).opcode in sm83.NO_SUCCESSOR | sm83.RET_COND]
+        self.assertEqual(dynamic, [])
+        self.assertGreater(len(hooks), 0.97 * len(self.labels))
 
     def test_every_label_is_in_rom(self) -> None:
         for label in self.labels.values():
