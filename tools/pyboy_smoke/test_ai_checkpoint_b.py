@@ -104,10 +104,15 @@ class AICheckpointBTest(unittest.TestCase):
         h.call_routine("AILayerDamage", limit=240)
         return h.read8("wBuffer")
 
+    def possible_kill_score(self):
+        # Base 20, minus the possible-kill tier (AI_KILL_POSSIBLE, one above the
+        # half tier since 2026-11-12; was 17 with AI_STRONG) and the best-damage nudge.
+        return 20 - self.ai["AI_KILL_POSSIBLE"] - self.ai["AI_NUDGE"]
+
     def test_kill_needing_a_high_roll_is_not_reliable(self):
         # Review F4 (2026-09-29): only the maximum roll reaches here.
         raw = self.estimate("TACKLE")
-        self.assertEqual(self.single_move_damage_score("TACKLE", raw), 17)
+        self.assertEqual(self.single_move_damage_score("TACKLE", raw), self.possible_kill_score())
 
     def test_minimum_roll_kill_is_reliable(self):
         raw = self.estimate("TACKLE")
@@ -117,7 +122,7 @@ class AICheckpointBTest(unittest.TestCase):
         # Review F2 (2026-09-29): 2 hits cannot reach, 5 can - a 1-in-8 kill
         # used to score as a sure one (10).
         raw = self.estimate("SPIKE_CANNON")
-        self.assertEqual(self.single_move_damage_score("SPIKE_CANNON", 3 * raw), 17)
+        self.assertEqual(self.single_move_damage_score("SPIKE_CANNON", 3 * raw), self.possible_kill_score())
 
     def test_multihit_kill_within_two_minimum_hits_is_reliable(self):
         raw = self.estimate("SPIKE_CANNON")

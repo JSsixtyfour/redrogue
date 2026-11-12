@@ -93,6 +93,13 @@ DEF AI_HEAVY       EQU 10 ; pokecrystal's AIDiscourageMove: a big penalty, but
 ; strength of a KO it would not actually land.
 DEF AI_KILL        EQU 5
 
+; 2026-11-12 (after FOLLOWUPS #61): a move that MIGHT kill this turn (a possible
+; KO on the max roll or max hits, or one that can miss) - one point above the
+; half-HP tier (AI_STRONG), which it used to equal, so the scores can tell "might
+; win now" from "a big hit". Two-turn kills stay at AI_STRONG: they land next
+; turn. Below AI_KILL, so a reliable kill still outranks it.
+DEF AI_KILL_POSSIBLE EQU AI_STRONG + 1
+
 ; F16 (2026-09-02): a lethal move that ALSO ACTS FIRST. When two moves both
 ; kill, raw damage is the wrong tiebreak - turn order is, because the bigger one
 ; is worthless if the player moves first and wins the exchange.
@@ -300,6 +307,21 @@ DEF AI_RESERVE_HALF_UNKNOWN EQU $ff ; a Super Fang was scanned: rescan at half H
 ; +29 was the last free wBuffer byte; wBuffer is now an exact 30-byte fit with
 ; nothing spare. Anything wanting scratch after this needs a real allocation.
 DEF AI_BUF_PHYSICAL   EQU 29
+; Setup gate (2026-11-12, after FOLLOWUPS #61): AI_SETUP is done with +29 once its
+; loop ends, so AI_DAMAGE's .applyBest reuses it to hand AI_PLAN the gate's
+; flags. AI_THREAT, between them, never touches +28/+29. Cleared at decision
+; start, so a tier without AI_DAMAGE sees "no boost is free".
+DEF AI_BUF_SETUPGATE  EQU AI_BUF_PHYSICAL
+DEF AI_SG_ATK2_FREE_BIT  EQU 0 ; +2 Attack cuts our best move's hits-to-KO by one or more
+DEF AI_SG_SPC2_FREE_BIT  EQU 1 ; +2 Special, likewise
+DEF AI_SG_ATK1_FREE_BIT  EQU 2 ; +1 Attack (x1.5), likewise
+DEF AI_SG_SPC1_FREE_BIT  EQU 3 ; +1 Special (x1.5), likewise
+DEF AI_SG_HURTS_KNOWN_BIT EQU 4 ; the two bits below hold this decision's answer
+DEF AI_SG_HURTS_BIT      EQU 5 ; the foe's best hit takes half our HP or more
+DEF AI_SG_BOOM_BIT       EQU 6 ; ...and it is the Explosion estimate that does
+DEF AI_SG_FREE_MASK EQU (1 << AI_SG_ATK2_FREE_BIT) | (1 << AI_SG_SPC2_FREE_BIT) | (1 << AI_SG_ATK1_FREE_BIT) | (1 << AI_SG_SPC1_FREE_BIT)
+; Hits-to-KO is counted up to this many; more counts as AI_SG_MAX_HITS + 1.
+DEF AI_SG_MAX_HITS EQU 8
 
 DEF AI_BUF_PLANMAG    EQU 28 ; 1 byte: the magnitude AILayerPlan is currently
                              ; applying, held here rather than in a register

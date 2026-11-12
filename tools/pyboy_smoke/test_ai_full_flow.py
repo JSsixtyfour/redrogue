@@ -698,6 +698,82 @@ class AIFullFlowTest(unittest.TestCase):
         self.assertLess(layers["PLAN"][1], 0)
         self.assertEqual(executed, self.moves["SWORDS_DANCE"])
 
+    # Setup gate (ai_setup_gate.asm, 2026-11-12): the same Pidgeot, two reserves
+    # behind the foe so #61 stays out of it. A boost is withheld only when it
+    # costs a turn (it does not cut Take Down's hits-to-KO) AND the foe's best
+    # hit takes half Pidgeot's HP or more. Before the gate every board below
+    # picked Swords Dance (15 vs 18).
+    def setup_gate_decision(self, species, moves, hp=None):
+        """Turn 1's scores, layer deltas, AI_BUF_SETUPGATE as AI_PLAN saw it,
+        and the move executed."""
+        h = self.h
+        primed, gate, container = [], [], {}
+
+        def prime():
+            if not primed:
+                primed.append(1)
+                if hp is not None:
+                    self.word("wBattleMonHP", hp)
+
+        def before_boot():
+            h.hook_flag("AIEnemyTrainerChooseMoves", action=prime)
+            h.hook_flag("AIPlanFilterBoosts", action=lambda: gate.append(
+                h.read8("wBuffer", self.ai["AI_BUF_SETUPGATE"])))
+            container["decisions"] = h.hook_ai_scores()
+
+        player = [self.mon(species, moves, level=45),
+                  self.mon("ARBOK", ["BITE"], level=45), self.mon("RATICATE", ["BITE"], level=45)]
+        self.boot(player, [self.mon("PIDGEOT", self.PIDGEOT_SET)],
+                  trainer="COOLTRAINER_M", tier=3, before_boot=before_boot)
+        self.no_items()
+        executed = []
+        h.hook_flag("ExecuteEnemyMove", action=lambda: executed.append(
+            h.read8("wEnemySelectedMove")))
+        self.assertTrue(self.drive_turns(lambda: len(executed) >= 1), f"executed={executed}")
+        first = container["decisions"][0]
+        layers = {t["layer"]: t["delta"] for t in first["layer_trace"]}
+        print(f"\ngate {species} hp={hp} scores={first['scores']} setup={layers['SETUP']} "
+              f"damage={layers['DAMAGE']} plan={layers['PLAN']} gate={gate[:1]} executed={executed}")
+        return first["scores"], layers, gate[0], executed[0]
+
+    def bit(self, name):
+        return 1 << self.ai[name]
+
+    def assert_setup_withheld(self, layers, executed):
+        self.assertLess(layers["SETUP"][1], 0)  # the turn-1 encourage still fires...
+        self.assertEqual(layers["SETUP"][1] + layers["DAMAGE"][1], 0)  # ...and is taken back
+        self.assertEqual(layers["PLAN"][1], 0)  # the SwordsDance plan's push is dropped
+        self.assertNotEqual(executed, self.moves["SWORDS_DANCE"])
+
+    def test_setup_gate_withholds_a_boost_that_costs_a_painful_turn(self):
+        # A 30-HP Electrode dies to one Take Down either way, so Swords Dance only
+        # buys it a free hit, and its believed Electric STAB takes 104 of 157.
+        scores, layers, gate, executed = self.setup_gate_decision(
+            "ELECTRODE", ["THUNDERBOLT", "SWIFT", "EXPLOSION", "LIGHT_SCREEN"], hp=30)
+        self.assertEqual(gate & self.bit("AI_SG_ATK2_FREE_BIT"), 0)
+        self.assertTrue(gate & self.bit("AI_SG_HURTS_BIT"))
+        self.assert_setup_withheld(layers, executed)
+        self.assertEqual(executed, self.moves["TAKE_DOWN"])
+
+    def test_setup_gate_counts_the_explosion_a_species_can_learn(self):
+        # A 30-HP Gengar's believed moves (Ghost/Poison guesses) take only 45 of
+        # 157, but Gengar can learn Explosion, which takes over half: withheld.
+        # Take Down cannot touch a Ghost, so Sky Attack is the attack left.
+        scores, layers, gate, executed = self.setup_gate_decision(
+            "GENGAR", ["NIGHT_SHADE", "HYPNOSIS", "EXPLOSION", "CONFUSE_RAY"], hp=30)
+        self.assertTrue(gate & self.bit("AI_SG_BOOM_BIT"))
+        self.assert_setup_withheld(layers, executed)
+
+    def test_setup_gate_allows_a_boost_that_saves_a_hit(self):
+        # Electabuzz takes 110 of 157 a hit, but Take Down needs 2 hits now and 1
+        # after +2: both lines take one Electabuzz hit, so the boost is free.
+        scores, layers, gate, executed = self.setup_gate_decision(
+            "ELECTABUZZ", ["THUNDERPUNCH", "QUICK_ATTACK", "LIGHT_SCREEN", "LEER"])
+        self.assertTrue(gate & self.bit("AI_SG_ATK2_FREE_BIT"))
+        self.assertEqual(layers["DAMAGE"][1], 0)
+        self.assertLess(layers["PLAN"][1], 0)
+        self.assertEqual(executed, self.moves["SWORDS_DANCE"])
+
     def test_setup_move_keeps_its_encourage_when_nothing_can_ko(self):
         # Control: full HP, last mon, no possible KO. Both pushes stay.
         scores, layers, ko_flag, executed = self.setup_vs_ko_decision(None)

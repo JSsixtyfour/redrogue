@@ -1439,8 +1439,18 @@ ReadMoveIntoDE::
 	add hl, hl           ; 6n
 	ld bc, Moves
 	add hl, bc
-	ld bc, MOVE_LENGTH
-	call CopyData
+; The 6-byte row is copied unrolled, not through CopyData: ~140 cycles against
+; ~350 with the call and loop, at ~25 calls a decision (measured 2026-11-12, ~3%
+; of a decision). `xor a` at the end leaves a and the flags as CopyData did
+; (a = 0, Z set, C clear), so no caller can tell the difference.
+	REPT MOVE_LENGTH - 1
+		ld a, [hli]
+		ld [de], a
+		inc de
+	ENDR
+	ld a, [hl]
+	ld [de], a
+	xor a
 	pop bc
 	pop de
 	pop hl
@@ -1454,7 +1464,8 @@ ReadMoveIntoDE::
 
 INCLUDE "data/trainers/pic_pointers_money.asm"
 
-INCLUDE "data/trainers/names.asm"
+; data/trainers/names.asm (TrainerNames) floats in its own section since
+; 2026-11-12 (main.asm "Trainer Names"): every reader goes through BANK().
 
 INCLUDE "engine/battle/misc.asm"
 
@@ -1598,6 +1609,8 @@ INCLUDE "engine/battle/ai/ai_threat.asm"
 INCLUDE "engine/battle/ai/ai_risky.asm"
 
 INCLUDE "engine/battle/ai/ai_plan.asm"
+
+INCLUDE "engine/battle/ai/ai_setup_gate.asm"
 
 JugglerAI:
 	cp 25 percent + 1

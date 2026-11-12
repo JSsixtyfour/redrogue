@@ -110,6 +110,17 @@ class BenchmarkMetricTest(unittest.TestCase):
         seeds = fixture_seeds(1, 101)
         self.assertEqual(repeated_values(seeds), {"1": 2, "2": 2})
 
+    def test_expanded_seeds_count_up_without_wrapping(self) -> None:
+        self.assertEqual(fixture_seeds(150, 3), [150, 151, 152])
+
+    def test_expanded_seed_rng_state_is_stable_and_valid(self) -> None:
+        from harness import fight2_rng_state
+
+        self.assertEqual(fight2_rng_state(150), fight2_rng_state(150))
+        self.assertNotEqual(fight2_rng_state(150), fight2_rng_state(151))
+        self.assertEqual(len(fight2_rng_state(65535)), 10)
+
+
     def test_matchup_fingerprint_is_canonical_and_matchup_only(self) -> None:
         identity = {
             "opponent": 201,
@@ -136,6 +147,29 @@ class BenchmarkMetricTest(unittest.TestCase):
         powers = parse_move_powers(REPO_ROOT / "data" / "moves" / "moves.asm")
         self.assertEqual(powers[1], 40)  # POUND
         self.assertEqual(powers[5], 80)  # MEGA_PUNCH
+
+
+class ExpandedFight2SeedTest(unittest.TestCase):
+    """An expanded seed (100+) boots a battle that repeats and differs from its
+    neighbour, so a benchmark past seed 99 measures new matchups."""
+
+    def parties(self, seed: int) -> tuple[list[int], list[int]]:
+        from harness import RedRogueHarness
+
+        h = RedRogueHarness(REPO_ROOT, REPO_ROOT / "tools/pyboy_smoke/artifacts")
+        try:
+            h.boot_fight2(seed=seed)
+            player = [h.read8("wPartySpecies", i) for i in range(h.read8("wPartyCount"))]
+            enemy = [h.read8("wEnemyPartySpecies", i) for i in range(h.read8("wEnemyPartyCount"))]
+            return player, enemy
+        finally:
+            h.close()
+
+    def test_an_expanded_seed_repeats_and_differs_from_its_neighbour(self) -> None:
+        first = self.parties(150)
+        self.assertEqual(first, self.parties(150))
+        self.assertNotEqual(first, self.parties(151))
+        self.assertNotEqual(first, self.parties(1))  # not the menu value it typed
 
 
 if __name__ == "__main__":

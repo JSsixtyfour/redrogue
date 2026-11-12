@@ -78,6 +78,12 @@ WILD_AREA_OFFER_BITS = {"cave": 0x01, "forest": 0x02, "cemetery": 0x04, "facilit
 WILD_AREA_OFFER_MASK = 0x87
 
 
+def fight2_rng_state(seed: int) -> bytes:
+    """hRandomAdd, hRandomSub and q[1..8] for an expanded FIGHT 2 seed (>= 100):
+    the first 10 bytes of SHA-256 over the seed. Stable across runs and hosts."""
+    return hashlib.sha256(b"fight2-seed:%d" % seed).digest()[:10]
+
+
 class RedRogueHarness:
     TARGET_ROUTE = 0x79  # UNDERGROUND_PATH_WEST_EAST
     LOBBY_MAP = 0xAE  # INDIGO_PLATEAU_LOBBY
@@ -985,8 +991,29 @@ class RedRogueHarness:
         self.write8("wOptions2", (self.read8("wOptions2") & ~mask & 0xFF) | value)
 
     def boot_fight2(self, seed: int = 1) -> None:
-        if not 1 <= seed <= 99:
-            raise ValueError("FIGHT 2 seed must be in the range 1-99")
+        """Seeds 1-99 are typed into the in-ROM prompt, exactly as a player would.
+        Seeds 100-65535 (2026-11-12, for wider AI benchmarks) type 1 and then,
+        once DebugFight2Entry.seedRNG has run, overwrite the whole CMWC state with
+        a deterministic expansion of the seed (fight2_rng_state). Same contract as
+        .seedRNG: wRandomIndex 1, wRandomCarry 0 (below 253), any q[] bytes."""
+        if not 1 <= seed <= 0xFFFF:
+            raise ValueError("FIGHT 2 seed must be in the range 1-65535")
+        if seed > 99:
+            state = fight2_rng_state(seed)
+
+            def expand_seed() -> None:
+                if not expanded:
+                    expanded.append(seed)
+                    self.write8("hRandomAdd", state[0])
+                    self.write8("hRandomSub", state[1])
+                    self.write8("wRandomTable", 1)
+                    self.write8("wRandomTable", 0, offset=1)
+                    for i, value in enumerate(state[2:10]):
+                        self.write8("wRandomTable", value, offset=2 + i)
+
+            expanded: list[int] = []
+            self.hook_flag("DebugFight2Entry.loop", action=expand_seed)
+            seed = 1
         debug_menu = self.hook_flag("DebugMenu")
         quantity_menu = self.hook_flag("DisplayChooseQuantityMenu")
         battle_ready = self.hook_flag("MainInBattleLoop")

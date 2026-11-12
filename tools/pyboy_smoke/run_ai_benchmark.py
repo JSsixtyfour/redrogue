@@ -249,6 +249,10 @@ def prepare_party_driver(
 
 
 def fixture_seeds(seed: int, trials_count: int) -> list[int]:
+    # Seeds 1-99 are the in-ROM prompt's range and wrap there, as they always
+    # have. Expanded seeds (100+, harness.boot_fight2) count up from the seed.
+    if seed > 99:
+        return [seed + index for index in range(trials_count)]
     return [((seed - 1 + index) % 99) + 1 for index in range(trials_count)]
 
 

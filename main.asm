@@ -624,6 +624,22 @@ SECTION "Card Key", ROMX
 INCLUDE "engine/events/card_key.asm"
 
 
+; Moved out of "Battle Engine 7" (2026-11-12) to make room for the AI setup gate
+; in $0E. Bank-free: GetTrainerName_, LobbyPsychic and evos_moves.asm all set
+; wPredefBank from BANK(TrainerNames) before GetName (home/names2.asm), which
+; switches to that bank to read the list.
+SECTION "Trainer Names", ROMX
+
+INCLUDE "data/trainers/names.asm"
+
+
+; The AI setup gate's species table (2026-11-12). Bank-free: its one caller in
+; $0E farcalls it, so it stays out of that full bank.
+SECTION "AI Boom Species", ROMX
+
+INCLUDE "engine/battle/ai/ai_boom_species.asm"
+
+
 SECTION "Battle Engine 9", ROMX
 
 INCLUDE "engine/battle/experience.asm"

@@ -179,6 +179,7 @@ save_converter:
 AUDIT_ROMS ?= $(roms:.gbc=)
 audit: $(addsuffix .gbc,$(AUDIT_ROMS))
 	python3 tools/gen_party_roster.py --check
+	python3 tools/gen_ai_boom_species.py --check
 	python3 tools/catalog_audit.py
 	python3 tools/audit_end_battle_text.py
 	python3 tools/audit_text_columns.py

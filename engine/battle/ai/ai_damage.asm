@@ -214,7 +214,7 @@ AILayerDamage:
 ; Two-turn moves (CHARGE_EFFECT: Solar Beam, Razor Wind, Skull Bash, Sky Attack,
 ; Dig; FLY_EFFECT: Fly) deal nothing THIS turn, so they never earn a kill tier
 ; or set wAIReliableKOFound. They can still finish next turn, but the player can
-; switch, heal or hit first, so they take the unreliable-kill tier (2026-10-08,
+; switch, heal or hit first, so they take AI_STRONG at .twoTurnKill (2026-10-08,
 ; found in the #55 benchmark trace: a killing Solar Beam scored AI_KILL_FIRST,
 ; -10, against which AISmart_Charge's AI_STRONG penalty was noise). Same rule as
 ; the TrainerAI KO check in ai_predicates.asm. Ranking uses half the hit (see
@@ -222,9 +222,9 @@ AILayerDamage:
 ; nothing between the loop's ReadMove and here reloads the move block.
 	ld a, [wEnemyMoveEffect]
 	cp CHARGE_EFFECT
-	jr z, .unreliableKill
+	jr z, .twoTurnKill
 	cp FLY_EFFECT
-	jr z, .unreliableKill
+	jr z, .twoTurnKill
 ; Only a move that lands THIS turn joins the possible-KO mask (#61 reads it as
 ; "could win now"). The scarce-PP rule never used a two-turn slot's bit: its
 ; stored damage is 0, so it can be neither the best nor a stand-in.
@@ -268,6 +268,11 @@ AILayerDamage:
 	ld a, AI_KILL_FIRST ; see the constant's own header for why this size
 	jr .apply
 .unreliableKill
+; A kill this turn that a miss, a low roll or a short multi-hit can spoil: one
+; point above the half tier it used to share (AI_KILL_POSSIBLE's header).
+	ld a, AI_KILL_POSSIBLE
+	jr .apply
+.twoTurnKill ; finishes next turn at best: no better than a big hit now
 	ld a, AI_STRONG
 	jr .apply
 .half
@@ -328,6 +333,7 @@ AILayerDamage:
 ; scores are still set after the last layer (AIExplosionTradeVeto).
 	call AIExplosionVetoMask
 	call AIPossibleKOEndsBattle
+	call AISetupGate ; ai_setup_gate.asm: tempo bits for AI_PLAN, AI_SETUP's encourage
 	ld a, [wBuffer + AI_BUF_BESTSLOT]
 	cp NUM_MOVES
 	ret nc ; still $ff: no damaging move in this set
@@ -401,8 +407,8 @@ AILayerDamage:
 ; INPUT a = the Explosion slots vetoed this decision (AIExplosionVetoMask); such
 ; a slot is no win. If a live slot that lands this turn can possibly KO the last
 ; mon: set AI_KO_ENDS_BATTLE_BIT, so AI_PLAN (which reads the whole byte, later)
-; withholds its push, and take back AI_SETUP's encourage here, since AI_SETUP ran
-; before this layer. Clobbers af, bc, de, hl.
+; withholds its push, and AISetupGate, next, takes back AI_SETUP's encourage,
+; since AI_SETUP ran before this layer. Clobbers af, bc, de, hl.
 AIPossibleKOEndsBattle:
 	cpl
 	ld hl, wBuffer + AI_BUF_POSSKO
@@ -412,18 +418,6 @@ AIPossibleKOEndsBattle:
 	ret nc ; a reserve is alive
 	ld hl, wAIReliableKOFound
 	set AI_KO_ENDS_BATTLE_BIT, [hl]
-	ld a, [wBuffer + AI_BUF_SETUPMASK]
-	ld hl, wBuffer
-.withdraw ; srl leaves z once the mask is spent; push/pop af keeps those flags
-	srl a
-	jr nc, .next
-	push af
-	ld a, AI_STRONG ; AI_SETUP's magnitude
-	call AIDiscourage
-	pop af
-.next
-	inc hl
-	jr nz, .withdraw
 	ret
 
 ; B9 scarce-PP tiebreak (2026-10-21 AI review). Enemies spend PP and a party

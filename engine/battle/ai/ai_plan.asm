@@ -57,6 +57,15 @@ AILayerPlan:
 	and a
 	ret z ; the active plan wants nothing steered this turn
 
+; Setup gate (ai_setup_gate.asm): a boost that costs a turn the foe's next hit
+; makes us regret is dropped from the directive. Plan state still advances, as
+; on a kill-override turn.
+	call AIPlanFilterBoosts ; de in/out, preserves hl
+	ld a, d
+	or e
+	ret z ; everything the plan wanted was such a boost
+	ld a, l
+
 ; Clamp before applying. AI_PLAN_MAX_MAGNITUDE is an invariant (see
 ; ai_constants.asm): a plan must never out-encourage AI_KILL, or a mon
 ; mid-setup would walk past a guaranteed win to keep boosting. Enforced here,
