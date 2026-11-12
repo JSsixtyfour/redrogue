@@ -1351,22 +1351,12 @@ TryKODefiance::
 	dec b
 	jr nz, .statModResetLoop
 
-	; sync the same HP/status to the party slot
-	ld a, [wPlayerMonNumber]
-	ld bc, PARTYMON_STRUCT_LENGTH
-	ld hl, wPartyMon1HP
-	call AddNTimes
-	push hl
-	ld a, [wBattleMonHP]
-	ld [hl], a
-	inc hl
-	ld a, [wBattleMonHP + 1]
-	ld [hl], a
-	pop hl
-	ld bc, MON_STATUS - MON_HP
-	add hl, bc
-	xor a
-	ld [hl], a
+	; sync the same HP/status to the party slot. Half of a Super Transform
+	; borrowed max HP can exceed the party mon's own max HP; the shared
+	; write-back caps it. b:c (the revival HP) is used below.
+	push bc
+	call ReadPlayerMonCurHPAndStatus
+	pop bc
 
 	ld a, SFX_HEAL_HP
 	call PlaySoundWaitForCurrent
@@ -2270,7 +2260,8 @@ AnimateRetreatingPlayerMon:
 	jp ClearScreenArea
 
 ; Copies player's current pokemon's current HP, party pos, and status into the party
-; struct data so it stays after battle or switching
+; struct data so it stays after battle or switching. The HP is capped at the
+; party mon's own max HP, which Super Transform's borrowed HP pool can exceed.
 ReadPlayerMonCurHPAndStatus:
 	ld a, [wPlayerMonNumber]
 	ld hl, wPartyMon1HP
@@ -2280,7 +2271,8 @@ ReadPlayerMonCurHPAndStatus:
 	ld e, l
 	ld hl, wBattleMonHP
 	ld bc, MON_STATUS + 1 - MON_HP ; also copies party pos in-between HP and status
-	jp CopyData
+	call CopyData
+	rfarjp ClampPartyMonHPToMax ; de = party struct + MON_STATUS + 1
 
 DrawHUDsAndHPBars:
 	call DrawPlayerHUDAndHPBar

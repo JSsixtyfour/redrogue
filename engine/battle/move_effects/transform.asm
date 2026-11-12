@@ -221,13 +221,13 @@ TransformedText:
 ; completely unaffected by this gift-mon-exclusive move; nothing here is
 ; shared, so nothing here can break it.
 ;
-; The only difference from TransformEffect_: after every step Transform
-; normally does (species/type/moves/DVs/stats/stat mods - note stat mods
-; already include the target's current stage boosts/drops, e.g. a Swords
-; Dance buff, since that's just how vanilla Transform works here), this also
-; copies the target's current HP onto the user, clamped to the user's own
-; max HP (max HP itself is never touched, same as vanilla Transform - the
-; user's HP pool size doesn't change, just how much of it is "filled").
+; Differences from TransformEffect_: on top of every step Transform normally
+; does (species/type/moves/DVs/stats/stat mods - note stat mods already include
+; the target's current stage boosts/drops, e.g. a Swords Dance buff, since
+; that's just how vanilla Transform works here), the user also takes the
+; target's max HP and current HP, and full base PP instead of a flat 5. Only
+; the battle copy borrows the HP pool: every battle-to-party write-back ends in
+; ClampPartyMonHPToMax, so the party mon never holds more than its own max HP.
 SuperTransformEffect_:
 	ld hl, wBattleMonSpecies
 	ld de, wEnemyMonSpecies
@@ -351,20 +351,19 @@ SuperTransformEffect_:
 	ld a, [hli]
 	ld [de], a
 	inc de
-; Skip level and max HP
-	inc hl
-	inc hl
+; Skip level
 	inc hl
 	inc de
-	inc de
-	inc de
-; Attack, Defense, Speed, and Special stats
-	ld bc, (NUM_STATS - 1) * 2
+; Max HP, Attack, Defense, Speed, and Special stats. Unlike vanilla Transform,
+; max HP is copied too: the user takes the target's whole HP pool, and its
+; current HP is copied below. The party struct keeps the user's own max HP;
+; ClampPartyMonHPToMax caps the HP written back to it.
+	ld bc, NUM_STATS * 2
 	call CopyData
 	ld bc, wBattleMonMoves - wBattleMonPP
 	add hl, bc ; ld hl, wBattleMonMoves
 ; full base PP for each copied move (vanilla Transform gives a flat 5
-; instead - this is Super Transform's one deliberate behavior difference)
+; instead)
 	dec de    ; LoadMovePPs writes starting at de+1, matching its own loop
 	predef LoadMovePPs
 .copyStats
@@ -389,7 +388,8 @@ SuperTransformEffect_:
 	ld de, wPlayerMonStatMods
 	call .copyBasedOnTurn ; stat mods
 ; --- Super Transform addition starts here ---
-; copy the target's current HP onto the user
+; copy the target's current HP onto the user. No clamp: the user's max HP is
+; the target's now (copied above), so the target's current HP always fits.
 	ldh a, [hWhoseTurn]
 	and a
 	ld hl, wEnemyMonHP
@@ -398,43 +398,14 @@ SuperTransformEffect_:
 	ld hl, wBattleMonHP
 	ld de, wEnemyMonHP
 .gotHPAddrs
-	ld a, [hl]
+	ld a, [hli]
 	ld [de], a
-	inc hl
 	inc de
 	ld a, [hl]
 	ld [de], a
-; clamp the user's new HP to the user's own (untouched) max HP
-	ldh a, [hWhoseTurn]
-	and a
-	ld hl, wBattleMonMaxHP
-	ld de, wBattleMonHP
-	jr z, .gotClampAddrs
-	ld hl, wEnemyMonMaxHP
-	ld de, wEnemyMonHP
-.gotClampAddrs
-	ld a, [de]
-	cp [hl]
-	jr c, .noClampNeeded  ; user HP high byte < max HP high byte: fine
-	jr nz, .doClamp        ; user HP high byte > max HP high byte: clamp
-	inc de
-	inc hl
-	ld a, [de]
-	cp [hl]
-	dec de
-	dec hl
-	jr c, .noClampNeeded  ; high bytes equal, low byte under max: fine
-	jr z, .noClampNeeded  ; exactly equal to max already: fine
-.doClamp
-	ld a, [hl]
-	ld [de], a
-	inc hl
-	inc de
-	ld a, [hl]
-	ld [de], a
-	dec hl
-	dec de
-.noClampNeeded
+; show the new HP and max HP before "transformed into" prints
+	predef DrawPlayerHUDAndHPBar
+	predef DrawEnemyHUDAndHPBar
 ; --- Super Transform addition ends here ---
 	jp TransformEffect_.succeeded
 
@@ -453,3 +424,32 @@ SuperTransformEffect_:
 .failed
 	ld hl, PrintButItFailedText_
 	jp EffectCallBattleCore
+
+; ClampPartyMonHPToMax - finish a battle-to-party HP/status write-back (the
+; MON_STATUS + 1 - MON_HP byte CopyData from wBattleMonHP or wEnemyMonHP) by
+; capping the party mon's current HP at its own max HP. Super Transform gives
+; the battle copy the target's max HP, but the party struct keeps the mon's
+; real one, so the borrowed HP can be larger than the party mon's pool.
+; In:  de = party struct + MON_STATUS + 1 (where that CopyData leaves it).
+; Clobbers af, bc, de, hl.
+ClampPartyMonHPToMax::
+	ld hl, (MON_HP + 1) - (MON_STATUS + 1)
+	add hl, de
+	ld d, h
+	ld e, l              ; de = current HP, low byte
+	ld bc, MON_MAXHP - MON_HP
+	add hl, bc           ; hl = max HP, low byte
+	ld a, [hld]
+	ld c, a
+	ld a, [de]
+	sub c
+	dec de               ; 16-bit dec: flags untouched
+	ld a, [de]
+	sbc [hl]             ; carry = current HP < max HP
+	ret c
+	ld a, [hli]          ; current HP >= max HP: set it to max HP
+	ld [de], a
+	inc de
+	ld a, [hl]
+	ld [de], a
+	ret

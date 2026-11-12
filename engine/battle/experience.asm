@@ -290,6 +290,9 @@ ENDC
 	cp b ; is the current mon in battle?
 	jr nz, .printGrewLevelText
 ; current mon is in battle
+	ld a, [wPlayerBattleStatus3]
+	bit TRANSFORMED, a
+	jr nz, .transformedLevelUp
 	ld de, wBattleMonHP
 ; copy party mon HP to battle mon HP
 	ld a, [hli]
@@ -305,13 +308,39 @@ ENDC
 	ld bc, 1 + NUM_STATS * 2 ; size of stats
 	call CopyData
 	pop hl
-	ld a, [wPlayerBattleStatus3]
-	bit TRANSFORMED, a
-	jr nz, .recalcStatChanges
 ; the mon is not transformed, so update the unmodified stats
 	ld de, wPlayerMonUnmodifiedLevel
 	ld bc, 1 + NUM_STATS * 2
 	call CopyData
+	jr .recalcStatChanges
+.transformedLevelUp
+; A transformed mon keeps its borrowed HP pool; it takes only the new level and
+; the max HP gained this level (bc), added to both its battle HP and battle max
+; HP. For plain Transform that is exactly what the copy above would give
+; (battle HP and max HP still match the party's then); a Super Transform pool,
+; which is the target's, grows by the same amount instead of shrinking to the
+; party's. Attack..Special need no copy: CalculateModifiedStats below rebuilds
+; all four from the (borrowed) unmodified stats.
+	push bc
+	ld bc, MON_LEVEL - MON_HP
+	add hl, bc           ; hl was the party mon's HP
+	ld a, [hl]
+	ld [wBattleMonLevel], a
+	pop bc
+	ld hl, wBattleMonMaxHP + 1
+	ld a, [hl]
+	add c
+	ld [hld], a
+	ld a, [hl]
+	adc b
+	ld [hl], a
+	ld hl, wBattleMonHP + 1
+	ld a, [hl]
+	add c
+	ld [hld], a
+	ld a, [hl]
+	adc b
+	ld [hl], a
 .recalcStatChanges
 	xor a ; battle mon
 	ld [wCalculateWhoseStats], a

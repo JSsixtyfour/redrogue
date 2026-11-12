@@ -190,21 +190,9 @@ TurnRewindRestore::
 ; sync restored HP/status to the party slot too, exactly like TryKODefiance's
 ; revival does (engine/battle/core.asm, ~line 1358) - Gen 1 keeps wPartyMonN
 ; and wBattleMon as two separate copies that must be kept in sync manually.
-	ld a, [wPlayerMonNumber]
-	ld bc, PARTYMON_STRUCT_LENGTH
-	ld hl, wPartyMon1HP
-	call AddNTimes
-	push hl
-	ld a, [wBattleMonHP]
-	ld [hl], a
-	inc hl
-	ld a, [wBattleMonHP + 1]
-	ld [hl], a
-	pop hl
-	ld bc, MON_STATUS - MON_HP
-	add hl, bc
-	ld a, [wBattleMonStatus]
-	ld [hl], a
+; The shared write-back also caps HP at the party mon's own max HP, which a
+; Super Transform borrowed HP pool can exceed. It touches no SRAM.
+	callfar ReadPlayerMonCurHPAndStatus
 
 ; ...and PP, which the restore above refunds in wBattleMonPP. Without this the
 ; battle copy stayed one ahead of the party copy, and when the battle copy next

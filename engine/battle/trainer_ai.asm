@@ -1970,6 +1970,9 @@ SwitchEnemyMon:
 	ld hl, wEnemyMonHP
 	ld bc, MON_STATUS + 1 - MON_HP ; also copies party pos in-between HP and status
 	call CopyData
+	; Mirror Move can hand an enemy Super Transform, whose borrowed HP pool can
+	; exceed the roster mon's own max HP
+	rfarcall ClampPartyMonHPToMax ; de = roster struct + MON_STATUS + 1
 
 	ld hl, AIBattleWithdrawText
 	call PrintText
