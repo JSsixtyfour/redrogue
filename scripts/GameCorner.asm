@@ -193,8 +193,11 @@ GameCornerClerk1Text:
 	call Delay3
     CheckEvent EVENT_GOT_ROGUE_POKEMON
     jr z, .GetMon
-   
-	farcall RogueRewardClaimedLine
+
+	; Game Corner is reached only under Challenge 13, never alongside Challenge 1
+	; (one bargain at a time), so a reward was always on offer: "greedy" fits.
+	ld hl, GameCornerGreedyText
+	call PrintText
 	jr .done
     
     .GetMon
@@ -205,7 +208,11 @@ GameCornerClerk1Text:
     call DisableWaitingAfterTextDisplay
     .done
     jp TextScriptEnd
-    
+
+GameCornerGreedyText:
+	text_far _GreedyText
+	text_end
+
 ;.normalClerk
 ;	; Show player's coins
 ;	call GameCornerDrawCoinBox

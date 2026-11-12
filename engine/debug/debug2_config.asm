@@ -626,8 +626,6 @@ Debug2UnnamedText: db "- SEE INDEX@"
 ; ----------------------------------------------------------------------------
 
 ; KEEP IN SYNC with RogueStageMapTable (custom_functions/random_stage_selection.asm).
-; That table's ROUTE_17 entry is commented out and is NOT counted here; the
-; entry after it (ROUTE_24) is index 9.
 Debug2RouteNames:
 	dw Debug2Route1Text
 	dw Debug2Route3Text

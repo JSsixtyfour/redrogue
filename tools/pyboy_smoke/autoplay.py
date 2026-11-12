@@ -1480,8 +1480,20 @@ class AutoplayAgent:
         return self.new_plan(item, slot, owned)
 
     def new_plan(self, item: int, slot: int, owned: dict[int, int]) -> dict[str, object]:
-        return {"kind": "heal", "item": item, "slot": slot, "count": owned[item], "steps": 0, "done": False,
-                "index": sorted(owned, key=self.recovery_table.index).index(item)}
+        return {"kind": "heal", "item": item, "slot": slot, "count": owned[item], "steps": 0, "done": False}
+
+    def bag_list_index(self, item: int) -> int | None:
+        """The item's row in the bag list on screen, or None. The game sorts
+        each pocket for display (bag_sort.asm: TYPE or ALPHA), so the row is
+        read from the list itself, never derived from RecoveryItemTable."""
+        pointer = self.word("wListPointer")
+        for row in range(self.mem[pointer] + 1):
+            entry = self.mem[pointer + 1 + 2 * row]  # (item, quantity) pairs
+            if entry == 0xFF:
+                break
+            if entry == item:
+                return row
+        return None
 
     def plan_step(self) -> None:
         if self.plan["kind"] == "shop":
@@ -1508,10 +1520,15 @@ class AutoplayAgent:
         elif caller.startswith("DisplayListMenuID"):
             pocket = self.h.read8("wBagPocketsFlags") & 0x07
             position = cursor + self.h.read8("wListScrollOffset")
+            index = None if pocket else self.bag_list_index(plan["item"])
             if pocket:
                 button = "left"  # back toward pocket 0, Recovery
-            elif position != plan["index"]:
-                button = "down" if position < plan["index"] else "up"
+            elif index is None:
+                plan["done"] = True  # not in the list after all: back out
+                self.event("heal_abandoned", item=plan["item"], menu=caller)
+                button = "b"
+            elif position != index:
+                button = "down" if position < index else "up"
             else:
                 button = "a"
         else:

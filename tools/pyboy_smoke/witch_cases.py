@@ -2071,60 +2071,6 @@ def top_up_every_menu(run: Run) -> None:
     run.log_intervention("setup", player="active mon HP topped up at every menu")
 
 
-def c01t(run: Run, stage_name: str, slot: int) -> None:
-    """Talking to the reward trainer on a map with no after-battle line of its own. These
-    maps are outside the stage table today, so the row is forced, proves the line, and stops:
-    the zone has no way on from a map that is not in rotation."""
-    h, agent = run.h, run.agent
-    top_up_every_menu(run)
-    before = talk_and_verify(run, "hands out")
-    stage = force_stage(run, stage_name)
-    menus = h.hook_flag("RogueRewardMenu")
-    lines: list[str] = []
-    no_reward = h.address("RogueRewardClaimedLine.noReward")
-    greedy = h.address("RogueRewardClaimedLine.greedy")
-
-    def line(_context) -> None:
-        where = h.pyboy.register_file.HL
-        lines.append({no_reward: "placeholder", greedy: "greedy"}.get(where, f"{where:04x}"))
-
-    h.register_hook("RogueRewardClaimedLine.print", line)
-    h.register_hook("HoldTextDisplayOpen", agent._capture_text)
-    original = agent.goal_groups
-    goal_rows: list[object] = []
-
-    def goal_groups(grid):
-        groups = original(grid)
-        if not lines and h.read8("hCurMap") == stage:
-            sprites = agent.sprites()
-            goal_rows.append((sorted(sprites), sprites.get(slot)))
-            if slot in sprites:
-                groups.insert(0, agent.talk_goal(grid, {slot: sprites[slot]}, "retalk"))
-        return groups
-
-    agent.goal_groups = goal_groups
-    end = h.pyboy.frame_count + 40000
-    while not lines and h.pyboy.frame_count < end:
-        agent.step()
-        run.raise_on_hook_error()
-    run.must_reach("the trainer's closed line", bool(lines))
-    agent.goal_groups = original
-    run.wait_playable()
-    run.notes.append(f"lines {lines}, menus {menus['count']}, goals {goal_rows[:2]}")
-    accepted = run.branch == "accept"
-    run.check("which line", "placeholder" if accepted else "greedy", lines[0])
-    run.require("the line reached the screen", run.transcript_has("INSERT TEXT HERE" if accepted else "greedy"),
-                list(agent.transcript[-6:]))
-    if accepted:
-        run.check("no reward menu under the bargain", 0, menus["count"])
-    run.check("the bargain is still up on the stage", accepted, run.accepted)
-    run.control_check("after the line")
-
-
-def _c01tb(run: Run) -> None:
-    c01t(run, "SS_ANNE_BOW", 5)
-
-
 def c02d(run: Run) -> None:
     """The Fighting Dojo has its own item ball and its own check of Challenge 2."""
     h = run.h
@@ -2909,8 +2855,6 @@ CASES = {case.id: case for case in (
          Context(battle_count=1, gym_next=False)),
     Case("C18Z", "Double PP: the next zone is back to one", C["CHALLENGE_DOUBLE_PP"], C["PRIZE_RARITY_ITEM"], c18z,
          Context(battle_count=1, gym_next=False)),
-    Case("C01TB", "No reward: the SS Anne Bow trainer's line", C["CHALLENGE_NO_REWARD_POKEMON"], C["PRIZE_RARITY_ITEM"],
-         _c01tb, Context(battle_count=1, gym_next=False)),
     Case("C02D", "No random item: the Fighting Dojo", C["CHALLENGE_NO_RANDOM_ITEM"], C["PRIZE_RARITY_ITEM"], c02d,
          Context(battle_count=1, gym_next=False)),
     Case("C11X", "Legendary boss, the wrong leader", C["CHALLENGE_LEGENDARY_BOSS"], 0, c11x, _c11_context(1, 0)),

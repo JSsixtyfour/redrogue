@@ -26,34 +26,6 @@ WitchCloseRewardOffers::
 	ret
 
 ; ============================================================
-; RogueRewardClaimedLine
-; What a stage's reward trainer says once the reward menu is closed, on the maps
-; with no after-battle line of their own (Game Corner, Route 17, SS Anne Bow).
-; "Better not get greedy..." is wrong under Challenge 1: nothing was taken.
-; The Challenge 1 text is a placeholder: FOLLOWUPS.md #97. It sits here, not in
-; text_rogue.asm, because that file's bank ($04 on R/B) is tight. farcall from text_asm.
-; ============================================================
-RogueRewardClaimedLine::
-	ld hl, .greedy
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	jr z, .print
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_NO_REWARD_POKEMON
-	jr nz, .print
-	ld hl, .noReward
-.print
-	jp PrintText
-
-.greedy
-	text_far _GreedyText
-	text_end
-
-.noReward
-	text "INSERT TEXT HERE"
-	done
-
-; ============================================================
 ; WitchCheckPartyLimit
 ; Challenge 7 (PARTY_LIMIT): enter a stage with at most X #MON. At departure
 ; through a lobby stage door, a party larger than

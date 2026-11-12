@@ -19,12 +19,6 @@ RogueStageMapTable:
 	db ROUTE_13
 	db ROUTE_15
 	db UNDERGROUND_PATH_WEST_EAST
-	; db ROUTE_17
-	; Route 17's trainer bits are no longer aliased to anything: the old
-	; ROGUE_RUN_EVENTS hack is gone, EVENT_VICTORY_ROAD_CLEARED is a real
-	; run-scoped event, and Route 17 is listed as a live map in
-	; tools/gen_event_constants.py (TABLE 5) so it keeps its own bits.
-	; Re-enabling it as a stage is now just an uncomment.
 	db ROUTE_24          ; unique: reward gated by Nugget Bridge NPC (vanilla nugget flow), not ALL_TRAINERS_MASK
 	db ROUTE_25
 	db VIRIDIAN_FOREST

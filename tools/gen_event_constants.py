@@ -323,6 +323,10 @@ EXTRA_SEEDS = {
     # UndergroundPathRoute6 -> UndergroundPathNorthSouth, both themselves
     # unreachable dead ends. Verified: dropping these three strands no other map.
     "SS_ANNE_B1F", "SS_ANNE_B1F_ROOMS",
+    # ROUTE_17 is retired as a stage (its rogue wiring was removed 2026-11-11)
+    # and stays here only so this regeneration does not renumber events. Drop it
+    # at the next save-layout change that needs a schema bump anyway:
+    # FOLLOWUPS.md #98.
     "GAME_CORNER", "ROUTE_17", "ROUTE_24",
     # Karate Master mini-boss stage (miniboss.asm KarateMaps). Reached only by
     # the lobby's ROGUE_MAP door resolution, never by a static warp.
