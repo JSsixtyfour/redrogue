@@ -53,6 +53,6 @@ ENDC
     
 	RGB 31, 31, 31, 31, 18, 24, 19, 8, 12, 3, 3, 3 ; PAL_25 / PAL_FOREST_SPRING / cherry source
 	RGB 31, 31, 31, 31, 31, 31, 30, 22, 17, 3,  3,  3 ; PAL_BILLS_PC
-	RGB 28, 31, 26, 25, 25,  0, 29, 11,  3, 6,  0,  0 ; PAL_27 / PAL_FOREST_FALL - maps/falltrees2.pal day row
+	RGB 28, 31, 26, 25, 25,  0, 29, 11,  3, 3,  3,  3 ; PAL_27 / PAL_FOREST_FALL - maps/falltrees2.pal day row
 	RGB 31, 31, 31, 10, 23, 22, 1, 10, 9, 3, 3, 3 ; PAL_FOREST_WINTER
 	assert_table_length NUM_SGB_PALS

@@ -28,7 +28,7 @@ SGB_PATH = REPO_ROOT / "engine" / "gfx" / "palettes.asm"
 
 # Approved cherry art (2026-11-01); fall retains the previous row.
 SPRING_ROW = [(31, 31, 31), (31, 18, 24), (19, 8, 12), (3, 3, 3)]
-FALL_ROW = [(28, 31, 26), (25, 25, 0), (29, 11, 3), (6, 0, 0)]
+FALL_ROW = [(28, 31, 26), (25, 25, 0), (29, 11, 3), (3, 3, 3)]
 
 
 def enh_source() -> str:

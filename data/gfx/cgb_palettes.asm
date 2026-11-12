@@ -371,7 +371,7 @@ ENDC
 	RGB 28, 31, 26
 	RGB 25, 25,  0
 	RGB 29, 11,  3
-	RGB  6,  0,  0
+	RGB  3,  3,  3
 
 	; PAL_FOREST_WINTER (paired with the SGB row)
 	RGB 31, 31, 31
