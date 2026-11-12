@@ -6543,7 +6543,8 @@ MoveHitTest:
 ; out of 256 at every threshold and makes a threshold of 255 a guaranteed hit.
 ; Base thresholds are floor(255 * listed percent / 100). At neutral stages
 ; with no bonuses, accepting equality brings all listed accuracies in Moves
-; closer to their stated percentages. It's an overall small increase in accuracy
+; closer to their stated percentages. It's an overall very small increase in accuracy(adds 0.390625 percentage points)
+; A listed 90% move goes from 89.4531% to 89.8438%
 ; originally ported from Pokemon Shin Red
 	ld e, b
 	farcall BridgeAdjustAccuracyThreshold
