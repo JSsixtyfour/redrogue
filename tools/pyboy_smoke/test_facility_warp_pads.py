@@ -18,7 +18,7 @@ from pathlib import Path
 
 from harness import RedRogueHarness
 from source_constants import parse_map_constants
-from audit_facility_pad_sites import FIRST_PAD_WARP, PAD_BLOCK, PAD_NONE, PAD_SITES
+from audit_facility_pad_sites import FIRST_PAD_WARP, PAD_BLOCK, pad_block, pad_pair
 
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = ROOT / "tools/pyboy_smoke/artifacts"
@@ -33,12 +33,13 @@ class FacilityWarpPadTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.h.close()
 
-    def pad_tile(self, site: int) -> tuple[int, int]:
-        x, y = PAD_SITES[site]
+    def pad_tile(self, pad: int) -> tuple[int, int]:
+        x, y = pad_block(self.scratch, pad, self.layout)
         return 2 * y + 1, 2 * x + 1  # (wYCoord, wXCoord)
 
     def enter_with_pads(self) -> tuple[int, int]:
-        """Enter a Facility whose layout got a pad pair; return (a, b)."""
+        """Enter a Facility whose layout got a pad pair; return (a, b), the pads
+        as the ROM names them (ordinals, or sites in an older Facility)."""
         h = self.h
         facility = self.maps["PROCEDURAL_FACILITY"]
         h.boot_to_lobby(battle_count=11, encounter_kind=4)
@@ -49,9 +50,11 @@ class FacilityWarpPadTest(unittest.TestCase):
             h.load_state(lobby)
             h.tick(offset * 7)  # a different RNG state at generation
             h.preload_and_enter_wild_area(facility, "facility")
-            a, b = h.read_sram_bytes("sProcFacilityGenScratch", 2)
-            if a != PAD_NONE:
-                return a, b
+            self.scratch = h.read_sram_bytes("sProcFacilityGenScratch", 2)
+            pair = pad_pair(self.scratch)
+            if pair:
+                self.layout = h.read_bytes("wOverworldMap", 601)
+                return pair
         self.fail(f"no layout with warp pads in {ENTRY_ATTEMPTS} entries")
 
     def ride(self, start: int, end: int) -> None:
@@ -82,9 +85,9 @@ class FacilityWarpPadTest(unittest.TestCase):
         a, b = self.enter_with_pads()
         h.write8("wProcFacilityWildBudget", 0)  # no encounter mid-walk
         layout = h.read_bytes("wOverworldMap", 601)
-        for site in (a, b):
-            x, y = PAD_SITES[site]
-            self.assertEqual(layout[81 + y * 26 + x], PAD_BLOCK, f"site {site} is not a pad")
+        for pad in (a, b):
+            x, y = pad_block(self.scratch, pad, layout)
+            self.assertEqual(layout[81 + y * 26 + x], PAD_BLOCK, f"pad {pad} is not a pad block")
         battle_count = h.read8("wBattleCount")
 
         # Arrive standing on pad A through the retargeted entrance warp.

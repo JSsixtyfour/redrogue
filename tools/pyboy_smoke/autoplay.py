@@ -379,6 +379,13 @@ class AutoplayAgent:
             }
             self.rest_house = maps["PROCEDURAL_FOREST_REST_HOUSE"]
             self.procedural_forest = maps["PROCEDURAL_FOREST"]
+        if "lobby" in errands:
+            self.lobby_target_text = {target: lobby_text_id(name)
+                                      for target, name in autoplay_errands.LOBBY_TARGETS.items()}
+        if "roompc" in errands:
+            self.room_vendor_ids = autoplay_errands.room_vendor_ids(ROOT)
+            self.dorm_pc_text = autoplay_errands.map_text_id(ROOT, "scripts/SilphCoDorm.asm", "TEXT_SILPHCODORM_PC")
+        self.directed_targets: dict[tuple[str, int], set[str]] = {}  # (kind, run) -> targets attempted
 
         # Written by hooks.
         self.last_overworld_frame = -1  # JoypadOverworld polled
@@ -775,6 +782,11 @@ class AutoplayAgent:
         in_battle = self.h.read8("hIsInBattle")
         forced = in_battle and (self.h.read8("wForcePlayerToChooseMon") or not (
             self.h.read8("wBattleMonHP") or self.h.read8("wBattleMonHP", 1)))
+        if self.directed is not None and not in_battle:
+            # A directed errand answers its own party menus (the tutor's: B).
+            # A goal set here would outlive the errand and answer the next
+            # party menu the agent meets, out of turn.
+            return
         if self.errand is not None and not forced:
             if self.errand["kind"] == "bag" and self.errand["presses"] > ERRAND_PRESSES:
                 # A refused TM returns to this menu. Recovery must retain B
@@ -1448,10 +1460,12 @@ class AutoplayAgent:
             else:
                 self.h.tick(2)
             return
-        if self.menu_goal_step():
-            pass
-        elif self.directed is not None:
+        if self.directed is not None:
+            # Before any menu goal: one left pending by earlier play (a heal's
+            # party menu) would otherwise answer the errand's own party menu.
             self.press(self.directed.next_button(self))
+        elif self.menu_goal_step():
+            pass
         elif self.party_menu_waiting and self.menu_input == "cursor":
             self.party_menu_waiting = False
             self.press(self.party_menu_action)
@@ -1817,7 +1831,39 @@ class AutoplayAgent:
                 doors = [(x, y) for y, x, _, dest in self.h.warp_entries() if dest == self.rest_house]
                 if doors:
                     goals.append(self.warp_goal(doors, "warp_rest_house"))
+        if current == self.lobby_map and self.directed_due("lobby"):
+            # Each target once per run, at the first visit it stands here.
+            done = self.directed_targets.get(("lobby", len(self.report.runs)), set())
+            sprites = self.sprites()
+            for target, text_id in self.lobby_target_text.items():
+                if target in done:
+                    continue
+                if target.startswith("sign"):
+                    goal = self.directed_sign_goal(grid, text_id, f"lobby/{target}")
+                else:
+                    slot = self.slot_with_text(sprites, text_id)
+                    goal = (self.directed_talk_goal(grid, sprites[slot], f"lobby/{target}")
+                            if slot is not None else None)
+                if goal is not None and goal.spots:
+                    goals.append(goal)
+        if current == self.dorm and self.directed_due("roompc"):
+            goal = self.directed_sign_goal(grid, self.dorm_pc_text, "roompc")
+            if goal is not None and goal.spots:
+                goals.append(goal)
         return goals
+
+    def directed_sign_goal(self, grid: world.WalkGrid, text_id: int, label: str) -> Goal | None:
+        """Face the bg event whose text is text_id from any walkable side that
+        is not a warp (the lobby's door signs stand between its two doors)."""
+        count = self.h.read8("wNumSigns")
+        texts = self.h.read_bytes("wSignTextIDs", count) if count else []
+        if text_id not in texts:
+            return None
+        x, y = self.signs()[texts.index(text_id)]
+        warps = {(warp_x, warp_y) for warp_y, warp_x, _, _ in self.h.warp_entries()}
+        sides = {(x, y + 1): "up", (x, y - 1): "down", (x - 1, y): "right", (x + 1, y): "left"}
+        return Goal({step: (face, f"directed:{label}") for step, face in sides.items()
+                     if step not in warps and step[0] >= 0 and step[1] >= 0 and grid.walkable(*step)})
 
     def rest_house_map(self) -> int | None:
         return getattr(self, "rest_house", None)
@@ -1825,22 +1871,28 @@ class AutoplayAgent:
     def forest_map(self) -> int | None:
         return getattr(self, "procedural_forest", None)
 
-    def start_directed(self, kind: str) -> None:
+    def start_directed(self, label: str) -> None:
+        kind, _, target = label.partition("/")  # "lobby/psychic": one target of a multi-target errand
         run_index = len(self.report.runs)
         attempt = self.directed_attempts.get((kind, run_index), 0)
         self.directed_attempts[(kind, run_index)] = attempt + 1
+        if target:
+            self.directed_targets.setdefault((kind, run_index), set()).add(target)
         self.last_menu_caller = self.last_wait_caller = ""  # earlier screens are not this errand's
         self.directed = autoplay_errands.ERRAND_CLASSES[kind](
             kind=kind, run_index=run_index + 1, start_frame=self.h.pyboy.frame_count,  # 1-based, as events
-            attempt=attempt,
+            attempt=attempt, target=target,
             before=autoplay_errands.roster_identity(self.h))
-        self.event("directed_errand", phase="start", errand=kind, attempt=attempt,
+        self.directed.begin(self)
+        self.event("directed_errand", phase="start", errand=kind, target=target, attempt=attempt,
                    map=self.map_name(self.h.read8("hCurMap")))
 
     def finish_directed(self, why: str) -> None:
         errand, self.directed = self.directed, None
         violations = errand.contract_violations(autoplay_errands.roster_identity(self.h))
-        record = {"errand": errand.kind, "run_index": errand.run_index, "attempt": errand.attempt, "why": why,
+        violations += errand.extra_violations(self)
+        record = {"errand": errand.kind, "target": errand.target, "run_index": errand.run_index,
+                  "attempt": errand.attempt, "why": why,
                   "presses": errand.presses, "frames": self.h.pyboy.frame_count - errand.start_frame,
                   "reached": sorted(errand.reached), "notes": errand.notes, "violations": violations}
         self.directed_log.append(record)

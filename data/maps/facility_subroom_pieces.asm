@@ -42,10 +42,10 @@ FacSubroomPieces:
 	db 3, 5, 4, 2, 1, 10, 9, 9, 12
 	ASSERT BANK(PFacTplData3x5RockRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData3x5ServerrockRoom
-	db 3, 5, 4, 2, 7, 11, 9, 12, 5
+	db 3, 5, 4, 2, 5, 11, 9, 12, 5
 	ASSERT BANK(PFacTplData3x5ServerrockRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData3x6TableserverRoom
-	db 3, 6, 4, 1, 9, 12, 8, 9, 12
+	db 3, 6, 4, 1, 8, 12, 8, 9, 12
 	ASSERT BANK(PFacTplData3x6TableserverRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData3x7BlockrockRoom
 	db 3, 7, 4, 1, 4, 12, 7, 9, 3
@@ -66,7 +66,7 @@ FacSubroomPieces:
 	db 4, 4, 3, 2, 0, 10, 8, 11, 6
 	ASSERT BANK(PFacTplData4x4ServerRoom2) == BANK(PFacRoomDescriptors)
 	dw PFacTplData4x5DoubletableRoom
-	db 4, 5, 3, 2, 8, 10, 9, 12, 12
+	db 4, 5, 3, 2, 5, 10, 9, 7, 5
 	ASSERT BANK(PFacTplData4x5DoubletableRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData4x5RockRoom
 	db 4, 5, 3, 2, 0, 10, 9, 7, 5
@@ -183,10 +183,10 @@ FacSubroomPieces:
 	db 8, 3, 1, 3, 6, 12, 9, 15, 8
 	ASSERT BANK(PFacTplData8x3ServerRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData8x3ServerrockRoom
-	db 8, 3, 1, 3, 5, 9, 9, 3, 10
+	db 8, 3, 1, 3, 6, 9, 9, 16, 7
 	ASSERT BANK(PFacTplData8x3ServerrockRoom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData8x4BlockserverCombinedroom
-	db 8, 4, 1, 2, 5, 11, 8, 3, 5
+	db 8, 4, 1, 2, 7, 11, 8, 3, 5
 	ASSERT BANK(PFacTplData8x4BlockserverCombinedroom) == BANK(PFacRoomDescriptors)
 	dw PFacTplData8x4TableservertreeRoom
 	db 8, 4, 1, 2, 2, 10, 6, 3, 10

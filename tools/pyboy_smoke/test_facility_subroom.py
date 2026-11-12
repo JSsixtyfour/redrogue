@@ -21,6 +21,7 @@ import re
 import unittest
 from pathlib import Path
 
+import audit_facility_pad_sites as pads
 from harness import RedRogueHarness
 from source_constants import parse_map_constants, parse_rgbds_constants
 
@@ -89,8 +90,14 @@ class FacilitySubroomTest(unittest.TestCase):
                 return site
         self.fail(f"no layout with a subroom pad in {ENTRY_ATTEMPTS} entries")
 
-    def facility_pad_tile(self, site: int) -> tuple[int, int]:
-        x, y = PAD_SITES[site]
+    def facility_pad_block(self, pad: int) -> tuple[int, int]:
+        """The block of a pad as the ROM names it (an ordinal, or an older
+        Facility's site): audit_facility_pad_sites.pad_block."""
+        scratch = self.h.read_sram_bytes("sProcFacilityGenScratch", 2)
+        return pads.pad_block(scratch, pad, self.h.read_bytes("wOverworldMap", 601))
+
+    def facility_pad_tile(self, pad: int) -> tuple[int, int]:
+        x, y = self.facility_pad_block(pad)
         return 2 * x + 1, 2 * y + 1
 
     def force_piece(self, index: int) -> None:
@@ -158,10 +165,10 @@ class FacilitySubroomTest(unittest.TestCase):
         h.write8("wProcFacilityWildBudget", 0)  # no encounter mid-walk
         rolled = self.piece_index()
         self.assertLess(rolled, len(self.pieces), "generation rolled no valid piece")
-        x, y = PAD_SITES[site]
+        x, y = self.facility_pad_block(site)
         layout = h.read_bytes("wOverworldMap", 601)
         self.assertEqual(layout[81 + y * 26 + x], subroom.PAD_BLOCK, "the subroom pad is not drawn")
-        pair = h.read_sram_bytes("sProcFacilityGenScratch", 2)
+        pair = pads.pad_pair(h.read_sram_bytes("sProcFacilityGenScratch", 2)) or ()
         self.assertNotIn(site, pair, "the subroom pad took a pad pair's site")
         px, py = self.facility_pad_tile(site)
         self.assertEqual(h.warp_entries()[FIRST_PAD_WARP + site],
@@ -413,17 +420,20 @@ class FacilitySuperNerdFallbackTest(FacilitySubroomTest):
         toggles = parse_rgbds_constants(ROOT / "constants/toggle_constants.asm")
         h.boot_to_lobby(battle_count=11, encounter_kind=4)
         h.write8("wStageEvent", 0)
-        lobby = io.BytesIO()
-        h.save_state(lobby)
-        for offset in range(FALLBACK_ATTEMPTS):
-            h.load_state(lobby)
-            h.tick(offset * 7)
+        # Since 2026-11-11 (FOLLOWUPS #71) every measured Facility gets a subroom
+        # pad, so the fallback is reached only by forcing it: the subroom pad's
+        # draw sees no candidate block. The fallback code itself is unchanged
+        # and still serves older saves.
+        def no_candidates(_context) -> None:
+            h.pyboy.register_file.A = 0
+
+        h.register_hook("PFacPlaceSubroomPad.counted", no_candidates)
+        try:
             h.preload_and_enter_wild_area(self.maps["PROCEDURAL_FACILITY"], "facility")
-            scratch = h.read_sram_bytes("sProcFacilityGenScratch", SCRATCH_PAD + 1)
-            if scratch[SCRATCH_PAD] >= len(PAD_SITES):
-                break
-        else:
-            self.fail(f"every one of {FALLBACK_ATTEMPTS} Facilities had a subroom pad")
+        finally:
+            h.unregister_hook("PFacPlaceSubroomPad.counted", no_candidates)
+        scratch = h.read_sram_bytes("sProcFacilityGenScratch", SCRATCH_PAD + 1)
+        self.assertGreaterEqual(scratch[SCRATCH_PAD], len(PAD_SITES), "the forced draw still placed a pad")
         x_byte, y_byte = scratch[SCRATCH_PIECE], scratch[SCRATCH_PAD]
         self.assertEqual((x_byte & 0x80, y_byte & 0xC0), (0x80, 0x40),
                          f"no fallback spot stored: {x_byte:#x}/{y_byte:#x}")

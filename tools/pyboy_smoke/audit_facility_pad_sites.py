@@ -70,6 +70,38 @@ PAD_BLOCK = 0x2F
 PAD_NONE = 0xFF
 SUBROOM_MAP = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")["PROCEDURAL_FACILITY_SUBROOM"]
 
+# Dynamic pads (FOLLOWUPS #71, constants/facility_pad_site_constants.asm): a
+# fresh Facility names each pad by its ORDINAL, the k-th PAD_BLOCK in row order
+# on the baked map, and byte 0 carries the tag. A Facility saved earlier names
+# sites. Every reader goes through these three, so both kinds keep working.
+PAD_DYN = 0x80       # FACILITY_PAD_DYN: byte 0 = PAD_DYN | the first ordinal
+PAD_DYN_NONE = 0xFD  # FACILITY_PAD_DYN_NONE: dynamic, no pair
+
+
+def pads_dynamic(scratch) -> bool:
+    """PFacPadsDynamic."""
+    return scratch[0] == PAD_DYN_NONE or scratch[0] & 0xF0 == PAD_DYN
+
+
+def pad_pair(scratch):
+    """The pair's two pads as the ROM names them (ordinals or sites), or None."""
+    if pads_dynamic(scratch):
+        return None if scratch[0] == PAD_DYN_NONE else (scratch[0] & 0x0F, scratch[1])
+    if scratch[0] >= len(PAD_SITES) or scratch[1] >= len(PAD_SITES):
+        return None
+    return scratch[0], scratch[1]
+
+
+def pad_block(scratch, pad, playable):
+    """PFacPadSiteXY: the (block x, block y) of a pad named the ROM's way.
+    `playable` is the 400 player-area blocks, or the 601-byte wOverworldMap."""
+    if not pads_dynamic(scratch):
+        return PAD_SITES[pad]
+    if len(playable) != 400:
+        playable = [playable[81 + r * 26 + c] for r in range(20) for c in range(20)]
+    blocks = [(i % 20, i // 20) for i, b in enumerate(playable) if b == PAD_BLOCK]
+    return blocks[pad]
+
 
 def layout(harness, seed, edge, baseline):
     harness.load_state(baseline)
@@ -125,6 +157,27 @@ def in_spinner_room(scratch, bx, by) -> bool:
     return x - 1 <= bx <= x + w and y - 1 <= by <= y + h
 
 
+def ring_joined(cells, bx, by) -> bool:
+    """PFacPadBlockValid's ring test (2026-11-11): blocking the warp quadrant
+    strands nothing when its walkable 4-neighbours are all connected through
+    walkable cells of its 8-ring. Written as the general search, not as the
+    ROM's two closed-form conditions, so the runtime check compares the two."""
+    qx, qy = 2 * bx + 1, 2 * by + 1
+    ring = {(qx + dx, qy + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)} - {(qx, qy)}
+    live = ring & cells
+    near = [n for n in ((qx, qy - 1), (qx - 1, qy), (qx + 1, qy), (qx, qy + 1)) if n in cells]
+    if not near:
+        return False
+    seen, stack = {near[0]}, [near[0]]
+    while stack:
+        c = stack.pop()
+        for n in ((c[0] - 1, c[1]), (c[0] + 1, c[1]), (c[0], c[1] - 1), (c[0], c[1] + 1)):
+            if n in live and n not in seen:
+                seen.add(n)
+                stack.append(n)
+    return all(n in seen for n in near)
+
+
 def valid_sites(playable, scratch, balls, boss, hideout, blockset=None):
     """Runtime rule. The pad is block $2F, whose only non-floor quadrant is the
     bottom-right one (the warp tile), so for walking only THAT quadrant is a
@@ -150,11 +203,8 @@ def valid_sites(playable, scratch, balls, boss, hideout, blockset=None):
             if RULE in ("3x3", "ring"):
                 if any(playable[y * 20 + x] != PFAC_FLOOR for x, y in patch):
                     continue
-            else:
-                qx, qy = 2 * bx + 1, 2 * by + 1
-                ring = [(qx + 1, qy - 1), (qx + 1, qy), (qx + 1, qy + 1), (qx, qy + 1), (qx - 1, qy + 1)]
-                if any(q not in cells for q in ring):
-                    continue
+            elif not ring_joined(cells, bx, by):
+                continue
             # Objects: the 3x3 blocks centred on the site (PFacPadObjectsClear).
             if any((bx + dx, by + dy) in occupied for dy in (-1, 0, 1) for dx in (-1, 0, 1)):
                 continue
@@ -181,105 +231,122 @@ SUBROOM_PIECE = 6  # byte 6: the room piece, or $80 | X for the Super Nerd's fal
 
 
 def unstamp(playable, scratch):
-    """The map as it was before PFacPlacePads stamped its two pads and
-    PFacPlaceSubroomPad its one (the model judges sites on that map; a stamped
-    site is no longer PFAC_FLOOR)."""
+    """The map as it was before the pads were stamped (the model judges blocks
+    on that map; a stamped block is no longer PFAC_FLOOR)."""
+    pads = [(i % 20, i // 20) for i, b in enumerate(playable) if b == PAD_BLOCK]
+    stamped = []
+    pair = pad_pair(scratch)
+    if pair and pads_dynamic(scratch):
+        stamped += [pads[k] for k in pair if k < len(pads)]
+    if scratch[SUBROOM_PAD] < len(PAD_SITES) and scratch[SUBROOM_PAD] < len(pads):
+        stamped.append(pads[scratch[SUBROOM_PAD]])
     before = list(playable)
-    stamped = list(scratch[:2]) if scratch[0] < len(PAD_SITES) and scratch[1] < len(PAD_SITES) else []
-    if scratch[SUBROOM_PAD] < len(PAD_SITES):   # $40 and up: no subroom pad
-        stamped.append(scratch[SUBROOM_PAD])
-    for site in stamped:
-        x, y = PAD_SITES[site]
-        if before[y * 20 + x] == PAD_BLOCK:
-            before[y * 20 + x] = PFAC_FLOOR
+    for x, y in stamped:
+        before[y * 20 + x] = PFAC_FLOOR
+    return tuple(before)
+
+
+def pad_blocks(playable):
+    """Every $2F block in row order: the ROM's ordinals index this list."""
+    return [(i % 20, i // 20) for i, b in enumerate(playable) if b == PAD_BLOCK]
+
+
+def valid_rows3(*args):
+    """valid_sites on the dynamic range (rows 3-18, PFAC_DYN_TOP)."""
+    return {s for s in valid_sites(*args) if s[1] >= 3}
+
+
+def unstamp_blocks(playable, blocks):
+    before = list(playable)
+    for x, y in blocks:
+        before[y * 20 + x] = PFAC_FLOOR
     return tuple(before)
 
 
 def check_runtime(seed, playable, scratch, balls, boss, hideout, warps, tally) -> int:
-    """Compare what PFacPlacePads/PFacArmPads did with this audit's own model."""
-    a, b, sub = scratch[0], scratch[1], scratch[SUBROOM_PAD]
-    if sub >= len(PAD_SITES):
-        sub = PAD_NONE            # $FF, or the Super Nerd's fallback row ($40 | Y)
-    # The pair was judged on the map as it was BEFORE any pad was stamped, the
-    # subroom pad on the map with the pair already in it.
-    before = list(playable)
-    placed = a != PAD_NONE
-    if sub != PAD_NONE:
-        x, y = PAD_SITES[sub]
-        before[y * 20 + x] = PFAC_FLOOR
-    with_pair = tuple(before)
-    if placed:
-        for site in (a, b):
-            x, y = PAD_SITES[site]
-            before[y * 20 + x] = PFAC_FLOOR
-    sites = valid_sites(tuple(before), scratch, balls, boss, hideout, BLOCKSET.read_bytes())
-    shipped = sites & set(PAD_SITES)
-    possible = has_pair(shipped)
-    tally["possible"] += possible
-    problems = []
-    if not placed:
-        if b != PAD_NONE:
-            problems.append(f"half a pair stored: {a}, {b}")
-    else:
-        tally["placed"] += 1
-        tally["placed_when_possible"] += possible
-        ends = [PAD_SITES[a], PAD_SITES[b]]
-        for end in ends:
-            if end not in sites:
-                problems.append(f"end {end} fails the model")
-            if playable[end[1] * 20 + end[0]] != PAD_BLOCK:
-                problems.append(f"end {end} is not the pad block")
-        if abs(ends[0][0] - ends[1][0]) + abs(ends[0][1] - ends[1][1]) < PAD_MIN_DISTANCE:
-            problems.append(f"ends {ends} are too close")
-    # The subroom pad: any site still valid once the pair is in, if there is one.
-    sub_sites = valid_sites(with_pair, scratch, balls, boss, hideout, BLOCKSET.read_bytes()) \
-        & set(PAD_SITES)
-    tally["subroom_possible"] += bool(sub_sites)
-    if sub == PAD_NONE:
-        # The Super Nerd's fallback: a random block (rows 3-18) passing the
-        # same rule, stored as $80 | X in byte 6 and $40 | Y in byte 7; $FF in
-        # both when there is none.
-        anywhere = {(x, y) for x, y in valid_sites(tuple(playable), scratch, balls, boss, hideout,
-                                                    BLOCKSET.read_bytes()) if y >= 3}
-        x_byte, y_byte = scratch[SUBROOM_PIECE], scratch[SUBROOM_PAD]
-        if x_byte == 0xFF and y_byte == 0xFF:
-            if anywhere:
-                problems.append(f"no Super Nerd although {len(anywhere)} blocks were valid")
+    """Compare what PFacPlacePads/PFacPlaceSubroomPad/PFacArmPads did with this
+    audit's own model. Pads are named by ordinal among the map's $2F blocks."""
+    blockset = BLOCKSET.read_bytes()
+    bad = []
+    b0, b1, b7 = scratch[0], scratch[1], scratch[SUBROOM_PAD]
+    pads = pad_blocks(playable)
+    if not pads_dynamic(scratch):
+        bad.append(f"byte 0 {b0:#x} is not the dynamic format")
+    pair = None
+    if b0 != PAD_DYN_NONE:
+        oa, ob = b0 & 0x0F, b1
+        if oa >= len(pads) or ob >= len(pads):
+            bad.append(f"pair ordinals {oa},{ob} past {len(pads)} pad blocks")
         else:
-            tally["fallback_placed"] += 1
-            spot = (x_byte & 0x7F, y_byte & 0x3F)
-            if x_byte & 0x80 == 0 or y_byte & 0xC0 != 0x40 or spot not in anywhere:
-                problems.append(f"Super Nerd fallback {x_byte:#x}/{y_byte:#x} fails the model")
-        if sub_sites:
-            problems.append(f"no subroom pad although sites were valid: "
-                            f"{sorted(PAD_SITES[i] for i in range(len(PAD_SITES)) if PAD_SITES[i] in sub_sites)}"
-                            f" pair {[PAD_SITES[i] for i in (a, b) if i < len(PAD_SITES)]}")
-    else:
+            pair = (oa, ob)
+    elif b1 != PAD_NONE:
+        bad.append(f"no pair but byte 1 = {b1:#x}")
+    sub = b7 if b7 < len(PAD_SITES) else None
+    if sub is not None and sub >= len(pads):
+        bad.append(f"subroom ordinal {sub} past {len(pads)} pad blocks")
+        sub = None
+    ours = set()
+    if pair:
+        ours |= {pads[pair[0]], pads[pair[1]]}
+    if sub is not None:
+        ours.add(pads[sub])
+    # The pair was judged on the map before any pad of ours, the subroom pad
+    # with the pair already in it.
+    possible = valid_rows3(unstamp_blocks(playable, ours), scratch, balls, boss, hideout, blockset)
+    pair_possible = any(abs(a[0] - b[0]) + abs(a[1] - b[1]) >= PAD_MIN_DISTANCE
+                        for a, b in combinations(possible, 2))
+    tally["possible"] += pair_possible
+    if pair:
+        tally["placed"] += 1
+        tally["placed_when_possible"] += pair_possible
+        a, b = pads[pair[0]], pads[pair[1]]
+        for end in (a, b):
+            if end not in possible:
+                bad.append(f"pair end {end} fails the model")
+        if abs(a[0] - b[0]) + abs(a[1] - b[1]) < PAD_MIN_DISTANCE:
+            bad.append(f"pair {a} {b} too close")
+    elif pair_possible:
+        bad.append("no pair although one was possible")
+    with_pair = unstamp_blocks(playable, {pads[sub]} if sub is not None else set())
+    sub_possible = valid_rows3(with_pair, scratch, balls, boss, hideout, blockset) - (
+        {pads[pair[0]], pads[pair[1]]} if pair else set())
+    tally["subroom_possible"] += bool(sub_possible)
+    if sub is not None:
         tally["subroom_placed"] += 1
-        end = PAD_SITES[sub]
-        if end not in sub_sites:
-            problems.append(f"subroom pad {end} fails the model")
-        if playable[end[1] * 20 + end[0]] != PAD_BLOCK:
-            problems.append(f"subroom pad {end} is not the pad block")
-        if placed and sub in (a, b):
-            problems.append(f"subroom pad shares site {sub} with the pair")
-    for n, (x, y) in enumerate(PAD_SITES):
-        entry = warps[4 * (FIRST_PAD_WARP + n): 4 * (FIRST_PAD_WARP + n) + 4]
-        if n == sub:
-            # Armed into the subroom; its landing is the room piece's
-            # (test_facility_subroom.py checks that value).
-            if entry[:2] != [2 * y + 1, 2 * x + 1] or entry[3] != SUBROOM_MAP:
-                problems.append(f"subroom pad site {n} armed as {entry}")
-        elif placed and n in (a, b):
-            partner = b if n == a else a
-            want = [2 * y + 1, 2 * x + 1, FIRST_PAD_WARP + partner]
-            if entry[:3] != want:
-                problems.append(f"site {n} armed as {entry[:3]}, want {want}")
-        elif entry[0] != PAD_NONE:
-            problems.append(f"site {n} not disarmed: {entry}")
-    for line in problems:
+        if pads[sub] not in sub_possible:
+            bad.append(f"subroom pad {pads[sub]} fails the model")
+    elif sub_possible:
+        bad.append("no subroom pad although one was possible")
+    # Nothing stranded with every pad of ours in place.
+    clean = unstamp_blocks(playable, ours)
+    cells = passable(blockset, clean)
+    reach = flood(cells, ENTRANCE)
+    holes = {(2 * x + 1, 2 * y + 1) for x, y in ours}
+    if flood(cells - holes, ENTRANCE) != reach - holes:
+        bad.append("pads strand floor")
+    # Warps: slot FIRST + ordinal armed for ours, every other pad slot disarmed.
+    armed = {}
+    if pair:
+        armed[pair[0]] = ("pair", pair[1])
+        armed[pair[1]] = ("pair", pair[0])
+    if sub is not None:
+        armed[sub] = ("sub", None)
+    for k in range(len(PAD_SITES)):
+        e = warps[4 * (FIRST_PAD_WARP + k): 4 * (FIRST_PAD_WARP + k) + 4]
+        if k in armed:
+            x, y = pads[k]
+            if e[:2] != [2 * y + 1, 2 * x + 1]:
+                bad.append(f"slot {FIRST_PAD_WARP + k} tile {e[:2]} != pad {pads[k]}")
+            kind, partner = armed[k]
+            if kind == "pair" and e[2] != FIRST_PAD_WARP + partner:
+                bad.append(f"slot {FIRST_PAD_WARP + k} dest {e[2]} != {FIRST_PAD_WARP + partner}")
+            if kind == "sub" and e[3] != SUBROOM_MAP:
+                bad.append(f"subroom slot {FIRST_PAD_WARP + k} map {e[3]:#x}")
+        elif e[0] != PAD_NONE:
+            bad.append(f"slot {FIRST_PAD_WARP + k} not disarmed: {e}")
+    for line in bad:
         print(f"seed {seed}: {line}")
-    return len(problems)
+    return len(bad)
 
 
 def has_pair(sites) -> bool:
@@ -352,7 +419,6 @@ def main() -> int:
               f"placed when possible {runtime['placed_when_possible']}, "
               f"subroom pad placed {runtime['subroom_placed']} "
               f"(possible {runtime['subroom_possible']}), "
-              f"Super Nerd fallback placed {runtime['fallback_placed']}, "
               f"problems {problems}")
         return 1 if problems else 0
 

@@ -1373,17 +1373,21 @@ LEGENDARY_SLOTS = (1, 2)  # Sabrina's and Erika's pools hold Mew, which the part
 BIT_UBER = RAM["BIT_WITCH_UBER_RECEIVED"]
 
 
-def _c11_context(door1: int, door2: int) -> Context:
+def _c11_context(door1: int, door2: int, leader: str = "SABRINA", lead: str = "MEWTWO") -> Context:
+    """`leader` stands in badge slot 1 (a LEGENDARY_SLOTS door); `lead` is the
+    masterball-class mon the trade takes, and must be outside that leader's pool
+    (LegendaryBossTable), or the leader would be owned out."""
     classes = parse_trainer_class_indexes(ROOT / "constants/trainer_constants.asm")
+    lineup = tuple(leader if index == 1 else name for index, name in enumerate(GYM_LINEUP))
     return Context(battle_count=37, gym_next=True, badges=0xF0,
-                   # Mewtwo leads: it is the masterball-class mon the trade takes, and the
+                   # The lead is the masterball-class mon the trade takes, and the
                    # agent picks the lead at a trade's party menu.
-                   party=(Mon("MEWTWO"), Mon("TAUROS"), Mon("ALAKAZAM"), Mon("ARCANINE")),
+                   party=(Mon(lead), Mon("TAUROS"), Mon("ALAKAZAM"), Mon("ARCANINE")),
                    # Both gifts of the run already taken: at 4 badges a gift room can
                    # otherwise take both doors, which hides the witch.
                    pokes={"wGymChoice": 1 << RAM["BIT_GYM_CHOICE_LATCHED"] | door1 | door2 << 3,
                           "wLegendaryBossSpecies": 0, "wBridgeState": 2 << 6},
-                   arrays={"wRunGymLineup": tuple(classes[name] for name in GYM_LINEUP)})
+                   arrays={"wRunGymLineup": tuple(classes[name] for name in lineup)})
 
 
 def _lobby_door_blocks(h) -> list[int]:
@@ -1486,7 +1490,7 @@ def _c11r(run: Run) -> None:
 
 
 def _c11b(run: Run) -> None:
-    c11(run, door=1, door1=1, door2=2, quote="Either door")
+    c11(run, door=1, door1=1, door2=2, quote="either door")  # text reworded 2026-11-09 (f9202856)
 
 
 def _c11n(run: Run) -> None:
@@ -2858,6 +2862,15 @@ CASES = {case.id: case for case in (
     Case("C02D", "No random item: the Fighting Dojo", C["CHALLENGE_NO_RANDOM_ITEM"], C["PRIZE_RARITY_ITEM"], c02d,
          Context(battle_count=1, gym_next=False)),
     Case("C11X", "Legendary boss, the wrong leader", C["CHALLENGE_LEGENDARY_BOSS"], 0, c11x, _c11_context(1, 0)),
+    # FOLLOWUPS #87: every other leader's OfferLegendaryTrade<Leader> entry, through the
+    # same real-input lifecycle as C11L (door 1). Lugia leads for Giovanni: his only
+    # legendary is Mewtwo, so a Mewtwo lead would own him out.
+    Case("C11BL", "Legendary boss, Blaine", C["CHALLENGE_LEGENDARY_BOSS"], 0, _c11l, _c11_context(1, 0, "BLAINE")),
+    Case("C11GI", "Legendary boss, Giovanni (Armored Mewtwo)", C["CHALLENGE_LEGENDARY_BOSS"], 0, _c11l,
+         _c11_context(1, 0, "GIOVANNI", lead="LUGIA")),
+    Case("C11FA", "Legendary boss, Falkner", C["CHALLENGE_LEGENDARY_BOSS"], 0, _c11l, _c11_context(1, 0, "FALKNER")),
+    Case("C11MO", "Legendary boss, Morty", C["CHALLENGE_LEGENDARY_BOSS"], 0, _c11l, _c11_context(1, 0, "MORTY")),
+    Case("C11PR", "Legendary boss, Pryce", C["CHALLENGE_LEGENDARY_BOSS"], 0, _c11l, _c11_context(1, 0, "PRYCE")),
     Case("P10B", "Prize 10: the wallet holds only the discounted total", C["CHALLENGE_NO_MONEY"], C["PRIZE_CHEAP_ITEMS"],
          _p10b, Context(battle_count=1, gym_next=False, money=5000)),
     Case("P10C", "Prize 10: the second clerk", C["CHALLENGE_NO_MONEY"], C["PRIZE_CHEAP_ITEMS"],

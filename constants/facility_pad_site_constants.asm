@@ -20,6 +20,28 @@ DEF FACILITY_FIRST_PAD_WARP EQU 3 ; after the entrance and the two exit tiles
 DEF FACILITY_PAD_MIN_DISTANCE EQU 8 ; blocks, Manhattan, between a pair's ends
 DEF FACILITY_PAD_BLOCK EQU $2F
 DEF FACILITY_PAD_NONE EQU $FF
+; DYNAMIC PADS (2026-11-11, FOLLOWUPS #71). Fresh Facilities no longer use the
+; sites below: a pad may stand on ANY block passing PFacPadBlockValid in rows
+; PFAC_DYN_TOP-18, columns 1-18. A pad is named by its ORDINAL, how many
+; FACILITY_PAD_BLOCK blocks come before it in row order on the baked map
+; (four premade room pieces draw one $2F each as decor, so the block alone
+; does not identify a pad). Ordinal k departs and arrives through warp slot
+; FACILITY_FIRST_PAD_WARP + k: PFacArmPads arms the departure, and
+; PFacResolveArrival (through the forest grotto's FGResolveArrival seam)
+; finds the k-th pad block on arrival, so no ROM arrival record is needed and
+; no coordinates are saved. In sProcFacilityGenScratch:
+;   byte 0 = FACILITY_PAD_DYN | the pair's first ordinal (0-15), or
+;            FACILITY_PAD_DYN_NONE (dynamic, no pair). An older save holds a
+;            site index (0-26), FACILITY_PAD_NONE or a ball's block X (< 20).
+;   byte 1 = the pair's second ordinal, or FACILITY_PAD_NONE
+;   byte 7 = the subroom pad's ordinal (< NUM_FACILITY_PAD_SITES, so every
+;            "byte 7 below NUM_FACILITY_PAD_SITES = a subroom pad" test holds)
+; The 27 sites and their warp_events stay for Facilities saved before this.
+DEF FACILITY_PAD_DYN         EQU $80
+DEF FACILITY_PAD_DYN_NONE    EQU $FD
+DEF FACILITY_PAD_MAX_ORDINAL EQU 16  ; byte 0's low nibble
+DEF FACILITY_PAD_CANDIDATE   EQU $FE ; generation only: a block marked valid
+DEF PFAC_DYN_TOP             EQU 3   ; rows 0-2 hold the exit and the boss
 ; The rolled subroom piece and the pad site leading there, in
 ; sProcFacilityGenScratch. The pads keep bytes 0-1 and the spinner 2-5.
 DEF FACSUB_SCRATCH_PIECE EQU 6

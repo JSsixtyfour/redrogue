@@ -23,7 +23,7 @@ FacSubroomMonSpots:
 	db 12, 8 ; ProceduralFacility_4x3_tabletree_room.blk
 	db 12, 9 ; ProceduralFacility_4x4_server_room.blk
 	db 7, 9 ; ProceduralFacility_4x4_server_room2.blk
-	db 7, 5 ; ProceduralFacility_4x5_doubletable_room.blk
+	db 12, 11 ; ProceduralFacility_4x5_doubletable_room.blk
 	db 12, 11 ; ProceduralFacility_4x5_rock_room.blk
 	db 12, 11 ; ProceduralFacility_4x5_tableserver_room.blk
 	db 8, 13 ; ProceduralFacility_4x7_doubletable_tree_combinedroom.blk
@@ -62,7 +62,7 @@ FacSubroomMonSpots:
 	db 5, 13 ; ProceduralFacility_7x7_treerock_combinedroom.blk
 	db 3, 7 ; ProceduralFacility_8x3_block_room.blk
 	db 3, 7 ; ProceduralFacility_8x3_server_room.blk
-	db 16, 7 ; ProceduralFacility_8x3_serverrock_room.blk
+	db 4, 8 ; ProceduralFacility_8x3_serverrock_room.blk
 	db 16, 9 ; ProceduralFacility_8x4_blockserver_combinedroom.blk
 	db 16, 5 ; ProceduralFacility_8x4_tableservertree_room.blk
 	db 16, 11 ; ProceduralFacility_8x5_combinedtable_rock_room.blk

@@ -20,55 +20,55 @@ _DexCompletionText::
 
 ; owned = 0
 _DexRatingText_None::
-	text "Your #DEX is"
-	line "still empty!"
-	cont "Catch #MON on"
-	cont "your next run!"
+	text "Meet me at my LAB"
+	line "to get your first"
+	cont "#MON."
 	done
 
 ; below 25%
 _DexRatingText_Started::
-	text "A fine start!"
-	line "Every run brings"
-	cont "new #MON to"
-	cont "discover."
+	text "You still have"
+	line "lots to do. Some"
+	cont "#MON are best"
+	cont "found by trading!"
 	done
 
 ; 25-49%
 _DexRatingText_Quarter::
-	text "Good progress!"
-	line "Explore caves and"
-	cont "forests to find"
-	cont "rarer #MON!"
+	text "You're on track!"
+	line "Explore the"
+	cont "WILD AREAS for"
+	cont "rare #MON."
 	done
 
 ; 50-74%
 _DexRatingText_Half::
-	text "Over halfway!"
-	line "Evolving your"
-	cont "#MON fills in"
-	cont "new entries too!"
+	text "Wonderful!"
+	line "Some #MON can"
+	cont "only be found in"
+	cont "certain modes."
 	done
 
 ; 75-89%
 _DexRatingText_ThreeQuarters::
-	text "Wonderful work!"
+	text "Outstanding!"
 	line "Regional forms"
-	cont "are entries of"
-	cont "their own, too!"
+	cont "count as entries"
+	cont "too."
 	done
 
 ; 90% up to one short of complete
 _DexRatingText_Nearly::
-	text "Incredible! Only"
-	line "a handful of"
-	cont "#MON remain"
-	cont "undiscovered!"
+	text "I have nothing"
+	line "left to say!"
+	cont "You're the"
+	cont "authority now!"
 	done
 
 ; every identity owned
 _DexRatingText_Complete::
 	text "Your #DEX is"
-	line "fully complete!"
+	line "entirely"
+	cont "complete!"
 	cont "Congratulations!"
 	done

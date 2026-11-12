@@ -1242,7 +1242,11 @@ class ProceduralStageSmokeTest(HarnessTestCase):
             0x8B,
             0x8C,
             0x8D,
-        } | decor_blocks | large_decor_blocks | _facility_incbin_blocks()
+        } | decor_blocks | large_decor_blocks | _facility_incbin_blocks() | {
+            # The warp pad. No premade room draws it any more, so the .blk files
+            # no longer supply it (FOLLOWUPS #71).
+            0x2F,
+        }
         # Mirrors PFacCornerCapTable in
         # custom_functions/procedural_facility_gen.asm: each ring corner's two
         # wall arms, then the replacement for arm A alone, arm B alone, both.

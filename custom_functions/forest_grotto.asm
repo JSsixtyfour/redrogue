@@ -514,6 +514,12 @@ FGResolveArrival::
 	; The cave's dynamic ladders (FOLLOWUPS #93) land through the same seam.
 	jp CaveResolveArrival
 .notCave
+	cp PROCEDURAL_FACILITY
+	jr nz, .notFacility
+	; So do the Facility's dynamic warp pads (FOLLOWUPS #71).
+	farcall PFacResolveArrival
+	ret
+.notFacility
 	cp PROCEDURAL_FOREST
 	ret nz
 	ld a, [wWarpedFromWhichMap]
