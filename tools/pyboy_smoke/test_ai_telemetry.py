@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import unittest
 
-from ai_telemetry import STATUS_SPAM_STREAK, b5_summary, battle_record, classify_b5, classify_setup, parse_setup_moves, summarize
+from ai_telemetry import BattleAITelemetry, STATUS_SPAM_STREAK, b5_summary, battle_record, classify_b5, classify_setup, parse_setup_moves, summarize
 from run_ai_benchmark import FRAME_CYCLES, parse_move_powers
 from source_constants import parse_rgbds_constants
 
@@ -357,3 +357,37 @@ class SummarizeTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PlayerHitDamageTest(unittest.TestCase):
+    """The believed-vs-real comparison uses the hits that reached the mon, not the HP delta."""
+
+    class _Harness:
+        def __init__(self, hp: int) -> None:
+            self.hp = hp
+
+        def read8(self, label: str, offset: int = 0) -> int:
+            if label == "wEnemyMonHP":
+                return (self.hp >> 8, self.hp & 0xFF)[offset]
+            return 0
+
+    def finish(self, hits, hp_next):
+        telemetry = BattleAITelemetry.__new__(BattleAITelemetry)
+        telemetry.h = self._Harness(hp_next)
+        telemetry.b5_events = []
+        telemetry._why_pending = why = {"hp": 100, "player_hits": hits}
+        telemetry._b5_turn(None)
+        return why
+
+    def test_hits_absorbed_by_a_substitute_do_not_count(self) -> None:
+        # Substitute cost 25 HP; the player's 30 hit the sub; HP fell 25.
+        why = self.finish([[TACKLE, 30, 0, True]], 75)
+        self.assertEqual(why["hp_next_turn"], 75)
+        self.assertEqual(why["player_hit_damage"], 0)
+
+    def test_every_hit_on_the_mon_counts(self) -> None:
+        why = self.finish([[TACKLE, 9, 0, False], [TACKLE, 9, 1, False]], 82)
+        self.assertEqual(why["player_hit_damage"], 18)
+
+    def test_no_hit_is_zero(self) -> None:
+        self.assertEqual(self.finish([], 94)["player_hit_damage"], 0)
