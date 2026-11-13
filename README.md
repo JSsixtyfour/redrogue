@@ -28,7 +28,7 @@ Pokemon & Items are awarded based on a rarity system
 - The most advanced RBY AI
 - Customizable Dorm Room with dolls, decor, and furniture
 - Character Class Select
-- 100+ Pokémon from Johto and Future Kanto Variants/Evolutions when playing in Johto/Time Warp Modes
+- 300+ Pokémon from Kanto, Johto and Future Kanto Variants/Evolutions when playing in Johto/Time Warp Modes
 - Five Pocket Bag
 - New Music and music based progression system, with tracks from Pokémon Stadium, Pokémon Crystal, Pokémon Pinball, and the Pokémon Trading Card Games
 - And Much, Much More
