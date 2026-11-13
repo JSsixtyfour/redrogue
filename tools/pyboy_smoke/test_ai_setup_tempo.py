@@ -194,7 +194,8 @@ class SetupTempoTest(unittest.TestCase):
             self.assertEqual(gate & 0x0F, want, label)
             self.assertEqual(state["stat"], stored, label)
             self.assertEqual(state["cache0"], raw | (valid << 8), label)  # the real stat's answer
-            self.assertEqual(exact["count"] > before, expect_exact, label)
+            # FU2: a one-hit KO returns before any boosted estimate.
+            self.assertEqual(exact["count"] > before, expect_exact and hits(hp, now) > 1, label)
             stats["checked"] += 1
             stats["other_differs"] += want != other
             stats["cycles"] = max(stats["cycles"], state["cycles"])
@@ -258,6 +259,31 @@ class SetupTempoTest(unittest.TestCase):
             gate, _ = self.tempo(hp)
             self.assertEqual(gate, 0)
         self.assertEqual(exact["count"], 0)
+
+    # --- FU2: one-hit early exit -----------------------------------------------
+    def test_a_one_hit_ko_returns_before_any_boosted_estimate(self) -> None:
+        """n(D) == 1: nothing is free, and neither the pointers nor the exact path run."""
+        self.boot(["BODY_SLAM", "SWORDS_DANCE"])
+        exact = self.h.hook_flag("AISetupHitsAtBoost")
+        for stage, unmod in ((NEUTRAL, None), (NEUTRAL + 2, None), (NEUTRAL, 600), (NEUTRAL - 1, None)):
+            with self.subTest(stage=stage, unmod=unmod):
+                self.set_stage(stage, unmod)
+                self.write_word("wBattleMonHP", 999)
+                raw = self.estimate_with(self.word(self.labels()[0]), delivery=False)
+                before = exact["count"]
+                gate, _ = self.tempo(max(1, raw // 2))
+                self.assertEqual(gate, 0)
+                self.assertEqual(exact["count"], before)
+
+    def test_two_hits_that_become_one_stay_free(self) -> None:
+        """The control: from a 2HKO, +2 is a OHKO, so the early exit must not fire."""
+        self.boot(["BODY_SLAM", "SWORDS_DANCE"])
+        self.set_stage(NEUTRAL)
+        self.write_word("wBattleMonHP", 999)
+        raw = self.estimate_with(self.word(self.labels()[0]), delivery=False)
+        gate, _ = self.tempo(raw + raw // 2)  # 2 hits now, 1 at x2
+        plus2 = self.mask("AI_SG_ATK2_FREE_BIT", "AI_SG_SPC2_FREE_BIT") & self.ai_category_mask()
+        self.assertEqual(gate & plus2, plus2)
 
 
 if __name__ == "__main__":

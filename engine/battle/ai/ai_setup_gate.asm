@@ -125,6 +125,11 @@ AISetupTempo:
 	ld e, a ; de = D
 	call AIHitsToKO
 	ld b, a ; b = n(D)
+; FU2 (2026-11-13): a one-hit KO cannot be improved, n(boosted) + 1 >= 2 > 1, so no
+; boost is free. The byte is still the entry clear. Skips the stat pointers, the 500+
+; test and the exact path's boosted estimates (~12k cycles each, up to two).
+	dec a
+	ret z
 ; Stage-aware (AI review CP5, 2026-11-13): x2 and x1.5 hold only from the neutral
 ; stage, below the cap. From +2 another +2 is x1.5 (2x -> 3x), at +6 nothing,
 ; from -1 x2.25, and a stat of 500+ doubles into the 999 cap. Off those, the
