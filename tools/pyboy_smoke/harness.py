@@ -603,6 +603,16 @@ class RedRogueHarness:
                 {"layer": layer, "scores": self.read_bytes("wBuffer", 4)}
             )
 
+        def personality_start(_context) -> None:
+            # AIRunPersonality runs after the layer loop at every tier. Without
+            # its own snapshot its lean was charged to the last layer slot
+            # (RISKY, even where RISKY is disabled): FU5, 2026-11-13.
+            if not pending["active"]:
+                return
+            pending["layer_snapshots"].append(
+                {"layer": "PERSONALITY", "scores": self.read_bytes("wBuffer", 4)}
+            )
+
         def layer_return(_context) -> None:
             if not pending["active"]:
                 return
@@ -632,10 +642,11 @@ class RedRogueHarness:
                 before = snapshot["scores"]
                 after = snapshots[index + 1]["scores"] if index + 1 < len(snapshots) else scores
                 layer = snapshot["layer"]
+                personality = layer == "PERSONALITY"
                 layer_trace.append(
                     {
-                        "layer": self.AI_LAYER_NAMES[layer],
-                        "enabled": layer in pending["enabled_layers"],
+                        "layer": layer if personality else self.AI_LAYER_NAMES[layer],
+                        "enabled": personality or layer in pending["enabled_layers"],
                         "before": before,
                         "after": after,
                         "delta": [new - old for old, new in zip(before, after)],
@@ -680,6 +691,7 @@ class RedRogueHarness:
             ("AIEnemyTrainerChooseMoves", begin),
             ("AIEnemyTrainerChooseMoves.nextLayer", layer_start),
             ("AIEnemyTrainerChooseMoves.layerReturn", layer_return),
+            ("AIEnemyTrainerChooseMoves.layersDone", personality_start),
             ("AIEnemyTrainerChooseMoves.loopFindMinimumEntries", capture),
             ("AIExplosionTradeVeto.masked", explosion_veto),
             ("SelectEnemyMove.done", selected),

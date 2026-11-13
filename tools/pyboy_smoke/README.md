@@ -141,8 +141,9 @@ untouched board. Since 2026-10-22 the enemy plans that turn inside `boot_fight2`
 and judging the decision after boot (turn 2, after a turn of RNG-dependent
 damage) had silently failed 45 of 86 scenarios. The optional personality pass is
 pinned to NONE (`wAIRandomPersonality` = 1) for every scenario, since its random
-nudges are not what any scenario asserts; `layer_trace` charges the personality
-pass to the last layer slot, RISKY. The runner reports every failing scenario
+nudges are not what any scenario asserts; `layer_trace` gives the personality
+pass its own final entry, `PERSONALITY` (before 2026-11-13 it was charged to the
+last layer slot, RISKY, even at tiers where RISKY does not run). The runner reports every failing scenario
 and exits non-zero, instead of stopping at the first. A scenario may carry a
 free-text `note` (ignored by the runner) recording why its numbers changed. A
 scenario that assumes the AI knows the player's moves sets

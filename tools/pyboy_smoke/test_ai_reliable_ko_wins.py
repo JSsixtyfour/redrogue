@@ -56,7 +56,9 @@ class ReliableKOWinsTest(unittest.TestCase):
         return h.read_bytes("wBuffer", 4)
 
     def test_the_seed_39_tie_breaks_to_the_kill(self) -> None:
-        # Fire Blast 14 (SMART -2, DAMAGE -3, RISKY -1), Body Slam 14 (DAMAGE -5, RISKY -1).
+        # Fire Blast 14 (SMART -2, DAMAGE -3, -1), Body Slam 14 (DAMAGE -5, -1). The -1s were
+        # traced as RISKY, but neither move fits RISKY's rule (raw >= 2x reliable, or high
+        # crit): before 2026-11-13 layer_trace charged the personality lean to RISKY (FU5).
         self.assertEqual(self.run_pass([14, 14, 30, 17], 0b0010), [15, 14, 30, 17])
 
     def test_kill_slots_keep_their_own_order(self) -> None:

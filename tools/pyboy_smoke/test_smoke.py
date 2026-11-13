@@ -197,10 +197,12 @@ class BootSmokeTest(HarnessTestCase):
         self.assertEqual(
             [entry["layer"] for entry in scores[0]["layer_trace"]],
             ["REDUNDANT", "BASIC", "TYPES", "SETUP", "SMART",
-             "DAMAGE", "THREAT", "PLAN", "RISKY"],
+             "DAMAGE", "THREAT", "PLAN", "RISKY", "PERSONALITY"],
         )
         self.assertTrue(all(entry["enabled"] for entry in scores[0]["layer_trace"]))
         self.assertEqual(scores[0]["layer_trace"][-1]["after"], scores[0]["scores"])
+        # RISKY ends where the personality pass starts (FU5: it used to absorb it).
+        self.assertEqual(scores[0]["layer_trace"][-2]["after"], scores[0]["layer_trace"][-1]["before"])
 
     def test_debug1_boots_to_completed_dorm(self) -> None:
         assert self.harness is not None
