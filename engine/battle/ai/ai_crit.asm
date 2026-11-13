@@ -74,25 +74,75 @@ AIGetCritThreshold:
 
 ; INPUT: a = side, as AIGetCritThreshold. Carry SET if that side's loaded move
 ; is estimated as a crit. Clobbers af, bc, de, hl.
+; PREFILTER (AI review CP9, 2026-11-13): CalcCritRate costs ~5.7k cycles
+; (PublishFormContext + GetMonHeader) and ran for every damaging move in every
+; scan. An ordinary move's threshold is at most 127 (base Speed / 2 x2 then /2;
+; Focus Energy's x8 caps at 255 before the same /2), so only these reach
+; AI_CRIT_CERTAIN: a HighCriticalMoves move; the player's Bridge bonuses
+; (Witch x1.25 tops out at 158, the Captain pick adds 64 on top); or a special
+; form, whose SF_ALWAYS_CRIT forces 255. Anything else answers "no" without
+; the lookup; those three still take the exact one.
+; INPUT a = side, d = the cutoff (AI_CRIT_CERTAIN, or CP8's AI_CRIT_RISK, below
+; which the prefilter's 127 bound proves nothing). Carry SET if the threshold is
+; at least the cutoff.
 AIMoveCritCertain:
 	ld c, a
+	push de
 	ld hl, wPlayerMovePower
 	and a
 	jr z, .gotBlock
 	ld hl, wEnemyMovePower
 .gotBlock
-	ld a, [hl]
+	ld a, [hld]
 	cp 2
 	jr c, .no ; status (0) or fixed damage (1): the crit path never applies
+	ld a, d
+	cp AI_CRIT_CERTAIN
+	jr c, .lookup ; a lower cutoff: every damaging move is looked up
+	dec hl
+	ld b, [hl] ; the move id (the block is num, effect, power)
+	ld hl, AIHighCritMoves
+.scan
+	ld a, [hli]
+	cp b
+	jr z, .lookup
+	inc a
+	jr nz, .scan ; $ff ends the list
+	ld a, c
+	and a
+	ld a, [wEnemyMon + MON_CATCH_RATE] ; ld keeps the flags
+	jr nz, .formByte
+	push bc
+	ld e, BRIDGE_SELECTED_EFFECT_CRITICAL_RATE
+	farcall BridgeActiveMonHasSelectedEffect ; carry = the Captain pick; flags survive
+	pop bc
+	jr c, .lookup
+	ld a, [wBattleMon + MON_CATCH_RATE]
+.formByte
+	bit BIT_SPECIAL_FORM, a
+	jr z, .no
+.lookup
 	ld a, c
 	call AIGetCritThreshold
+	pop de
 	ld a, b
-	cp AI_CRIT_CERTAIN
-	ccf ; carry iff threshold >= AI_CRIT_CERTAIN
+	cp d
+	ccf ; carry iff threshold >= the cutoff
 	ret
 .no
+	pop de
 	and a
 	ret
+
+; A copy of HighCriticalMoves (data/battle/critical_hit_moves.asm, bank $0F):
+; this floating section must not read across banks. tools/gen_ai_crit_species.py
+; --check (make audit) fails if the two lists ever differ.
+AIHighCritMoves:
+	db KARATE_CHOP
+	db RAZOR_LEAF
+	db CRABHAMMER
+	db SLASH
+	db -1 ; end
 
 ; INPUT: a = side. That side's loaded move as a CRITICAL hit, max roll, into
 ; wAIDamageEstimate. The engine's crit path rebuilds the enemy's stat from
@@ -137,6 +187,16 @@ AIEstimateCritDamage:
 ; (AIPlayerWouldKO, B4/B5 reserves, heals), the best expected hit, the screen
 ; handler and the setup gate's Explosion. Clobbers af, bc, de, hl.
 AIEstimatePlayerMoveDamage::
+	ld e, 0
+; The KO scan's entry (_AIScanPlayerMovesForKOMode): e = AI_BUF_SCANSLOT, whose
+; AI_SCAN_CRIT_RISK bit lowers the cutoff to AI_CRIT_RISK (AI review CP8).
+AIEstimatePlayerMoveDamageScan::
+	ld d, AI_CRIT_CERTAIN
+	bit 7, e
+	ASSERT AI_SCAN_CRIT_RISK == 1 << 7
+	jr z, .gotCutoff
+	ld d, AI_CRIT_RISK
+.gotCutoff
 	xor a
 	call AIMoveCritCertain
 	jr c, .crit
@@ -153,6 +213,7 @@ AIEstimatePlayerMoveDamage::
 ; certain, replace wAIDamageEstimate (the cached one-hit max) with the crit
 ; estimate, uncached. Leaves it alone otherwise. Clobbers af, bc, de, hl.
 AIEstimateEnemyCritIfCertain::
+	ld d, AI_CRIT_CERTAIN
 	ld a, 1
 	call AIMoveCritCertain
 	ret nc

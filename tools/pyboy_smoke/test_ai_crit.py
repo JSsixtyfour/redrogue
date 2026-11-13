@@ -290,6 +290,123 @@ class CritCertainEstimateTest(unittest.TestCase):
         _, ran = self.estimate("SEISMIC_TOSS")
         self.assertFalse(ran)
 
+    # --- CP9 (2026-11-13): AIMoveCritCertain's prefilter ----------------------
+    # An ordinary move tops out at 127 before the bonuses, so CalcCritRate is
+    # skipped unless the move is high-crit, the player has a Captain crit pick,
+    # or the attacker is a special form. These boards check that the skip never
+    # changes an answer.
+    WITCH_CRIT_BIT = 4  # PRIZE_CRIT_BOOST - 1 in wWitchPrizesEarned
+    BIT_SPECIAL_FORM = 3  # custom_functions/func_special_form.asm, in MON_CATCH_RATE
+    CATCH_RATE = 7  # MON_CATCH_RATE in the battle struct
+
+    def lookups(self, move: str) -> tuple[bool, int]:
+        """(crit path ran, CalcCritRate calls) for the player's `move`."""
+        h = self.harness
+        assert h is not None
+        calls = h.hook_flag("CalcCritRate")
+        before = calls["count"]
+        _, ran = self.estimate(move)
+        return ran, calls["count"] - before
+
+    def bridge(self, witch: bool, captain: bool) -> None:
+        h = self.harness
+        assert h is not None
+        prizes = h.read8("wWitchPrizesEarned") & ~(1 << self.WITCH_CRIT_BIT)
+        h.write8("wWitchPrizesEarned", prizes | (int(witch) << self.WITCH_CRIT_BIT))
+        for offset in range(4):
+            h.write8("wBridgeSelectedEffects", 0, offset=offset)
+        if captain:
+            h.write8("wBridgeSelectedEffects", h.read8("wPlayerMonNumber") + 1)
+            h.write8("wBridgeSelectedEffects", 1, offset=1)  # BRIDGE_SELECTED_EFFECT_CRITICAL_RATE
+
+    def test_prefilter_skips_the_lookup_for_an_ordinary_move(self) -> None:
+        self.boot(self.mon("PERSIAN", ["STRENGTH", "SLASH"]), [self.mon("SNORLAX", ["TACKLE"])])
+        self.bridge(witch=False, captain=False)
+        self.assertEqual(self.lookups("STRENGTH"), (False, 0))
+        ran, calls = self.lookups("SLASH")
+        self.assertTrue(ran)
+        self.assertGreater(calls, 0, "a high-crit move still takes the exact lookup")
+
+    def test_bridge_bonuses_can_make_an_ordinary_move_certain(self) -> None:
+        # Measured: Persian's ordinary Strength threshold is 57 (base Speed / 2);
+        # Captain makes it 121, both bonuses 135. Under Focus Energy it caps at 127
+        # (the most an ordinary move can have): Witch x1.25 then 158 (no, and no
+        # lookup is needed), Captain +64 then 191 (looked up, no), both 222 (yes).
+        h = self.boot(self.mon("PERSIAN", ["STRENGTH"]), [self.mon("SNORLAX", ["TACKLE"])])
+        h.write8("wPlayerBattleStatus2", 1 << 2)  # GETTING_PUMPED
+        self.bridge(witch=True, captain=False)
+        self.assertEqual(self.lookups("STRENGTH"), (False, 0))
+        self.bridge(witch=False, captain=True)
+        ran, calls = self.lookups("STRENGTH")
+        self.assertEqual((ran, calls > 0), (False, True))
+        self.bridge(witch=True, captain=True)
+        ran, calls = self.lookups("STRENGTH")
+        self.assertEqual((ran, calls > 0), (True, True))
+
+    def test_an_always_crit_form_is_still_looked_up(self) -> None:
+        h = self.boot(self.mon("FARFETCHD", ["PECK"]), [self.mon("SNORLAX", ["TACKLE"])])
+        self.bridge(witch=False, captain=False)
+        rate = h.read8("wBattleMon", self.CATCH_RATE)
+        h.write8("wBattleMon", rate & ~(1 << self.BIT_SPECIAL_FORM), offset=self.CATCH_RATE)
+        self.assertEqual(self.lookups("PECK"), (False, 0))
+        h.write8("wBattleMon", rate | (1 << self.BIT_SPECIAL_FORM), offset=self.CATCH_RATE)
+        ran, calls = self.lookups("PECK")
+        self.assertEqual((ran, calls > 0), (True, True))
+
+    # --- CP8 (2026-11-13): the setup gate's crit risk ------------------------
+    SG_HURTS, SG_KNOWN, SG_CRIT = 1 << 5, 1 << 4, 1 << 7  # AI_SG_* bits
+    SETUPGATE = 29  # AI_BUF_SETUPGATE
+
+    def plain_and_crit(self, move: str) -> tuple[int, int]:
+        h = self.harness
+        assert h is not None
+        plain, _ = self.estimate(move, routine="AIEstimatePlayerDamage")
+        self.load_player_move(move)
+        h.call_routine("AIEstimatePlayerDamageCrit")
+        return plain, self.word("wAIDamageEstimate")
+
+    def extra_hit(self, hp: int, faster: bool) -> int:
+        """AISetupExtraHitHurts' gate byte with our HP = hp and the given speed order."""
+        h = self.harness
+        assert h is not None
+        self.write_word("wEnemyMonHP", hp)
+        self.write_word("wEnemyMonSpeed", 300 if faster else 5)
+        self.write_word("wBattleMonSpeed", 100)
+        h.write8("wBuffer", 0, offset=self.SETUPGATE)
+        h.write8("wAIPlayerKOCache", 0)
+        h.call_routine("AISetupExtraHitHurts")
+        return h.read8("wBuffer", self.SETUPGATE)
+
+    def crit_risk_board(self, player: str) -> tuple[int, int]:
+        h = self.boot(self.mon(player, ["STRENGTH"]), [self.mon("SNORLAX", ["TACKLE"])])
+        h.reveal_player_moves(0, [0], clear=True)
+        self.write_word("wEnemyMonMaxHP", 999)
+        return self.plain_and_crit("STRENGTH")
+
+    def test_crit_risk_withholds_when_a_likely_crit_would_ko_a_faster_mon(self) -> None:
+        # Persian (base Speed 115): Strength crits at 57/256 (22%) >= AI_CRIT_RISK.
+        plain, crit = self.crit_risk_board("PERSIAN")
+        self.assertGreater(crit, plain + 1, (plain, crit))
+        gate = self.extra_hit(crit, faster=True)  # the plain hit does not KO, the crit does
+        self.assertEqual(gate & (self.SG_HURTS | self.SG_CRIT), self.SG_HURTS | self.SG_CRIT, (plain, crit, gate))
+        gate = self.extra_hit(crit + 1, faster=True)  # not even the crit KOs
+        self.assertEqual(gate & (self.SG_HURTS | self.SG_CRIT), 0, (plain, crit, gate))
+
+    def test_crit_risk_ignores_a_slow_attacker(self) -> None:
+        # Snorlax (base Speed 30): 15/256, under AI_CRIT_RISK.
+        plain, crit = self.crit_risk_board("SNORLAX")
+        gate = self.extra_hit(crit, faster=True)
+        self.assertEqual(gate & (self.SG_HURTS | self.SG_CRIT), 0, (plain, crit, gate))
+
+    def test_crit_risk_counts_a_plain_hit_first_when_slower(self) -> None:
+        plain, crit = self.crit_risk_board("PERSIAN")
+        hp = plain + crit  # slower: the plain hit lands, then the crit KOs
+        self.assertLess(2 * plain, hp)  # two plain hits alone do not
+        gate = self.extra_hit(hp, faster=False)
+        self.assertEqual(gate & (self.SG_HURTS | self.SG_CRIT), self.SG_HURTS | self.SG_CRIT, (plain, crit, gate))
+        gate = self.extra_hit(hp + 1, faster=False)
+        self.assertEqual(gate & (self.SG_HURTS | self.SG_CRIT), 0, (plain, crit, gate))
+
     def test_slow_attackers_high_crit_move_stays_ordinary(self) -> None:
         self.boot(self.mon("SNORLAX", ["SLASH"]), [self.mon("PERSIAN", ["TACKLE"])])
         _, ran = self.estimate("SLASH")

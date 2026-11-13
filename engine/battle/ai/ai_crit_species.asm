@@ -22,7 +22,8 @@ AIGuessCritMove::
 	and a
 	jr z, .none ; end of table
 	cp b
-	jr nz, .skip
+	jr c, .skip
+	jr nz, .none ; past it: the table is sorted by species id (CP9: stop early)
 	ld a, [hli]
 	ld d, a ; the move
 	ld a, c

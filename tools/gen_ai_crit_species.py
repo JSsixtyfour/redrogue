@@ -37,9 +37,21 @@ def high_crit_moves_from_engine():
     return tuple(re.findall(r"\b[A-Z][A-Z0-9_]+\b", re.sub(r";.*", "", block.group(1)).replace("db", "")))
 
 
+def high_crit_moves_in_ai_crit():
+    """engine/battle/ai/ai_crit.asm's AIHighCritMoves, the floating section's own
+    copy (AI review CP9: its crit lookup prefilter)."""
+    text = open(os.path.join(ROOT, "engine", "battle", "ai", "ai_crit.asm"), encoding="utf-8").read()
+    block = re.search(r"^AIHighCritMoves:(.*?)\bdb -1", text, re.M | re.S)
+    if not block:
+        raise SystemExit("AIHighCritMoves not found in engine/battle/ai/ai_crit.asm")
+    return tuple(re.findall(r"\b[A-Z][A-Z0-9_]+\b", re.sub(r";.*", "", block.group(1)).replace("db", "")))
+
+
 def render():
     if sorted(high_crit_moves_from_engine()) != sorted(MOVES):
         raise SystemExit("HighCriticalMoves changed: update MOVES in tools/gen_ai_crit_species.py")
+    if sorted(high_crit_moves_in_ai_crit()) != sorted(MOVES):
+        raise SystemExit("AIHighCritMoves (ai_crit.asm) differs from HighCriticalMoves: copy it over")
     species = parse_rgbds_constants(Path(ROOT) / "constants" / "pokemon_constants.asm")
     records = learnset_legality._records(os.path.join(ROOT, "data", "pokemon", "evos_moves.asm"), "EvosMoves")
     rows = []
