@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import unittest
 
-from ai_telemetry import BattleAITelemetry, STATUS_SPAM_STREAK, b5_summary, battle_record, classify_b5, classify_setup, parse_setup_moves, summarize
+from ai_telemetry import BattleAITelemetry, entry_speed, STATUS_SPAM_STREAK, b5_summary, battle_record, classify_b5, classify_setup, parse_setup_moves, summarize
 from run_ai_benchmark import FRAME_CYCLES, parse_move_powers
 from source_constants import parse_rgbds_constants
 
@@ -391,3 +391,20 @@ class PlayerHitDamageTest(unittest.TestCase):
 
     def test_no_hit_is_zero(self) -> None:
         self.assertEqual(self.finish([], 94)["player_hit_damage"], 0)
+
+
+class EntrySpeedTest(unittest.TestCase):
+    """reserve_faster uses the Speed a reserve will have once sent out (AI review CP1)."""
+
+    def test_healthy_is_unchanged(self) -> None:
+        self.assertEqual(entry_speed(120, 0), 120)
+
+    def test_paralysis_quarters(self) -> None:
+        self.assertEqual(entry_speed(120, 1 << 6), 30)
+
+    def test_minimum_one(self) -> None:
+        for speed in (0, 1, 3):
+            self.assertEqual(entry_speed(speed, 1 << 6), 1)
+
+    def test_other_status_is_unchanged(self) -> None:
+        self.assertEqual(entry_speed(120, 1 << 4), 120)  # burn halves Attack, not Speed

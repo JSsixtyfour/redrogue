@@ -1,0 +1,160 @@
+; Crit-certain moves (AI review CP2, 2026-11-12; AI_REVIEW_PLAN_2026-11-12.md).
+; Its own floating SECTION "AI Crit" (main.asm): nothing here needs bank $0E,
+; which is full, so every caller there reaches it by farcall. Entry points take
+; no register inputs and answer in e, WRAM and the carry flag, the parts of a
+; return that survive a farcall (a and bc do not).
+;
+; THE PROBLEM. Every KO and threat check estimated the ordinary, non-crit max
+; roll. For most moves a crit is luck (base Speed / 512, ~11% measured), but the
+; four high-crit moves multiply that by 8, which caps at 255/256 for any attacker
+; with base Speed 48 or more: measured, 21 of 23 high-crit hits critted. For
+; those the non-crit number is simply the wrong number, and a crit also ignores
+; stat stages and screens, so a Defense boost or a Reflect against Slash bought
+; nothing while the AI believed it halved the hit.
+;
+; THE RULE. A damaging move (power >= 2; fixed damage never crits) whose
+; CalcCritRate threshold is at least AI_CRIT_CERTAIN is estimated as a crit,
+; through the engine's own crit path (AIEstimate*DamageCrit, core.asm). Who uses
+; it: every estimate of a PLAYER move (AIEstimatePlayerMoveDamage), and AI_DAMAGE's
+; possible-KO test for our own moves (AIEstimateEnemyCritIfCertain). Ranking keeps
+; AIScaleDamageForCrit's expected value, and the reliable-KO predicates stay
+; non-crit: a 75-99% crit is not "reliable".
+
+; OUTPUT: e = the loaded ENEMY move's crit threshold out of 256 ($ff for a
+; guaranteed crit as well as a capped one), 0 for a move with no power. For
+; AIScaleDamageForCrit. Clobbers af, bc, d, hl.
+AIGetEnemyCritThreshold::
+	ld a, 1
+	call AIGetCritThreshold
+	ld e, b
+	ret
+
+; INPUT: a = 0 for the player's loaded move (wPlayerMove*), 1 for the enemy's.
+; OUTPUT: b = that move's crit threshold, as above.
+; CalcCritRate loads the attacker's header (PublishFormContext + GetMonHeader):
+; wCurSpecies (which is also wCurItem, see project_wcuritem_species_alias), the
+; form context and hWhoseTurn are put back; the header itself stays clobbered, as
+; CriticalHitTest leaves it moments later in the real move. CalcCritRate returns
+; in e plus the Z and C flags, which survive its farcall return.
+; Clobbers af, c, de, hl.
+AIGetCritThreshold:
+	ld b, a
+	ld a, [wCurSpecies]
+	push af
+	ld hl, wFormContextSpecies
+	ASSERT wFormContextForm == wFormContextSpecies + 1
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	push hl ; l = context species, h = context form
+	ldh a, [hWhoseTurn]
+	push af
+	ld a, b
+	ldh [hWhoseTurn], a ; CalcCritRate picks the attacker off this
+	farcall CalcCritRate ; -> e = threshold, Z = no power, C = form always crits
+; Capture the answer BEFORE the pops below: `pop af` restores flags.
+	ld b, e
+	jr z, .noPower
+	jr nc, .gotRate
+	ld b, $ff ; SF_ALWAYS_CRIT: worth the same as a capped threshold here
+	jr .gotRate
+.noPower
+	ld b, 0
+.gotRate
+	pop af
+	ldh [hWhoseTurn], a
+	pop hl
+	ld a, l
+	ld [wFormContextSpecies], a
+	ld a, h
+	ld [wFormContextForm], a
+	pop af
+	ld [wCurSpecies], a
+	ret
+
+; INPUT: a = side, as AIGetCritThreshold. Carry SET if that side's loaded move
+; is estimated as a crit. Clobbers af, bc, de, hl.
+AIMoveCritCertain:
+	ld c, a
+	ld hl, wPlayerMovePower
+	and a
+	jr z, .gotBlock
+	ld hl, wEnemyMovePower
+.gotBlock
+	ld a, [hl]
+	cp 2
+	jr c, .no ; status (0) or fixed damage (1): the crit path never applies
+	ld a, c
+	call AIGetCritThreshold
+	ld a, b
+	cp AI_CRIT_CERTAIN
+	ccf ; carry iff threshold >= AI_CRIT_CERTAIN
+	ret
+.no
+	and a
+	ret
+
+; INPUT: a = side. That side's loaded move as a CRITICAL hit, max roll, into
+; wAIDamageEstimate. The engine's crit path rebuilds the enemy's stat from
+; species, level and DVs (GetEnemyMonStat), writing wCurSpecies, wCurEnemyLevel,
+; the form context, wLoadedMonSpeedExp and the mon header; the first three are
+; put back. wLoadedMonSpeedExp is read only by the status screen, which loads the
+; mon first, and a real crit writes it too. Clobbers af, bc, de, hl.
+AIEstimateCritDamage:
+	ld d, a
+	ld a, [wCurSpecies]
+	push af
+	ld a, [wCurEnemyLevel]
+	push af
+	ld hl, wFormContextSpecies
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	push hl
+	ld a, d
+	and a
+	jr nz, .enemyAttacks
+	farcall AIEstimatePlayerDamageCrit
+	jr .restore
+.enemyAttacks
+	farcall AIEstimateDamageCrit
+.restore
+	pop hl
+	ld a, l
+	ld [wFormContextSpecies], a
+	ld a, h
+	ld [wFormContextForm], a
+	pop af
+	ld [wCurEnemyLevel], a
+	pop af
+	ld [wCurSpecies], a
+	ret
+
+; Replaces `farcall AIEstimatePlayerDamage` (the wPlayerMove* block loaded): the
+; one-hit max roll into wAIDamageEstimate, as a crit when the move's crit is near
+; certain. Carry SET = estimated as a crit (it ignores screens and our stat
+; stages). Every player-move estimate goes through here: the KO scan
+; (AIPlayerWouldKO, B4/B5 reserves, heals), the best expected hit, the screen
+; handler and the setup gate's Explosion. Clobbers af, bc, de, hl.
+AIEstimatePlayerMoveDamage::
+	xor a
+	call AIMoveCritCertain
+	jr c, .crit
+	farcall AIEstimatePlayerDamage
+	and a
+	ret
+.crit
+	xor a
+	call AIEstimateCritDamage
+	scf
+	ret
+
+; AI_DAMAGE's possible-KO test, on the loaded enemy move: when its crit is near
+; certain, replace wAIDamageEstimate (the cached one-hit max) with the crit
+; estimate, uncached. Leaves it alone otherwise. Clobbers af, bc, de, hl.
+AIEstimateEnemyCritIfCertain::
+	ld a, 1
+	call AIMoveCritCertain
+	ret nc
+	ld a, 1
+	jp AIEstimateCritDamage

@@ -1168,7 +1168,7 @@ AIPlayerIsPhysicalThreat::
 	jr nc, .skipMove
 	pop af
 	call AIReadMoveIntoPlayerBlock
-	farcall AIEstimatePlayerDamage ; -> wAIDamageEstimate
+	farcall AIEstimatePlayerMoveDamage ; -> wAIDamageEstimate
 	call AIAdjustPlayerDamageForExpectedDelivery
 	pop de
 	pop bc
@@ -1965,32 +1965,9 @@ AIScaleDamageForCrit::
 	ret z ; fixed damage bypasses CriticalHitTest in real execution
 	cp SUPER_FANG_EFFECT
 	ret z
-	ld a, [wCurSpecies]
-	push af
-	ldh a, [hWhoseTurn]
-	push af
-	ld a, $1
-	ldh [hWhoseTurn], a ; CalcCritRate picks the attacker off this
-	farcall CalcCritRate ; -> e = threshold, Z = move has no power,
-	                     ;    C = special form guarantees the crit
-; Capture the answer BEFORE the pops below: `pop af` restores flags and would
-; destroy both results. `ld b, e` is safe here because LD r,r touches no flags.
+	farcall AIGetEnemyCritThreshold ; e = threshold; wCurSpecies kept (ai_crit.asm, AI review CP2)
 	ld b, e
-	jr z, .noPower ; CalcCritRate returned before computing a threshold
-	jr nc, .gotRate
-	ld b, $ff ; SF_ALWAYS_CRIT. Distinct from a threshold that merely happens to
-	          ; cap at $ff, per CalcCritRate's own header, but worth the same
-	          ; here: both mean "this crits".
-	jr .gotRate
-.noPower
-	ld b, 0
-.gotRate
-	pop af
-	ldh [hWhoseTurn], a
-	pop af
-	ld [wCurSpecies], a
-
-	ld a, b
+	ld a, e
 	and a
 	ret z ; no crit chance at all: leave the estimate exactly as it was
 

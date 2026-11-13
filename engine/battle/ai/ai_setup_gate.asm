@@ -352,7 +352,7 @@ AIEstimatePlayerExplosion:
 	call CopyData
 	ld a, EXPLOSION
 	call AIReadMoveIntoPlayerBlock
-	farcall AIEstimatePlayerDamage
+	farcall AIEstimatePlayerMoveDamage
 	call AIAdjustPlayerDamageForPossibleDelivery
 	ld a, [wAIDamageEstimate]
 	ld d, a

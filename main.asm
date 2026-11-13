@@ -648,6 +648,13 @@ SECTION "AI Boom Species", ROMX
 INCLUDE "engine/battle/ai/ai_boom_species.asm"
 
 
+; AI review CP2 (2026-11-12): crit-certain estimates. Bank-free: its callers in
+; $0E farcall it, so it stays out of that full bank.
+SECTION "AI Crit", ROMX
+
+INCLUDE "engine/battle/ai/ai_crit.asm"
+
+
 SECTION "Battle Engine 9", ROMX
 
 INCLUDE "engine/battle/experience.asm"

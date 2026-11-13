@@ -651,6 +651,84 @@ class AIShouldSwitchTest(unittest.TestCase):
         self.assertEqual([r["derived"] for r in results],
                          [self.RESERVE_HALF["NO"], self.RESERVE_HALF["NO"], self.RESERVE_HALF["KEEPS"]], results)
 
+    # --- AI review CP1 (2026-11-12): the reserve's Speed after send-out ---------
+    # Send-out quarters a paralysed mon's Speed (minimum 1), so B5 v2's
+    # faster-reserve half test must not see the raw party Speed.
+    PAR = 1 << 6
+
+    def reserve_speed_runner(self):
+        """Boots once (player Raticate, reserve Electrode in slot 2) and returns
+        run(status, reserve_speed=None, player_speed=None): B4's scan with those
+        values, reporting the entry Speed reserveIsFaster computed, the Speeds
+        used, and whether the faster-reserve half test ran. One boot per test:
+        the harness cannot boot FIGHT 2 twice."""
+        h = self.harness
+        assert h is not None
+        h.inject_fight2_spec(
+            [self.mon("RATICATE", ["BODY_SLAM"])],
+            [self.mon("PIKACHU"), self.mon("ELECTRODE")],
+            trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=2,
+        )
+        h.boot_fight2(seed=1)
+        h.write8("wEnemyMonPartyPos", 0)
+        h.reveal_player_moves(0, [0], clear=True)
+        rf = h.pyboy.register_file
+        entry: list[int] = []
+        h.register_hook("_AIBestReserveThreatScan.gotSpeed", lambda _ctx: entry.append((rf.D << 8) | rf.E))
+        half_test = h.hook_flag("_AIBestReserveThreatScan.halfTest")
+        word = lambda label: int.from_bytes(bytes(h.read_bytes(label, 2)), "big")
+        healthy = {"party": word("wEnemyMon2Speed"), "player": word("wBattleMonSpeed")}
+
+        def write_word(label: str, value: int) -> None:
+            h.write8(label, value >> 8)
+            h.write8(label, value & 0xFF, offset=1)
+
+        def run(status: int, reserve_speed: int | None = None, player_speed: int | None = None):
+            h.write8("wEnemyMon2Status", status)
+            write_word("wEnemyMon2Speed", healthy["party"] if reserve_speed is None else reserve_speed)
+            write_word("wBattleMonSpeed", healthy["player"] if player_speed is None else player_speed)
+            before_entry, before_half = len(entry), half_test["count"]
+            h.write8("wBuffer", 1, offset=self.ai["AI_BUF_BESTPARTYSLOT"])
+            h.call_routine("AIBestReserveSurvivesThreat")
+            self.assertEqual(len(entry) - before_entry, 1, "the scan must reach the speed check once (no KO)")
+            return {"entry": entry[-1], "party": word("wEnemyMon2Speed"), "player": word("wBattleMonSpeed"),
+                    "faster": half_test["count"] > before_half}
+
+        return run, healthy
+
+    def test_healthy_reserve_speed_is_unchanged(self) -> None:
+        run, _ = self.reserve_speed_runner()
+        r = run(0)
+        self.assertEqual(r["entry"], r["party"], r)
+        self.assertGreater(r["party"], r["player"], r)  # Electrode outspeeds Raticate
+        self.assertTrue(r["faster"], r)
+
+    def test_paralysis_reverses_the_order(self) -> None:
+        run, _ = self.reserve_speed_runner()
+        r = run(self.PAR)
+        self.assertEqual(r["entry"], max(1, r["party"] // 4), r)
+        self.assertLess(r["entry"], r["player"], r)
+        self.assertFalse(r["faster"], r)  # B5 v2's slower rule: 3 x hit < HP
+
+    def test_paralysed_reserve_can_still_be_faster(self) -> None:
+        run, healthy = self.reserve_speed_runner()
+        r = run(self.PAR, player_speed=healthy["party"] // 4 - 1)
+        self.assertTrue(r["faster"], r)
+
+    def test_equal_entry_speed_counts_as_slower(self) -> None:
+        run, healthy = self.reserve_speed_runner()
+        r = run(self.PAR, player_speed=healthy["party"] // 4)
+        self.assertEqual(r["entry"], r["player"], r)
+        self.assertFalse(r["faster"], r)
+
+    def test_paralysed_speed_has_a_minimum_of_one(self) -> None:
+        run, _ = self.reserve_speed_runner()
+        for party in (0, 3, 4):
+            with self.subTest(party=party):
+                r = run(self.PAR, reserve_speed=party, player_speed=0)
+                self.assertEqual(r["entry"], max(1, party // 4), r)
+                self.assertTrue(r["faster"], r)  # 1 beats a player Speed of 0
+
     def test_reserve_ko_is_a_no_without_a_rescan(self) -> None:
         # HP = hit: B4 stops at the KO and never measures the rest; NO, as the
         # rescan says.

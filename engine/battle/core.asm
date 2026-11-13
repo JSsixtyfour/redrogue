@@ -6154,7 +6154,22 @@ AIGetTypeEffectiveness:
 ; ============================================================
 AIEstimateDamage::
 ; Entry point A: what the ENEMY's currently-loaded move would do to the player.
-	ld b, $1
+	ld bc, $0100
+	jr _AIEstimateForTurn
+
+; The same two directions as a CRITICAL hit (AI review CP2, 2026-11-12), for a
+; move whose crit is near-certain (ai_crit.asm decides). The engine's own crit
+; path does the work: unmodified stats on both sides (stages and screens
+; ignored), doubled level. Its GetEnemyMonStat rebuilds the enemy's stat from
+; species, level and DVs, writing wCurSpecies, wCurEnemyLevel, the mon header,
+; wLoadedMonSpeedExp and the form context: the caller saves what it needs
+; (AIEstimateMoveDamageCritAware does).
+AIEstimateDamageCrit::
+	ld bc, $0101
+	jr _AIEstimateForTurn
+
+AIEstimatePlayerDamageCrit::
+	ld bc, $0001
 	jr _AIEstimateForTurn
 
 AIEstimatePlayerDamage::
@@ -6162,15 +6177,16 @@ AIEstimatePlayerDamage::
 ; The caller must have populated the wPlayerMove* block first (and is
 ; responsible for restoring it). This is the "am I about to die" half of Phase 3
 ; Step 2, consumed via AIDamageWouldKOEnemy.
-	ld b, $0
+	ld bc, $0000
 
 _AIEstimateForTurn:
 ; b = the hWhoseTurn value to run under, and the ONLY thing that differs between
 ; the two directions - which is why they share one body rather than existing as
 ; two near-identical routines. That sharing is not just tidiness: Battle Core
 ; had ~171 bytes free when this was written, and a second copy would not fit.
-; b survives the save block below (which touches only af) and is dead by the
-; time GetDamageVars* overwrites it with the attack stat.
+; c = the wCriticalHitOrOHKO value to estimate under (0 = ordinary hit).
+; bc survives the save block below (which touches only af and hl) and is dead by
+; the time GetDamageVars* overwrites it with the attack stat.
 ;
 ; Save every byte the damage path below writes. Restored at .done in exactly
 ; reverse order; the guard branches jump there with the stack already balanced.
@@ -6200,15 +6216,15 @@ _AIEstimateForTurn:
 	and a
 	jr nz, .repeatStaged ; the enemy's turn never reads it
 	ld a, [wWitchPrevPlayerSlot]
-	ld c, a
+	ld e, a ; e, not c: c carries the crit flag
 	ld a, [wPlayerMonNumber]
-	cp c
+	cp e
 	ld a, 0
 	jr nz, .stageRepeat
 	ld a, [wWitchPrevPlayerMove]
-	ld c, a
+	ld e, a
 	ld a, [wPlayerMoveNum]
-	cp c
+	cp e
 	ld a, 0
 	jr nz, .stageRepeat
 	ld a, 2
@@ -6218,13 +6234,13 @@ _AIEstimateForTurn:
 
 	ld a, b
 	ldh [hWhoseTurn], a ; whichever side this entry point selected
+	ld a, c
+	ld [wCriticalHitOrOHKO], a ; 0 for the ordinary case, which also keeps
+	                           ; GetDamageVarsFor*Attack off its crit branch and
+	                           ; so off GetEnemyMonStat -> GetMonHeader and the
+	                           ; wCurSpecies / wCurEnemyLevel / wLoadedMon* writes.
+	                           ; Only the *Crit entries take that branch.
 	xor a
-	ld [wCriticalHitOrOHKO], a ; estimate the ordinary, non-crit case. This also
-	                           ; keeps GetDamageVarsForEnemyAttack off its crit
-	                           ; branch, which would otherwise run GetEnemyMonStat
-	                           ; -> GetMonHeader and clobber wCurSpecies /
-	                           ; wCurEnemyLevel / wLoadedMon* as a side effect -
-	                           ; state this routine has no business touching.
 	ld [wAIDamageEstimate], a
 	ld [wAIDamageEstimate + 1], a
 

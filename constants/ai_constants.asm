@@ -322,6 +322,11 @@ DEF AI_BUF_SCREEN_AFTER EQU AI_BUF_PLANCLASS + 8 ; +28, 2 bytes (+28 PLANMAG, +2
 ASSERT AI_BUF_SCREEN_AFTER + 2 <= 30
 ; 1 = a slower mon is never encouraged to raise a screen (the A/B variant).
 DEF AI_SCREEN_FASTER_ONLY EQU 0
+; AI review CP2 (2026-11-12): a damaging move whose CalcCritRate threshold is at
+; least this (75%) is estimated as a critical hit (ai_crit.asm). In practice the
+; four high-crit moves from base Speed >= 48, any move after Focus Energy, and a
+; special form that always crits. Measured: high-crit hits crit 91% (21 of 23).
+DEF AI_CRIT_CERTAIN EQU $C0
 ; FOLLOWUPS #88 (2026-11-12): the switch-in fallback. When the top-ranked reserve
 ; would be KO'd on entry, AIReplacementIsBetterAndSurvives excludes it and
 ; re-ranks, at most this many times. Scratch, live only inside switch decisions

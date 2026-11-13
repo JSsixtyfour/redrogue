@@ -190,7 +190,9 @@ ENDC
 ; Fills AI_BUF_SCREEN_HITS with the largest possible delivery into us of the
 ; player's believed moves, per kind: physical, special (both big-endian words)
 ; and fixed (power 0-1: Seismic Toss, Night Shade, Super Fang and the like, which
-; no screen touches; status moves land here at 0). Borrows the wPlayerMove* block
+; no screen touches; status moves land here at 0). A near-certain crit (Slash
+; from a fast mon, AI review CP2) also goes to fixed: a crit ignores screens.
+; Borrows the wPlayerMove* block
 ; as _AIScanPlayerMovesForKO does and puts it back. Clobbers af, bc, de, hl.
 AIPlayerBestHitByCategory:
 	ld hl, wBuffer + AI_BUF_SCREEN_HITS
@@ -214,9 +216,12 @@ AIPlayerBestHitByCategory:
 	and a
 	jr z, .skip ; unrevealed with no guess, or an empty slot
 	call AIReadMoveIntoPlayerBlock
-	farcall AIEstimatePlayerDamage
+	farcall AIEstimatePlayerMoveDamage ; carry = estimated as a crit (ai_crit.asm)
+	push af
 	call AIAdjustPlayerDamageForPossibleDelivery
+	pop af
 	ld hl, wBuffer + AI_BUF_SCREEN_HITS + 4 ; fixed
+	jr c, .bucket ; a near-certain crit ignores screens, like fixed damage
 	ld a, [wPlayerMovePower]
 	cp 2
 	jr c, .bucket

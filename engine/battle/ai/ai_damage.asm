@@ -116,6 +116,11 @@ AILayerDamage:
 	push af
 	ld a, [wAIDamageEstimate + 1]
 	push af
+; AI review CP2: the possible KO of a near-certain crit (Slash from a fast mon)
+; is the crit's. The one-hit estimate saved above stays non-crit: ranking adds
+; AIScaleDamageForCrit's expected crit value, and .kill's reliable test is not a
+; place for a 75-99% event.
+	farcall AIEstimateEnemyCritIfCertain
 	call AIAdjustEnemyDamageForPossibleDelivery
 	ld b, 0
 	call AIDamageReachesFraction

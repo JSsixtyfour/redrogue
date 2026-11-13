@@ -153,6 +153,16 @@ def _hits_until_act(events: list[dict[str, object]], start: int, pos: int, hp: i
     return {"acted": None, "hits_before_act": hits}  # the battle ended first
 
 
+PAR_BIT = 6  # constants/battle_constants.asm
+
+
+def entry_speed(speed: int, status: int) -> int:
+    """A reserve's Speed once sent out: send-out quarters it when paralysed (minimum 1),
+    exactly as QuarterSpeedDueToParalysis does and as _AIBestReserveThreatScan.reserveIsFaster
+    mirrors."""
+    return max(1, speed >> 2) if status & (1 << PAR_BIT) else speed
+
+
 def classify_b5(events: list[dict[str, object]]) -> list[dict[str, object]]:
     """One record per AISacrificeBeatsSwitch verdict (ai_switching.asm, B5) with what
     followed. switch: the reserve comes in and is followed until it moves or faints;
@@ -731,7 +741,9 @@ class BattleAITelemetry:
             "active_hp_pct": round(100 * self._word("wEnemyMonHP") / active_max) if active_max else 0,
             "active_faster": self._word("wEnemyMonSpeed") > player_speed,
             "reserve_hp_pct": round(100 * self._party_word(reserve, "wEnemyMon1HP") / reserve_max) if reserve_max else 0,
-            "reserve_faster": (self._party_word(reserve, "wEnemyMon1Speed") > player_speed) if reserve < 6 else None,
+            "reserve_faster": (entry_speed(self._party_word(reserve, "wEnemyMon1Speed"),
+                                           self._party_word(reserve, "wEnemyMon1Status") >> 8) > player_speed)
+                              if reserve < 6 else None,
             "reserve_half": h.read8("wBuffer", 20),  # AI_BUF_RESERVEHALF: 0 takes half+, 1 keeps half, $ff unknown
             "reserve_hp": self._party_word(reserve, "wEnemyMon1HP") if reserve < 6 else 0,
             "reserves": self._enemy_reserves(),

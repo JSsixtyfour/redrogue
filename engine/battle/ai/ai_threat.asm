@@ -322,11 +322,15 @@ ENDC ; AI_TRAINER_ITEMS
 ; wEnemyMon, with our Substitute and screens OFF (they do not follow a switch),
 ; runs the UNCACHED scan (wAIPlayerKOCache must keep describing the active mon),
 ; then restores every borrowed byte. Clobbers af, bc, d, hl.
+; AI review CP2 (2026-11-12): also stages the reserve's species, catch-rate byte
+; (its form bits), DVs and level, and clears TRANSFORMED. A crit-certain player
+; move is estimated through the engine's crit path, whose GetEnemyMonStat rebuilds
+; the defending stat from exactly those, and would otherwise use the ACTIVE mon's.
 AIBestReserveSurvivesThreat::
 	xor a
 ; a = 0: test against the reserve's HP; a = 1: against HALF of it (B5,
-; AIBestReserveKeepsHalf). Carried on the stack under the five saved words and
-; read back with `ld hl, sp + 11` - keep that offset in step with the pushes.
+; AIBestReserveKeepsHalf). Carried on the stack under the eight saved words and
+; read back with `ld hl, sp + 17` - keep that offset in step with the pushes.
 _AIBestReserveThreatScan:
 	push af
 	ld hl, wEnemyMonHP
@@ -354,12 +358,28 @@ _AIBestReserveThreatScan:
 	ld a, [wEnemyBattleStatus3]
 	ld e, a
 	push de
+	ld a, [wEnemyMonSpecies]
+	ld d, a
+	ld a, [wEnemyMonCatchRate]
+	ld e, a
+	push de
+	ASSERT wEnemyMonLevel == wEnemyMonDVs + 2
+	ld hl, wEnemyMonDVs
+	ld a, [hli]
+	ld d, a
+	ld a, [hli]
+	ld e, a
+	push de
+	ld a, [hl] ; level
+	push af
 
 	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
 	ld hl, wEnemyMon1
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes ; hl = the reserve's party struct
 	push hl
+	ld a, [hl]
+	ld [wEnemyMonSpecies], a
 	inc hl ; HP
 	ld a, [hli]
 	ld [wEnemyMonHP], a
@@ -371,8 +391,23 @@ _AIBestReserveThreatScan:
 	inc hl ; Status
 	ld a, [hli]
 	ld [wEnemyMonType1], a
-	ld a, [hl]
+	ld a, [hli]
 	ld [wEnemyMonType2], a
+	ASSERT wEnemyMon1CatchRate == wEnemyMon1Type2 + 1
+	ld a, [hl]
+	ld [wEnemyMonCatchRate], a
+	pop hl
+	push hl
+	ld bc, wEnemyMon1DVs - wEnemyMon1
+	add hl, bc
+	ld a, [hli]
+	ld [wEnemyMonDVs], a
+	ld a, [hl]
+	ld [wEnemyMonDVs + 1], a
+	ld bc, wEnemyMon1Level - (wEnemyMon1DVs + 1)
+	add hl, bc
+	ld a, [hl]
+	ld [wEnemyMonLevel], a
 	pop hl
 	push hl
 	ld bc, wEnemyMon1Defense - wEnemyMon1
@@ -393,7 +428,8 @@ _AIBestReserveThreatScan:
 	ld hl, wEnemyBattleStatus3
 	res HAS_REFLECT_UP, [hl]
 	res HAS_LIGHT_SCREEN_UP, [hl]
-	ld hl, sp + 11 ; the entry flag's a, above the five saved words
+	res TRANSFORMED, [hl] ; GetEnemyMonStat would read the active mon's copied stats
+	ld hl, sp + 17 ; the entry flag's a, above the eight saved words
 	ld a, [hl]
 	and a
 	jr z, .fullHP
@@ -460,6 +496,18 @@ _AIBestReserveThreatScan:
 	jr nc, .restore
 	dec e
 .restore ; e survives every pop below (they load hl and a only)
+	pop af
+	ld [wEnemyMonLevel], a
+	pop hl
+	ld a, h
+	ld [wEnemyMonDVs], a
+	ld a, l
+	ld [wEnemyMonDVs + 1], a
+	pop hl
+	ld a, h
+	ld [wEnemyMonSpecies], a
+	ld a, l
+	ld [wEnemyMonCatchRate], a
 	pop hl
 	ld a, h
 	ld [wEnemyBattleStatus2], a
@@ -489,16 +537,35 @@ _AIBestReserveThreatScan:
 	ret
 
 ; Carry SET if the ranked reserve (wBuffer + AI_BUF_BESTPARTYSLOT) is strictly
-; faster than the player's active mon: its party Speed against the live
-; wBattleMonSpeed. A tie counts as slower. Clobbers af, bc, de, hl.
+; faster than the player's active mon: the Speed it will have once sent out
+; against the live wBattleMonSpeed. A tie counts as slower. Clobbers af, bc, de, hl.
+; AI review CP1 (2026-11-12): send-out quarters a paralysed mon's Speed (minimum
+; 1) after copying its party stats (ApplyBurnAndParalysisPenaltiesToEnemy), so
+; the raw party Speed let a paralysed reserve pass as faster.
 _AIBestReserveThreatScan.reserveIsFaster:
 	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
-	ld hl, wEnemyMon1Speed
+	ld hl, wEnemyMon1Status
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
+	ld a, [hl]
+	push af ; the reserve's status
+	ld bc, wEnemyMon1Speed - wEnemyMon1Status
+	add hl, bc
 	ld a, [hli]
 	ld d, a
-	ld e, [hl] ; de = the reserve's Speed
+	ld e, [hl] ; de = the reserve's party Speed
+	pop af
+	and 1 << PAR
+	jr z, .gotSpeed
+	srl d
+	rr e
+	srl d
+	rr e ; quartered, as QuarterSpeedDueToParalysis does
+	ld a, d
+	or e
+	jr nz, .gotSpeed
+	inc e ; minimum 1
+.gotSpeed
 	ld hl, wBattleMonSpeed
 	ld a, [hli]
 	ld b, a
@@ -588,7 +655,7 @@ _AIScanPlayerMovesForKO:
 	                 ; slot 0. Stopping at the first zero would silently skip
 	                 ; every already-revealed move behind an unrevealed one.
 	call AIReadMoveIntoPlayerBlock
-	farcall AIEstimatePlayerDamage ; -> wAIDamageEstimate
+	farcall AIEstimatePlayerMoveDamage ; -> wAIDamageEstimate
 	call AIAdjustPlayerDamageForPossibleDelivery
 	ld a, [wPlayerMoveEffect]
 	cp SUPER_FANG_EFFECT
