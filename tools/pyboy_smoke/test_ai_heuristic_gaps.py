@@ -124,10 +124,11 @@ class _MoveLayerGapsBase(_AIGapsBase):
                          scores.append(self.h.read8("wBuffer")))
         self.prime_clean()
         for label, value in (writes or {}).items():
+            label, offset = label if isinstance(label, tuple) else (label, 0)
             if isinstance(value, tuple):
-                self.word(label, value[0])
+                self.word(label, value[0], offset=offset)
             else:
-                self.h.write8(label, value)
+                self.h.write8(label, value, offset=offset)
         self.load_moveset([move])
         self.h.write8("wBuffer", 20)
         self.h.call_routine("AILayerSmart", limit=240)
@@ -357,14 +358,20 @@ class AISmartGapsTest(_MoveLayerGapsBase):
         self.assertEqual(self.smart_score(
             "POISON_STING", {"wBattleMonStatus": 1 << self.battle["PAR"]}), 20)
 
-    def screen_score(self, move, player_move, hp=200):
-        """AISmart_Screen against a player whose one believed move is player_move
-        (revealed slot 0). maxHP 200: half is 100."""
-        self.h.reveal_player_moves(0, [0], clear=True)
-        return self.smart_score(move, {"wBattleMonMoves": self.moves[player_move],
-                                       "wEnemyMonHP": (hp,)})
+    def screen_score(self, move, player_moves, hp=200, writes=None):
+        """AISmart_Screen against a player whose believed moves are player_moves
+        (a name or a list; all revealed). maxHP 200: half is 100."""
+        if isinstance(player_moves, str):
+            player_moves = [player_moves]
+        self.h.reveal_player_moves(0, list(range(len(player_moves))), clear=True)
+        board = {"wEnemyMonHP": (hp,)}
+        board.update(writes or {})
+        moves = [self.moves[m] for m in player_moves] + [0] * (4 - len(player_moves))
+        for slot, move_id in enumerate(moves):
+            board[("wBattleMonMoves", slot)] = move_id
+        return self.smart_score(move, board)
 
-    def screen_trace(self, move, player_move, hp):
+    def screen_trace(self, move, player_moves, hp, writes=None):
         """AISmart_Screen's own arithmetic at .compare: (score, actions with the
         screen, without, best hit, best hit once screened, our HP, faster)."""
         h = self.h
@@ -377,10 +384,34 @@ class AISmartGapsTest(_MoveLayerGapsBase):
                         after=word(self.ai["AI_BUF_SCREEN_AFTER"]),
                         hp=h.read8("wEnemyMonHP") << 8 | h.read8("wEnemyMonHP", 1),
                         faster=(h.read8("wEnemyMonSpeed") << 8 | h.read8("wEnemyMonSpeed", 1))
-                        > (h.read8("wBattleMonSpeed") << 8 | h.read8("wBattleMonSpeed", 1)))
+                        > (h.read8("wBattleMonSpeed") << 8 | h.read8("wBattleMonSpeed", 1)),
+                        status3=h.read8("wEnemyBattleStatus3"))
         h.hook_flag("AISmart_Screen.compare", action=at_compare)
-        score = self.screen_score(move, player_move, hp=hp)
+        score = self.screen_score(move, player_moves, hp=hp, writes=writes)
         return score, seen
+
+    MOVE_LENGTH = 6
+
+    def engine_hit(self, player_move, status3):
+        """The estimator's max roll for player_move into us with wEnemyBattleStatus3
+        = status3, independent of AISmart_Screen, on the board the last
+        screen_trace left. Puts the byte back."""
+        h = self.h
+        if not hasattr(self, "_rom"):
+            self._rom = (ROOT / "pokeblue_debug.gbc").read_bytes()
+        bank, address = h.symbols.get("Moves")
+        start = bank * 0x4000 + address - 0x4000 + (self.moves[player_move] - 1) * self.MOVE_LENGTH
+        for offset, value in enumerate(self._rom[start:start + self.MOVE_LENGTH]):
+            h.write8("wPlayerMoveNum", value, offset=offset)
+        saved = h.read8("wEnemyBattleStatus3")
+        h.write8("wEnemyBattleStatus3", status3)
+        h.call_routine("AIEstimatePlayerMoveDamage", limit=240)
+        h.call_routine("AIAdjustPlayerDamageForPossibleDelivery", limit=240)  # as the scan does
+        h.write8("wEnemyBattleStatus3", saved)
+        return h.read8("wAIDamageEstimate") << 8 | h.read8("wAIDamageEstimate", 1)
+
+    def screen_bit(self, move):
+        return 1 << self.battle["HAS_REFLECT_UP" if move == "REFLECT" else "HAS_LIGHT_SCREEN_UP"]
 
     @staticmethod
     def model_actions(hp, best, after, faster):
@@ -393,21 +424,81 @@ class AISmartGapsTest(_MoveLayerGapsBase):
         rest = hp - best
         return (hits(rest, after) - 1 if rest > 0 else 0), k - 1
 
+    def expected_score(self, s):
+        diff = s["with_"] - s["without"]
+        return 20 - (2 if diff >= 2 else 1 if diff == 1 else 0) + (2 if diff < 0 else 0)
+
+    def check_trace(self, move, attacks, hp, writes=None, status3=0):
+        """One board: the screened best must be the ENGINE's estimate with the
+        screen bit staged (AI review CP4), the counts must match the model, the
+        score must follow, and the status byte must come back as it was."""
+        score, s = self.screen_trace(move, attacks, hp, writes=writes)
+        self.assertEqual(s["status3"], status3, "the staged bit must not leak into .compare")
+        self.assertEqual(self.h.read8("wEnemyBattleStatus3"), status3)
+        attacks = [attacks] if isinstance(attacks, str) else attacks
+        self.assertEqual(s["best"], max(self.engine_hit(a, status3) for a in attacks), s)
+        staged = status3 | self.screen_bit(move)
+        self.assertEqual(s["after"], max(self.engine_hit(a, staged) for a in attacks), s)
+        model = self.model_actions(s["hp"], s["best"], s["after"], s["faster"])
+        if not s["faster"] and self.ai["AI_SCREEN_FASTER_ONLY"]:
+            model = (min(model[0], model[1]), model[1])
+        self.assertEqual((s["with_"], s["without"]), model, s)
+        self.assertEqual(score, self.expected_score(s), s)
+        return score, s
+
     def test_screen_handler_counts_the_actions_it_buys(self):
-        # ai_screen.asm (2026-11-12): a lone believed attacker of the screened
-        # category, at several HP levels. The handler's with/without must match
-        # the model, the screened best must be half the best, and the score must
-        # move the way the difference says.
-        for move, attack in (("REFLECT", "BODY_SLAM"), ("LIGHT_SCREEN", "PSYCHIC_M")):
-            for hp in (200, 120, 60, 30):
-                with self.subTest(move=move, hp=hp):
-                    score, s = self.screen_trace(move, attack, hp)
-                    self.assertEqual(s["after"], s["best"] // 2, s)
-                    expected = self.model_actions(s["hp"], s["best"], s["after"], s["faster"])
-                    self.assertEqual((s["with_"], s["without"]), expected, s)
-                    diff = s["with_"] - s["without"]
-                    want = 20 - (2 if diff >= 2 else 1 if diff == 1 else 0) + (2 if diff < 0 else 0)
-                    self.assertEqual(score, want, s)
+        # ai_screen.asm (2026-11-12, CP4): a lone believed attacker of the screened
+        # category, at several HP levels and both speed orders.
+        for enemy_speed in (100, 80):  # the player's is 90
+            for move, attack in (("REFLECT", "BODY_SLAM"), ("LIGHT_SCREEN", "PSYCHIC_M")):
+                for hp in (200, 120, 60, 30):
+                    with self.subTest(move=move, hp=hp, enemy_speed=enemy_speed):
+                        _, s = self.check_trace(move, attack, hp, {"wEnemyMonSpeed": (enemy_speed,)})
+                        self.assertLess(s["after"], s["best"], s)
+
+    def test_screen_at_the_999_cap_buys_nothing(self):
+        # CP4: the engine caps the doubled stat at 999 (CapDefensiveStatAt999), so
+        # Reflect on a 999 Defense changes nothing. Halving the finished damage
+        # said it halved the hit, and at HP = 3 hits it would have encouraged.
+        writes = {"wEnemyMonDefense": (999,)}
+        _, s = self.check_trace("REFLECT", "BODY_SLAM", 200, writes)
+        self.assertEqual(s["after"], s["best"], s)
+        score, s = self.check_trace("REFLECT", "BODY_SLAM", 3 * s["best"], writes)
+        self.assertEqual(s["after"], s["best"], s)
+        self.assertEqual(score, 22, s)  # a turn for nothing
+
+    def test_screen_against_a_mixed_moveset(self):
+        for move in ("REFLECT", "LIGHT_SCREEN"):
+            with self.subTest(move=move):
+                self.check_trace(move, ["BODY_SLAM", "PSYCHIC_M"], 120)
+
+    def test_screen_against_fixed_damage_buys_nothing(self):
+        score, s = self.check_trace("REFLECT", "SEISMIC_TOSS", 120)
+        self.assertEqual((s["best"], s["after"]), (50, 50), s)
+        self.assertEqual(score, 22, s)
+
+    def test_screen_with_the_opposite_screen_already_up(self):
+        # Light Screen already up while Reflect is scored: both scans keep it.
+        light = 1 << self.battle["HAS_LIGHT_SCREEN_UP"]
+        self.check_trace("REFLECT", ["BODY_SLAM", "PSYCHIC_M"], 120,
+                         {"wEnemyBattleStatus3": light}, status3=light)
+
+    def test_screen_against_a_multi_hit_move(self):
+        # Double Kick: the screened delivery is two screened hits, not half of two.
+        _, s = self.check_trace("REFLECT", "DOUBLE_KICK", 120)
+        self.assertLess(s["after"], s["best"], s)
+
+    def test_screen_behind_our_substitute(self):
+        # A thin Substitute: the hit that breaks it carries over, screened or not.
+        sub = 1 << self.battle["HAS_SUBSTITUTE_UP"]
+        board = {"wEnemyBattleStatus2": sub, "wEnemySubstituteHP": 10}
+        self.check_trace("REFLECT", ["BODY_SLAM", "DOUBLE_KICK"], 120, board)
+        # A thick one absorbs every believed hit: nothing reaches us, so the
+        # handler has no opinion and never reaches .compare.
+        board["wEnemySubstituteHP"] = 60
+        score, s = self.screen_trace("REFLECT", ["BODY_SLAM", "DOUBLE_KICK"], 120, writes=board)
+        self.assertEqual((score, s), (20, {}))
+        self.assertEqual(self.engine_hit("BODY_SLAM", 0), 0)
 
     def test_screen_wrong_category_discouraged(self):
         self.assertEqual(self.screen_score("REFLECT", "PSYCHIC_M"), 22)

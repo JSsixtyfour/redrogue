@@ -12,8 +12,9 @@
 ;   without the screen, attacking: k hits to KO us; we act k times if faster,
 ;   k - 1 if slower (the hit lands first each turn);
 ;   with the screen: this turn is spent, and from the next hit on the player's
-;   best is max(the other category, the screened one halved, fixed damage), so a
-;   mixed moveset buys little. Faster: k' hits at that rate, k' - 1 actions.
+;   best is the best believed hit estimated with the screen up (the engine's own
+;   damage path, CP4), so a mixed moveset buys little. Faster: k' hits at that
+;   rate, k' - 1 actions.
 ;   Slower: this turn's hit lands unscreened first, then the rest.
 ; More actions with it: encourage (by AI_STRONG if two or more); fewer: discourage
 ; strongly (a turn for nothing, the old wrong-category case); equal: no change.
@@ -38,17 +39,25 @@ AISmart_Screen:
 	ld [wBuffer + AI_BUF_SCREEN_BEST + 1], a
 	or d
 	ret z ; no damaging move believed: no opinion (a = 0, carry clear)
-; Halve the screened category in place: Reflect physical, Light Screen special.
-	ld hl, wBuffer + AI_BUF_SCREEN_HITS
+; Rescan with the screen staged (AI review CP4, 2026-11-12): set its bit in
+; wEnemyBattleStatus3 and the estimator's GetDamageVarsForPlayerAttack doubles
+; our Defense or Special exactly as the real hit will, through the 999 cap and the
+; /4 scaling, which halving the finished damage did not model (a 999 stat gains
+; nothing from a screen). An opposite screen already up stays in the byte, and a
+; near-certain crit ignores the bit in both scans. The byte is put back as found.
 	ld a, [wEnemyMoveEffect]
 	cp REFLECT_EFFECT
-	jr z, .halve
-	inc hl
-	inc hl
-.halve
-	srl [hl]
-	inc hl
-	rr [hl]
+	ld b, 1 << HAS_REFLECT_UP
+	jr z, .stage
+	ld b, 1 << HAS_LIGHT_SCREEN_UP
+.stage
+	ld a, [wEnemyBattleStatus3]
+	push af
+	or b
+	ld [wEnemyBattleStatus3], a
+	call AIPlayerBestHitByCategory
+	pop af
+	ld [wEnemyBattleStatus3], a
 	ld hl, wBuffer + AI_BUF_SCREEN_HITS
 	ld de, 0
 	call .max
