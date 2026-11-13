@@ -5,7 +5,9 @@
 ; lands because we did not attack, so a boost is withheld only when BOTH hold:
 ;   (a) it costs a turn: it does not cut our best move's hits-to-KO on the
 ;       player's current HP by at least one (only Attack and Special boosts of
-;       the best move's own category can do that: +2 counts x2, +1 counts x1.5);
+;       the best move's own category can do that: from the neutral stage +2
+;       counts x2 and +1 x1.5; from any other stage, or a stat of 500+, the
+;       boosted stat is projected and estimated, CP5: see AISetupTempo);
 ;   (b) that turn hurts: we would not live to act again. A faster mon sets up,
 ;       takes ONE hit and acts first next turn; a slower one takes this turn's
 ;       hit and next turn's before it acts, so TWO. The hit is the foe's best
@@ -122,6 +124,25 @@ AISetupTempo:
 	ld e, a ; de = D
 	call AIHitsToKO
 	ld b, a ; b = n(D)
+; Stage-aware (AI review CP5, 2026-11-13): x2 and x1.5 hold only from the neutral
+; stage, below the cap. From +2 another +2 is x1.5 (2x -> 3x), at +6 nothing,
+; from -1 x2.25, and a stat of 500+ doubles into the 999 cap. Off those, the
+; boosted stat is projected as the stat-up effect computes it and estimated
+; uncached (~12k cycles per boost). The neutral case keeps the free multiply.
+	push de
+	call AISetupStatPointers
+	ld a, [hl]
+	cp BASE_STAT_LEVEL
+	jr nz, .exact
+	ld a, [de]
+	ld h, a
+	inc de
+	ld a, [de]
+	sub LOW(MAX_STAT_VALUE / 2 + 1)
+	ld a, h
+	sbc HIGH(MAX_STAT_VALUE / 2 + 1)
+	jr nc, .exact ; 500 or more: x2 passes the cap
+	pop de
 	push de
 	sla e
 	rl d ; 2D: D is capped near the player's HP, so no overflow
@@ -140,6 +161,19 @@ AISetupTempo:
 	ld d, h
 	ld e, l ; de = 1.5D
 	call AIHitsToKO
+	jr .judgeOne
+.exact
+	pop de
+	ld a, 2
+	call AISetupHitsAtBoost
+	inc a
+	cp b
+	jr z, .exactTwoFree
+	ret nc
+.exactTwoFree
+	ld a, 1
+	call AISetupHitsAtBoost
+.judgeOne
 	inc a
 	cp b
 	ld a, (1 << AI_SG_ATK2_FREE_BIT) | (1 << AI_SG_SPC2_FREE_BIT) ; ld keeps the flags
@@ -150,6 +184,85 @@ AISetupTempo:
 .store
 	and c
 	ld [wBuffer + AI_BUF_SETUPGATE], a
+	ret
+
+; INPUT c = AISetupTempo's category bits. OUTPUT hl = our stage byte and de = our
+; unmodified stat for that category (Attack if the ATK bits, else Special).
+AISetupStatPointers:
+	ld hl, wEnemyMonAttackMod
+	ld de, wEnemyMonUnmodifiedAttack
+	bit AI_SG_ATK2_FREE_BIT, c
+	ret nz
+	ld hl, wEnemyMonSpecialMod
+	ld de, wEnemyMonUnmodifiedSpecial
+	ret
+
+; INPUT a = a boost (1 or 2), c = AISetupTempo's category bits, the best move
+; loaded (ReadMove). OUTPUT a = hits to KO the player (AIHitsToKO) with our stat
+; at the boosted stage; AI_SG_MAX_HITS + 1 when the stage is already +6. The stat
+; is the one effects.asm's stat-up computes (unmodified x stage ratio, capped at
+; 999, minimum 1), halved again for a burned Attack as ApplySelfTargetStatPenalty
+; re-applies it. It is staged in wEnemyMonAttack / Special for one UNCACHED
+; estimate (the slot cache holds the real stat's answer) and put back.
+; Preserves bc. Clobbers af, de, hl.
+AISetupHitsAtBoost:
+	push bc
+	call AISetupStatPointers
+	add [hl]
+	cp MAX_STAT_LEVEL + 1
+	jr c, .inRange
+	ld a, MAX_STAT_LEVEL
+.inRange
+	cp [hl]
+	jr z, .noGain ; already +6
+	ld h, d
+	ld l, e
+	ld b, 0 ; none of the Speed-only adjustments
+	call AIPredictSpeedAtStage ; de = the boosted stat
+	pop bc
+	push bc
+	ld hl, wEnemyMonAttack
+	bit AI_SG_ATK2_FREE_BIT, c
+	jr z, .special
+	ld a, [wEnemyMonStatus]
+	bit BRN, a
+	jr z, .stage
+	srl d
+	rr e
+	ld a, d
+	or e
+	jr nz, .stage
+	inc e
+	jr .stage
+.special
+	ld hl, wEnemyMonSpecial
+.stage
+	ld a, [hl]
+	ld b, a
+	ld [hl], d
+	inc hl
+	ld a, [hl]
+	ld c, a ; bc = the real stat
+	ld [hl], e
+	push hl
+	push bc
+	farcall AIEstimateDamage
+	call AIAdjustEnemyDamageForExpectedDelivery
+	pop bc
+	pop hl
+	ld [hl], c
+	dec hl
+	ld [hl], b
+	ld a, [wAIDamageEstimate]
+	ld d, a
+	ld a, [wAIDamageEstimate + 1]
+	ld e, a
+	call AIHitsToKO
+	pop bc
+	ret
+.noGain
+	pop bc
+	ld a, AI_SG_MAX_HITS + 1
 	ret
 
 ; INPUT de = damage per hit. OUTPUT a = the smallest n (1 to AI_SG_MAX_HITS) with

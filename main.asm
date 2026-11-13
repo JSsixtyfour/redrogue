@@ -424,8 +424,15 @@ INCLUDE "data/moves/moves.asm"
 ; Must stay in this section: it does a plain in-bank read of Moves, above,
 ; and carries a link-time ASSERT that enforces it.
 INCLUDE "engine/battle/get_move_max_pp_far.asm"
-INCLUDE "engine/battle/scroll_draw_trainer_pic.asm"
 INCLUDE "engine/battle/trainer_ai.asm"
+
+
+; Floated out of "Battle Engine 7" (2026-11-13, AI review CP5's growth in $0E).
+; Self-contained: its only entry is ScrollTrainerPicAfterBattle's jpfar (core.asm),
+; and it calls only HOME routines and _LoadTrainerPic by callfar.
+SECTION "Scroll Trainer Pic", ROMX
+
+INCLUDE "engine/battle/scroll_draw_trainer_pic.asm"
 
 
 ; ============================================================================
@@ -600,8 +607,6 @@ INCLUDE "engine/battle/shinred_turn_fixes.asm" ; predefs only, so placement is f
 SECTION "Hidden Events 2", ROMX
 
 INCLUDE "engine/events/rogue_reward_menu.asm"
-INCLUDE "engine/events/hidden_events/fighting_dojo.asm"
-INCLUDE "engine/events/hidden_events/indigo_plateau_hq.asm"
 INCLUDE "engine/events/bridge_gift_menu.asm"
 
 
@@ -622,6 +627,15 @@ INCLUDE "engine/events/hidden_events/school_notebooks.asm"
 SECTION "Card Key", ROMX
 
 INCLUDE "engine/events/card_key.asm"
+
+
+; Split from "Hidden Events 2" for the same reason (2026-11-13, AI review CP5's
+; growth in $0E). Keep each file whole: the hidden event table reaches the Print*
+; routines by dba, and each prints its own text predefs (raw dw) by tx_pre_jump.
+SECTION "Dojo And HQ Signs", ROMX
+
+INCLUDE "engine/events/hidden_events/fighting_dojo.asm"
+INCLUDE "engine/events/hidden_events/indigo_plateau_hq.asm"
 
 
 ; Moved out of "Battle Engine 7" (2026-11-12) to make room for the AI setup gate

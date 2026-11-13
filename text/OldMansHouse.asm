@@ -1,5 +1,5 @@
 _OldMansHouseBaldingGuyText::
-	text "A new trainer!"
+	text "A new trainer! Let"
 	line "me help you on"
 	cont "your way."
 	prompt
