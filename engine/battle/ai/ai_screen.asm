@@ -265,4 +265,4 @@ AIPlayerBestHitByCategory:
 	inc [hl]
 	jr .nextSlot
 .done
-	jp _AIScanPlayerMovesForKOMode.restorePlayerMove
+	jp _AIScanPlayerMovesForKO.restorePlayerMove

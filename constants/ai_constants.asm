@@ -327,14 +327,6 @@ DEF AI_SCREEN_FASTER_ONLY EQU 0
 ; four high-crit moves from base Speed >= 48 (any speed after Focus Energy), and a
 ; special form that always crits. Measured: high-crit hits crit 91% (21 of 23).
 DEF AI_CRIT_CERTAIN EQU $C0
-; AI review CP8 (2026-11-13): the setup gate's crit risk. A setup also hurts when
-; a believed player move whose crit chance is at least this (20%) would KO us as a
-; crit (with one plain hit first when we are slower). An ordinary move's threshold
-; is base Speed / 2, so in practice: attackers of base Speed 102+.
-DEF AI_CRIT_RISK EQU 51
-; _AIScanPlayerMovesForKOMode's mode, kept in AI_BUF_SCANSLOT's top bit for the
-; scan (the slot itself counts 0-4): estimate AI_CRIT_RISK moves as crits.
-DEF AI_SCAN_CRIT_RISK EQU $80
 ; FOLLOWUPS #88 (2026-11-12): the switch-in fallback. When the top-ranked reserve
 ; would be KO'd on entry, AIReplacementIsBetterAndSurvives excludes it and
 ; re-ranks, at most this many times. Scratch, live only inside switch decisions
@@ -350,7 +342,7 @@ DEF AI_SG_SPC1_FREE_BIT  EQU 3 ; +1 Special (x1.5), likewise
 DEF AI_SG_HURTS_KNOWN_BIT EQU 4 ; the two bits below hold this decision's answer
 DEF AI_SG_HURTS_BIT      EQU 5 ; the foe's best hit takes half our HP or more
 DEF AI_SG_BOOM_BIT       EQU 6 ; ...and it is the Explosion estimate that does
-DEF AI_SG_CRIT_BIT       EQU 7 ; ...and it is a likely crit that does (CP8)
+; Bit 7 is free (CP8's AI_SG_CRIT_BIT, cut 2026-11-13, FU4).
 DEF AI_SG_FREE_MASK EQU (1 << AI_SG_ATK2_FREE_BIT) | (1 << AI_SG_SPC2_FREE_BIT) | (1 << AI_SG_ATK1_FREE_BIT) | (1 << AI_SG_SPC1_FREE_BIT)
 ; Hits-to-KO is counted up to this many; more counts as AI_SG_MAX_HITS + 1.
 DEF AI_SG_MAX_HITS EQU 8

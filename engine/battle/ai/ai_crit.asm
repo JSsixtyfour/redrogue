@@ -82,9 +82,10 @@ AIGetCritThreshold:
 ; (Witch x1.25 tops out at 158, the Captain pick adds 64 on top); or a special
 ; form, whose SF_ALWAYS_CRIT forces 255. Anything else answers "no" without
 ; the lookup; those three still take the exact one.
-; INPUT a = side, d = the cutoff (AI_CRIT_CERTAIN, or CP8's AI_CRIT_RISK, below
-; which the prefilter's 127 bound proves nothing). Carry SET if the threshold is
-; at least the cutoff.
+; INPUT a = side, d = the cutoff (every caller passes AI_CRIT_CERTAIN since CP8's
+; lower AI_CRIT_RISK was cut, FU4; below AI_CRIT_CERTAIN the prefilter's 127 bound
+; proves nothing, so a lower cutoff looks every move up). Carry SET if the
+; threshold is at least the cutoff.
 AIMoveCritCertain:
 	ld c, a
 	push de
@@ -195,16 +196,7 @@ AIEstimateCritDamage:
 ; reads the active mon's stage bytes, which can only add a needless estimate:
 ; its normal hit already uses its own unmodified stats.
 AIEstimatePlayerMoveDamage::
-	ld e, 0
-; The KO scan's entry (_AIScanPlayerMovesForKOMode): e = AI_BUF_SCANSLOT, whose
-; AI_SCAN_CRIT_RISK bit lowers the cutoff to AI_CRIT_RISK (AI review CP8).
-AIEstimatePlayerMoveDamageScan::
 	ld d, AI_CRIT_CERTAIN
-	bit 7, e
-	ASSERT AI_SCAN_CRIT_RISK == 1 << 7
-	jr z, .gotCutoff
-	ld d, AI_CRIT_RISK
-.gotCutoff
 	xor a
 	call AIMoveCritCertain
 	jr c, .crit

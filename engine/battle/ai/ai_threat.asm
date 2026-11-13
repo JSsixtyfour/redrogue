@@ -630,24 +630,18 @@ AISacrificeBeatsSwitch::
 ; not cover every move). The running maximum and that flag live on the stack
 ; across the loop.
 _AIScanPlayerMovesForKO:
-	xor a
-; INPUT a = 0, or AI_SCAN_CRIT_RISK: also estimate as a crit each move whose crit
-; chance is at least AI_CRIT_RISK (the setup gate's crit risk, AI review CP8).
-; The mode rides in AI_BUF_SCANSLOT's top bit for the scan.
-_AIScanPlayerMovesForKOMode:
-	push af
 	ld hl, wPlayerMoveNum
 	ld de, wBuffer + AI_BUF_MOVESAVE
 	ld bc, MOVE_LENGTH
 	call CopyData
-	pop af
+	xor a
 	ld [wBuffer + AI_BUF_SCANSLOT], a
-	ld hl, 0
+	ld h, a
+	ld l, a
 	push hl ; h: a Super Fang was scanned (returned in b)
 	push hl ; running maximum
 .nextSlot
 	ld a, [wBuffer + AI_BUF_SCANSLOT]
-	and LOW(~AI_SCAN_CRIT_RISK)
 	cp NUM_MOVES
 	jr nc, .noKO
 	call AIGetPlayerMoveN ; plain same-bank call: this accessor takes its
@@ -661,9 +655,7 @@ _AIScanPlayerMovesForKOMode:
 	                 ; slot 0. Stopping at the first zero would silently skip
 	                 ; every already-revealed move behind an unrevealed one.
 	call AIReadMoveIntoPlayerBlock
-	ld a, [wBuffer + AI_BUF_SCANSLOT]
-	ld e, a ; the mode bit; e survives the farcall
-	farcall AIEstimatePlayerMoveDamageScan ; -> wAIDamageEstimate
+	farcall AIEstimatePlayerMoveDamage ; -> wAIDamageEstimate
 	call AIAdjustPlayerDamageForPossibleDelivery
 	ld a, [wPlayerMoveEffect]
 	cp SUPER_FANG_EFFECT

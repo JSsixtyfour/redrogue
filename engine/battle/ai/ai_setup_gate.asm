@@ -380,32 +380,11 @@ AISetupExtraHitHurts:
 	push de
 	call AIEnemyIsFaster ; carry = we act first; clobbers af, bc, de
 	pop de
-	jr nc, .slower
-	ld de, 0 ; faster: one hit before we act, and it does not KO
-	jr .critRisk
-.slower
-	push de
+	jr c, .explosion ; faster: one hit before we act, and it does not KO
 	call AIDamageTakesHalf ; slower: two hits
-	pop de
 	jr c, .hurts
-.critRisk
-; AI review CP8 (2026-11-13): or that hit is a likely crit. Rescan with every
-; believed move whose crit chance is at least AI_CRIT_RISK estimated as a crit,
-; against our HP less de (one plain hit first when slower). Only reached when
-; nothing above hurts, and cached with the rest of the answer.
-	ld hl, wEnemyMonHP + 1
-	ld a, [hld]
-	sub e
-	ld [wBuffer + AI_BUF_EFFHP + 1], a
-	ld a, [hl]
-	sbc d
-	ld [wBuffer + AI_BUF_EFFHP], a
-	ld a, AI_SCAN_CRIT_RISK
-	call _AIScanPlayerMovesForKOMode
-	jr nc, .explosion
-	ld hl, wBuffer + AI_BUF_SETUPGATE
-	set AI_SG_CRIT_BIT, [hl]
-	jr .hurts
+; AI review CP8 (a rescan for likely crits here) was cut 2026-11-13 (FU4): on
+; identical inputs it changed 1 pick in 2,949 decisions for ~1.5-2% of all AI cycles.
 .explosion
 ; When the AI knows the whole moveset, the scan above already weighed every real
 ; move, Explosion included if it is one: the species guess would only add a move
@@ -501,6 +480,6 @@ AIEstimatePlayerExplosion:
 	ld a, [wAIDamageEstimate + 1]
 	ld e, a
 	push de
-	call _AIScanPlayerMovesForKOMode.restorePlayerMove
+	call _AIScanPlayerMovesForKO.restorePlayerMove
 	pop de
 	ret

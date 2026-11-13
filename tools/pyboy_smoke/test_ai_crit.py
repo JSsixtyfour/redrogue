@@ -463,8 +463,8 @@ class CritCertainEstimateTest(unittest.TestCase):
         ran, calls = self.lookups("PECK")
         self.assertEqual((ran, calls > 0), (True, True))
 
-    # --- CP8 (2026-11-13): the setup gate's crit risk ------------------------
-    SG_HURTS, SG_KNOWN, SG_CRIT = 1 << 5, 1 << 4, 1 << 7  # AI_SG_* bits
+    # --- CP8 cut (2026-11-13, FU4): the setup gate no longer weighs crit risk --
+    SG_HURTS = 1 << 5  # AI_SG_HURTS_BIT
     SETUPGATE = 29  # AI_BUF_SETUPGATE
 
     def plain_and_crit(self, move: str) -> tuple[int, int]:
@@ -487,35 +487,20 @@ class CritCertainEstimateTest(unittest.TestCase):
         h.call_routine("AISetupExtraHitHurts")
         return h.read8("wBuffer", self.SETUPGATE)
 
-    def crit_risk_board(self, player: str) -> tuple[int, int]:
-        h = self.boot(self.mon(player, ["STRENGTH"]), [self.mon("SNORLAX", ["TACKLE"])])
+    def test_a_crit_only_ko_no_longer_withholds_setup(self) -> None:
+        # Persian (base Speed 115): Strength crits at 57/256 (22%), a crit that KOs
+        # where the plain hit does not. CP8 withheld setup here; on identical inputs
+        # that changed 1 pick in 2,949 decisions, so it was cut. The bit stays clear,
+        # and so does bit 7 (CP8's AI_SG_CRIT_BIT, now free).
+        h = self.boot(self.mon("PERSIAN", ["STRENGTH"]), [self.mon("SNORLAX", ["TACKLE"])])
         h.reveal_player_moves(0, [0], clear=True)
         self.write_word("wEnemyMonMaxHP", 999)
-        return self.plain_and_crit("STRENGTH")
-
-    def test_crit_risk_withholds_when_a_likely_crit_would_ko_a_faster_mon(self) -> None:
-        # Persian (base Speed 115): Strength crits at 57/256 (22%) >= AI_CRIT_RISK.
-        plain, crit = self.crit_risk_board("PERSIAN")
+        plain, crit = self.plain_and_crit("STRENGTH")
         self.assertGreater(crit, plain + 1, (plain, crit))
-        gate = self.extra_hit(crit, faster=True)  # the plain hit does not KO, the crit does
-        self.assertEqual(gate & (self.SG_HURTS | self.SG_CRIT), self.SG_HURTS | self.SG_CRIT, (plain, crit, gate))
-        gate = self.extra_hit(crit + 1, faster=True)  # not even the crit KOs
-        self.assertEqual(gate & (self.SG_HURTS | self.SG_CRIT), 0, (plain, crit, gate))
-
-    def test_crit_risk_ignores_a_slow_attacker(self) -> None:
-        # Snorlax (base Speed 30): 15/256, under AI_CRIT_RISK.
-        plain, crit = self.crit_risk_board("SNORLAX")
         gate = self.extra_hit(crit, faster=True)
-        self.assertEqual(gate & (self.SG_HURTS | self.SG_CRIT), 0, (plain, crit, gate))
-
-    def test_crit_risk_counts_a_plain_hit_first_when_slower(self) -> None:
-        plain, crit = self.crit_risk_board("PERSIAN")
-        hp = plain + crit  # slower: the plain hit lands, then the crit KOs
-        self.assertLess(2 * plain, hp)  # two plain hits alone do not
-        gate = self.extra_hit(hp, faster=False)
-        self.assertEqual(gate & (self.SG_HURTS | self.SG_CRIT), self.SG_HURTS | self.SG_CRIT, (plain, crit, gate))
-        gate = self.extra_hit(hp + 1, faster=False)
-        self.assertEqual(gate & (self.SG_HURTS | self.SG_CRIT), 0, (plain, crit, gate))
+        self.assertEqual(gate & (self.SG_HURTS | 0x80), 0, (plain, crit, gate))
+        gate = self.extra_hit(plain, faster=True)  # control: the plain hit KOs
+        self.assertEqual(gate & self.SG_HURTS, self.SG_HURTS, (plain, crit, gate))
 
     def test_slow_attackers_high_crit_move_stays_ordinary(self) -> None:
         self.boot(self.mon("SNORLAX", ["SLASH"]), [self.mon("PERSIAN", ["TACKLE"])])
