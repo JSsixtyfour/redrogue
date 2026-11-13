@@ -91,6 +91,28 @@ class ClassifyB5Test(unittest.TestCase):
         self.assertEqual((record["active_acted_first"], record["active_fainted"],
                           record["replacement_acted"], record["replacement_hits_before_act"]), (True, True, True, 0))
 
+    def test_switch_in_stay_records_what_it_did(self):
+        events = [self.decision("switch"),
+                  {"kind": "switch", "pos": 0, "hp": 30, "php": 200, "pko": 0},
+                  {"kind": "turn", "pos": 1, "hp": 60, "php": 200, "pko": 0},   # the entry hit
+                  {"kind": "act", "pos": 1, "hp": 60, "php": 150, "pko": 0},
+                  {"kind": "turn", "pos": 1, "hp": 35, "php": 150, "pko": 0},
+                  {"kind": "act", "pos": 1, "hp": 35, "php": 100, "pko": 1},
+                  {"kind": "faint", "pos": 1, "hp": 0, "php": 100, "pko": 1},
+                  {"kind": "turn", "pos": 0, "hp": 30, "php": 100, "pko": 1}]
+        (record,) = classify_b5(events)
+        self.assertEqual(record["switch_in"], {"stay_end": "fainted", "stay_turns": 2, "stay_acts": 2,
+                                               "hp_at_first_act": 60, "dealt_hp": 100, "dealt_kos": 1})
+
+    def test_sacrificed_mon_stay_ends_when_it_faints(self):
+        events = [self.decision("sacrifice") | {"php": 80, "pko": 0},
+                  {"kind": "act", "pos": 0, "hp": 30, "php": 50, "pko": 0},
+                  {"kind": "faint", "pos": 0, "hp": 0, "php": 50, "pko": 0},
+                  {"kind": "turn", "pos": 2, "hp": 90, "php": 50, "pko": 0}]
+        (record,) = classify_b5(events)
+        self.assertEqual(record["doomed"], {"stay_end": "fainted", "stay_turns": 0, "stay_acts": 1,
+                                            "hp_at_first_act": 30, "dealt_hp": 30, "dealt_kos": 0})
+
     def test_summary_groups_by_verdict_and_reserve_speed(self):
         events = [self.decision("switch"), {"kind": "switch", "pos": 0, "hp": 30},
                   {"kind": "turn", "pos": 1, "hp": 60}, {"kind": "act", "pos": 1, "hp": 60}]

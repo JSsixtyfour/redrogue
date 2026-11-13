@@ -153,6 +153,38 @@ def _hits_until_act(events: list[dict[str, object]], start: int, pos: int, hp: i
     return {"acted": None, "hits_before_act": hits}  # the battle ended first
 
 
+def _stay(events: list[dict[str, object]], start: int, pos: int, php: int | None, pko: int | None) -> dict[str, object]:
+    """Follow party slot `pos` from events[start:] while it stays in: its HP when it first
+    moved, turns and moves it got, and the player's party HP and mons lost meanwhile
+    (B5 threshold sizing, 2026-11-13). Ends when it faints, another mon is in, or the log ends."""
+    hp_at_act = None
+    turns = acts = 0
+    end, last = "battle_end", None
+    for event in events[start:]:
+        if event["kind"] == "b5":
+            continue
+        if event.get("pos") != pos:
+            end = "left"
+            break
+        last = event
+        if event["kind"] == "turn":
+            turns += 1
+        elif event["kind"] == "act":
+            acts += 1
+            if hp_at_act is None:
+                hp_at_act = event["hp"]
+        elif event["kind"] == "faint":
+            end = "fainted"
+            if hp_at_act is None:
+                hp_at_act = 0
+            break
+    out: dict[str, object] = {"stay_end": end, "stay_turns": turns, "stay_acts": acts, "hp_at_first_act": hp_at_act}
+    if last is not None and php is not None and "php" in last:
+        out["dealt_hp"] = php - last["php"]
+        out["dealt_kos"] = last["pko"] - pko
+    return out
+
+
 PAR_BIT = 6  # constants/battle_constants.asm
 
 
@@ -175,6 +207,9 @@ def classify_b5(events: list[dict[str, object]]) -> list[dict[str, object]]:
             continue
         record = {key: decision[key] for key in ("verdict", "active_hp_pct", "active_faster", "reserve_hp_pct",
                                                   "reserve_faster", "reserve_half", "reserves")}
+        for key in ("reserve_hp", "reserve_max", "predicted_hit", "predicted_eff_hp"):
+            if key in decision:
+                record[key] = decision[key]
         active = decision["pos"]
         rest = events[index + 1:]
         if decision["verdict"] == "switch":
@@ -184,7 +219,10 @@ def classify_b5(events: list[dict[str, object]]) -> list[dict[str, object]]:
             else:
                 record.update(_hits_until_act(rest, entry + 1, decision["reserve"], decision["reserve_hp"]))
                 record["saved_later_acted"] = any(e["kind"] == "act" and e["pos"] == active for e in rest[entry + 1:])
+                record["switch_in"] = _stay(rest, entry + 1, decision["reserve"],
+                                            rest[entry].get("php"), rest[entry].get("pko"))
         else:
+            record["doomed"] = _stay(rest, 0, active, decision.get("php"), decision.get("pko"))
             faint = next((i for i, e in enumerate(rest) if e["kind"] == "faint" and e["pos"] == active), None)
             record["active_acted_first"] = any(e["kind"] == "act" and e["pos"] == active
                                                for e in rest[:faint if faint is not None else len(rest)][:6])
@@ -592,6 +630,14 @@ class BattleAITelemetry:
             harness.register_hook("MainInBattleLoop", self._guarded(self._b5_turn))
         except KeyError:
             pass
+        # B5 threshold sizing (2026-11-13): B4's predicted hit on the reserve it judged,
+        # read where both the half and the 3x tests have it (de = the largest believed
+        # delivery, AI_BUF_EFFHP = the reserve's HP).
+        self._b4_hit: dict[str, int] | None = None
+        try:
+            harness.register_hook("_AIBestReserveThreatScan.gotHalf", self._guarded(self._b4_got_half))
+        except KeyError:
+            pass
         self._start: dict[str, int] | None = None
         self._opponent = ""
         self._identity: tuple[int, int] = (0, 0)
@@ -665,9 +711,31 @@ class BattleAITelemetry:
         address = h.address(label) - h.address("wEnemyMon1") + h.address("wEnemyMons") + slot * PARTYMON_STRUCT_LENGTH
         return h.pyboy.memory[address] << 8 | h.pyboy.memory[address + 1]
 
+    def _player_party(self) -> tuple[int, int]:
+        """(total HP, fainted count) of the player's party. The active mon's live HP is
+        wBattleMonHP; its party copy is only written back on a switch or at the end."""
+        h = self.h
+        active = h.read8("wPlayerMonNumber")
+        total = fainted = 0
+        for slot in range(min(6, h.read8("wPartyCount"))):
+            if slot == active:
+                hp = self._word("wBattleMonHP")
+            else:
+                offset = slot * PARTYMON_STRUCT_LENGTH
+                hp = h.read8("wPartyMon1HP", offset=offset) << 8 | h.read8("wPartyMon1HP", offset=offset + 1)
+            total += hp
+            fainted += hp == 0
+        return total, fainted
+
     def _b5_mark(self, kind: str) -> None:
+        php, pko = self._player_party()
         self.b5_events.append({"kind": kind, "pos": self.h.read8("wEnemyMonPartyPos"),
-                               "hp": self._word("wEnemyMonHP")})
+                               "hp": self._word("wEnemyMonHP"), "php": php, "pko": pko})
+
+    def _b4_got_half(self, _context) -> None:
+        r = self.h.pyboy.register_file
+        self._b4_hit = {"slot": self.h.read8("wBuffer", 19), "hit": r.D << 8 | r.E,
+                        "eff_hp": self.h.read8("wBuffer", 12) << 8 | self.h.read8("wBuffer", 13)}
 
     def _b5_turn(self, _context) -> None:
         self._b5_mark("turn")
@@ -746,8 +814,15 @@ class BattleAITelemetry:
                               if reserve < 6 else None,
             "reserve_half": h.read8("wBuffer", 20),  # AI_BUF_RESERVEHALF: 0 takes half+, 1 keeps half, $ff unknown
             "reserve_hp": self._party_word(reserve, "wEnemyMon1HP") if reserve < 6 else 0,
+            "reserve_max": reserve_max,
             "reserves": self._enemy_reserves(),
         }
+        php, pko = self._player_party()
+        self._b5_pending.update(php=php, pko=pko)
+        if self._b4_hit is not None and self._b4_hit["slot"] == reserve:
+            self._b5_pending["predicted_hit"] = self._b4_hit["hit"]
+            self._b5_pending["predicted_eff_hp"] = self._b4_hit["eff_hp"]
+        self._b4_hit = None
 
     def _b5_verdict(self, verdict: str) -> None:
         if self._b5_pending is not None:

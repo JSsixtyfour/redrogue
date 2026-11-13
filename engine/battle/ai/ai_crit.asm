@@ -186,6 +186,14 @@ AIEstimateCritDamage:
 ; stages). Every player-move estimate goes through here: the KO scan
 ; (AIPlayerWouldKO, B4/B5 reserves, heals), the best expected hit, the screen
 ; handler and the setup gate's Explosion. Clobbers af, bc, de, hl.
+; FU1 part 2 (2026-11-13): every consumer asks how hard the move can hit, so a
+; crit-certain move gives the LARGER of its normal hit and its crit (carry only
+; when the crit is the larger, so the screen handler buckets the normal hit by
+; category). A crit ignores stages, so the normal hit can be larger only when the
+; player's Attack or Special stage is raised or ours of Defense or Special is
+; lowered; only then is the normal hit estimated too. A staged reserve (B4/B5)
+; reads the active mon's stage bytes, which can only add a needless estimate:
+; its normal hit already uses its own unmodified stats.
 AIEstimatePlayerMoveDamage::
 	ld e, 0
 ; The KO scan's entry (_AIScanPlayerMovesForKOMode): e = AI_BUF_SCANSLOT, whose
@@ -204,18 +212,79 @@ AIEstimatePlayerMoveDamageScan::
 	and a
 	ret
 .crit
+	ld a, [wPlayerMonAttackMod]
+	cp BASE_STAT_LEVEL + 1
+	jr nc, .both
+	ld a, [wPlayerMonSpecialMod]
+	cp BASE_STAT_LEVEL + 1
+	jr nc, .both
+	ld a, [wEnemyMonDefenseMod]
+	cp BASE_STAT_LEVEL
+	jr c, .both
+	ld a, [wEnemyMonSpecialMod]
+	cp BASE_STAT_LEVEL
+	jr c, .both
 	xor a
 	call AIEstimateCritDamage
 	scf
 	ret
+.both
+	farcall AIEstimatePlayerDamage
+	xor a
+	jr AIKeepEstimateOrCrit
 
 ; AI_DAMAGE's possible-KO test, on the loaded enemy move: when its crit is near
-; certain, replace wAIDamageEstimate (the cached one-hit max) with the crit
-; estimate, uncached. Leaves it alone otherwise. Clobbers af, bc, de, hl.
+; certain, wAIDamageEstimate (the cached one-hit max) becomes the LARGER of it
+; and the crit estimate (uncached). Leaves it alone otherwise.
+; FU1 (2026-11-13): a crit ignores stat stages, so from +6 Attack it does less
+; than the normal hit. Measured: Persian's Slash at +6 was a possible KO only up
+; to its crit (102 HP) while its normal hit reaches the 227-HP cap. Either outcome
+; can happen, so a possible KO takes the larger. Clobbers af, bc, de, hl.
 AIEstimateEnemyCritIfCertain::
 	ld d, AI_CRIT_CERTAIN
 	ld a, 1
 	call AIMoveCritCertain
 	ret nc
 	ld a, 1
-	jp AIEstimateCritDamage
+	; fallthrough
+
+; INPUT a = side (as AIEstimateCritDamage), wAIDamageEstimate = that side's normal
+; one-hit max. Leaves the larger of it and the crit estimate. Carry SET = the
+; crit is the larger (or equal). Clobbers af, bc, de, hl.
+AIKeepEstimateOrCrit:
+	ld hl, wAIDamageEstimate
+	ld d, [hl]
+	inc hl
+	ld e, [hl]
+	push de ; the normal one-hit max
+	call AIEstimateCritDamage
+	pop de
+	ld hl, wAIDamageEstimate + 1
+	ld a, [hld]
+	sub e
+	ld a, [hl]
+	sbc d
+	ccf
+	ret c ; the crit is at least the normal hit
+	ld [hl], d
+	inc hl
+	ld [hl], e
+	ret ; carry clear (ld keeps it)
+
+; The reliable-KO contract's crit half (AIMoveIsReliableKO tail-calls this once
+; the normal minimum roll KOs at 90%+ to hit). When the loaded enemy move's crit
+; is near certain, the KO is reliable only if the crit's minimum delivery KOs
+; too: a crit ignores stat stages, and it is the likely outcome. FU1, 2026-11-13.
+; Carry SET = still reliable. Leaves wAIDamageEstimate as the crit's delivery
+; when it ran (no caller reads it afterwards). Clobbers af, bc, de, hl.
+AIEnemyCritAlsoKOs::
+	ld d, AI_CRIT_CERTAIN
+	ld a, 1
+	call AIMoveCritCertain
+	ccf
+	ret c ; not crit-certain: the normal test stands
+	ld a, 1
+	call AIEstimateCritDamage
+	farcall AIAdjustEnemyDamageForReliableDelivery
+	farcall AIMoveWouldKO ; carry survives the farcall return
+	ret

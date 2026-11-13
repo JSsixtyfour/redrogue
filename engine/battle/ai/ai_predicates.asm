@@ -280,7 +280,10 @@ AIMoveIsReliableKO::
 	call AIGetMoveHitChance
 	cp 90 percent
 	ccf
-	ret
+	ret nc
+; FU1 (2026-11-13): a near-certain crit must KO too (ai_crit.asm). Flags
+; survive the far jump's return.
+	rfarjp AIEnemyCritAlsoKOs
 
 ; Checkpoint D: carry SET if the enemy's SELECTED move satisfies the
 ; reliable-KO contract above. This is the narrow winning-action veto used by

@@ -106,6 +106,56 @@ class CritCertainEstimateTest(unittest.TestCase):
         boosted, _ = self.estimate("STRENGTH")
         self.assertLess(boosted, new)
 
+    # --- FU1 part 2 (2026-11-13): the player's crit is the larger of the two --
+    def boost_player_attack_6(self) -> None:
+        h = self.harness
+        assert h is not None
+        h.write8("wPlayerMonAttackMod", NEUTRAL_STAGE + 6)
+        self.write_word("wBattleMonAttack", min(999, self.word("wPlayerMonUnmodifiedAttack") * 4))
+
+    def drop_enemy_defense_6(self) -> None:
+        h = self.harness
+        assert h is not None
+        h.write8("wEnemyMonDefenseMod", NEUTRAL_STAGE - 6)
+        self.write_word("wEnemyMonDefense", max(1, self.word("wEnemyMonUnmodifiedDefense") // 4))
+
+    def wrapped(self, move: str) -> tuple[int, bool, int]:
+        """(AIEstimatePlayerMoveDamage's estimate, its carry, normal estimates it ran)."""
+        h = self.harness
+        assert h is not None
+        self.load_player_move(move)
+        normal = h.hook_flag("AIEstimatePlayerDamage")
+        before = normal["count"]
+        carry = h.call_routine("AIEstimatePlayerMoveDamage",
+                               capture=lambda hh: bool(hh.pyboy.register_file.F & 0x10))
+        return self.word("wAIDamageEstimate"), carry, normal["count"] - before
+
+    def test_boosted_players_slash_counts_its_normal_hit_when_larger(self) -> None:
+        self.boot(self.mon("PERSIAN", ["SLASH"]), [self.mon("SNORLAX", ["TACKLE"])])
+        crit, carry, normals = self.wrapped("SLASH")
+        self.assertEqual((carry, normals), (True, 0), "neutral: the crit alone, no normal estimate")
+        self.boost_player_attack_6()
+        plain, _ = self.estimate("SLASH", routine="AIEstimatePlayerDamage")
+        self.assertGreater(plain, crit, (plain, crit))
+        value, carry, normals = self.wrapped("SLASH")
+        self.assertEqual((value, carry, normals), (plain, False, 1))
+
+    def test_lowered_enemy_defense_counts_the_players_normal_hit(self) -> None:
+        self.boot(self.mon("PERSIAN", ["SLASH"]), [self.mon("SNORLAX", ["TACKLE"])])
+        crit, _, _ = self.wrapped("SLASH")
+        self.drop_enemy_defense_6()
+        plain, _ = self.estimate("SLASH", routine="AIEstimatePlayerDamage")
+        value, carry, normals = self.wrapped("SLASH")
+        self.assertEqual(normals, 1)
+        self.assertEqual((value, carry), (max(plain, crit), crit >= plain), (plain, crit))
+        self.assertGreater(plain, crit, (plain, crit))
+
+    def test_screen_handler_buckets_a_boosted_players_normal_hit_as_physical(self) -> None:
+        self.boot(self.mon("PERSIAN", ["SLASH"]), [self.mon("SNORLAX", ["TACKLE"])])
+        self.boost_player_attack_6()
+        plain, _ = self.estimate("SLASH", routine="AIEstimatePlayerDamage")
+        self.assertEqual(self.screen_buckets("SLASH"), (plain, 0, 0))
+
     def test_crit_estimate_puts_back_what_the_crit_path_clobbers(self) -> None:
         h = self.boot(self.mon("PERSIAN", ["SLASH"]), [self.mon("SNORLAX", ["TACKLE"])])
         sentinels = {"wCurSpecies": 0x5A, "wCurEnemyLevel": 0x3C,
@@ -222,9 +272,11 @@ class CritCertainEstimateTest(unittest.TestCase):
         physical, special, fixed = self.screen_buckets("STRENGTH")
         self.assertEqual((physical, special, fixed), (plain, 0, 0))
 
-    def own_move_ko_ceiling(self, move: str) -> int:
+    def own_move_ko_ceiling(self, move: str, setup=None, reliable: bool = False) -> int:
         """Largest player HP at which the enemy's slot-0 `move` is a possible KO
-        (AI_BUF_POSSKO bit 0), found by bisection over reloaded boards."""
+        (AI_BUF_POSSKO bit 0; with `reliable`, wAIReliableKOFound bit 0), found by
+        bisection over reloaded boards. `setup`
+        runs on each reloaded board before the decision."""
         import io
         if self.booted:  # one boot_fight2 per harness
             self.harness.close()
@@ -235,7 +287,8 @@ class CritCertainEstimateTest(unittest.TestCase):
         h.save_state(state)
         blob = state.getvalue()
         masks: list[int] = []
-        h.register_hook("AILayerDamage.applyBest", lambda _ctx: masks.append(h.read8("wBuffer", self.AI_BUF_POSSKO)))
+        h.register_hook("AILayerDamage.applyBest", lambda _ctx: masks.append(
+            h.read8("wAIReliableKOFound") if reliable else h.read8("wBuffer", self.AI_BUF_POSSKO)))
 
         def possible_ko(hp: int) -> bool:
             h.load_state(io.BytesIO(blob))
@@ -243,6 +296,8 @@ class CritCertainEstimateTest(unittest.TestCase):
             h.write8("wAITier", 0)
             h.write8("wAILayer2Encouragement", 2)
             self.write_word("wBattleMonHP", hp)
+            if setup is not None:
+                setup()
             masks.clear()
             h.call_routine("AIEnemyTrainerChooseMoves", limit=12000)
             self.assertTrue(masks, "AI_DAMAGE never reached applyBest")
@@ -265,6 +320,61 @@ class CritCertainEstimateTest(unittest.TestCase):
         strength = self.own_move_ko_ceiling("STRENGTH")
         slash = self.own_move_ko_ceiling("SLASH")
         self.assertGreaterEqual(slash * 80, strength * 105, (slash, strength))  # >= 1.5 x plain Slash
+
+    # --- FU1 (2026-11-13): a crit can be WEAKER than the normal hit -----------
+    # A Gen 1 crit ignores stat stages, so from +6 Attack a crit-certain Slash
+    # crits for far less than it hits normally. Its possible KO must still see
+    # the normal hit. AI_REVIEW_FOLLOWUP_PLAN_2026-11-13.md, FU1.
+    def boost_enemy_attack_6(self) -> None:
+        h = self.harness
+        assert h is not None
+        h.write8("wEnemyMonAttackMod", NEUTRAL_STAGE + 6)
+        self.write_word("wEnemyMonAttack", min(999, self.word("wEnemyMonUnmodifiedAttack") * 4))
+
+    def test_own_boosted_slash_keeps_its_normal_hit_as_a_possible_ko(self) -> None:
+        # Neither move's normal hit is a crit; Strength (80) is not crit-certain, so its
+        # ceiling is its boosted normal hit, and Slash (70)'s is about 70/80 of that.
+        strength = self.own_move_ko_ceiling("STRENGTH", self.boost_enemy_attack_6)
+        slash = self.own_move_ko_ceiling("SLASH", self.boost_enemy_attack_6)
+        self.assertGreaterEqual(slash * 80, strength * 68, (slash, strength))
+
+    def test_own_boosted_slash_is_reliable_only_where_its_crit_kos_too(self) -> None:
+        # The crit is the likely outcome, so a reliable KO needs it: Slash's reliable
+        # ceiling at +6 drops to its crit's minimum roll (unboosted crit max is 102),
+        # far below its possible ceiling. Strength at +6 is the control: no crit
+        # path, its reliable ceiling stays its normal minimum roll.
+        slash_possible = self.own_move_ko_ceiling("SLASH", self.boost_enemy_attack_6)
+        slash_reliable = self.own_move_ko_ceiling("SLASH", self.boost_enemy_attack_6, reliable=True)
+        strength_possible = self.own_move_ko_ceiling("STRENGTH", self.boost_enemy_attack_6)
+        strength_reliable = self.own_move_ko_ceiling("STRENGTH", self.boost_enemy_attack_6, reliable=True)
+        self.assertLessEqual(slash_reliable, 102, (slash_reliable, slash_possible))
+        self.assertGreater(slash_possible, slash_reliable * 3 // 2, (slash_reliable, slash_possible))
+        self.assertGreaterEqual(strength_reliable * 100, strength_possible * 80, (strength_reliable, strength_possible))
+
+    def test_unboosted_slash_reliable_ko_is_its_normal_minimum(self) -> None:
+        # Unboosted, the crit is the bigger hit: reliable stays where the normal
+        # minimum roll KOs (the crit's minimum is larger), as before FU1.
+        slash = self.own_move_ko_ceiling("SLASH", reliable=True)
+        strength = self.own_move_ko_ceiling("STRENGTH", reliable=True)
+        self.assertGreaterEqual(slash * 80, strength * 68, (slash, strength))
+        self.assertLessEqual(slash * 80, strength * 72, (slash, strength))
+
+    def test_boosted_slash_leaves_the_estimate_cache_non_crit(self) -> None:
+        # The crit estimates are uncached: at applyBest the cached slot-0 one-hit max
+        # is still the boosted normal hit, above the crit's 102 (valid bit masked off).
+        h = self.boot(self.mon("SNORLAX", ["TACKLE"]), [self.mon("PERSIAN", ["SLASH", "SPLASH"])])
+        h.park_before_hijack()
+        h.write8("wAIDebugTierOverride", 4)
+        h.write8("wAITier", 0)
+        h.write8("wAILayer2Encouragement", 2)
+        self.write_word("wBattleMonHP", 150)
+        self.boost_enemy_attack_6()
+        seen: list[int] = []
+        h.register_hook("AILayerDamage.applyBest", lambda _ctx: seen.append(
+            int.from_bytes(bytes(h.read_bytes("wAIEnemyEstimateCache", 2)), "big") & 0x7FFF))
+        h.call_routine("AIEnemyTrainerChooseMoves", limit=12000)
+        self.assertTrue(seen, "AI_DAMAGE never reached applyBest")
+        self.assertGreater(seen[-1], 150, seen)
 
     def test_focus_energy_alone_does_not_make_an_ordinary_move_crit_certain(self) -> None:
         # CalcCritRate: Focus Energy is x8 on base Speed / 2, then the ordinary move
