@@ -59,10 +59,11 @@ AIGetTargetStatus::
 ; OUTPUT: a = the move id the AI believes is in that slot, 0 if none/unknown.
 ; Clobbers bc, de, hl. No farcall: the whole decision is in this bank.
 ;
-; The only consumer is _AIScanPlayerMovesForKO (ai_threat.asm), a damage-threat
-; scan. That matters for the type guess below: a guessed move can only ever
-; feed a damage estimate, never Disable/Mirror Move style logic that needs the
-; player's REAL move.
+; Consumers: the damage-threat scans (_AIScanPlayerMovesForKO in ai_threat.asm,
+; AIPlayerBestHitByCategory in ai_screen.asm, and the predicates that estimate the
+; player's best hit in ai_predicates.asm). That matters for the guesses below: a
+; guessed move can only ever feed a damage estimate, never Disable/Mirror Move
+; style logic that needs the player's REAL move.
 AIGetPlayerMoveN::
 	ld c, a
 	call AIPlayerMovesAreKnown
@@ -170,13 +171,20 @@ AIGetPlayerMoveN::
 	jr c, .earlierSlot
 	and a
 	jr z, .earlierSlot ; empty slot, likewise
+	ld a, d
+	cp AI_GUESS_CRIT_TAKEN
+	jr nc, .earlierTypeless ; this earlier slot had no type: it took the crit guess
 	ld d, e
 	ld e, AI_GUESS_NO_TYPE
+	jr .earlierSlot
+.earlierTypeless
+	ld d, AI_GUESS_CRIT_TAKEN ; sticky: no later slot gets it
+	ld e, d
 	jr .earlierSlot
 .pickGuess
 	ld a, d
 	cp NUM_TYPES
-	jr nc, .unknown
+	jr nc, .noTypeGuess
 	ld e, a
 	ld d, 0
 	ld hl, AIStabGuessByType
@@ -189,9 +197,19 @@ AIGetPlayerMoveN::
 .gotGuessRow
 	ld a, [hl]
 	jr .exit ; every return goes through .exit, the hookable result point
+; No type is pending for this slot. The FIRST such slot (d still AI_GUESS_NO_TYPE,
+; not AI_GUESS_CRIT_TAKEN) is believed to hold the high-crit move its species
+; learns by level-up, if it has reached that level (ai_crit_species.asm, CP3). So
+; the STAB guesses keep priority, and the crit move takes the next free slot.
+.noTypeGuess
+	cp AI_GUESS_NO_TYPE
+	jr nz, .unknown
+	farcall AIGuessCritMove ; e = the move, 0 if none
+	ld a, e
+	jp .exit
 .unknown
 	xor a
-	jr .exit
+	jp .exit
 
 ; INPUT:  a = move id (nonzero).
 ; OUTPUT: a = its type if it deals damage (fixed damage included), else
@@ -314,6 +332,7 @@ AIOmniscientClasses:
 	db $ff
 
 DEF AI_GUESS_NO_TYPE EQU $ff ; above every real type id
+DEF AI_GUESS_CRIT_TAKEN EQU $fe ; walk marker: an earlier slot already took the crit guess
 
 ; Below this level an unseen slot assumes the weaker row: a level 10 Squirtle has
 ; Water Gun, not Surf. The level curated sets may first carry a grade A TM move.

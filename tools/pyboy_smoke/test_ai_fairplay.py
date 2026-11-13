@@ -304,6 +304,41 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
         self.boot_player("MR_MIME", 30, ["BARRIER"], [])
         self.assertEqual(self.believed(), self.ids("PSYCHIC_M", "", "", ""))
 
+    # --- CP3 (2026-11-12): the high-crit move a species learns by level-up ----
+    def test_crit_guess_takes_the_slot_after_the_stab_guess(self) -> None:
+        # Persian (mono Normal, Slash at 34): slot 0 holds the STAB guess, slot 1
+        # the crit move. Nothing beyond that.
+        self.boot_player("PERSIAN", 50, ["TACKLE", "GROWL", "LEER", "SPLASH"], [])
+        self.assertEqual(self.believed(), self.ids("BODY_SLAM", "SLASH", "", ""))
+
+    def test_crit_guess_waits_for_the_learn_level(self) -> None:
+        self.boot_player("PERSIAN", 33, ["TACKLE", "GROWL", "LEER", "SPLASH"], [])
+        assert self.harness is not None
+        self.assertEqual(self.believed()[1], 0)
+        self.harness.write8("wBattleMonLevel", 34)
+        self.assertEqual(self.believed()[1], self.moves["SLASH"])
+
+    def test_crit_guess_comes_after_both_stab_guesses(self) -> None:
+        # Charizard (Fire/Flying) at 50: slot 0 Fire, slot 1 Flying, slot 2 Slash.
+        self.boot_player("CHARIZARD", 50, ["GROWL", "LEER", "SPLASH", "SMOKESCREEN"], [])
+        believed = self.believed()
+        self.assertEqual(believed[2], self.moves["SLASH"])
+        self.assertEqual(believed[3], 0)
+        self.assertNotIn(self.moves["SLASH"], believed[:2])
+
+    def test_a_revealed_stab_move_frees_a_slot_for_the_crit_guess(self) -> None:
+        # Persian showed Tackle (Normal): no STAB guess is left, so slot 1 is Slash.
+        self.boot_player("PERSIAN", 50, ["TACKLE", "GROWL", "LEER", "SPLASH"], [0])
+        self.assertEqual(self.believed(), self.ids("TACKLE", "SLASH", "", ""))
+
+    def test_a_species_without_a_high_crit_move_gets_no_crit_guess(self) -> None:
+        self.boot_player("SNORLAX", 50, ["TACKLE", "GROWL", "LEER", "SPLASH"], [])
+        self.assertEqual(self.believed(), self.ids("BODY_SLAM", "", "", ""))
+
+    def test_empty_slots_get_no_crit_guess(self) -> None:
+        self.boot_player("PERSIAN", 50, ["TACKLE"], [])
+        self.assertEqual(self.believed(), self.ids("BODY_SLAM", "", "", ""))
+
     def test_revealed_moves_do_not_follow_a_player_switch(self) -> None:
         # Review F6 (2026-09-29): moves revealed by party member 0 must not be
         # reported for party member 1. The old slot-indexed buffer did.

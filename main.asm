@@ -655,6 +655,13 @@ SECTION "AI Crit", ROMX
 INCLUDE "engine/battle/ai/ai_crit.asm"
 
 
+; AI review CP3 (2026-11-12): the high-crit move a species learns by level-up.
+; Bank-free: its caller in $0E farcalls it, so it stays out of that full bank.
+SECTION "AI Crit Species", ROMX
+
+INCLUDE "engine/battle/ai/ai_crit_species.asm"
+
+
 SECTION "Battle Engine 9", ROMX
 
 INCLUDE "engine/battle/experience.asm"
