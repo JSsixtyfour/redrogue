@@ -89,7 +89,7 @@ INCLUDE "engine/battle/ai/ai_turn_plan.asm"
 ; $0E half is INCLUDEd into trainer_ai.asm as engine/battle/ai/ai_plan.asm.
 INCLUDE "engine/battle/ai/ai_plans.asm"
 
-; Also pinned to bank $2C. Enemy trainer DV/stat-exp rolling (AI Overhaul
+; Pinned to bank $2A (from $2C, 2026-11-12). Enemy trainer DV/stat-exp rolling (AI Overhaul
 ; Phase 6) - moved out of engine/pokemon/add_mon.asm (bank $03, only 38
 ; bytes free) into its own section here; add_mon.asm keeps only the minimal
 ; call sites.
@@ -631,6 +631,14 @@ INCLUDE "engine/events/card_key.asm"
 SECTION "Trainer Names", ROMX
 
 INCLUDE "data/trainers/names.asm"
+
+
+; Moved out of "Battle Engine 7" (2026-11-12) for the AI screen handler in $0E.
+; Bank-free: its one reader, GetTrainerInformation (home/trainers2.asm), switches
+; to BANK(TrainerPicAndMoneyPointers) before walking it.
+SECTION "Trainer Pic Money", ROMX
+
+INCLUDE "data/trainers/pic_pointers_money.asm"
 
 
 ; The AI setup gate's species table (2026-11-12). Bank-free: its one caller in

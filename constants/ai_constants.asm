@@ -312,6 +312,24 @@ DEF AI_BUF_PHYSICAL   EQU 29
 ; flags. AI_THREAT, between them, never touches +28/+29. Cleared at decision
 ; start, so a tier without AI_DAMAGE sees "no boost is free".
 DEF AI_BUF_SETUPGATE  EQU AI_BUF_PHYSICAL
+; Screen handler (ai_screen.asm, 2026-11-12) scratch, live only inside AI_SMART:
+; best believed hit per kind (physical, special, fixed; big-endian words), the
+; best overall, and the best once the screen is up. AI_DAMAGE and AI_PLAN reuse
+; these bytes later in the decision.
+DEF AI_BUF_SCREEN_HITS  EQU AI_BUF_PLANCLASS ; +20, 6 bytes
+DEF AI_BUF_SCREEN_BEST  EQU AI_BUF_PLANCLASS + 6 ; +26, 2 bytes
+DEF AI_BUF_SCREEN_AFTER EQU AI_BUF_PLANCLASS + 8 ; +28, 2 bytes (+28 PLANMAG, +29 SETUPGATE: both written later)
+ASSERT AI_BUF_SCREEN_AFTER + 2 <= 30
+; 1 = a slower mon is never encouraged to raise a screen (the A/B variant).
+DEF AI_SCREEN_FASTER_ONLY EQU 0
+; FOLLOWUPS #88 (2026-11-12): the switch-in fallback. When the top-ranked reserve
+; would be KO'd on entry, AIReplacementIsBetterAndSurvives excludes it and
+; re-ranks, at most this many times. Scratch, live only inside switch decisions
+; (AI_DAMAGE's +16/+17 are spent by then): the slots excluded so far, and the
+; tries left. Every other ranking entry clears the mask.
+DEF AI_SENDOUT_FALLBACKS EQU 2
+DEF AI_BUF_SENDOUT_TRIES EQU AI_BUF_BESTSLOT ; +16
+DEF AI_BUF_SENDOUT_SKIP  EQU AI_BUF_CURSLOT  ; +17
 DEF AI_SG_ATK2_FREE_BIT  EQU 0 ; +2 Attack cuts our best move's hits-to-KO by one or more
 DEF AI_SG_SPC2_FREE_BIT  EQU 1 ; +2 Special, likewise
 DEF AI_SG_ATK1_FREE_BIT  EQU 2 ; +1 Attack (x1.5), likewise

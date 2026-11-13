@@ -625,40 +625,9 @@ AISmart_Evasion:
 	scf
 	ret
 
-; Light Screen / Reflect (AI_BACKLOG B11, 2026-10-21). A screen halves only its
-; own category, so it is scored against the player's dominant believed attack
-; (AIPlayerIsPhysicalThreat: carry physical; no carry and a != 0 special; no carry
-; and a = 0 means no damaging move is believed, so no screen has an opinion). Matching:
-; encouraged at half HP or more, where the body likely lives to benefit; below
-; half, no change. Wrong category: strongly discouraged, it blocks nothing that
-; is coming. Before B11 this was HP-only (pokecrystal: discouraged once
-; damaged), so a Reflect against a pure Slash user scored like Double Team.
-AISmart_Screen:
-	call AIPlayerIsPhysicalThreat ; clobbers af, bc, de, hl; the dispatcher saved them
-	jr c, .physical
-	and a
-	jr z, .noChange ; no damaging attack believed: neither screen blocks anything
-	ld a, [wEnemyMoveEffect]
-	cp LIGHT_SCREEN_EFFECT
-	jr z, .matches
-	jr .wrongCategory
-.physical
-	ld a, [wEnemyMoveEffect]
-	cp REFLECT_EFFECT
-	jr nz, .wrongCategory
-.matches
-	call AIEnemyHPBelowHalf
-	jr c, .noChange
-	ld a, AI_NUDGE
-	scf
-	ret
-.wrongCategory
-	ld a, AI_STRONG
-	and a
-	ret
-.noChange
-	xor a
-	ret
+; Light Screen / Reflect: AISmart_Screen lives in ai_screen.asm since 2026-11-12
+; (counts the actions a screen buys). It replaced B11's dominant-category rule
+; (2026-10-21), which itself replaced pokecrystal's HP-only rule.
 
 ; Haze is a TRADE: it clears everything on both sides at once (HazeEffect_,
 ; move_effects/haze.asm), so score what it takes from each side (2026-09-29

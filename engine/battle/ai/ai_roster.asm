@@ -1,9 +1,11 @@
 ; AI Overhaul Phase 6: tier-scaled enemy trainer DVs and stat exp.
 ;
-; PINNED to bank $2C (same relocation bank as ai_switching.asm/ai_plans.asm -
-; see ai_switching.asm's header for why $2C specifically: Red/Blue/Debug
-; first-fit independently and Debug is tightest, so a floated section risks
-; landing somewhere tight in one variant only).
+; PINNED to bank $2A (moved from $2C 2026-11-12 to give the switching engine
+; room for the FOLLOWUPS #88 fallback; $2C was full). Still pinned rather than
+; floated, for the reason in ai_switching.asm's header: Red/Blue/Debug first-fit
+; independently, so a floated section risks landing somewhere tight in one
+; variant only. Safe anywhere: reached only by farcall (add_mon.asm), and its
+; only plain calls are HOME routines (Random, CalcStats).
 ;
 ; WHY THIS ISN'T IN engine/pokemon/add_mon.asm (bank $03) WITH ITS CALLERS:
 ; bank $03 had only 38 bytes free at the start of this phase - nowhere near
@@ -29,7 +31,7 @@
 ; touches - though see above, an argument still is not safe from a callee's
 ; OWN internal use of de once the callee's body starts running).
 
-SECTION "Trainer AI Roster", ROMX, BANK[$2C]
+SECTION "Trainer AI Roster", ROMX, BANK[$2A]
 
 ; Rolls tier-scaled DVs for one enemy trainer mon.
 ; INPUT:  none (reads wCurEnemyLevel is NOT needed here - DVs don't depend

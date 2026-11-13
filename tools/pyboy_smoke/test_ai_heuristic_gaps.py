@@ -364,13 +364,50 @@ class AISmartGapsTest(_MoveLayerGapsBase):
         return self.smart_score(move, {"wBattleMonMoves": self.moves[player_move],
                                        "wEnemyMonHP": (hp,)})
 
-    def test_screen_matching_category_encouraged_while_healthy(self):
-        # B11 (2026-10-21): Reflect against a physical attacker, Light Screen
-        # against a special one; at half HP still encouraged, below it no change.
-        self.assertEqual(self.screen_score("REFLECT", "BODY_SLAM"), 19)
-        self.assertEqual(self.screen_score("LIGHT_SCREEN", "PSYCHIC_M"), 19)
-        self.assertEqual(self.screen_score("REFLECT", "BODY_SLAM", hp=100), 19)
-        self.assertEqual(self.screen_score("REFLECT", "BODY_SLAM", hp=99), 20)
+    def screen_trace(self, move, player_move, hp):
+        """AISmart_Screen's own arithmetic at .compare: (score, actions with the
+        screen, without, best hit, best hit once screened, our HP, faster)."""
+        h = self.h
+        seen = {}
+
+        def at_compare():
+            rf = h.pyboy.register_file
+            word = lambda off: h.read8("wBuffer", off) << 8 | h.read8("wBuffer", off + 1)  # noqa: E731
+            seen.update(with_=rf.A, without=rf.B, best=word(self.ai["AI_BUF_SCREEN_BEST"]),
+                        after=word(self.ai["AI_BUF_SCREEN_AFTER"]),
+                        hp=h.read8("wEnemyMonHP") << 8 | h.read8("wEnemyMonHP", 1),
+                        faster=(h.read8("wEnemyMonSpeed") << 8 | h.read8("wEnemyMonSpeed", 1))
+                        > (h.read8("wBattleMonSpeed") << 8 | h.read8("wBattleMonSpeed", 1)))
+        h.hook_flag("AISmart_Screen.compare", action=at_compare)
+        score = self.screen_score(move, player_move, hp=hp)
+        return score, seen
+
+    @staticmethod
+    def model_actions(hp, best, after, faster):
+        """The rule in ai_screen.asm, independently: actions before the player's
+        best hit KOs us, without the screen and with it."""
+        hits = lambda h_, d: min(9, -(-h_ // d)) if d else 9  # noqa: E731
+        k = hits(hp, best)
+        if faster:
+            return hits(hp, after) - 1, k
+        rest = hp - best
+        return (hits(rest, after) - 1 if rest > 0 else 0), k - 1
+
+    def test_screen_handler_counts_the_actions_it_buys(self):
+        # ai_screen.asm (2026-11-12): a lone believed attacker of the screened
+        # category, at several HP levels. The handler's with/without must match
+        # the model, the screened best must be half the best, and the score must
+        # move the way the difference says.
+        for move, attack in (("REFLECT", "BODY_SLAM"), ("LIGHT_SCREEN", "PSYCHIC_M")):
+            for hp in (200, 120, 60, 30):
+                with self.subTest(move=move, hp=hp):
+                    score, s = self.screen_trace(move, attack, hp)
+                    self.assertEqual(s["after"], s["best"] // 2, s)
+                    expected = self.model_actions(s["hp"], s["best"], s["after"], s["faster"])
+                    self.assertEqual((s["with_"], s["without"]), expected, s)
+                    diff = s["with_"] - s["without"]
+                    want = 20 - (2 if diff >= 2 else 1 if diff == 1 else 0) + (2 if diff < 0 else 0)
+                    self.assertEqual(score, want, s)
 
     def test_screen_wrong_category_discouraged(self):
         self.assertEqual(self.screen_score("REFLECT", "PSYCHIC_M"), 22)

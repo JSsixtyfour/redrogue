@@ -97,9 +97,12 @@ def classify_setup(events: list[dict[str, object]], setup_moves: dict[int, str])
         # hp_pct is when the move ran; decided_hp_pct is when the AI chose it, before the
         # menu, so a slower mon's hp_pct already includes the player's hit that turn. Judge
         # the DECISION by decided_hp_pct (a Metronome-called boost has only hp_pct).
-        return {"move": event["move"], "name": setup_moves[event["move"]], "outcome": outcome,
+        item = {"move": event["move"], "name": setup_moves[event["move"]], "outcome": outcome,
                 "hp_pct": event["hp_pct"], "decided_hp_pct": event["hp_pct"],
                 "faster": event["faster"], "reserves": event["reserves"]}
+        if "why" in event:
+            item["why"] = event["why"]
+        return item
 
     def close(outcome: str) -> None:
         for item in held:
@@ -116,6 +119,8 @@ def classify_setup(events: list[dict[str, object]], setup_moves: dict[int, str])
                 entries.append(held[-1])
                 if pending is not None and pending["move"] == event["move"]:
                     held[-1]["decided_hp_pct"] = pending["hp_pct"]
+                    if "why" in pending:
+                        held[-1]["why"] = pending["why"]
             else:
                 close("used")
             pending = None
@@ -485,6 +490,8 @@ def summarize(records: list[dict[str, object]], flagged_cap: int = 50) -> dict[s
             "trainer_ai_move_over_frame_calls": sum(c > FRAME_CYCLES for c in move_cycles),
         },
         "b5": b5_summary([item for r in records for item in r.get("b5", [])]),
+        "b4": {"checks": sum(r.get("b4", {}).get("checks", 0) for r in records),
+               "top_reserve_dies": sum(r.get("b4", {}).get("top_reserve_dies", 0) for r in records)},
         "flag_counts": dict(flag_counts.most_common()),
         "flagged": [
             {
@@ -532,6 +539,40 @@ class BattleAITelemetry:
             pass
         # B5 sacrifice-or-switch telemetry (2026-11-12): every AISacrificeBeatsSwitch
         # verdict, then a per-turn trace of the enemy side to see what it cost.
+        # Why was a setup move chosen (2026-11-12): AI_DAMAGE's kill masks for the
+        # decision (stashed at .applyBest, before AI_THREAT may reuse +18), the
+        # chosen slot's layer deltas, the player's REAL moves and the HP actually
+        # lost before the next turn.
+        self._kill_masks: dict[str, int] = {}
+        self._why_pending: dict[str, object] | None = None
+        try:
+            harness.register_hook("AILayerDamage.applyBest", self._guarded(self._stash_kill_masks))
+            # A tier without AI_DAMAGE (T0/T1) must not see the previous decision's masks.
+            harness.register_hook("AIEnemyTrainerChooseMoves", self._guarded(lambda _c: self._kill_masks.clear()))
+        except KeyError:
+            pass
+        # Believed-vs-real hit (2026-11-12): the moves AIPlayerWouldKO scanned and each
+        # one's one-hit max-roll estimate, then every player hit that lands before the
+        # next turn (move, final wDamage, crit), so an underestimate can be attributed.
+        self._ko_scan: list[list[int]] = []
+        self._ko_scanning = False
+        try:
+            harness.register_hook("AIPlayerWouldKO.compute", self._guarded(self._ko_scan_start))
+            harness.register_hook("AIPlayerWouldKO.store", self._guarded(self._ko_scan_stop))
+            harness.register_hook("AIAdjustPlayerDamageForPossibleDelivery", self._guarded(self._ko_scan_move))
+            harness.register_hook("ApplyDamageToEnemyPokemon", self._guarded(self._player_hit))
+        except KeyError:
+            pass
+        # FOLLOWUPS #88 sizing (2026-11-12): every B4 check of the TOP-ranked reserve
+        # (AIBestReserveSurvivesThreat, not B5's half rescan) and whether it would die,
+        # which is the only case a "try the next reserve" fallback could change.
+        self.b4_results: list[bool] = []
+        self._b4_pending = False
+        try:
+            harness.register_hook("AIBestReserveSurvivesThreat", self._guarded(self._b4_enter))
+            harness.register_hook("_AIBestReserveThreatScan.restore", self._guarded(self._b4_exit))
+        except KeyError:
+            pass
         self.b5_events: list[dict[str, object]] = []
         self._b5_pending: dict[str, object] | None = None
         try:
@@ -620,6 +661,64 @@ class BattleAITelemetry:
 
     def _b5_turn(self, _context) -> None:
         self._b5_mark("turn")
+        if self._why_pending is not None:  # the turn after a setup was chosen
+            self._why_pending["hp_next_turn"] = self._word("wEnemyMonHP")
+            # The damage the player's hits did to the mon itself: hits a Substitute
+            # absorbed are excluded, and so are Substitute's own HP cost, residual
+            # damage and a replacement's HP, all of which the HP delta above mixes in.
+            self._why_pending["player_hit_damage"] = sum(
+                hit[1] for hit in self._why_pending.get("player_hits", []) if not hit[3])
+            self._why_pending = None
+
+    def _ko_scan_start(self, _context) -> None:
+        self._ko_scan = []
+        self._ko_scanning = True
+
+    def _ko_scan_stop(self, _context) -> None:
+        self._ko_scanning = False
+
+    def _ko_scan_move(self, _context) -> None:
+        if self._ko_scanning:  # one-hit max roll, before multi-hit/Substitute delivery
+            self._ko_scan.append([self.h.read8("wPlayerMoveNum"), self._word("wAIDamageEstimate")])
+
+    def _player_hit(self, _context) -> None:
+        if self._why_pending is not None:
+            self._why_pending.setdefault("player_hits", []).append(
+                [self.h.read8("wPlayerMoveNum"), self._word("wDamage"), self.h.read8("wCriticalHitOrOHKO"),
+                 bool(self.h.read8("wEnemyBattleStatus2") & (1 << 4))])  # HAS_SUBSTITUTE_UP
+
+    def _b4_enter(self, _context) -> None:
+        self._b4_pending = True
+
+    def _b4_exit(self, _context) -> None:
+        if self._b4_pending:
+            self._b4_pending = False
+            self.b4_results.append(bool(self.h.pyboy.register_file.E))  # 1 = survives
+
+    def _stash_kill_masks(self, _context) -> None:
+        self._kill_masks = {"possible_ko": self.h.read8("wBuffer", 18),       # AI_BUF_POSSKO
+                            "reliable_ko": self.h.read8("wAIReliableKOFound") & 0x0F}
+
+    def _why(self, move: int) -> dict[str, object]:
+        h = self.h
+        record = self.decisions[-1] if self.decisions else {}
+        moves = list(record.get("moves", []))
+        slot = moves.index(move) if move in moves else None
+        layers = {t["layer"]: t["delta"][slot] for t in record.get("layer_trace", [])
+                  if slot is not None and t["delta"][slot]}
+        ko_max = h.read8("wAIPlayerKOMaxDamage")
+        believed = (ko_max & 0x1F) << 8 | h.read8("wAIPlayerKOMaxDamage", 1) if ko_max & 0x80 else None
+        why = {"tier": max(0, h.read8("wAITier") - 1), "slot_layers": layers,
+               "possible_ko": self._kill_masks.get("possible_ko", 0),
+               "reliable_ko": self._kill_masks.get("reliable_ko", 0),
+               "player_said_ko": h.read8("wAIPlayerKOCache") == 2,  # AI_KO_CACHE_YES
+               "believed_max_hit": believed,
+               "hp": self._word("wEnemyMonHP"), "max_hp": self._word("wEnemyMonMaxHP"),
+               "player_species": h.read8("wBattleMonSpecies"),
+               "player_moves": list(h.read_bytes("wBattleMonMoves", 4)),
+               "ko_scan": [list(x) for x in self._ko_scan]}
+        self._why_pending = why
+        return why
 
     def _b5_decision(self, _context) -> None:
         h = self.h
@@ -650,6 +749,8 @@ class BattleAITelemetry:
         if move == NO_SELECTION:
             return
         self._setup_event("select", move)
+        if move in self.setup_moves:
+            self.setup_events[-1]["why"] = self._why(move)
         moves = h.read_bytes("wEnemyMonMoves", 4)
         pp = h.read_bytes("wEnemyMonPP", 4)
         disabled_slot = h.read8("wEnemyDisabledMove") >> 4  # 1-4, 0 = none
@@ -701,6 +802,7 @@ class BattleAITelemetry:
                 "plan_turns": len(self.plan_turns),
                 "setup_events": len(self.setup_events),
                 "b5_events": len(self.b5_events),
+                "b4_results": len(self.b4_results),
                 "switches": self.switches["count"],
                 "turns": self.turn_count["value"],
                 "party": self._party_hp(),
@@ -745,6 +847,8 @@ class BattleAITelemetry:
             return None
         try:
             record["b5"] = classify_b5(self.b5_events[start["b5_events"]:])
+            checks = self.b4_results[start["b4_results"]:]
+            record["b4"] = {"checks": len(checks), "top_reserve_dies": checks.count(False)}
         except Exception as error:
             self.errors.append(f"classify_b5: {error!r}")
         if len(self.errors) > self._errors_at_start:

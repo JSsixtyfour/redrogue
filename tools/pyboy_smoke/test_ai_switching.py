@@ -722,6 +722,57 @@ class AIShouldSwitchTest(unittest.TestCase):
                 h.write8(label, value, offset=offset)
         return hit
 
+    def fallback_case(self, second: str, a_dies: bool = True):
+        """FOLLOWUPS #88 board: player Snorlax L60 (Splash unrevealed, so the AI
+        guesses a Normal STAB move), enemy Pikachu at 2/5 HP (lethal), reserves
+        Aerodactyl (resists Normal: ranked best) at a lethal HP when a_dies, and
+        `second`. Returns (switched, chosen slot, info)."""
+        info = {}
+
+        def post_boot(h):
+            word = lambda label: int.from_bytes(bytes(h.read_bytes(label, 2)), "big")  # noqa: E731
+            active_hp = word("wEnemyMonMaxHP") * 2 // 5
+            h.write8("wEnemyMonHP", active_hp >> 8)
+            h.write8("wEnemyMonHP", active_hp & 255, offset=1)
+            for slot in (2, 3):
+                info[slot] = {"max": word(f"wEnemyMon{slot}MaxHP"), "hit": self.reserve_slot_hit(h, slot),
+                              "speed": word(f"wEnemyMon{slot}Speed")}
+            info["player_speed"] = word("wBattleMonSpeed")
+            if a_dies:  # above a quarter (no HP-penalty reorder) and at or below the hit
+                a_hp = max(info[2]["max"] // 4 + 1, min(info[2]["hit"], info[2]["max"] - 1))
+                h.write8("wEnemyMon2HP", a_hp >> 8)
+                h.write8("wEnemyMon2HP", a_hp & 255, offset=1)
+                info[2]["hp"] = a_hp
+            info["checks"] = h.hook_flag("AIBestReserveSurvivesThreat")
+
+        player = dict(self.mon("SNORLAX", ["SPLASH"]), level=60)
+        switched = self.call_should_switch(
+            player, [self.mon("PIKACHU"), self.mon("AERODACTYL"), self.mon(second)],
+            ai_tier=2, post_boot=post_boot)
+        return switched, self.harness.read8("wBuffer", 19), info
+
+    def test_fallback_switches_to_the_next_reserve_that_survives(self) -> None:
+        # FOLLOWUPS #88, its own reproduction board: Aerodactyl ranks best but
+        # dies on entry (the guessed Body Slam does 51 to its 51 HP). The enemy
+        # Snorlax outspeeds the player's (57 vs 54) and keeps more than half (102
+        # of 230), so B4 and B5 v2 both pass it. Before the fallback the AI
+        # stayed in and its Pikachu died.
+        switched, slot, info = self.fallback_case("SNORLAX")
+        self.assertGreaterEqual(info[2]["hit"], info[2]["hp"], info)  # Aerodactyl really dies
+        self.assertGreater(info[3]["speed"], info["player_speed"], info)
+        self.assertLess(2 * info[3]["hit"], info[3]["max"], info)  # Snorlax keeps half
+        self.assertEqual(info["checks"]["count"], 2)  # Aerodactyl, then Snorlax
+        self.assertTrue(switched)
+        self.assertEqual(slot, 2)
+
+    def test_fallback_still_stays_when_the_next_reserve_would_lose_half(self) -> None:
+        # Tauros survives the entry hit, and is faster, but it would lose 78 of
+        # 145: B5 sacrifices the active mon rather than spend most of Tauros.
+        switched, slot, info = self.fallback_case("TAUROS")
+        self.assertEqual(info["checks"]["count"], 2)
+        self.assertGreaterEqual(2 * info[3]["hit"], info[3]["max"], info)
+        self.assertFalse(switched)
+
     def test_no_emergency_switch_into_a_reserve_no_better_off(self) -> None:
         # Review F5 (2026-09-29): Rattata takes Body Slam exactly as Pikachu
         # does, at the same full HP, so switching only hands over a free hit.

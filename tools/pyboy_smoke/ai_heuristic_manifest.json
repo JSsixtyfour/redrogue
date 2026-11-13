@@ -1103,11 +1103,11 @@
    }
   },
   "AISmart_Screen": {
-   "summary": "AI_SMART handler: a screen is scored against the player's dominant attack category (B11).",
+   "summary": "AI_SMART handler: a screen is scored against the player's dominant attack category (B11); scored by the actions it buys (ai_screen.asm).",
    "positive": {
-    "requirement": "matching category at half HP or more: encouraged",
+    "requirement": "encouraged by the actions a screen buys before the player's best believed hit KOs us (ai_screen.asm, 2026-11-12)",
     "tests": [
-     "test_ai_heuristic_gaps.AISmartGapsTest.test_screen_matching_category_encouraged_while_healthy"
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_screen_handler_counts_the_actions_it_buys"
     ]
    },
    "negative": {

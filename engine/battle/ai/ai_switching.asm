@@ -192,7 +192,9 @@ AISelectSendOut::
 ; is fed through are restored. Clobbers af, bc, de, hl.
 AIRankSendOutCandidates:
 	farcall AIBuildPlayerThreatTypes ; bank $0E; no register contract
-	ld a, $ff ; worse than any real combined score
+	xor a
+	ld [wBuffer + AI_BUF_SENDOUT_SKIP], a ; a fresh ranking excludes no one (#88)
+	dec a ; $ff: worse than any real combined score
 AIRankSendOutCandidatesBelow:
 	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a
 ; PreviewTypeMatchup reads its defender types from wEnemyMonType and its
@@ -218,6 +220,14 @@ AIRankSendOutCandidatesBelow:
 	ld a, [wEnemyMonPartyPos]
 	cp b
 	jr z, .skip ; never pick the mon that is already out
+; #88: a reserve the switch fallback already found dying on entry.
+	ld a, b
+	call AIPartySlotBit ; clobbers b
+	ld hl, wBuffer + AI_BUF_SENDOUT_SKIP
+	and [hl]
+	ld a, [wBuffer + AI_BUF_SCANSLOT]
+	ld b, a ; b = this slot again
+	jr nz, .skip
 	ld hl, wEnemyMon1
 	ld a, b
 	ld bc, PARTYMON_STRUCT_LENGTH
@@ -416,6 +426,10 @@ AIMonHasDamagingPP:
 ; score is the ranking's bound, so pruning stops at the first proof either way.
 ; Clobbers af, bc, de, hl.
 AIReplacementIsBetter:
+	xor a
+	ld [wBuffer + AI_BUF_SENDOUT_SKIP], a ; a fresh ranking excludes no one (#88)
+; The #88 fallback's re-rank: the same, keeping the slots excluded so far.
+AIReplacementIsBetterKeepSkip:
 	farcall AIBuildPlayerThreatTypes
 	ld a, $ff
 	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a ; no bound for the active mon
@@ -445,13 +459,35 @@ AIReplacementIsBetter:
 ; switching is attacking, switching into a mon the player KOs anyway only hands
 ; over the turn. Not used by the frozen/long-sleep trigger, whose alternative is
 ; doing nothing at all. Clobbers af, bc, de, hl.
+;
+; FOLLOWUPS #88 (2026-11-12): when the top-ranked reserve would be KO'd on entry,
+; exclude it and re-rank, up to AI_SENDOUT_FALLBACKS times, so a slightly worse
+; reserve that still beats the active mon and survives gets its chance. Measured
+; first: in 250 autoplay seeds the top reserve failed this check in 73% of 13,218
+; checks, each ending the switch question with "stay". B5 (AISacrificeBeatsSwitch)
+; still judges whichever reserve survives, from that reserve's own B4 scan.
 AIReplacementIsBetterAndSurvives:
 	call AIReplacementIsBetter
 	ret nc
+	ld a, AI_SENDOUT_FALLBACKS + 1
+	ld [wBuffer + AI_BUF_SENDOUT_TRIES], a
+.check
 	farcall AIBestReserveSurvivesThreat ; e = 1 survives, 0 = would be KO'd
 	ld a, e
 	and a
-	ret z ; carry clear
+	jr nz, .survives
+	ld hl, wBuffer + AI_BUF_SENDOUT_TRIES
+	dec [hl]
+	ret z ; out of tries (`and a` cleared the carry; dec keeps it)
+	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
+	call AIPartySlotBit ; clobbers b
+	ld hl, wBuffer + AI_BUF_SENDOUT_SKIP
+	or [hl]
+	ld [hl], a
+	call AIReplacementIsBetterKeepSkip
+	ret nc ; no other reserve beats the active mon
+	jr .check
+.survives
 	scf
 	ret
 

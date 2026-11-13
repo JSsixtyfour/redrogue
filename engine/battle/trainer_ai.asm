@@ -995,6 +995,20 @@ AIMoveChoiceModification2:
 	jr c, .preferMove
 	jr .nextMove
 .preferMove
+; Not setup for this bonus (2026-11-12, measured on 250 autoplay seeds, T2+):
+; Light Screen and Reflect (a screen ends when its user leaves, Gen 1 rules, and
+; Light Screen was the most picked and most wasted boost: 69% of the time the mon
+; fainted without acting again) and the single-stage self-boosts, Attack/Defense/
+; Speed/Special +1 (56% wasted, against 18% for +2). They stay legal and are
+; still picked when nothing scores better; evasion, accuracy and stat drops keep
+; the bonus. a = this move's effect.
+	cp LIGHT_SCREEN_EFFECT
+	jr z, .nextMove
+	cp REFLECT_EFFECT
+	jr z, .nextMove
+	cp SPECIAL_UP1_EFFECT + 1
+	jr c, .nextMove ; ATTACK_UP1 .. SPECIAL_UP1 (below: already filtered out)
+	ASSERT ATTACK_UP1_EFFECT + 3 == SPECIAL_UP1_EFFECT
 ; ===========================================================================
 ; USEFULNESS GATE (2026-09-01). Diagnosed from a real round-2 battle: a Krabby
 ; opened with Leer on every send-out and then split its turns roughly evenly
@@ -1462,7 +1476,8 @@ ReadMoveIntoDE::
 ; nearly-full bank. The file is kept on disk because Phase 5 may reuse its
 ; class-by-class breakdown when authoring trainer personalities.
 
-INCLUDE "data/trainers/pic_pointers_money.asm"
+; data/trainers/pic_pointers_money.asm floats in its own section since 2026-11-12
+; (main.asm "Trainer Pic Money"): GetTrainerInformation switches to its BANK().
 
 ; data/trainers/names.asm (TrainerNames) floats in its own section since
 ; 2026-11-12 (main.asm "Trainer Names"): every reader goes through BANK().
@@ -1611,6 +1626,8 @@ INCLUDE "engine/battle/ai/ai_risky.asm"
 INCLUDE "engine/battle/ai/ai_plan.asm"
 
 INCLUDE "engine/battle/ai/ai_setup_gate.asm"
+
+INCLUDE "engine/battle/ai/ai_screen.asm"
 
 JugglerAI:
 	cp 25 percent + 1

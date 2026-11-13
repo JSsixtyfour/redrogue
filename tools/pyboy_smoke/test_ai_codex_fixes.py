@@ -113,24 +113,25 @@ class RiskyChargeDeliveryTest(_AIGapsBase):
 
 
 class ScreenNoDamagingMoveTest(_MoveLayerGapsBase):
-    """F5: a player who shows only fixed-damage moves gives no screen a reason."""
+    """F5, revised 2026-11-12 (ai_screen.asm): fixed damage ignores screens, so a
+    player who shows only fixed-damage moves makes any screen a turn for nothing."""
 
     def screen_score(self, move, player_move):
         self.h.reveal_player_moves(0, [0], clear=True)
         return self.smart_score(move, {"wBattleMonMoves": self.moves[player_move],
                                        "wEnemyMonHP": (200,)})
 
-    def test_light_screen_against_fixed_damage_only_is_unchanged(self):
-        # shipped: 19 (read as a special threat)
-        self.assertEqual(self.screen_score("LIGHT_SCREEN", "SEISMIC_TOSS"), 20)
+    def test_light_screen_against_fixed_damage_only_is_discouraged(self):
+        # It halves nothing that is coming and costs the turn (was: no opinion).
+        self.assertEqual(self.screen_score("LIGHT_SCREEN", "SEISMIC_TOSS"), 22)
 
-    def test_reflect_against_fixed_damage_only_is_unchanged(self):
-        # shipped: 22 (wrong category)
-        self.assertEqual(self.screen_score("REFLECT", "SEISMIC_TOSS"), 20)
+    def test_reflect_against_fixed_damage_only_is_discouraged(self):
+        self.assertEqual(self.screen_score("REFLECT", "SEISMIC_TOSS"), 22)
 
-    def test_controls_physical_and_special_still_match(self):
-        self.assertEqual(self.screen_score("REFLECT", "BODY_SLAM"), 19)
-        self.assertEqual(self.screen_score("LIGHT_SCREEN", "PSYCHIC_M"), 19)
+    def test_wrong_category_is_still_discouraged(self):
+        # Reflect against a special-only attacker blocks nothing.
+        self.assertEqual(self.screen_score("REFLECT", "PSYCHIC_M"), 22)
+        self.assertEqual(self.screen_score("LIGHT_SCREEN", "BODY_SLAM"), 22)
 
 
 class TypesAlternativeLiveTest(_MoveLayerGapsBase):
