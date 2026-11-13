@@ -30,7 +30,8 @@
 ; defensive boosts were the most wasted kind of all, 59% in the same data.
 ;
 ; WHO ASKS. AI_DAMAGE takes back AI_SETUP's turn-1 encourage (AISetupGate), and
-; AI_PLAN drops a boost class from its directive (AIPlanFilterBoosts). T1 has no
+; AI_PLAN skips each boost slot whose own effect is withheld (its apply loop,
+; AIPlanSlotBoostWithheld, AI review CP6). T1 has no
 ; AI_DAMAGE, so its AI_SETUP encourage is not gated: the weakest tier keeps its
 ; blunt setup habit.
 
@@ -475,59 +476,3 @@ AIEstimatePlayerExplosion:
 	call _AIScanPlayerMovesForKO.restorePlayerMove
 	pop de
 	ret
-
-; From AILayerPlan. INPUT/OUTPUT de = the directive's class mask: each boost class
-; whose representative move the gate withholds is cleared from it. Speed and
-; Defense boosts never shorten a KO, so they hinge on the extra hit alone.
-; Preserves hl. Clobbers af, bc.
-AIPlanFilterBoosts:
-	push hl
-	ld hl, .classes
-.next
-	ld a, [hli]
-	ld c, a
-	ld a, [hli]
-	ld b, a ; bc = this class
-	or c
-	jr z, .done
-	ld a, e
-	and c
-	jr nz, .wanted
-	ld a, d
-	and b
-	jr z, .skip
-.wanted
-	ld a, [hl] ; its representative effect
-	push hl
-	push de
-	push bc
-	call AISetupWithheld
-	pop bc
-	pop de
-	pop hl
-	jr nc, .skip
-	ld a, c
-	cpl
-	and e
-	ld e, a
-	ld a, b
-	cpl
-	and d
-	ld d, a
-.skip
-	inc hl
-	jr .next
-.done
-	pop hl
-	ret
-
-.classes ; class mask (dw: low byte first), the effect that stands for it
-	dw AICLASS_BOOST_ATK
-	db ATTACK_UP2_EFFECT
-	dw AICLASS_BOOST_SPC
-	db SPECIAL_UP2_EFFECT
-	dw AICLASS_BOOST_SPD
-	db SPEED_UP2_EFFECT
-	dw AICLASS_BOOST_DEF
-	db DEFENSE_UP2_EFFECT
-	dw 0

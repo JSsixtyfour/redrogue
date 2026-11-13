@@ -1153,6 +1153,74 @@ class AIPlanGapsTest(_AIGapsBase):
             self.select_plan(["HORN_DRILL"], enemy_hp=(1, 200), enemy_speed=100,
                              player_speed=200), self.ai["AI_PLAN_OHKO_FISH"])
 
+    # --- AI review CP6 (2026-11-13): the setup gate per plan slot --------------
+    def plan_scores(self, moves, gate_bits=(), hurts=True, writes=None):
+        """AILayerPlan on a board whose setup gate answer is primed: the
+        AI_BUF_SETUPGATE byte AISetupTempo / AISetupExtraHitHurts would leave
+        (the named free bits, and the extra hit known to hurt or not). Returns
+        (scores of the four slots, the plan selected)."""
+        h = self.h
+        gate = (1 << self.ai["AI_SG_HURTS_KNOWN_BIT"]) | sum(1 << self.ai[b] for b in gate_bits)
+        if hurts:
+            gate |= 1 << self.ai["AI_SG_HURTS_BIT"]
+        board = {"wTrainerClass": self.trainers["COOLTRAINER_M"], "wAIReliableKOFound": 0}
+        board.update(writes or {})
+        self.select_plan(moves, writes=board)  # the same board AIPlanSelect sees
+        h.write8("wAIPlan", 0)
+        h.write8("wAIPlanStep", 0)
+        for slot in range(4):
+            h.write8("wBuffer", 20, offset=slot)
+        h.write8("wBuffer", gate, offset=self.ai["AI_BUF_SETUPGATE"])
+        h.call_routine("AILayerPlan", limit=600)
+        return list(h.read_bytes("wBuffer", 4)), h.read8("wAIPlan")
+
+    def steered(self, scores, n):
+        return [s < 20 for s in scores[:n]]
+
+    def test_plan_gate_judges_each_boost_by_its_own_effect(self):
+        # +2 shortens our KO, +1 does not, and the extra hit hurts: Swords Dance
+        # is steered, Meditate is not. The old filter judged the class by
+        # ATTACK_UP2 and steered both.
+        moves = ["SWORDS_DANCE", "MEDITATE", "TACKLE"]
+        scores, plan = self.plan_scores(moves, ["AI_SG_ATK2_FREE_BIT"])
+        self.assertEqual(plan, self.ai["AI_PLAN_SWORDS_DANCE"])
+        self.assertEqual(self.steered(scores, 3), [True, False, False], scores)
+        # Both free: both steered.
+        scores, _ = self.plan_scores(moves, ["AI_SG_ATK2_FREE_BIT", "AI_SG_ATK1_FREE_BIT"])
+        self.assertEqual(self.steered(scores, 3), [True, True, False], scores)
+        # Neither free: neither.
+        scores, _ = self.plan_scores(moves, [])
+        self.assertEqual(self.steered(scores, 3), [False, False, False], scores)
+        # Neither free but the extra hit does not hurt: both.
+        scores, _ = self.plan_scores(moves, [], hurts=False)
+        self.assertEqual(self.steered(scores, 3), [True, True, False], scores)
+        # Neither free, it hurts, but our Substitute takes the hit: both.
+        scores, _ = self.plan_scores(moves, [], writes={
+            "wEnemyBattleStatus2": 1 << self.battle["HAS_SUBSTITUTE_UP"]})
+        self.assertEqual(self.steered(scores, 3), [True, True, False], scores)
+
+    def test_plan_gate_special_boosts(self):
+        # Amnesia (+2) and Growth (+1 Special in Gen 1) in the Amnesia plan.
+        moves = ["AMNESIA", "GROWTH", "PSYCHIC_M"]
+        scores, plan = self.plan_scores(moves, ["AI_SG_SPC2_FREE_BIT"])
+        self.assertEqual(plan, self.ai["AI_PLAN_AMNESIA"])
+        self.assertEqual(self.steered(scores, 3), [True, False, False], scores)
+        scores, _ = self.plan_scores(moves, ["AI_SG_SPC2_FREE_BIT", "AI_SG_SPC1_FREE_BIT"])
+        self.assertEqual(self.steered(scores, 3), [True, True, False], scores)
+
+    def test_plan_gate_leaves_non_boost_slots_alone(self):
+        # Plans whose class mask holds a boost AND another class: the other
+        # class's slot is steered whether the gate is open or shut (measured:
+        # AmnesiaRest at 60 HP steers Rest, AgilityWrap steers Wrap).
+        for moves, writes, slot, plan_name in (
+                (["AMNESIA", "REST", "PSYCHIC_M"], {"wEnemyMonHP": (60,)}, 1, "AI_PLAN_AMNESIA_REST"),
+                (["AGILITY", "WRAP", "TACKLE"], {}, 1, "AI_PLAN_AGILITY_WRAP")):
+            for hurts in (False, True):
+                with self.subTest(moves=moves, hurts=hurts):
+                    scores, plan = self.plan_scores(moves, [], hurts=hurts, writes=dict(writes))
+                    self.assertEqual(plan, self.ai[plan_name])
+                    self.assertLess(scores[slot], 20, scores)
+
     def test_swords_dance_qualifies_stops_boosting_when_sufficient(self):
         self.assertEqual(
             self.select_plan(["SWORDS_DANCE", "TACKLE"]), self.ai["AI_PLAN_SWORDS_DANCE"])

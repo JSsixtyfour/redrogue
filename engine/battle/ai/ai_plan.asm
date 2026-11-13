@@ -57,13 +57,6 @@ AILayerPlan:
 	and a
 	ret z ; the active plan wants nothing steered this turn
 
-; Setup gate (ai_setup_gate.asm): a boost that costs a turn the foe's next hit
-; makes us regret is dropped from the directive. Plan state still advances, as
-; on a kill-override turn.
-	call AIPlanFilterBoosts ; de in/out, preserves hl
-	ld a, d
-	or e
-	ret z ; everything the plan wanted was such a boost
 	ld a, l
 
 ; Clamp before applying. AI_PLAN_MAX_MAGNITUDE is an invariant (see
@@ -101,6 +94,24 @@ AILayerPlan:
 	and c
 	jr z, .skipSlot
 .steer
+; Setup gate, per slot (AI review CP6, 2026-11-13): a boost slot is steered only
+; if the gate passes ITS OWN effect. The old filter judged a whole class by its
+; +2 move, so Sharpen, Meditate and Growth were steered whenever Swords Dance or
+; Amnesia would have been free. Boost classes hold only the stat-up effects
+; (power 0), so such a slot matched through its boost class alone. Plan state
+; still advances, as on a kill-override turn.
+	ld a, [de]
+	and LOW(AICLASS_BOOST_ANY)
+	jr nz, .boostSlot
+	inc de
+	ld a, [de]
+	dec de
+	and HIGH(AICLASS_BOOST_ANY)
+	jr z, .encourage
+.boostSlot
+	call AIPlanSlotBoostWithheld ; preserves bc, de and hl
+	jr c, .skipSlot
+.encourage
 	ld a, [wBuffer + AI_BUF_PLANMAG]
 	call AIEncourage ; preserves bc, de and hl - it clobbers only a
 .skipSlot
@@ -110,6 +121,30 @@ AILayerPlan:
 	ld a, e
 	cp LOW(wBuffer + AI_BUF_PLANCLASS + NUM_MOVES * 2)
 	jr nz, .nextSlot
+	ret
+
+; INPUT de = the apply loop's class cursor (slot N's mask at PLANCLASS + 2N).
+; Carry SET if the setup gate (AISetupWithheld) withholds that slot's move.
+; Reloads the wEnemyMove* block (nothing downstream reads it, see below).
+; Preserves bc, de, hl.
+AIPlanSlotBoostWithheld:
+	push bc
+	push de
+	push hl
+	ld a, e
+	sub LOW(wBuffer + AI_BUF_PLANCLASS)
+	srl a
+	ld c, a
+	ld b, 0
+	ld hl, wEnemyMonMoves
+	add hl, bc
+	ld a, [hl]
+	call ReadMove
+	ld a, [wEnemyMoveEffect]
+	call AISetupWithheld
+	pop hl
+	pop de
+	pop bc
 	ret
 
 ; ---------------------------------------------------------------------------
