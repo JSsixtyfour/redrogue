@@ -425,14 +425,14 @@ GetRewardMonLevel::
 
 RogueRefresh::
 	farcall MarkCurrentStageVisited  ; record this stage as visited for no-duplicate selection
-	; witch's "no reward pokemon" challenge: hide all 3 pokeballs and the
-	; trade NPC instead of the usual show/hide-by-trade-flag logic below
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
+	; e = what this stage withholds (witch challenges 1 and 2, or the run's FEWER
+	; REWARDS / NO RANDOM ITEM). Kept across the predefs below, which keep de.
+	farcall RewardChallengeFlags
+	push de                        ; e survives the object toggles; popped at .randomItemCheck
+	; no reward pokemon: hide all 3 pokeballs and the trade NPC instead of the
+	; usual show/hide-by-trade-flag logic below
+	bit 0, e
 	jr z, .normalPokeballLogic
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_NO_REWARD_POKEMON
-	jr nz, .normalPokeballLogic
 	ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1
 	ld [wToggleableObjectIndex], a
 	predef HideObject
@@ -479,16 +479,10 @@ RogueRefresh::
 	; Random_Item_Selection has run by now (batch -> item roll -> here), so
 	; the item ball's rarity colour can finally be cached.
 	farcall RefreshBallRarityCache
-	; witch's "no random item" challenge, or the run challenge (Dorm PC): hide
-	; the random item instead of the usual unconditional show
-	run_challenge RUN_CH_NO_RANDOM_ITEM
-	jr nz, .hideRandomItem
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
+	pop de
+	; no random item (witch or run challenge): hide it instead of the usual show
+	bit 1, e
 	jr z, .showRandomItem
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_NO_RANDOM_ITEM
-	jr nz, .showRandomItem
 .hideRandomItem
 	ld a, TOGGLE_STAGE_RANDOM_ITEM
 	ld [wToggleableObjectIndex], a

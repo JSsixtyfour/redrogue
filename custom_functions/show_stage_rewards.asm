@@ -14,13 +14,9 @@
 ; farcall only. Clobbers everything.
 ; ============================================================
 RogueShowStageRewards::
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	jr z, .show
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_NO_REWARD_POKEMON
-	ret z                          ; that challenge keeps them hidden
-.show
+	farcall RewardChallengeFlags
+	bit 0, e
+	ret nz                         ; no-reward challenges keep them hidden
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_ROGUE_TRADE_ACTIVE, a
 	ld a, TOGGLE_ROGUE_REWARD_POKEBALL_1

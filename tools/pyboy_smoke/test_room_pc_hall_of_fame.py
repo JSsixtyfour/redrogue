@@ -79,10 +79,10 @@ class RoomPCHallOfFameTest(unittest.TestCase):
         for _ in range(ROOM_PC_HOF_ROW):
             self.press("down")
         self.press("a", 30)
-        for row, label in ((2, "RUN TIMES"), (4, "FURTHEST RUNS"), (6, "SPECIAL FORMS"), (8, "BACK")):
+        for row, label in ((2, "RUN TIMES"), (4, "FURTHEST RUNS"), (6, "SPECIAL FORMS"), (8, "CHALLENGES"), (10, "BACK")):
             self.assertEqual(h.read_bytes("wTileMap", len(label), row * 20 + 2),
                              [CHAR_TO_BYTE[c] for c in label])
-        self.assertEqual(h.read8("wMaxMenuItem"), 3)
+        self.assertEqual(h.read8("wMaxMenuItem"), 4)
         self.assertEqual(league["count"], 0)
         self.press("a", 30)      # RECORDS -> RUN TIMES (empty before first record)
         h.tick(3, render=True)
@@ -141,7 +141,7 @@ class RoomPCHallOfFameTest(unittest.TestCase):
         for _ in range(ROOM_PC_HOF_ROW):
             self.press("down")
         self.press("a", 30)
-        self.assertEqual(h.read8("wMaxMenuItem"), 4)
+        self.assertEqual(h.read8("wMaxMenuItem"), 5)
         self.press("down")
         self.press("down")       # RECORDS -> HALL OF FAME
         self.press("a", 30)

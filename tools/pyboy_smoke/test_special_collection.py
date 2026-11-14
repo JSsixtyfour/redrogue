@@ -354,7 +354,7 @@ class PageTest(unittest.TestCase):
         self.open_list()
         self.assertEqual(h.read_bytes("wTileMap", 13, 1), self.text("SPECIAL FORMS"))
         self.press("b", 60)      # the list -> RECORDS, reloaded
-        self.assertEqual(h.read8("wMaxMenuItem"), 4, "RECORDS with a HALL OF FAME row")
+        self.assertEqual(h.read8("wMaxMenuItem"), 5, "RECORDS with a HALL OF FAME row")
 
     def test_leaving_restores_the_dorm_tileset_and_the_room_menu(self):
         h = self.h
@@ -367,7 +367,7 @@ class PageTest(unittest.TestCase):
         flags = h.read8("hUILayoutFlags")
         self.press("b", 60)      # the list -> RECORDS, reloaded
         self.shot("back_at_records")
-        self.assertEqual(h.read8("wMaxMenuItem"), 3, "RECORDS without a HALL OF FAME row")
+        self.assertEqual(h.read8("wMaxMenuItem"), 4, "RECORDS without a HALL OF FAME row")
         self.assertEqual(h.read8("hUILayoutFlags") & 0x06, 0, f"layout flags left set (were {flags:02x})")
         self.press("b", 30)      # RECORDS -> room menu
         self.press("b", 120)     # LOG OFF

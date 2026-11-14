@@ -427,7 +427,7 @@ RoomRecordsMenu::
 .menu
 	call LoadScreenTilesFromBuffer2
 	hlcoord 0, 0
-	lb bc, 8, 14
+	lb bc, 10, 14
 	ld a, [wNumHoFTeams]
 	and a
 	jr z, .drawBorder
@@ -457,6 +457,10 @@ RoomRecordsMenu::
 	call PlaceString
 	ld bc, 2 * SCREEN_WIDTH
 	add hl, bc
+	ld de, .Challenges
+	call PlaceString
+	ld bc, 2 * SCREEN_WIDTH       ; PlaceString clobbers bc
+	add hl, bc
 	ld de, .Back
 	call PlaceString
 	xor a
@@ -476,6 +480,10 @@ RoomRecordsMenu::
 	ld hl, wMaxMenuItem
 	cp [hl]
 	ret z
+	inc a
+	cp [hl]
+	jr z, .challenges            ; the row above BACK
+	dec a
 	cp 3
 	jr z, .special
 	cp 2
@@ -486,6 +494,9 @@ RoomRecordsMenu::
 	jp .menu
 .furthest
 	call FurthestRunsShow
+	jp .menu
+.challenges
+	call RunChallengesRecordsShow
 	jp .menu
 .hallOrSpecial
 	ld a, [wNumHoFTeams]
@@ -507,6 +518,8 @@ RoomRecordsMenu::
 	db "HALL OF FAME@"
 .Special
 	db "SPECIAL FORMS@"
+.Challenges
+	db "CHALLENGES@"
 .Back
 	db "BACK@"
 

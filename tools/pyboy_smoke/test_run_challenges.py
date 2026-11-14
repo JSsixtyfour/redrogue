@@ -129,6 +129,28 @@ class RunChallengeTest(unittest.TestCase):
         self.choose(RAM["RUN_CH_SAME_MOVE"], RAM["RUN_CH_RECOIL_PHYSICAL"])
         self.assertEqual(self.call("PostMoveChallengeEffects")["E"], 0b011)
 
+    def test_fewer_rewards_withholds_only_rounds_two_and_six(self):
+        rb = parse_rgbds_constants(REPO_ROOT / "constants" / "round_constants.asm")["ROUND_BATTLES"]
+        mask = 0b00100010                                  # FEWER_REWARDS_ROUND_MASK
+        self.h.write8("wRogueFlagsBitfield", self.h.read8("wRogueFlagsBitfield") & ~(1 << RAM["BIT_WITCH_ACCEPTED"]))
+        self.choose()
+        self.h.write8("wBattleCount", rb + 1)
+        self.assertEqual(self.call("RewardChallengeFlags")["E"], 0, "off: nothing withheld")
+        self.choose(RAM["RUN_CH_FEWER_REWARDS"])
+        for rnd in range(9):
+            for step in (1, rb - 1):                       # first and last stage battle of the round
+                self.h.write8("wBattleCount", rnd * rb + step)
+                want = 1 if (rnd < 8 and mask >> rnd & 1) else 0
+                self.assertEqual(self.call("RewardChallengeFlags")["E"], want, f"round {rnd} step {step}")
+        self.choose(RAM["RUN_CH_NO_RANDOM_ITEM"])
+        self.h.write8("wBattleCount", 1)
+        self.assertEqual(self.call("RewardChallengeFlags")["E"], 0b10)
+
+    def test_witch_party_limit_rerolled_while_fewer_rewards_on(self):
+        self.choose(RAM["RUN_CH_FEWER_REWARDS"])
+        out = self.call("WitchChallengeIsRunActive", D=RAM["CHALLENGE_PARTY_LIMIT"])
+        self.assertTrue(out["F"] & CARRY)
+
 
 if __name__ == "__main__":
     unittest.main()

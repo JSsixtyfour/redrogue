@@ -167,23 +167,8 @@ RunChallengesCommitClear::
 ; Also what the Dorm PC list shows as the current heat. Clobbers af, bc, de, hl.
 ; ============================================================
 RunChallengeHeat::
-	ld bc, 0                      ; b = heat, c = RUN_CH_* id
-.loop
-	ld a, c
-	call RunChallengeIsOn
-	jr z, .off
-	ld hl, RunChallengeWeights
-	ld e, c
-	ld d, 0
-	add hl, de
-	ld a, [hl]
-	add b
+	call RunChallengeWeightSum
 	ld b, a
-.off
-	inc c
-	ld a, c
-	cp NUM_RUN_CHALLENGES
-	jr c, .loop
 	ld a, [wRunChallengeBroken]
 	ld c, a
 	bit BIT_CHBADGE_IRONMAN, a
@@ -201,6 +186,32 @@ RunChallengeHeat::
 	add b
 	ret
 .done
+	ld a, b
+	ret
+
+; ============================================================
+; RunChallengeWeightSum - a = the summed heat weights of the challenges on, and
+; nothing else: what the Dorm PC list shows between runs, before Ironman and the
+; difficulty are known. Clobbers af, bc, de, hl.
+; ============================================================
+RunChallengeWeightSum:
+	ld bc, 0                      ; b = heat, c = RUN_CH_* id
+.loop
+	ld a, c
+	call RunChallengeIsOn
+	jr z, .off
+	ld hl, RunChallengeWeights
+	ld e, c
+	ld d, 0
+	add hl, de
+	ld a, [hl]
+	add b
+	ld b, a
+.off
+	inc c
+	ld a, c
+	cp NUM_RUN_CHALLENGES
+	jr c, .loop
 	ld a, b
 	ret
 
@@ -295,7 +306,7 @@ WitchToRunChallenge:
 	db RUN_CH_REDUCED_RARITY  ; 4  REDUCED_RARITY
 	db RUN_CH_HIGHER_LEVELS   ; 5  INCREASED_LEVELS
 	db RUN_CH_RARER_FOES      ; 6  INCREASED_RARITY_FOES
-	db NO_RUN_CH              ; 7  PARTY_LIMIT
+	db RUN_CH_FEWER_REWARDS   ; 7  PARTY_LIMIT (its quote assumes one reward per round)
 	db RUN_CH_SLOWED          ; 8  SLOWED_POKEMON
 	db NO_RUN_CH              ; 9  ALL_POISONED
 	db RUN_CH_TURN_LIMIT      ; 10 TURN_LIMIT
@@ -370,3 +381,473 @@ PostMoveChallengeEffects::
 	ret z
 	set 2, e
 	ret
+
+; ============================================================
+; RewardChallengeFlags - e = which of a stage's rewards are withheld, from the
+; witch's accepted challenge and the run challenges together:
+;   bit 0 hide the reward balls and trade NPC
+;   bit 1 hide the random item
+; FEWER REWARDS hides the balls on the rounds set in FEWER_REWARDS_ROUND_MASK.
+; farcall only (e comes back). Clobbers af, bc, hl.
+; ============================================================
+RewardChallengeFlags::
+	ld e, 0
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_WITCH_ACCEPTED, a
+	jr z, .runChallenges
+	ld a, [wWitchChallenge]
+	cp CHALLENGE_NO_REWARD_POKEMON
+	jr nz, .notNoRewards
+	set 0, e
+.notNoRewards
+	cp CHALLENGE_NO_RANDOM_ITEM
+	jr nz, .runChallenges
+	set 1, e
+.runChallenges
+	run_challenge RUN_CH_NO_RANDOM_ITEM
+	jr z, .noItemRun
+	set 1, e
+.noItemRun
+	run_challenge RUN_CH_FEWER_REWARDS
+	ret z
+	; b = this stage's 0-based round, as WitchZoneRound computes it
+	call GetRunProgress
+	and a
+	jr z, .gotCount
+	dec a
+.gotCount
+	ld b, 0
+.divLoop
+	cp ROUND_BATTLES
+	jr c, .divDone
+	sub ROUND_BATTLES
+	inc b
+	jr .divLoop
+.divDone
+	ld a, b
+	cp NUM_ROGUE_ROUNDS
+	ret nc                        ; Victory Road and Endless keep their rewards
+	inc b
+	ld a, FEWER_REWARDS_ROUND_MASK
+.shift
+	dec b
+	jr z, .gotBit
+	srl a
+	jr .shift
+.gotBit
+	bit 0, a
+	ret z
+	set 0, e
+	ret
+
+; ============================================================
+; RunChallengesMenu - the Dorm PC's CHALLENGES list, farcalled from RoomPC
+; (custom_functions/room_pc.asm), which restores its own screen on return.
+; One row per RUN_CH_* id with an ON/OFF column, RUN_CH_PAGE rows to a page
+; (UP past the first row or DOWN past the last turns the page), the heat of
+; the choice, and the highlighted row's description in the text box through
+; RoomPrintDescription's cursor hook. A toggles the row, B leaves. While a run
+; is in progress (EVENT_GOT_STARTER) the list is read only.
+; wBuffer: +29 nonzero (the description hook), +8 page, +9 cursor row, +10 rows on this
+; page, +11 row being drawn, +12 scratch, +14 page's first id (the scroll offset
+; RoomPrintDescription adds to the cursor), +27/+28 = 0 (no ownership filter).
+; Clobbers everything.
+; ============================================================
+DEF RUN_CH_PAGE EQU 8
+DEF RUN_CH_PAGES EQU (NUM_RUN_CHALLENGES + RUN_CH_PAGE - 1) / RUN_CH_PAGE
+
+RunChallengesMenu::
+	xor a
+	ld [wBuffer + 8], a
+	ld [wBuffer + 9], a
+	ld [wBuffer + 27], a
+	ld [wBuffer + 28], a
+	inc a
+	ld [wBuffer + 29], a          ; RoomPrintDescription hands the draw to this bank
+.redraw
+	call LoadScreenTilesFromBuffer2
+	ldh a, [hUILayoutFlags]
+	set BIT_DOUBLE_SPACED_MENU, a ; inverted name: SET gives a 1-row stride
+	ldh [hUILayoutFlags], a
+	; The page's first id and how many rows it has, then the cursor kept inside it.
+	ld a, [wBuffer + 8]
+	add a
+	add a
+	add a
+	ld [wBuffer + 14], a
+	ld b, a
+	ld a, NUM_RUN_CHALLENGES
+	sub b
+	cp RUN_CH_PAGE
+	jr c, .gotRows
+	ld a, RUN_CH_PAGE
+.gotRows
+	ld [wBuffer + 10], a
+	dec a
+	ld hl, wBuffer + 9
+	cp [hl]
+	jr nc, .cursorOk
+	ld [hl], a                    ; the cursor was beyond this page's last row
+.cursorOk
+	hlcoord 0, 0
+	lb bc, RUN_CH_PAGE + 1, 18    ; the rows plus the heat line
+	call TextBoxBorder
+	call UpdateSprites
+	xor a
+	ld [wBuffer + 11], a
+.drawRow
+	ld a, [wBuffer + 14]
+	ld hl, wBuffer + 11
+	add [hl]                      ; this row's RUN_CH_* id
+	ld [wBuffer + 12], a
+	add a
+	ld c, a
+	ld b, 0
+	ld hl, RunChallengeNames
+	add hl, bc
+	ld a, [hli]
+	ld d, [hl]
+	ld e, a
+	ld a, [wBuffer + 11]
+	inc a                         ; screen row 1 + row
+	hlcoord 2, 0
+	ld bc, SCREEN_WIDTH
+	call AddNTimes
+	push hl
+	call PlaceString
+	pop hl
+	ld bc, 14
+	add hl, bc                    ; the ON/OFF column
+	push hl                       ; RunChallengeIsOn returns its own hl
+	ld a, [wBuffer + 12]
+	call RunChallengeIsOn
+	pop hl                        ; keeps the flags
+	ld de, .OnText
+	jr nz, .placeValue
+	ld de, .OffText
+.placeValue
+	call PlaceString
+	ld hl, wBuffer + 11
+	inc [hl]
+	ld a, [wBuffer + 10]
+	cp [hl]
+	jr nz, .drawRow
+	; The heat line: HEAT n, LOCKED during a run, and the page.
+	hlcoord 2, RUN_CH_PAGE + 1
+	ld de, .HeatText
+	call PlaceString
+	CheckEvent EVENT_GOT_STARTER
+	jr z, .betweenRuns
+	call RunChallengeHeat         ; the run's own, Ironman and difficulty included
+	ld b, a
+	hlcoord 9, RUN_CH_PAGE + 1
+	ld de, .LockedText
+	push bc
+	call PlaceString
+	pop bc
+	ld a, b
+	jr .showHeat
+.betweenRuns
+	call RunChallengeWeightSum
+.showHeat
+	ld [wBuffer + 12], a
+	ld de, wBuffer + 12
+	hlcoord 7, RUN_CH_PAGE + 1
+	lb bc, 1, 2
+	call PrintNumber
+	hlcoord 16, RUN_CH_PAGE + 1
+	ld a, [wBuffer + 8]
+	add CHARVAL("1")
+	ld [hli], a
+	ld a, CHARVAL("/")
+	ld [hli], a
+	ld [hl], CHARVAL("0") + RUN_CH_PAGES
+
+	ld a, [wBuffer + 9]
+	ldh [hCurrentMenuItem], a
+	ld hl, wTopMenuItemY
+	ld a, 1
+	ld [hli], a                   ; wTopMenuItemY
+	ld [hli], a                   ; wTopMenuItemX
+	inc hl                        ; skip wTileBehindCursor
+	ld a, [wBuffer + 10]
+	dec a
+	ld [hli], a                   ; wMaxMenuItem
+	ld a, PAD_A | PAD_B
+	ld [hli], a                   ; wMenuWatchedKeys
+	xor a
+	ld hl, wListScrollOffset      ; overlaps the flag below, so zero it first
+	ld [hli], a
+	ld [hl], a
+	inc a
+	ld [wMenuWatchMovingOutOfBounds], a ; a push past the ends turns the page
+	ld hl, wBagPocketsFlags
+	set BIT_ROOM_DESC_BOX, [hl]
+	call RunChallengePrintDescription
+	call HandleMenuInput
+	ld hl, wBagPocketsFlags
+	res BIT_ROOM_DESC_BOX, [hl]   ; leaves a alone - it still holds the keys pressed
+	ld b, a
+	xor a
+	ld [wMenuWatchMovingOutOfBounds], a ; other menus assume it clear
+	ld a, b
+	call PlaceUnfilledArrowMenuCursor
+	bit B_PAD_B, a
+	ret nz                        ; RoomPC's jp .menu restores the screen
+	bit B_PAD_A, a
+	jr nz, .select
+	bit B_PAD_UP, a
+	jr nz, .previousPage
+	ld a, [wBuffer + 8]           ; DOWN past the last row: the next page, wrapping
+	inc a
+	cp RUN_CH_PAGES
+	jr c, .newPage
+	xor a
+.newPage
+	ld [wBuffer + 8], a
+	xor a
+	ld [wBuffer + 9], a           ; its first row
+	jp .redraw
+.previousPage
+	ld a, [wBuffer + 8]
+	and a
+	jr nz, .notFirstPage
+	ld a, RUN_CH_PAGES
+.notFirstPage
+	dec a
+	ld [wBuffer + 8], a
+	ld a, $FF
+	ld [wBuffer + 9], a           ; clamped to its last row on the redraw
+	jp .redraw
+.select
+	ldh a, [hCurrentMenuItem]
+	ld [wBuffer + 9], a
+	CheckEvent EVENT_GOT_STARTER
+	jp nz, .redraw                ; locked: the list is only shown
+	ld a, [wBuffer + 9]
+	ld b, a
+	ld a, [wBuffer + 14]
+	add b
+	call RunChallengeMask         ; hl = its byte, a = its bit
+	xor [hl]
+	ld [hl], a
+	jp .redraw
+
+.HeatText:
+	db "HEAT@"
+.LockedText:
+	db "LOCKED@"
+.OnText:
+	db "ON @"
+.OffText:
+	db "OFF@"
+
+; The highlighted row's description, drawn into the text box. The cursor-move
+; hook reaches it through RoomPrintDescription (bank $2D), which cannot read
+; strings in this bank, while wBuffer + 29 is nonzero. Clobbers af, bc, de, hl.
+RunChallengePrintDescription::
+	hlcoord 1, 14
+	lb bc, 3, SCREEN_WIDTH - 2
+	call ClearScreenArea
+	ldh a, [hCurrentMenuItem]
+	ld c, a
+	ld a, [wBuffer + 14]          ; the page's first id
+	add c
+	add a
+	ld c, a
+	ld b, 0
+	ld hl, RunChallengeDescs
+	add hl, bc
+	ld a, [hli]
+	ld d, [hl]
+	ld e, a
+	hlcoord 1, 14
+	jp PlaceString
+
+MACRO run_challenge_text
+	; \1 = label suffix, \2 = name (14 characters at most), \3 = description
+	; (two lines of 18 characters at most)
+RunChallengeName\1: db \2, "@"
+RunChallengeDesc\1: db \3, "@"
+ENDM
+
+RunChallengeNames:
+	dw RunChallengeNameRarity, RunChallengeNameFoes, RunChallengeNameLevels
+	dw RunChallengeNameItem, RunChallengeNameSlowed, RunChallengeNamePP
+	dw RunChallengeNameSame, RunChallengeNameTurns, RunChallengeNameHeal
+	dw RunChallengeNamePhys, RunChallengeNameSpec, RunChallengeNameMoney
+	dw RunChallengeNamePrice, RunChallengeNameFull, RunChallengeNameFewer
+RunChallengeDescs:
+	dw RunChallengeDescRarity, RunChallengeDescFoes, RunChallengeDescLevels
+	dw RunChallengeDescItem, RunChallengeDescSlowed, RunChallengeDescPP
+	dw RunChallengeDescSame, RunChallengeDescTurns, RunChallengeDescHeal
+	dw RunChallengeDescPhys, RunChallengeDescSpec, RunChallengeDescMoney
+	dw RunChallengeDescPrice, RunChallengeDescFull, RunChallengeDescFewer
+ASSERT (RunChallengeDescs - RunChallengeNames) == NUM_RUN_CHALLENGES * 2
+
+	run_challenge_text Rarity, "POOR REWARDS", "Rewards roll less<NEXT>rare Pokemon."
+	run_challenge_text Foes, "RARER FOES", "Trainers field<NEXT>rarer Pokemon."
+	run_challenge_text Levels, "HIGHER LEVELS", "Trainer levels go<NEXT>up by a tenth."
+	run_challenge_text Item, "NO RANDOM ITEM", "No random item<NEXT>on each route."
+	run_challenge_text Slowed, "SLOWED", "Speed of your team<NEXT>is halved."
+	run_challenge_text PP, "DOUBLE PP", "Your moves use up<NEXT>2 PP per use."
+	run_challenge_text Same, "SAME MOVE HURT", "Repeating a move<NEXT>costs 1/8 max HP."
+	run_challenge_text Turns, "TURN LIMIT", "Battles drain HP<NEXT>after a turn limit."
+	run_challenge_text Heal, "NO HEALING", "No medicine used<NEXT>outside battle."
+	run_challenge_text Phys, "PHYS RECOIL", "Physical moves<NEXT>recoil you 1/4."
+	run_challenge_text Spec, "SPEC RECOIL", "Special moves<NEXT>recoil you 1/4."
+	run_challenge_text Money, "LESS MONEY", "Prize money is<NEXT>cut by a quarter."
+	run_challenge_text Price, "PRICIER ITEMS", "Marts charge a<NEXT>quarter extra."
+	run_challenge_text Full, "FULL PARTIES", "Trainers always<NEXT>field full teams."
+	run_challenge_text Fewer, "FEWER REWARDS", "No Pokemon rewards<NEXT>after gym 1 and 5."
+
+; ============================================================
+; RunChallengesRecordsShow - RECORDS' CHALLENGES pages (RoomRecordsMenu):
+; 1/2 each run challenge with + once cleared with it on, - if not (the same
+; bit in wChallengeBadges / Hi); 2/2 the badges with no toggle and BEST HEAT.
+; A turns the page, B leaves. Clobbers everything.
+; ============================================================
+RunChallengesRecordsShow::
+	xor a
+	ld [wBuffer + 1], a           ; page
+.page
+	call ClearScreen
+	hlcoord 0, 0
+	lb bc, 16, 18
+	call TextBoxBorder
+	hlcoord 2, 1
+	ld de, .Title
+	call PlaceString
+	hlcoord 16, 1
+	ld a, [wBuffer + 1]
+	add CHARVAL("1")
+	ld [hli], a
+	ld a, CHARVAL("/")
+	ld [hli], a
+	ld [hl], CHARVAL("2")
+	ld a, [wBuffer + 1]
+	and a
+	jr nz, .extras
+	xor a
+	ld [wBuffer + 2], a               ; id being drawn
+.challengeRow
+	ld a, [wBuffer + 2]
+	add a
+	ld c, a
+	ld b, 0
+	ld hl, RunChallengeNames
+	add hl, bc
+	ld a, [hli]
+	ld d, [hl]
+	ld e, a
+	ld a, [wBuffer + 2]
+	add 2                         ; screen row 2 + id
+	hlcoord 2, 0
+	ld bc, SCREEN_WIDTH
+	call AddNTimes
+	push hl
+	call PlaceString
+	ld a, [wBuffer + 2]
+	ld hl, wChallengeBadges
+	cp 8
+	jr c, .lowIds
+	sub 8
+	ld hl, wChallengeBadgesHi
+.lowIds
+	call .bitSet
+	pop hl
+	ld bc, 15
+	add hl, bc                    ; the marker column
+	call .placeMarker
+	ld hl, wBuffer + 2
+	inc [hl]
+	ld a, [hl]
+	cp NUM_RUN_CHALLENGES
+	jr c, .challengeRow
+	jr .wait
+.extras
+	xor a
+	ld [wBuffer + 2], a               ; BIT_CHBADGE_* being drawn
+.extraRow
+	ld a, [wBuffer + 2]
+	add a
+	ld c, a
+	ld b, 0
+	ld hl, .ExtraNames
+	add hl, bc
+	ld a, [hli]
+	ld d, [hl]
+	ld e, a
+	ld a, [wBuffer + 2]
+	add 3                         ; screen row 3 + badge
+	hlcoord 2, 0
+	ld bc, SCREEN_WIDTH
+	call AddNTimes
+	push hl
+	call PlaceString
+	ld a, [wBuffer + 2]
+	ld hl, wChallengeBadges2
+	call .bitSet
+	pop hl
+	ld bc, 15
+	add hl, bc
+	call .placeMarker
+	ld hl, wBuffer + 2
+	inc [hl]
+	ld a, [hl]
+	cp NUM_CHBADGE_EXTRA
+	jr c, .extraRow
+	hlcoord 2, 11
+	ld de, .BestHeat
+	call PlaceString
+	ld de, wBestHeat
+	hlcoord 13, 11
+	lb bc, 1, 3
+	call PrintNumber
+.wait
+	call UpdateSprites
+	call WaitForTextScrollButtonPress
+	ldh a, [hJoy5]
+	bit B_PAD_B, a
+	ret nz
+	ld a, [wBuffer + 1]
+	xor 1
+	ld [wBuffer + 1], a
+	jp .page
+
+; a = bit 0-7, hl = a byte -> NZ if that bit is set. Clobbers af, b.
+.bitSet
+	ld b, a
+	ld a, 1
+	inc b
+.shift
+	dec b
+	jr z, .shifted
+	add a
+	jr .shift
+.shifted
+	and [hl]
+	ret
+
+; NZ (from .bitSet) -> "+", else "-", at hl.
+.placeMarker
+	ld a, CHARVAL("-")
+	jr z, .gotMarker
+	ld a, CHARVAL("+")
+.gotMarker
+	ld [hl], a
+	ret
+
+.Title
+	db "CHALLENGES@"
+.BestHeat
+	db "BEST HEAT@"
+.ExtraNames
+	dw .Ironman, .SetStyle, .NoGifts, .Three, .Six, .All
+	ASSERT 6 == NUM_CHBADGE_EXTRA
+.Ironman:  db "IRONMAN@"
+.SetStyle: db "SET STYLE@"
+.NoGifts:  db "NO GIFTS@"
+.Three:    db "3+ AT ONCE@"
+.Six:      db "6+ AT ONCE@"
+.All:      db "ALL AT ONCE@"

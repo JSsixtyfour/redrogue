@@ -1,7 +1,7 @@
 ; custom_functions/room_pc.asm
 ;
 ; The SilphCoDorm room PC: KEY ITEMS / FURNITURE / DECORATIONS / RECORDS
-; / LOG OFF. Modelled on engine/menus/players_pc.asm's structure (TextBoxBorder
+; / CHALLENGES / (TOGGLES) / LOG OFF. Modelled on engine/menus/players_pc.asm's structure (TextBoxBorder
 ; + PlaceString + HandleMenuInput cursor struct) and PlayerPCCartridgeSwap's
 ; farcall-out/return-to-menu template for each option. FURNITURE/DECORATIONS
 ; option lists reuse RoomDrawPickList (a small single-spaced list renderer;
@@ -20,9 +20,10 @@ SECTION "Room PC", ROMX
 DEF ROOM_PC_KEY_ITEMS   EQU 0
 DEF ROOM_PC_FURNITURE   EQU 1
 DEF ROOM_PC_DECORATIONS EQU 2
-DEF ROOM_PC_HOF         EQU 3
-DEF ROOM_PC_TOGGLES     EQU 4  ; index when the HALL OF FAME row is present
-DEF ROOM_PC_TOGGLES_NOHOF EQU 3 ; index when the HALL OF FAME row is absent
+DEF ROOM_PC_RECORDS     EQU 3
+DEF ROOM_PC_CHALLENGES  EQU 4  ; Dorm PC run challenges (RunChallengesMenu)
+DEF ROOM_PC_TOGGLES     EQU 5  ; only when wBuffer + 7 says TOGGLES is present;
+                               ; without it LOG OFF takes this index
 
 ; ============================================================
 ; RoomPC — entry point, farcalled from SilphCoDorm's PC bg_event text_asm.
@@ -43,94 +44,97 @@ RoomPC::
 	ldh a, [hUILayoutFlags]
 	res BIT_DOUBLE_SPACED_MENU, a
 	ldh [hUILayoutFlags], a
-	; RECORDS always exists; its submenu retains the Hall of Fame viewer.
-	; TOGGLES is gated independently by the persistent expansion events. Keep
-	; this two-bit layout mask in the unused tail of wBuffer for the rest of
-	; this menu; RoomDrawPickList uses only wBuffer + 0..6. Bit 0 is HALL OF
-	; FAME, bit 1 is TOGGLES.
-	ld c, 3                      ; LOG OFF index before optional rows
+	; RECORDS and CHALLENGES always exist. TOGGLES is gated by the persistent
+	; expansion events: wBuffer + 7 is 1 while it is present (RoomDrawPickList
+	; uses only wBuffer + 0..6).
 	xor a
-	ld [wBuffer + 7], a          ; HALL OF FAME absent
-	ld a, 1 ; RECORDS is always available, including before the first clear
-	and a
-	jr z, .checkToggleGate
-	ld a, 1
-	ld [wBuffer + 7], a          ; HALL OF FAME present
-	inc c
-.checkToggleGate
+	ld [wBuffer + 7], a          ; TOGGLES absent
+	ld c, ROOM_PC_TOGGLES        ; LOG OFF's index without it
 	CheckEvent EVENT_JOHTO_ACTIVATED
 	jr nz, .togglesAvailable
 	CheckEventReuseA EVENT_KANTO_TIMEWARP_ACTIVATED
 	jr z, .gotMenuGates
 .togglesAvailable
-	ld a, [wBuffer + 7]
-	or 1 << 1
+	ld a, 1
 	ld [wBuffer + 7], a
 	inc c
 .gotMenuGates
 	ld a, c                      ; wMaxMenuItem is the LOG OFF index
 	ld [wMaxMenuItem], a
-	push af
-	hlcoord 0, 0
-	pop af
-	add a                        ; (maxMenuItem+1) rows * 2 (double-spaced) + 2 border
+	; Seven rows no longer fit above the description box at two rows each, so
+	; that case draws one row each (wBuffer + 9 = 1); six or fewer keep the
+	; two-row spacing.
+	ld b, c
+	inc b                        ; interior height of a single-spaced box
+	ld a, c
+	cp ROOM_PC_TOGGLES + 1
+	ld a, 1
+	jr nc, .gotSpacing
+	ld a, c
+	add a
 	add 2
-	ld b, a
+	ld b, a                      ; interior height of a double-spaced box
+	xor a
+.gotSpacing
+	ld [wBuffer + 9], a
+	hlcoord 0, 0
 	ld c, 12
 	call TextBoxBorder
 	call UpdateSprites
-	hlcoord 2, 2
-	ld de, .KeyItemsString
+	xor a
+	ld [wBuffer + 8], a          ; row being labelled
+.labelLoop
+	ld a, [wBuffer + 8]
+	cp ROOM_PC_TOGGLES
+	jr c, .gotLabel              ; the first five rows are fixed
+	ld b, a
+	ld a, [wMaxMenuItem]
+	cp b
+	ld a, 6                      ; LOG OFF, on the last row
+	jr z, .gotLabel
+	dec a                        ; TOGGLES, the row before it
+.gotLabel
+	add a
+	ld c, a
+	ld b, 0
+	ld hl, .LabelTable
+	add hl, bc
+	ld a, [hli]
+	ld d, [hl]
+	ld e, a
+	ld a, [wBuffer + 8]
+	ld b, a
+	ld a, [wBuffer + 9]
+	and a
+	ld a, b
+	jr nz, .singleRow
+	add a
+	add 2                        ; screen row 2 + 2 * row
+	jr .gotRow
+.singleRow
+	inc a                        ; screen row 1 + row
+.gotRow
+	hlcoord 2, 0
+	ld bc, SCREEN_WIDTH
+	call AddNTimes
 	call PlaceString
-	hlcoord 2, 4
-	ld de, .FurnitureString
-	call PlaceString
-	hlcoord 2, 6
-	ld de, .DecorationsString
-	call PlaceString
-	ld a, [wBuffer + 7]
-	bit 0, a
-	jr z, .noHofLabel
-	hlcoord 2, 8
-	ld de, .HallOfFameString
-	call PlaceString
-	ld a, [wBuffer + 7]
-	bit 1, a
-	jr z, .hofOnlyLabel
-	hlcoord 2, 10
-	ld de, .TogglesString
-	call PlaceString
-	hlcoord 2, 12
-	ld de, .LogOffString
-	call PlaceString
-	jr .inputSetup
-.hofOnlyLabel
-	hlcoord 2, 10
-	ld de, .LogOffString
-	call PlaceString
-	jr .inputSetup
-.noHofLabel
-	ld a, [wBuffer + 7]
-	bit 1, a
-	jr z, .noHofNoToggleLabel
-	hlcoord 2, 8
-	ld de, .TogglesString
-	call PlaceString
-	hlcoord 2, 10
-	ld de, .LogOffString
-	call PlaceString
-	jr .inputSetup
-.noHofNoToggleLabel
-	hlcoord 2, 8
-	ld de, .LogOffString
-	call PlaceString
+	ld a, [wBuffer + 8]
+	inc a
+	ld [wBuffer + 8], a
+	ld b, a
+	ld a, [wMaxMenuItem]
+	cp b
+	jr nc, .labelLoop
 .inputSetup
 	xor a
 	ldh [hCurrentMenuItem], a
 	ld hl, wTopMenuItemY
+	ld a, [wBuffer + 9]
+	ld b, a
 	ld a, 2
+	sub b                        ; first row: 2 double-spaced, 1 single-spaced
 	ld [hli], a                  ; wTopMenuItemY
-	dec a
+	ld a, 1
 	ld [hli], a                  ; wTopMenuItemX
 	inc hl                       ; skip wTileBehindCursor
 	ld a, [wMaxMenuItem]
@@ -142,10 +146,17 @@ RoomPC::
 	ld hl, wListScrollOffset
 	ld [hli], a
 	ld [hl], a
+	; A single-spaced menu needs the 1-row cursor stride (the bit's sense is
+	; inverted from its name).
+	ld a, [wBuffer + 9]
+	and a
+	jr z, .doubleSpaced
+	ldh a, [hUILayoutFlags]
+	set BIT_DOUBLE_SPACED_MENU, a
+	ldh [hUILayoutFlags], a
+.doubleSpaced
 	; Descriptions in the text box, through the same PrintBagInfoText cursor
-	; hook the option lists use. Select the table for the two independent
-	; optional rows, since either one may exist without the other in an
-	; imported or otherwise unusual save.
+	; hook the option lists use: the table with or without the TOGGLES row.
 	ld a, [wBuffer + 7]
 	add a
 	ld c, a
@@ -187,29 +198,23 @@ RoomPC::
 	call RoomDecorationsMenu
 	jp .menu
 .notDecorations
-	; Convert the optional-row selection to 0-based form, then consume the
-	; HALL OF FAME slot when that row exists. The remaining zero is TOGGLES;
-	; every other value is LOG OFF.
-	ldh a, [hCurrentMenuItem]
-	sub ROOM_PC_HOF
-	ld c, a
-	ld a, [wBuffer + 7]
-	and 1
-	jr z, .dispatchToggle
-	ld a, c
-	and a
-	jr nz, .consumeHofSlot
+	cp ROOM_PC_RECORDS           ; a still holds the selected row
+	jr nz, .notRecords
 	rfarcall RoomRecordsMenu
 	; The submenu restores map graphics after using the Hall of Fame viewer.
 	jp .menu
-.consumeHofSlot
-	dec c
-.dispatchToggle
+.notRecords
+	cp ROOM_PC_CHALLENGES
+	jr nz, .notChallenges
+	farcall RunChallengesMenu
+	jp .menu
+.notChallenges
+	ld c, a
 	ld a, [wBuffer + 7]
-	and 2
-	jr z, .logOff
-	ld a, c
 	and a
+	jr z, .logOff                ; no TOGGLES row: this is LOG OFF
+	ld a, c
+	cp ROOM_PC_TOGGLES
 	jr nz, .logOff
 	call RogueGroupToggleMenu
 	jp .menu
@@ -266,10 +271,15 @@ RoomPC::
 	db "DECORATIONS@"
 .HallOfFameString:
 	db "RECORDS@"
+.ChallengesString:
+	db "CHALLENGES@"
 .TogglesString:
 	db "TOGGLES@"
 .LogOffString:
 	db "LOG OFF@"
+.LabelTable:
+	dw .KeyItemsString, .FurnitureString, .DecorationsString, .HallOfFameString, \
+	   .ChallengesString, .TogglesString, .LogOffString
 
 ; ============================================================
 ; RoomFurnitureMenu — TOP / MIDDLE / PC / BOTTOM category select, then an
@@ -460,30 +470,23 @@ RoomBottomNameTable:
 ; Keep a table for each combination because either optional row can be absent
 ; independently in an imported or otherwise unusual save.
 RoomPCDescTable:
-	dw .KeyItems, .Furniture, .Decorations, .LogOff
+	dw .KeyItems, .Furniture, .Decorations, .HallOfFame, .Challenges, .LogOff
 .KeyItems:    db "Store or take back<NEXT>your KEY ITEMS.@"
 .Furniture:   db "Rearrange the room<NEXT>and its fixtures.@"
 .Decorations: db "Set out dolls and<NEXT>keepsakes on show.@"
 .HallOfFame:  db "View run times<NEXT>and CHAMPIONS.@"
+.Challenges:  db "Handicaps for the<NEXT>next run.@"
 .Toggles:     db "Turn extra species<NEXT>pools on or off.@"
 .LogOff:      db "Close the PC.@"
 
-RoomPCDescTableHoF:
+RoomPCDescTableToggles:
 	dw RoomPCDescTable.KeyItems, RoomPCDescTable.Furniture, \
 	   RoomPCDescTable.Decorations, RoomPCDescTable.HallOfFame, \
-	   RoomPCDescTable.Toggles, RoomPCDescTable.LogOff
+	   RoomPCDescTable.Challenges, RoomPCDescTable.Toggles, RoomPCDescTable.LogOff
 
-RoomPCDescTableHofOnly:
-	dw RoomPCDescTable.KeyItems, RoomPCDescTable.Furniture, \
-	   RoomPCDescTable.Decorations, RoomPCDescTable.HallOfFame, \
-	   RoomPCDescTable.LogOff
-
+; Indexed by wBuffer + 7 (TOGGLES present).
 RoomPCDescTablePointers:
-	; Activation events are awarded only after a Hall of Fame record exists, so
-	; mask 2 is not reachable in normal play. Keep a safe fallback pointer for
-	; manually edited/imported saves without spending another five-entry table.
-	dw RoomPCDescTable, RoomPCDescTableHofOnly, \
-	   RoomPCDescTable, RoomPCDescTableHoF
+	dw RoomPCDescTable, RoomPCDescTableToggles
 
 RoomTopDescTable:
 	dw .Wall, .Bookshelf, .AwardShelf, .Window, .Chalkboard, .Tv, .TvGame, \
@@ -1164,6 +1167,7 @@ RoomSetPickListOpts:
 	; filter can never leak from one list into the next.
 	ld [wBuffer + 27], a
 	ld [wBuffer + 28], a
+	ld [wBuffer + 29], a         ; descriptions are this bank's unless a list says otherwise
 	ret
 
 ; ============================================================
@@ -1321,6 +1325,11 @@ RoomPickTableEntry:
 ; <NEXT>, which steps down 2 rows while BIT_SINGLE_SPACED_LINES is clear.
 ; ============================================================
 RoomPrintDescription::
+	ld a, [wBuffer + 29]         ; nonzero: the list's strings live in another bank
+	and a
+	jr z, .drawHere
+	farjp RunChallengePrintDescription
+.drawHere
 	hlcoord 1, 14
 	ld b, 3
 	ld c, SCREEN_WIDTH - 2

@@ -323,6 +323,12 @@ ASSERT const_value <= 16, "wRunChallenges / wChallengeBadges hold 16 bits"
 	const BIT_CHBADGE_ALL         ; 5 cleared with every run challenge on
 DEF NUM_CHBADGE_EXTRA EQU const_value
 
+; FEWER REWARDS withholds the stage reward Pokemon on the 0-based rounds whose bit is
+; set here (bit n = round n): %00100010 is rounds 2 and 6 by the player's count, the
+; routes after gym 1 and gym 5. Round 1 is never withheld (starter + Reward Room + stage
+; reward = 3 Pokemon at the first gym). Victory Road and Endless (round 8+) never are.
+DEF FEWER_REWARDS_ROUND_MASK EQU %00100010
+
 ; Run turn limit: the same 6 + round the witch quotes (WitchComputeTurnLimit).
 ; wRunTurnsLeft counts DOWN from it, so the run needs one byte, not the witch's
 ; limit + count pair, which sits in a UNION the witch's other challenges share.
