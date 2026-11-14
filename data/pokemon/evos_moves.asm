@@ -2351,8 +2351,8 @@ OmanyteEvosMoves:
 	db EVOLVE_LEVEL, 40, OMASTAR
 	db 0
 ; Learnset
-    db 10, BUBBLE
-	db 15, CONSTRICT
+    db 5,  BUBBLE
+	db 8, CONSTRICT
 	db 18, BUBBLEBEAM
 	db 22, HORN_ATTACK
 	db 25, ROCK_THROW

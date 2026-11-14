@@ -339,6 +339,9 @@ LoadPartyIconChansey:
 
 ; A reorder changes which graphics belong to each eight-tile slot.
 ReloadYellowLegacyPartyIcons::
+	; Publish SwitchPartyMon's hidden OAM before touching visible VRAM.
+	; Sound waits can return early, so they cannot guarantee this VBlank.
+	call DelayFrame
 	jp LoadPartyIconsBySlot
 
 INCLUDE "data/icon_pointers.asm"

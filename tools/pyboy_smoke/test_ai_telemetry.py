@@ -113,6 +113,74 @@ class ClassifyB5Test(unittest.TestCase):
         self.assertEqual(record["doomed"], {"stay_end": "fainted", "stay_turns": 0, "stay_acts": 1,
                                             "hp_at_first_act": 30, "dealt_hp": 30, "dealt_kos": 0})
 
+    # --- SF2 (2026-11-13): the terminal "end" event --------------------------
+    def test_a_battle_winning_attack_counts_its_damage_and_ko(self):
+        # The switch-in's attack KOs the player's last mon: the act event was logged
+        # before the hit landed, so only the end event carries its damage and KO.
+        events = [self.decision("switch"),
+                  {"kind": "switch", "pos": 0, "hp": 30, "php": 120, "pko": 2},
+                  {"kind": "turn", "pos": 1, "hp": 60, "php": 120, "pko": 2},
+                  {"kind": "act", "pos": 1, "hp": 60, "php": 120, "pko": 2},
+                  {"kind": "end", "pos": 1, "hp": 60, "php": 0, "pko": 3}]
+        (record,) = classify_b5(events)
+        self.assertEqual(record["switch_in"], {"stay_end": "player_blacked_out", "stay_turns": 1, "stay_acts": 1,
+                                               "hp_at_first_act": 60, "dealt_hp": 120, "dealt_kos": 1})
+        self.assertEqual((record["acted"], record["hits_before_act"]), (True, 1))
+
+    def test_without_the_end_event_the_final_hit_is_lost(self):
+        # The v1 shape (what old runs hold): same battle, no end event.
+        events = [self.decision("switch"),
+                  {"kind": "switch", "pos": 0, "hp": 30, "php": 120, "pko": 2},
+                  {"kind": "turn", "pos": 1, "hp": 60, "php": 120, "pko": 2},
+                  {"kind": "act", "pos": 1, "hp": 60, "php": 120, "pko": 2}]
+        (record,) = classify_b5(events)
+        self.assertEqual((record["switch_in"]["stay_end"], record["switch_in"]["dealt_hp"],
+                          record["switch_in"]["dealt_kos"]), ("battle_end", 0, 0))
+
+    def test_ordinary_attack_then_another_turn_is_unchanged(self):
+        events = [self.decision("sacrifice") | {"php": 200, "pko": 0},
+                  {"kind": "act", "pos": 0, "hp": 30, "php": 200, "pko": 0},
+                  {"kind": "turn", "pos": 0, "hp": 10, "php": 150, "pko": 0},
+                  {"kind": "faint", "pos": 0, "hp": 0, "php": 150, "pko": 0}]
+        (record,) = classify_b5(events)
+        self.assertEqual(record["doomed"], {"stay_end": "fainted", "stay_turns": 1, "stay_acts": 1,
+                                            "hp_at_first_act": 30, "dealt_hp": 50, "dealt_kos": 0})
+
+    def test_the_end_event_is_not_credited_to_a_replacement(self):
+        # The doomed mon faints, the replacement comes in, acts, and the player blacks out:
+        # the doomed stay ends at its faint, the replacement acted, and the end event is
+        # not mistaken for another mon entering.
+        events = [self.decision("sacrifice") | {"php": 100, "pko": 0},
+                  {"kind": "act", "pos": 0, "hp": 30, "php": 100, "pko": 0},
+                  {"kind": "faint", "pos": 0, "hp": 0, "php": 60, "pko": 0},
+                  {"kind": "turn", "pos": 2, "hp": 90, "php": 60, "pko": 0},
+                  {"kind": "act", "pos": 2, "hp": 90, "php": 60, "pko": 0},
+                  {"kind": "end", "pos": 2, "hp": 90, "php": 0, "pko": 1}]
+        (record,) = classify_b5(events)
+        self.assertEqual(record["doomed"]["stay_end"], "fainted")
+        self.assertEqual((record["doomed"]["dealt_hp"], record["doomed"]["dealt_kos"]), (40, 0))
+        self.assertEqual((record["replacement_acted"], record["replacement_hits_before_act"]), (True, 0))
+
+    def test_an_end_event_for_another_mon_does_not_extend_a_stay(self):
+        # A sacrificed mon that left before the end: its stay ended at "left".
+        events = [self.decision("sacrifice") | {"php": 100, "pko": 0},
+                  {"kind": "switch", "pos": 0, "hp": 30, "php": 100, "pko": 0},
+                  {"kind": "turn", "pos": 3, "hp": 80, "php": 100, "pko": 0},
+                  {"kind": "end", "pos": 3, "hp": 80, "php": 0, "pko": 1}]
+        (record,) = classify_b5(events)
+        self.assertEqual((record["doomed"]["stay_end"], record["doomed"]["dealt_hp"]), ("left", 0))
+
+    def test_enemy_switch_and_enemy_faint_still_end_a_stay(self):
+        switch = [self.decision("sacrifice") | {"php": 100, "pko": 0},
+                  {"kind": "turn", "pos": 0, "hp": 30, "php": 90, "pko": 0},
+                  {"kind": "turn", "pos": 1, "hp": 70, "php": 90, "pko": 0}]
+        (record,) = classify_b5(switch)
+        self.assertEqual((record["doomed"]["stay_end"], record["doomed"]["dealt_hp"]), ("left", 10))
+        faint = [self.decision("sacrifice") | {"php": 100, "pko": 0},
+                 {"kind": "faint", "pos": 0, "hp": 0, "php": 90, "pko": 0}]
+        (record,) = classify_b5(faint)
+        self.assertEqual((record["doomed"]["stay_end"], record["doomed"]["dealt_hp"]), ("fainted", 10))
+
     def test_summary_groups_by_verdict_and_reserve_speed(self):
         events = [self.decision("switch"), {"kind": "switch", "pos": 0, "hp": 30},
                   {"kind": "turn", "pos": 1, "hp": 60}, {"kind": "act", "pos": 1, "hp": 60}]
@@ -413,6 +481,93 @@ class PlayerHitDamageTest(unittest.TestCase):
 
     def test_no_hit_is_zero(self) -> None:
         self.assertEqual(self.finish([], 94)["player_hit_damage"], 0)
+
+
+class TerminalEventRuntimeTest(unittest.TestCase):
+    """SF2 (2026-11-13): event order when the enemy wins, on the real ROM. A level-5
+    Magikarp (Splash) against a level-70 Mewtwo: the enemy's first hit ends the battle."""
+
+    def test_a_battle_ending_hit_is_followed_by_the_end_event(self) -> None:
+        from harness import RedRogueHarness
+        from source_constants import parse_trainer_constants
+        species = parse_rgbds_constants(REPO_ROOT / "constants" / "pokemon_constants.asm")
+        moves = parse_rgbds_constants(REPO_ROOT / "constants" / "move_constants.asm")
+        trainers = parse_trainer_constants(REPO_ROOT / "constants" / "trainer_constants.asm")
+        h = RedRogueHarness(REPO_ROOT, Path(__file__).resolve().parent / "artifacts")
+        try:
+            telemetry = BattleAITelemetry(h, REPO_ROOT)
+            h.inject_fight2_spec(
+                [{"species": species["MAGIKARP"], "level": 5, "moves": [moves["SPLASH"]]}],
+                [{"species": species["MEWTWO"], "level": 70, "moves": [moves["PSYCHIC_M"]]}],
+                trainer_class=trainers["COOLTRAINER_M"], ai_tier=3)
+            h.boot_fight2(seed=1)
+            telemetry.begin_battle("test")
+            start = len(telemetry.b5_events)
+            for _ in range(600):
+                if not h.read8("hIsInBattle"):
+                    break
+                h.tap("a", 1)
+                h.tick(8)
+            self.assertEqual(h.read8("hIsInBattle"), 0, "the battle never ended")
+            self.assertEqual(telemetry.errors, [])
+            events = telemetry.b5_events[start:]
+            kinds = [e["kind"] for e in events]
+            self.assertIn("end", kinds, kinds)
+            end = kinds.index("end")
+            self.assertEqual(kinds[end + 1:], [], "nothing after the terminal event")
+            self.assertEqual(kinds[end - 1], "act", "the battle-ending hit comes right before it")
+            self.assertEqual((events[end]["php"], events[end]["pko"]), (0, 1))
+            self.assertGreater(events[end - 1]["php"], 0, "the act was logged before its hit landed")
+            # Whatever the game does with the party after the battle, the terminal
+            # numbers were recorded at the blackout and stay as they were.
+            record = telemetry.end_battle(1)
+            self.assertEqual(record["b5_telemetry"], 2)
+            self.assertEqual((events[end]["php"], events[end]["pko"]), (0, 1))
+        finally:
+            h.close()
+
+    def test_won_battle_hp_lost_is_read_before_the_leftovers_heal(self) -> None:
+        # A level-50 Snorlax takes a Swift from a faster level-20 Electrode and wins, holding
+        # Leftovers. EndOfBattle heals the winner before hIsInBattle clears; the pressure
+        # numbers must be the party as the fight left it, not after that heal.
+        from harness import RedRogueHarness
+        from source_constants import parse_trainer_constants
+        from test_key_item_effects import all_tiers
+        from test_key_item_equipment import bits
+        species = parse_rgbds_constants(REPO_ROOT / "constants" / "pokemon_constants.asm")
+        moves = parse_rgbds_constants(REPO_ROOT / "constants" / "move_constants.asm")
+        trainers = parse_trainer_constants(REPO_ROOT / "constants" / "trainer_constants.asm")
+        h = RedRogueHarness(REPO_ROOT, Path(__file__).resolve().parent / "artifacts")
+        try:
+            telemetry = BattleAITelemetry(h, REPO_ROOT)
+            h.inject_fight2_spec(
+                [{"species": species["SNORLAX"], "level": 50, "moves": [moves["TACKLE"]]}],
+                [{"species": species["ELECTRODE"], "level": 20, "moves": [moves["SWIFT"]]}],
+                trainer_class=trainers["COOLTRAINER_M"], ai_tier=0)
+            h.boot_fight2(seed=1)
+            h.write_sram_bytes("sKeyItemsBitfield", bits(["LEFTOVERS"], ["LEFTOVERS"]))
+            h.write_sram_bytes("sKeyItemTiers", all_tiers({"LEFTOVERS": 2}))
+            h.call_routine("ApplyKeyItemTierEffects")
+            telemetry.begin_battle("test")
+            start_hp, _, max_hp = telemetry._start["party"]
+            at_entry = {}
+            h.register_hook("EndOfBattle", lambda _c: at_entry.setdefault(
+                "hp", h.read8("wBattleMonHP") << 8 | h.read8("wBattleMonHP", 1)))
+            for _ in range(900):
+                if not h.read8("hIsInBattle"):
+                    break
+                h.tap("a", 1)
+                h.tick(8)
+            self.assertEqual(h.read8("hIsInBattle"), 0, "the battle never ended")
+            self.assertLess(at_entry["hp"], start_hp, "the Swift never landed")
+            healed = h.read8("wPartyMon1HP") << 8 | h.read8("wPartyMon1HP", 1)
+            self.assertGreater(healed, at_entry["hp"], "Leftovers healed after the fight")
+            record = telemetry.end_battle(0)
+            self.assertEqual(telemetry.errors, [])
+            self.assertEqual(record["player_hp_lost"], round((start_hp - at_entry["hp"]) / max_hp, 4))
+            self.assertGreater(record["player_hp_lost"], 0)
+        finally:
+            h.close()
 
 
 class EntrySpeedTest(unittest.TestCase):

@@ -195,12 +195,17 @@ AIEstimateCritDamage:
 ; lowered; only then is the normal hit estimated too. A staged reserve (B4/B5)
 ; reads the active mon's stage bytes, which can only add a needless estimate:
 ; its normal hit already uses its own unmodified stats.
+; SF1 (2026-11-13): OUTPUT de = the crit's one-hit estimate when both were
+; estimated and the normal hit was larger, else 0. A crit ignores screens, so the
+; screen handler keeps it as a floor; when the crit is the larger, the normal hit
+; cannot raise any maximum. Every other caller ignores de (farcall preserves it).
 AIEstimatePlayerMoveDamage::
 	ld d, AI_CRIT_CERTAIN
 	xor a
 	call AIMoveCritCertain
 	jr c, .crit
 	farcall AIEstimatePlayerDamage
+	ld de, 0
 	and a
 	ret
 .crit
@@ -218,6 +223,7 @@ AIEstimatePlayerMoveDamage::
 	jr c, .both
 	xor a
 	call AIEstimateCritDamage
+	ld de, 0
 	scf
 	ret
 .both
@@ -242,7 +248,8 @@ AIEstimateEnemyCritIfCertain::
 
 ; INPUT a = side (as AIEstimateCritDamage), wAIDamageEstimate = that side's normal
 ; one-hit max. Leaves the larger of it and the crit estimate. Carry SET = the
-; crit is the larger (or equal). Clobbers af, bc, de, hl.
+; crit is the larger (or equal), de = 0; carry clear = the normal hit is the
+; larger, de = the crit estimate it beat (SF1). Clobbers af, bc, hl.
 AIKeepEstimateOrCrit:
 	ld hl, wAIDamageEstimate
 	ld d, [hl]
@@ -256,12 +263,20 @@ AIKeepEstimateOrCrit:
 	sub e
 	ld a, [hl]
 	sbc d
-	ccf
-	ret c ; the crit is at least the normal hit
+	jr nc, .critWins ; the crit is at least the normal hit
+	ld a, [hl] ; the normal hit wins: swap it in, the crit out into de
 	ld [hl], d
+	ld d, a
 	inc hl
+	ld a, [hl]
 	ld [hl], e
-	ret ; carry clear (ld keeps it)
+	ld e, a
+	and a ; carry clear: the normal hit is the larger
+	ret
+.critWins
+	ld de, 0
+	scf
+	ret
 
 ; The reliable-KO contract's crit half (AIMoveIsReliableKO tail-calls this once
 ; the normal minimum roll KOs at 90%+ to hit). When the loaded enemy move's crit

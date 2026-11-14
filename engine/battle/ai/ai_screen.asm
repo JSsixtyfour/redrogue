@@ -210,6 +210,8 @@ ENDC
 ; and fixed (power 0-1: Seismic Toss, Night Shade, Super Fang and the like, which
 ; no screen touches; status moves land here at 0). A near-certain crit (Slash
 ; from a fast mon, AI review CP2) also goes to fixed: a crit ignores screens.
+; When a boosted normal hit is larger than that crit, the normal hit goes to its
+; category and the crit stays in fixed as a floor (SF1, 2026-11-13).
 ; Borrows the wPlayerMove* block
 ; as _AIScanPlayerMovesForKO does and puts it back. Clobbers af, bc, de, hl.
 AIPlayerBestHitByCategory:
@@ -234,7 +236,9 @@ AIPlayerBestHitByCategory:
 	and a
 	jr z, .skip ; unrevealed with no guess, or an empty slot
 	call AIReadMoveIntoPlayerBlock
-	farcall AIEstimatePlayerMoveDamage ; carry = estimated as a crit (ai_crit.asm)
+	farcall AIEstimatePlayerMoveDamage ; carry = estimated as a crit; de = a crit
+	                                   ; the larger normal hit beat, else 0 (ai_crit.asm)
+	push de
 	push af
 	call AIAdjustPlayerDamageForPossibleDelivery
 	pop af
@@ -248,21 +252,40 @@ AIPlayerBestHitByCategory:
 	cp SPECIAL
 	jr c, .bucket
 	ld hl, wBuffer + AI_BUF_SCREEN_HITS + 2 ; special
-.bucket ; keep the larger of the estimate and the word at hl
-	ld a, [wAIDamageEstimate + 1]
+.bucket
+	call .keepLarger
+; SF1 (2026-11-13): when a boosted normal hit beat the near-certain crit, the
+; crit is still the likely outcome and ignores the screen: keep it as a floor in
+; fixed, through its own delivery (multi-hit, our Substitute).
+	pop de
+	ld a, d
+	or e
+	jr z, .skip
+	ld hl, wAIDamageEstimate
+	ld [hl], d
 	inc hl
-	sub [hl]
-	dec hl
-	ld a, [wAIDamageEstimate]
-	sbc [hl]
-	jr c, .skip ; this move is smaller
-	ld a, [wAIDamageEstimate]
-	ld [hli], a
-	ld a, [wAIDamageEstimate + 1]
-	ld [hl], a
+	ld [hl], e
+	call AIAdjustPlayerDamageForPossibleDelivery
+	ld hl, wBuffer + AI_BUF_SCREEN_HITS + 4 ; fixed
+	call .keepLarger
 .skip
 	ld hl, wBuffer + AI_BUF_SCANSLOT
 	inc [hl]
 	jr .nextSlot
 .done
 	jp _AIScanPlayerMovesForKO.restorePlayerMove
+
+; The word at hl becomes the larger of it and wAIDamageEstimate.
+.keepLarger
+	ld a, [wAIDamageEstimate + 1]
+	inc hl
+	sub [hl]
+	dec hl
+	ld a, [wAIDamageEstimate]
+	sbc [hl]
+	ret c ; this move is smaller
+	ld a, [wAIDamageEstimate]
+	ld [hli], a
+	ld a, [wAIDamageEstimate + 1]
+	ld [hl], a
+	ret

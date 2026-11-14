@@ -255,11 +255,13 @@ RogueResetRunState::
 	or c
 	ld a, 0
 	jr nz, .clearItemCounts
-	; Every run starts with 2 POTIONs, same as true new game (oak_speech.asm).
-	; POTION is RecoveryItemTable's first entry (pocket_items.asm), so its
-	; count is wRecoveryItemCounts + 0.
+	; Every run starts with 2 POTIONs and 1 FULL_HEAL, same as true new game
+	; (oak_speech.asm). Indices are RecoveryItemTable positions
+	; (pocket_items.asm), defined in ram_constants.asm.
 	ld a, 2
-	ld [wRecoveryItemCounts], a
+	ld [wRecoveryItemCounts + RECOVERY_IDX_POTION], a
+	ld a, 1
+	ld [wRecoveryItemCounts + RECOVERY_IDX_FULL_HEAL], a
 	; TM Pack pocket: wTMPocketBuf is just a scratch UI display list rebuilt
 	; from sTMBitfield every time the bag opens (BuildTMPocketList), not the
 	; real ownership data - clearing it would do nothing. sTMBitfield (SRAM)

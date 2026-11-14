@@ -141,7 +141,7 @@ def _hits_until_act(events: list[dict[str, object]], start: int, pos: int, hp: i
     before its first move, and whether it moved or fainted first."""
     hits = 0
     for event in events[start:]:
-        if event["kind"] == "b5" or event.get("pos") != pos:
+        if event["kind"] in ("b5", "end") or event.get("pos") != pos:
             continue
         if event["hp"] < hp:
             hits += 1
@@ -156,13 +156,22 @@ def _hits_until_act(events: list[dict[str, object]], start: int, pos: int, hp: i
 def _stay(events: list[dict[str, object]], start: int, pos: int, php: int | None, pko: int | None) -> dict[str, object]:
     """Follow party slot `pos` from events[start:] while it stays in: its HP when it first
     moved, turns and moves it got, and the player's party HP and mons lost meanwhile
-    (B5 threshold sizing, 2026-11-13). Ends when it faints, another mon is in, or the log ends."""
+    (B5 threshold sizing, 2026-11-13). Ends when it faints, another mon is in, or the log ends.
+    An "end" event (B5 telemetry v2, SF2 2026-11-13: the player blacked out) is the battle's
+    terminal state: it supplies the final player totals, so a battle-ending attack counts its
+    damage and KO, but it is not a turn or a move. dealt_hp is the NET change in the player's
+    party HP over the stay: a proxy that residual damage, recoil and healing also move."""
     hp_at_act = None
     turns = acts = 0
     end, last = "battle_end", None
     for event in events[start:]:
         if event["kind"] == "b5":
             continue
+        if event["kind"] == "end":
+            if event.get("pos") == pos:
+                last = event
+                end = "player_blacked_out"
+            break
         if event.get("pos") != pos:
             end = "left"
             break
@@ -186,6 +195,7 @@ def _stay(events: list[dict[str, object]], start: int, pos: int, php: int | None
 
 
 PAR_BIT = 6  # constants/battle_constants.asm
+B5_TELEMETRY_VERSION = 2  # 2: terminal "end" event on a player blackout (SF2, 2026-11-13)
 
 
 def entry_speed(speed: int, status: int) -> int:
@@ -229,7 +239,7 @@ def classify_b5(events: list[dict[str, object]]) -> list[dict[str, object]]:
             record["active_fainted"] = faint is not None
             if faint is not None:
                 follow = next((i for i, e in enumerate(rest[faint + 1:], faint + 1)
-                               if e["kind"] != "b5" and e.get("pos") != active), None)
+                               if e["kind"] not in ("b5", "end") and e.get("pos") != active), None)
                 if follow is not None:
                     pos = rest[follow]["pos"]
                     sub = _hits_until_act(rest, follow, pos, rest[follow]["hp"])
@@ -628,6 +638,22 @@ class BattleAITelemetry:
             harness.register_hook("AIShouldSwitch.stay", self._guarded(lambda _c: self._b5_verdict("sacrifice")))
             harness.register_hook("AIShouldSwitch.switch", self._guarded(lambda _c: self._b5_verdict("switch")))
             harness.register_hook("MainInBattleLoop", self._guarded(self._b5_turn))
+            # SF2 (2026-11-13): the terminal state of a battle the enemy wins. The act
+            # hook fires before the move resolves, so without this a battle-ending hit
+            # had its move counted but not its damage or KO. HandlePlayerBlackOut is
+            # reached from HandlePlayerMonFainted once AnyPartyAlive finds no one, with
+            # wBattleMonHP already 0 and before any blackout healing (that happens in
+            # the overworld, after hIsInBattle drops and end_battle runs).
+            harness.register_hook("HandlePlayerBlackOut", self._guarded(lambda _c: self._b5_mark("end")))
+        except KeyError:
+            pass
+        # The player's party as the fight left it (2026-11-13). EndOfBattle runs after
+        # StartBattle returns, on every battle end, and itself applies LeftoversRecovery to
+        # a winner before clearing hIsInBattle; autoplay calls end_battle only after that,
+        # so reading the party there made won-battle HP lost net of the Leftovers heal.
+        self._end_party: tuple[int, int, int] | None = None
+        try:
+            harness.register_hook("EndOfBattle", self._guarded(self._end_of_battle))
         except KeyError:
             pass
         # B5 threshold sizing (2026-11-13): B4's predicted hit on the reserve it judged,
@@ -860,14 +886,18 @@ class BattleAITelemetry:
             }
         )
 
-    def _party_hp(self) -> tuple[int, int, int]:
-        """(total HP, mons fainted, total max HP) of the player's party."""
+    def _party_hp(self, live_active: bool = False) -> tuple[int, int, int]:
+        """(total HP, mons fainted, total max HP) of the player's party. live_active: the
+        active mon's HP from wBattleMonHP (valid while the battle is still set up)."""
         h = self.h
         base = h.address("wPartyMons")
+        active = h.read8("wPlayerMonNumber") if live_active else None
         hp = max_hp = fainted = 0
         for index in range(min(6, h.read8("wPartyCount"))):
             mon = base + index * PARTYMON_STRUCT_LENGTH
             current = h.pyboy.memory[mon + MON_HP] << 8 | h.pyboy.memory[mon + MON_HP + 1]
+            if index == active:
+                current = self._word("wBattleMonHP")
             hp += current
             fainted += current == 0
             max_hp += h.pyboy.memory[mon + MON_MAXHP] << 8 | h.pyboy.memory[mon + MON_MAXHP + 1]
@@ -877,6 +907,7 @@ class BattleAITelemetry:
         self._opponent = opponent
         self._errors_at_start = len(self.errors)
         self._start = None
+        self._end_party = None
         try:
             if not self.h.read8("wIsTrainerBattle"):
                 return
@@ -897,12 +928,19 @@ class BattleAITelemetry:
         except Exception as error:
             self.errors.append(f"begin_battle: {error!r}")
 
+    def _end_of_battle(self, _context) -> None:
+        if self._start is not None:
+            self._end_party = self._party_hp(live_active=True)
+
     def _pressure(self, before: tuple[int, int, int], result: int) -> dict[str, object]:
         hp_before, fainted_before, max_hp = before
+        end, self._end_party = self._end_party, None
         if result == 1:  # a blackout: the whole party fell, whatever a heal has since rewritten
             return {"player_hp": (hp_before, 0, max_hp),
                     "player_fainted": self.h.read8("wPartyCount") - fainted_before}
-        hp_after, fainted_after, _ = self._party_hp()
+        # As the fight left it (EndOfBattle entry), before its Leftovers heal; the
+        # post-battle read is only a fallback for a ROM without the label.
+        hp_after, fainted_after, _ = end if end is not None else self._party_hp()
         return {"player_hp": (hp_before, hp_after, max_hp),
                 "player_fainted": max(0, fainted_after - fainted_before)}
 
@@ -934,6 +972,9 @@ class BattleAITelemetry:
             return None
         try:
             record["b5"] = classify_b5(self.b5_events[start["b5_events"]:])
+            # v2 (SF2, 2026-11-13): the "end" event. v1 records (no field) can miss a
+            # battle-ending enemy hit's damage and KO in dealt_hp / dealt_kos.
+            record["b5_telemetry"] = B5_TELEMETRY_VERSION
             checks = self.b4_results[start["b4_results"]:]
             record["b4"] = {"checks": len(checks), "top_reserve_dies": checks.count(False)}
         except Exception as error:

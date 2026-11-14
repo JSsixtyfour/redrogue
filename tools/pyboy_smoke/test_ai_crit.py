@@ -151,10 +151,14 @@ class CritCertainEstimateTest(unittest.TestCase):
         self.assertGreater(plain, crit, (plain, crit))
 
     def test_screen_handler_buckets_a_boosted_players_normal_hit_as_physical(self) -> None:
+        # SF1 (2026-11-13): the normal hit goes to physical AND the crit it beat stays in
+        # fixed as a floor (a crit ignores screens). Before SF1 this read (plain, 0, 0).
         self.boot(self.mon("PERSIAN", ["SLASH"]), [self.mon("SNORLAX", ["TACKLE"])])
+        crit, _ = self.estimate("SLASH")
         self.boost_player_attack_6()
         plain, _ = self.estimate("SLASH", routine="AIEstimatePlayerDamage")
-        self.assertEqual(self.screen_buckets("SLASH"), (plain, 0, 0))
+        self.assertGreater(plain, crit)
+        self.assertEqual(self.screen_buckets("SLASH"), (plain, 0, crit))
 
     def test_crit_estimate_puts_back_what_the_crit_path_clobbers(self) -> None:
         h = self.boot(self.mon("PERSIAN", ["SLASH"]), [self.mon("SNORLAX", ["TACKLE"])])
@@ -271,6 +275,136 @@ class CritCertainEstimateTest(unittest.TestCase):
         plain, _ = self.estimate("STRENGTH", routine="AIEstimatePlayerDamage")
         physical, special, fixed = self.screen_buckets("STRENGTH")
         self.assertEqual((physical, special, fixed), (plain, 0, 0))
+
+    # --- SF1 (2026-11-13): the crit stays a floor in the screen evaluation -----
+    def wrapper_de(self, move: str) -> tuple[int, bool, int]:
+        """(estimate, carry, de) from AIEstimatePlayerMoveDamage."""
+        h = self.harness
+        assert h is not None
+        self.load_player_move(move)
+        rf = h.pyboy.register_file
+        carry, de = h.call_routine("AIEstimatePlayerMoveDamage",
+                                   capture=lambda hh: (bool(rf.F & 0x10), (rf.D << 8) | rf.E))
+        return self.word("wAIDamageEstimate"), carry, de
+
+    def delivered(self, move: str, one_hit: int) -> int:
+        """AIAdjustPlayerDamageForPossibleDelivery applied to one_hit for `move`."""
+        h = self.harness
+        assert h is not None
+        self.load_player_move(move)
+        self.write_word("wAIDamageEstimate", one_hit)
+        h.call_routine("AIAdjustPlayerDamageForPossibleDelivery")
+        return self.word("wAIDamageEstimate")
+
+    def load_enemy_move(self, move: str) -> None:
+        h = self.harness
+        assert h is not None
+        bank, address = h.symbols.get("Moves")
+        start = bank * 0x4000 + address - 0x4000 + (self.moves[move] - 1) * MOVE_LENGTH
+        for offset, value in enumerate(self.rom[start:start + MOVE_LENGTH]):
+            h.write8("wEnemyMoveNum", value, offset=offset)
+
+    def screen_verdict(self, screen: str, hp: int, revealed: list[int]) -> tuple[bool, int, int]:
+        """AISmart_Screen with our HP = hp and us faster: (carry, a, AI_BUF_SCREEN_AFTER)."""
+        h = self.harness
+        assert h is not None
+        h.reveal_player_moves(0, revealed, clear=True)
+        self.load_enemy_move(screen)
+        self.write_word("wEnemyMonHP", hp)
+        self.write_word("wEnemyMonSpeed", 400)
+        self.write_word("wBattleMonSpeed", 10)
+        rf = h.pyboy.register_file
+        carry, a = h.call_routine("AISmart_Screen", limit=900,
+                                  capture=lambda hh: (bool(rf.F & 0x10), rf.A))
+        words = h.read_bytes("wBuffer", 2, offset=self.AI_BUF_SCREEN_AFTER)
+        return carry, a, words[0] << 8 | words[1]
+
+    AI_BUF_SCREEN_AFTER = 28
+    AI_STRONG = 2
+
+    def test_wrapper_returns_the_beaten_crit_in_de(self) -> None:
+        self.boot(self.mon("PERSIAN", ["SLASH", "STRENGTH"]), [self.mon("SNORLAX", ["TACKLE"])])
+        crit, carry, de = self.wrapper_de("SLASH")
+        self.assertEqual((carry, de), (True, 0), "crit only: de = 0")
+        _, carry, de = self.wrapper_de("STRENGTH")
+        self.assertEqual((carry, de), (False, 0), "an ordinary move: de = 0")
+        self.boost_player_attack_6()
+        plain, _ = self.estimate("SLASH", routine="AIEstimatePlayerDamage")
+        value, carry, de = self.wrapper_de("SLASH")
+        self.assertEqual((value, carry, de), (plain, False, crit), "normal > crit: de = the crit")
+
+    def test_crit_at_least_normal_keeps_de_zero_with_both_estimated(self) -> None:
+        # A small drop on our Special only (irrelevant to Slash) runs both estimates;
+        # the crit is still the larger, so it is the estimate and nothing is left over.
+        h = self.boot(self.mon("PERSIAN", ["SLASH"]), [self.mon("SNORLAX", ["TACKLE"])])
+        crit, _ = self.estimate("SLASH")
+        h.write8("wEnemyMonSpecialMod", NEUTRAL_STAGE - 1)
+        normal = h.hook_flag("AIEstimatePlayerDamage")
+        value, carry, de = self.wrapper_de("SLASH")
+        self.assertEqual(normal["count"], 1, "the gate ran both estimates")
+        self.assertEqual((value, carry, de), (crit, True, 0))
+
+    def test_normal_over_crit_over_screened_normal_changes_the_reflect_verdict(self) -> None:
+        self.boot(self.mon("PERSIAN", ["SLASH"]), [self.mon("SNORLAX", ["TACKLE"])])
+        crit, _ = self.estimate("SLASH")
+        self.boost_player_attack_6()
+        plain, _ = self.estimate("SLASH", routine="AIEstimatePlayerDamage")
+        screened = plain // 2 + 1
+        self.assertTrue(plain > crit > screened, (plain, crit, screened))
+        hp = 2 * crit  # the crit 2HKOs; the screened normal alone would take 3 hits
+        self.assertLess(2 * screened, hp)
+        self.assertGreaterEqual(2 * plain, hp)
+        carry, a, after = self.screen_verdict("REFLECT", hp, [0])
+        self.assertEqual(after, crit, "after Reflect the crit is the floor")
+        # Faster: 2 actions without (plain 2HKOs); with Reflect, the crit still 2HKOs and
+        # the screen took the turn: 1. Without the floor it read 3 - 1 = 2 (no change).
+        self.assertEqual((carry, a), (False, self.AI_STRONG), "a turn for nothing: discourage")
+
+    def test_screened_normal_at_least_crit_keeps_the_screened_normal(self) -> None:
+        self.boot(self.mon("PERSIAN", ["SLASH"]), [self.mon("SNORLAX", ["TACKLE"])])
+        crit, _ = self.estimate("SLASH")
+        self.boost_player_attack_6()
+        self.drop_enemy_defense_6()
+        plain, _ = self.estimate("SLASH", routine="AIEstimatePlayerDamage")
+        screened = plain // 2 + 1
+        self.assertGreaterEqual(screened, crit, (plain, crit))
+        self.assertEqual(self.screen_buckets("SLASH"), (plain, 0, crit))
+        _, _, after = self.screen_verdict("REFLECT", 999, [0])
+        self.assertEqual(after, screened)
+
+    def test_mixed_categories_and_fixed_damage_keep_their_buckets(self) -> None:
+        moves = ["SLASH", "BUBBLEBEAM", "SEISMIC_TOSS"]
+        self.boot(self.mon("PERSIAN", moves), [self.mon("SNORLAX", ["TACKLE"])])
+        crit, _ = self.estimate("SLASH")
+        self.boost_player_attack_6()
+        plain, _ = self.estimate("SLASH", routine="AIEstimatePlayerDamage")
+        special, _ = self.estimate("BUBBLEBEAM", routine="AIEstimatePlayerDamage")
+        toss, _ = self.estimate("SEISMIC_TOSS", routine="AIEstimatePlayerDamage")
+        h = self.harness
+        assert h is not None
+        h.reveal_player_moves(0, [0, 1, 2], clear=True)
+        h.call_routine("AIPlayerBestHitByCategory", limit=900)
+        words = h.read_bytes("wBuffer", 6, offset=self.AI_BUF_SCREEN_HITS)
+        buckets = tuple((words[i] << 8) | words[i + 1] for i in (0, 2, 4))
+        self.assertEqual(buckets, (plain, special, max(crit, toss)), (plain, special, crit, toss))
+        _, _, after = self.screen_verdict("LIGHT_SCREEN", 999, [0, 1, 2])
+        self.assertEqual(after, max(plain, special // 2 + 1, crit, toss))
+
+    def test_the_crit_floor_goes_through_our_substitute_like_the_normal_hit(self) -> None:
+        # A guard, not a discriminator: one hit into our Substitute delivers 0 to us, so
+        # both builds read 0 here. It fails an implementation that buckets the RAW crit
+        # instead of running it through AIAdjustPlayerDamageForPossibleDelivery.
+        h = self.boot(self.mon("PERSIAN", ["SLASH"]), [self.mon("SNORLAX", ["TACKLE"])])
+        crit, _ = self.estimate("SLASH")
+        self.boost_player_attack_6()
+        plain, _ = self.estimate("SLASH", routine="AIEstimatePlayerDamage")
+        HAS_SUBSTITUTE_UP = 4
+        h.write8("wEnemyBattleStatus2", h.read8("wEnemyBattleStatus2") | (1 << HAS_SUBSTITUTE_UP))
+        h.write8("wEnemySubstituteHP", crit // 2)
+        want = (self.delivered("SLASH", plain), 0, self.delivered("SLASH", crit))
+        self.assertNotEqual(want[2], crit, "the Substitute must change the crit's delivery")
+        self.assertEqual(want[2], 0, "a single hit into our Substitute delivers nothing to us")
+        self.assertEqual(self.screen_buckets("SLASH"), want)
 
     def own_move_ko_ceiling(self, move: str, setup=None, reliable: bool = False) -> int:
         """Largest player HP at which the enemy's slot-0 `move` is a possible KO

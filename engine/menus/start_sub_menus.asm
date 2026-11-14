@@ -530,11 +530,12 @@ StartMenu_Option::
 
 SwitchPartyMon::
 	call SwitchPartyMon_InitVarOrSwapData ; swap data
-	farcall ReloadYellowLegacyPartyIcons
 	ld a, [wSwappedMenuItem]
 	call SwitchPartyMon_ClearGfx
 	ldh a, [hCurrentMenuItem]
 	call SwitchPartyMon_ClearGfx
+	; Hide both old layouts before replacing their per-slot tile graphics.
+	farcall ReloadYellowLegacyPartyIcons
 	jp RedrawPartyMenu_
 
 SwitchPartyMon_ClearGfx:

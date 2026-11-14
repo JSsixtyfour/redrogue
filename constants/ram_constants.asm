@@ -577,6 +577,11 @@ DEF MINIBOSS_ITEM_RARITY_BONUS    EQU 51
 	DEF NUM_RECOVERY_ITEMS  EQU 21
 	DEF NUM_STAT_ITEMS      EQU 18
 	DEF NUM_VALUABLE_ITEMS  EQU 4
+	; Count indices read directly by RogueResetRunState (credit_popup.asm) for the
+	; starting items. Positions in RecoveryItemTable (pocket_items.asm); keep in
+	; sync if that table is reordered.
+	DEF RECOVERY_IDX_POTION    EQU 0
+	DEF RECOVERY_IDX_FULL_HEAL EQU 10
 	; Saved count bytes per pocket (wram.asm). Larger than the tables so a new
 	; item can be appended to a table without moving the save layout; raising
 	; a *_SLOTS value is a save-format change (SAVE_COMPATIBILITY_RUNBOOK.md).
