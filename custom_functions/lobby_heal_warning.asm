@@ -45,6 +45,7 @@ LobbyHealWarning::
 .doorOpen
 	call LobbyPartyNeedsHealing
 	ret z
+.warn
 	ld hl, wStatusFlags4
 	set BIT_LOBBY_HEAL_HANDLED, [hl]
 	; Same text-window lifecycle as the rental/loss notices: CloseTextDisplay
@@ -100,8 +101,10 @@ LobbyPartyNeedsHealing:
 	ret
 
 LobbyHealWarningText:
-	text "Your #MON are"
-	line "not fully healed!"
-	para "The NURSE can"
-	line "heal them first."
+	text "You have not"
+	line "visited the"
+	cont "NURSE."
+
+	para "Are you sure you"
+	line "want to leave?"
 	done
