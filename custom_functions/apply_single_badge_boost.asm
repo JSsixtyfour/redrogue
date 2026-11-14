@@ -173,12 +173,15 @@ ApplySingleEarnedStatBoost::
 ; in AIPredictSpeedAtStage (AI_SPEED_SLUGGISH_BIT) - keep the two in step.
 ; Clobbers af, hl. Preserves bc, de.
 HalvePlayerSpeedIfSluggish::
+	run_challenge RUN_CH_SLOWED ; the same halving, all run (Dorm PC)
+	jr nz, .halve
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_WITCH_ACCEPTED, a
 	ret z
 	ld a, [wWitchChallenge]
 	cp CHALLENGE_SLOWED_POKEMON
 	ret nz
+.halve
 	ld hl, wBattleMonSpeed ; big-endian
 	ld a, [hl]
 	srl a

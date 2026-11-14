@@ -98,12 +98,15 @@ GetRandMon:
 .aceKnown
 	; Challenge 6 (INCREASED_RARITY_FOES): bump class by 1 tier (lower b = rarer).
 	; b=4=pokeball, b=3=greatball, b=2=ultraball, b=1=masterball. Cap at b=1.
+	run_challenge RUN_CH_RARER_FOES ; the same bump, all run
+	jr nz, .rarityBump
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_WITCH_ACCEPTED, a
 	jr z, .noRarityBump
 	ld a, [wWitchChallenge]
 	cp CHALLENGE_INCREASED_RARITY_FOES
 	jr nz, .noRarityBump
+.rarityBump
 	ld a, b
 	cp 2
 	jr c, .noRarityBump    ; already masterball (b=1), can't go rarer
@@ -280,6 +283,10 @@ GetRandRosterLoop:
     jr c, .overloopSetup
     cp ROSTER_FULL_SIZE
     jr nc, .overloopSetup
+    ; RUN_CH_FULL_PARTIES (Dorm PC): every trainer fields the full count, as
+    ; the final trainer of each block already does.
+    run_challenge RUN_CH_FULL_PARTIES
+    jr nz, .overloopSetup
     call Random ; preserves bc/de/hl
     rrca
     jr nc, .overloopSetup
@@ -473,12 +480,15 @@ RogueApplyEndlessLevelBonus:
 ; This retains the existing multiplier and overflow behavior, but preserves
 ; the roster-loop registers so the helper is safe for every trainer path.
 RogueApplyWitchLevelBonus::
+	run_challenge RUN_CH_HIGHER_LEVELS ; the same bonus, all run
+	jr nz, .levelBonus
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_WITCH_ACCEPTED, a
 	ret z
 	ld a, [wWitchChallenge]
 	cp CHALLENGE_INCREASED_LEVELS
 	ret nz
+.levelBonus
 	push bc
 	push de
 	push hl

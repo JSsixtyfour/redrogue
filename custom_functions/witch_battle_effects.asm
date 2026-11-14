@@ -48,40 +48,38 @@ HandlePostPlayerMoveWitchEffects::
 	jr nz, .usedMove
 	call BridgeClearRepeatTracking
 .usedMove
-	ld a, [wRogueFlagsBitfield]
-	bit BIT_WITCH_ACCEPTED, a
-	jr z, .noEffect
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	jr z, .noEffect
-	ld a, [wWitchChallenge]
-	cp CHALLENGE_SAME_MOVE_PENALTY
-	jr z, .sameMovePenalty
-	cp CHALLENGE_RECOIL_ATTACKS
-	jr z, .recoilAnyMove
-	cp CHALLENGE_RECOIL_PHYSICAL
-	jr z, .recoilPhysicalOnly
-	cp CHALLENGE_RECOIL_SPECIAL
-	jr z, .recoilSpecialOnly
+	; e = which of the same-move penalty and the two recoils apply, from the
+	; witch's zone challenge and the run challenges together (any mix). In $12
+	; for this bank's room; farcall keeps e.
+	farcall PostMoveChallengeEffects
+	bit 0, e
+	jr nz, .sameMovePenalty
+	; fall through: the same-move penalty comes first when both apply
+
+; --- Challenges 12/16/17: wDamage/4 recoil, gated on the move's damage class.
+; Gen 1 has no per-move category: types below SPECIAL ($14) are physical,
+; types from SPECIAL up are special. The UNUSED_TYPES gap ($09-$13) never
+; appears on a real move, so the single compare is sufficient.
+.recoilCheck
+	ld a, [wPlayerMoveType]
+	cp SPECIAL
+	ld a, e
+	jr nc, .specialMove
+	bit 1, a
+	jr z, .noEffect        ; physical move, no physical recoil on
+	jr .recoilAnyMove
+.specialMove
+	bit 2, a
+	jr z, .noEffect        ; special move, no special recoil on
+	jr .recoilAnyMove
 
 .noEffect
 	jr .lifeOrb
 
-; --- Challenges 16/17: same recoil as 12, gated on the move's damage class.
-; Gen 1 has no per-move category: types below SPECIAL ($14) are physical,
-; types from SPECIAL up are special. The UNUSED_TYPES gap ($09-$13) never
-; appears on a real move, so the single compare is sufficient.
-.recoilPhysicalOnly
-	ld a, [wPlayerMoveType]
-	cp SPECIAL
-	jr nc, .noEffect       ; special move under the physical-only challenge
-	jr .recoilAnyMove
-.recoilSpecialOnly
-	ld a, [wPlayerMoveType]
-	cp SPECIAL
-	jr c, .noEffect        ; physical move under the special-only challenge
-
-; --- Challenge 12 (and the tail of 16/17): wDamage/4, minimum 1.
+; --- The recoil itself: wDamage/4, minimum 1.
 ; Only when a move actually executed this turn. A switch, item, or run sets
 ; wActionResultOrTookBattleTurn, so ExecutePlayerMove bails before
 ; PlayerCanExecuteMove and wDamage still holds a STALE value from an earlier
@@ -118,7 +116,7 @@ HandlePostPlayerMoveWitchEffects::
 .sameMovePenalty
 	ld a, [wBridgeRepeatState]
 	cp 2
-	jr nz, .noEffect
+	jr nz, .recoilCheck
 	; Repeat confirmed: maxHP/8, minimum 1. wBattleMonMaxHP is big-endian.
 	ld a, [wBattleMonMaxHP]
 	ld b, a
@@ -135,10 +133,12 @@ HandlePostPlayerMoveWitchEffects::
 	jr nz, .sameMoveApply
 	inc c                  ; minimum 1
 .sameMoveApply
+	push de                ; e = the effect bits; pop leaves the flags alone
 	ld de, SameMovePenaltyText
 	call ApplyWitchSelfDamage
+	pop de
 	ret z
-	; fall through to the independent selected-Pokémon recoil
+	jr .recoilCheck        ; recoil still applies on top
 
 .lifeOrb
 	ld a, [wLinkState]
@@ -268,15 +268,28 @@ LifeOrbRecoilText:
 ; ~105 bytes.
 ; ============================================================
 HandleTurnLimitDrain::
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	jp z, .noEffect
+	; The run challenge (Dorm PC) counts down wRunTurnsLeft from the same
+	; 6 + round, so it needs no byte in the witch's parameter UNION. With both
+	; on, the limits are equal and the run's count stands in for both.
+	run_challenge RUN_CH_TURN_LIMIT
+	jr z, .witchTurnLimit
+	ld hl, wRunTurnsLeft
+	ld a, [hl]
+	and a
+	jr z, .drain           ; already past the limit
+	dec [hl]
+	jp nz, .noEffect       ; turns left: no drain yet
+	jr .drain
+.witchTurnLimit
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_WITCH_ACCEPTED, a
 	jp z, .noEffect
 	ld a, [wWitchChallenge]
 	cp CHALLENGE_TURN_LIMIT
 	jp nz, .noEffect
-	ld a, [wLinkState]
-	cp LINK_STATE_BATTLING
-	jp z, .noEffect
 	; Increment turn count
 	ld hl, wBattleTurnCount
 	inc [hl]
@@ -285,6 +298,7 @@ HandleTurnLimitDrain::
 	ld a, [wBattleTurnCount]
 	cp b
 	jp c, .noEffect       ; count < limit: no drain yet
+.drain
 	; Drain: maxHP/16, minimum 1 — same pattern as HandlePoisonBurnLeechSeed
 	ld hl, TurnLimitDrainText
 	call PrintText
@@ -399,51 +413,50 @@ WitchApplyMoneyEffects::
 	; challenge still pays 0), before PRIZE_MONEY and Oak's grant, so both of
 	; those multiply the Money Match result.
 	farcall MoneyMatchApplyPayout
+	; RUN_CH_LESS_MONEY (Dorm PC): a quarter off, before the bonuses below,
+	; so they scale the reduced payout.
+	run_challenge RUN_CH_LESS_MONEY
+	jr z, .noLessMoney
+	ld a, $04             ; BCD four
+	call MoneyWonDividedBy
+	predef SubBCDPredef   ; wAmountMoneyWon -= wAmountMoneyWon / 4
+.noLessMoney
 	ld a, [wWitchPrizesEarned]
 	and 1 << (PRIZE_MONEY - 1)
 	jr z, .checkBridgeMoney
-	; wAmountMoneyWon += wAmountMoneyWon / 10. DivideBCD only ever divides
-	; hMoney (engine/math/bcd.asm), so copy the 3-byte BCD value in first.
-	ld a, [wAmountMoneyWon]
-	ldh [hMoney], a
-	ld a, [wAmountMoneyWon + 1]
-	ldh [hMoney + 1], a
-	ld a, [wAmountMoneyWon + 2]
-	ldh [hMoney + 2], a
-	xor a
-	ldh [hDivideBCDDivisor], a
-	ldh [hDivideBCDDivisor + 1], a
 	ld a, $10             ; BCD ten - NOT decimal 16
-	ldh [hDivideBCDDivisor + 2], a
-	predef DivideBCDPredef3
-	ld de, wAmountMoneyWon + 2
-	ld hl, hDivideBCDQuotient + 2
-	ld c, $3
-	predef AddBCDPredef ; wAmountMoneyWon += wAmountMoneyWon / 10
+	call MoneyWonDividedBy
+	predef AddBCDPredef   ; wAmountMoneyWon += wAmountMoneyWon / 10
 
 .checkBridgeMoney
 	ld e, BRIDGE_EFFECT_MONEY
 	farcall BridgeHasGlobalEffect
 	ret nc
-	; Oak's RESEARCH GRANT adds 20% after all earlier payout modifiers. Copy
-	; the current BCD amount into DivideBCD's fixed hMoney input, divide by
-	; five, then add that quotient back to the payout.
+	; Oak's RESEARCH GRANT adds 20% after all earlier payout modifiers.
+	ld a, $05
+	call MoneyWonDividedBy
+	predef AddBCDPredef   ; wAmountMoneyWon += wAmountMoneyWon / 5
+	ret
+
+; a = a BCD divisor. Leaves wAmountMoneyWon / a in hDivideBCDQuotient and
+; de/hl/c set up for Add/SubBCDPredef to apply it to wAmountMoneyWon.
+; DivideBCD only ever divides hMoney (engine/math/bcd.asm), so the 3-byte BCD
+; payout is copied in first. Clobbers everything.
+MoneyWonDividedBy:
+	ldh [hDivideBCDDivisor + 2], a
+	xor a
+	ldh [hDivideBCDDivisor], a
+	ldh [hDivideBCDDivisor + 1], a
 	ld a, [wAmountMoneyWon]
 	ldh [hMoney], a
 	ld a, [wAmountMoneyWon + 1]
 	ldh [hMoney + 1], a
 	ld a, [wAmountMoneyWon + 2]
 	ldh [hMoney + 2], a
-	xor a
-	ldh [hDivideBCDDivisor], a
-	ldh [hDivideBCDDivisor + 1], a
-	ld a, $05
-	ldh [hDivideBCDDivisor + 2], a
 	predef DivideBCDPredef3
 	ld de, wAmountMoneyWon + 2
 	ld hl, hDivideBCDQuotient + 2
 	ld c, $3
-	predef AddBCDPredef ; wAmountMoneyWon += wAmountMoneyWon / 5
 	ret
 
 ; ============================================================
@@ -457,12 +470,15 @@ WitchApplyMoneyEffects::
 ; CLOBBERS: a
 ; ============================================================
 RogueWitchBlockHealing::
+	run_challenge RUN_CH_NO_HEALING
+	jr nz, .noHealing
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_WITCH_ACCEPTED, a
 	jr z, .allow
 	ld a, [wWitchChallenge]
 	cp CHALLENGE_NO_HEALING
 	jr nz, .allow
+.noHealing
 	ldh a, [hIsInBattle]
 	and a
 	jr nz, .allow          ; in battle - allowed
@@ -488,26 +504,40 @@ RogueWitchBlockHealing::
 ; CLOBBERS: a, bc, de, hl
 ; ============================================================
 RogueWitchDiscountBuyPrice::
+	; RUN_CH_PRICIER_ITEMS (Dorm PC): a quarter on top, before the prize's
+	; discount, which then takes its 10% off the raised total.
+	run_challenge RUN_CH_PRICIER_ITEMS
+	jr z, .noMarkup
+	ld a, $04               ; BCD four
+	call HMoneyDividedBy
+	predef AddBCDPredef     ; hMoney += hMoney / 4
+.noMarkup
 	ld a, [wWitchPrizesEarned + 1]  ; prize 10 is bit 1 of the HIGH byte
 	and 1 << (PRIZE_CHEAP_ITEMS - 9)
 	ret z
-	; DivideBCD consumes hMoney, leaving the remainder. Preserve the full
-	; purchase total on the stack so the discount is subtracted from it.
+	; This is BCD math (unlike the plain-binary EXP divide above), so the
+	; divisor is BCD ten: $10, not decimal 10/$0A.
+	ld a, $10
+	call HMoneyDividedBy
+	predef SubBCDPredef     ; hMoney -= hMoney / 10
+	ret
+
+; a = a BCD divisor. Leaves hMoney / a in hDivideBCDQuotient with hMoney
+; itself intact, and de/hl/c set up for Add/SubBCDPredef to apply it to
+; hMoney. DivideBCD consumes hMoney, leaving the remainder, so the total is
+; kept on the stack across it; the quotient aliases hDivideBCDDivisor
+; (engine/math/bcd.asm). Clobbers everything.
+HMoneyDividedBy:
+	ldh [hDivideBCDDivisor + 2], a
+	xor a
+	ldh [hDivideBCDDivisor], a
+	ldh [hDivideBCDDivisor + 1], a
 	ldh a, [hMoney]
 	push af
 	ldh a, [hMoney + 1]
 	push af
 	ldh a, [hMoney + 2]
 	push af
-	; hMoney / 10 -> hDivideBCDQuotient (DivideBCD divides hMoney by the
-	; divisor and aliases the quotient over hDivideBCDDivisor - see
-	; engine/math/bcd.asm). This is BCD math (unlike the plain-binary EXP
-	; divide above), so the divisor is BCD ten: $10, not decimal 10/$0A.
-	xor a
-	ldh [hDivideBCDDivisor], a
-	ldh [hDivideBCDDivisor + 1], a
-	ld a, $10               ; BCD ten - NOT decimal 16
-	ldh [hDivideBCDDivisor + 2], a
 	predef DivideBCDPredef3
 	pop af
 	ldh [hMoney + 2], a
@@ -515,9 +545,7 @@ RogueWitchDiscountBuyPrice::
 	ldh [hMoney + 1], a
 	pop af
 	ldh [hMoney], a
-	; hMoney -= hMoney / 10
 	ld de, hMoney + 2
 	ld hl, hDivideBCDQuotient + 2
 	ld c, 3
-	predef SubBCDPredef
 	ret

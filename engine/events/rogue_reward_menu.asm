@@ -479,14 +479,17 @@ RogueRefresh::
 	; Random_Item_Selection has run by now (batch -> item roll -> here), so
 	; the item ball's rarity colour can finally be cached.
 	farcall RefreshBallRarityCache
-	; witch's "no random item" challenge: hide the random item instead of
-	; the usual unconditional show
+	; witch's "no random item" challenge, or the run challenge (Dorm PC): hide
+	; the random item instead of the usual unconditional show
+	run_challenge RUN_CH_NO_RANDOM_ITEM
+	jr nz, .hideRandomItem
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_WITCH_ACCEPTED, a
 	jr z, .showRandomItem
 	ld a, [wWitchChallenge]
 	cp CHALLENGE_NO_RANDOM_ITEM
 	jr nz, .showRandomItem
+.hideRandomItem
 	ld a, TOGGLE_STAGE_RANDOM_ITEM
 	ld [wToggleableObjectIndex], a
 	predef HideObject

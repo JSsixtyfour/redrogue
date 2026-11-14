@@ -70,7 +70,11 @@ ENGINE_WRAM = {"wPlayerName", "wPartyCount", "wPartySpecies", "wBoxCount", "wCur
                "wWhichDungeonWarp", "wFurthestRunsFirst", "wCompletedInGameTradeFlags", "wFurthestRunsLast",
                "wWarpedFromWhichMap", "wSpecialCollected",
                # migration lobbyHealLatchCleared (schema 19 -> 20)
-               "wStatusFlags4"}
+               "wStatusFlags4",
+               # migration runChallengesAdded (schema 20 -> 21)
+               "wPlayerStarterForm", "wBestHeat", "wStatusFlags1", "wChallengeBadges", "wChallengeBadgesHi",
+               "wStatusFlags5", "wChallengeBadges2", "wElite4Flags", "wRunChallengeBroken", "wCardKeyDoorX",
+               "wRunChallenges"}
 
 # Steps whose per-migration table flag_translation() computes and attaches to the target schema.
 FLAG_STEP = "flagsRenumbered"

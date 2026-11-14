@@ -1066,12 +1066,15 @@ AIPlayerSluggish:
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	jr z, .no
+	run_challenge RUN_CH_SLOWED ; mirrors HalvePlayerSpeedIfSluggish
+	jr nz, .yes
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_WITCH_ACCEPTED, a
 	jr z, .no
 	ld a, [wWitchChallenge]
 	cp CHALLENGE_SLOWED_POKEMON
 	jr nz, .no
+.yes
 	scf
 	ret
 .no

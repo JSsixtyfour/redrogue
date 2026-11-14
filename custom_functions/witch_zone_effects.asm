@@ -136,6 +136,13 @@ WitchReapplyPoison::
 ; from.
 ; ============================================================
 WitchInitTurnLimit::
+	; RUN_CH_TURN_LIMIT (Dorm PC): its own countdown, see HandleTurnLimitDrain.
+	run_challenge RUN_CH_TURN_LIMIT
+	jr z, .witch
+	call WitchZoneRound
+	add 6            ; the same 6 + round as WitchComputeTurnLimit
+	ld [wRunTurnsLeft], a
+.witch
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_WITCH_ACCEPTED, a
 	ret z

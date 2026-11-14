@@ -301,6 +301,35 @@ test("schema 19 to 20: events keep their meaning by name, only the heal latch bi
   assert.equal(api.checksumStatus(b, to).main, true);
 });
 
+test("schema 20 to 21: run challenge padding initializes, broken badges marked, all other bytes survive", () => {
+  const from = PKG.schemas["20"], to = PKG.schemas["21"];
+  const save = syntheticSave("20"), pkg = packageTargeting("21");
+  const fields = [["wBestHeat", 1, 0], ["wChallengeBadges", 1, 0], ["wChallengeBadgesHi", 1, 0],
+    ["wChallengeBadges2", 1, 0], ["wRunChallengeBroken", 1, 7], ["wRunChallenges", 2, 0]];
+  const changed = new Set();
+  for (const [name, size] of fields) {
+    const at = wramOffset(to, name);
+    for (let i = 0; i < size; i++) { save[at + i] = 0xa5; changed.add(at + i); } // old pad noise
+  }
+  recomputeChecksums(save, from);
+  const out = api.convert(save, pkg, { mode: "continue" });
+  assert.equal(out.ok, true, out.reason);
+  for (const [name, size, want] of fields)
+    for (let i = 0; i < size; i++) assert.equal(out.bytes[wramOffset(to, name) + i], want, `${name}+${i}`);
+  for (const f of from.saved_wram)
+    assert.equal(wramOffset(to, f.label), wramOffset(from, f.label), f.label);
+  for (const f of to.sram.filter((f) => /^sLossRecovery/.test(f.label))) {
+    const start = offsetOf(f.bank, f.address);
+    for (let i = 0; i < f.size; i++) { changed.add(start + i); assert.equal(out.bytes[start + i], 0, `${f.label}+${i}`); }
+  }
+  const sum = to.checksums.find((c) => c.name === "main");
+  changed.add(offsetOf(sum.at_bank, sum.at));
+  for (let i = 0; i < 8; i++) changed.add(0x2040 + i);
+  for (let i = 0; i < save.length; i++)
+    if (!changed.has(i)) assert.equal(out.bytes[i], save[i], `unrelated byte ${i}`);
+  assert.equal(api.checksumStatus(out.bytes, to).main, true);
+});
+
 // Full schema (with constants), for checks the trimmed package cannot make.
 const fullSchema = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
 

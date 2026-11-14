@@ -286,6 +286,47 @@ DEF NUM_WITCH_CHALLENGES            EQU 18
 ; Equal to PRIZE_RARITY_POKEMON's +51 on purpose, so prize + challenge = base odds.
 DEF CHALLENGE_REDUCED_RARITY_PENALTY EQU 51
 
+; Run challenges: opt-in handicaps chosen at the Dorm PC between runs, active
+; for the whole run (custom_functions/run_challenges.asm). One bit each in
+; wRunChallenges, and the same bit in wChallengeBadges once a run is cleared
+; with it on. Both bytes are SAVED, so a bit index is append-only and never
+; reordered. Each effect site tests its bit with the run_challenge macro
+; (macros/code.asm) alongside its witch test, so a run challenge and the witch's
+; zone challenge of the same kind behave identically.
+	const_def
+	const RUN_CH_REDUCED_RARITY   ; 0  witch 4: reward mon rolls -51 luck
+	const RUN_CH_RARER_FOES       ; 1  witch 6: trainer mons one class rarer
+	const RUN_CH_HIGHER_LEVELS    ; 2  witch 5: trainer levels +~10%
+	const RUN_CH_NO_RANDOM_ITEM   ; 3  witch 2: no stage random item
+	const RUN_CH_SLOWED           ; 4  witch 8: your Speed halved
+	const RUN_CH_DOUBLE_PP        ; 5  witch 18: your moves burn 2 PP
+	const RUN_CH_SAME_MOVE        ; 6  witch 14: maxHP/8 for repeating a move
+	const RUN_CH_TURN_LIMIT       ; 7  witch 10: HP drain past 6 + round turns
+	const RUN_CH_NO_HEALING       ; 8  witch 15: no medicine outside battle
+	const RUN_CH_RECOIL_PHYSICAL  ; 9  witch 16: 1/4 recoil on physical moves
+	const RUN_CH_RECOIL_SPECIAL   ; 10 witch 17: 1/4 recoil on special moves
+	const RUN_CH_LESS_MONEY       ; 11 run only: trainer prize money -25%
+	const RUN_CH_PRICIER_ITEMS    ; 12 run only: money mart purchases +25%
+	const RUN_CH_FULL_PARTIES     ; 13 run only: trainers never field one fewer
+	const RUN_CH_FEWER_REWARDS    ; 14 run only: fewer reward Pokemon
+DEF NUM_RUN_CHALLENGES EQU const_value ; offered in the Dorm PC list
+	const RUN_CH_RESERVED_15      ; 15 reserved: LEGENDARY LEADERS follow-up
+ASSERT const_value <= 16, "wRunChallenges / wChallengeBadges hold 16 bits"
+
+; wChallengeBadges2 bits: badges with no Dorm PC toggle, plus combinations.
+	const_def
+	const BIT_CHBADGE_IRONMAN     ; 0 cleared with Ironman on all run
+	const BIT_CHBADGE_SET_STYLE   ; 1 cleared with battle style SET all run
+	const BIT_CHBADGE_NO_GIFTS    ; 2 cleared without taking a bridge gift
+	const BIT_CHBADGE_THREE       ; 3 cleared with 3+ run challenges at once
+	const BIT_CHBADGE_SIX         ; 4 cleared with 6+ run challenges at once
+	const BIT_CHBADGE_ALL         ; 5 cleared with every run challenge on
+DEF NUM_CHBADGE_EXTRA EQU const_value
+
+; Run turn limit: the same 6 + round the witch quotes (WitchComputeTurnLimit).
+; wRunTurnsLeft counts DOWN from it, so the run needs one byte, not the witch's
+; limit + count pair, which sits in a UNION the witch's other challenges share.
+
 ; Gambler's Paradise fields fully-evolved mons with high-level movesets
 ; (Fissure/Horn Drill/etc.). PCWitchSetup rerolls it if wBattleCount is below
 ; this, so it only appears once the run's levels/species make sense. round =

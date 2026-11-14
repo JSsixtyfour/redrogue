@@ -607,6 +607,28 @@
       return null;
     },
 
+    // Schema 20 -> 21 (2026-11-14, run challenges): seven saved pads gain meaning, nothing moves.
+    // An old save has chosen no run challenges and earned no badges or heat. Its run in progress
+    // began before the run-start check existed, so every badge condition counts as broken
+    // (wRunChallengeBroken = IRONMAN | SET STYLE | NO GIFTS); the next run start clears it. The loss
+    // record names its schema, so it is cleared.
+    runChallengesAdded: function (bytes, from, to) {
+      var carved = [["wBestHeat", "wPlayerStarterForm", 1, 1], ["wChallengeBadges", "wStatusFlags1", 1, 1],
+        ["wChallengeBadgesHi", "wStatusFlags4", 1, 1], ["wChallengeBadges2", "wStatusFlags5", 1, 1],
+        ["wRunChallengeBroken", "wElite4Flags", 1, 1], ["wRunChallenges", "wCardKeyDoorX", 1, 2]];
+      for (var i = 0; i < carved.length; i++) {
+        var at = wramOffset(to, carved[i][0]), before = wramOffset(from, carved[i][1]);
+        if (wramField(from, carved[i][0]) || before < 0 || at !== before + carved[i][2])
+          return "run challenge padding layout not recognised";
+        bytes.fill(0, at, at + carved[i][3]);
+      }
+      bytes[wramOffset(to, "wRunChallengeBroken")] = 0x07;
+      var error = STEPS.lossRecoveryAdded(bytes, from, to);
+      if (error) return error;
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
     // Schema 19 -> 20: wStatusFlags4 bit 1 was vanilla's write-only BIT_UNKNOWN_4_1, set by every
     // trainer battle and never cleared, so nearly every old save holds it. It is now
     // BIT_LOBBY_HEAL_HANDLED, the lobby's once-per-visit heal-warning latch (cleared on each fresh

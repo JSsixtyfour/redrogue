@@ -468,6 +468,9 @@ BridgeGiftMenu::
 	cp b
 	jr z, .noChoice              ; NO THANKS
 	call BridgeDoGift
+	; Taking any bridge gift breaks the NO GIFTS run badge (run_challenges.asm).
+	ld hl, wRunChallengeBroken
+	set BIT_CHBADGE_NO_GIFTS, [hl]
 	; fall through to clear BIT_NO_TEXT_DELAY before returning
 .noChoice
 	pop af

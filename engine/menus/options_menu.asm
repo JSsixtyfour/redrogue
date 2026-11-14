@@ -311,6 +311,8 @@ OptionsMenuEngine:
 .exit
 	ld a, SFX_PRESS_AB
 	call PlaySound
+	; Mid-run, Ironman off / SHIFT / a lower difficulty break their run badges.
+	farcall RunChallengesNoteOptions
 	pop bc
 	ld a, b
 	ldh [hSCX], a

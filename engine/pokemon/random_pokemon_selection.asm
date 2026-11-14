@@ -197,12 +197,15 @@ ld b, a
 ; into great and poke, then greatball into poke, and the class comes back
 ; mirrored (4 - c). A uniform roll makes the band order irrelevant to the odds.
 ; Masterball needs positive luck, so the reverse ladder is 3-class only.
+run_challenge RUN_CH_REDUCED_RARITY ; the same penalty, all run (Dorm PC)
+jr nz, .luckPenalty
 ld a, [wRogueFlagsBitfield]
 bit BIT_WITCH_ACCEPTED, a
 jr z, .noLuckPenalty
 ld a, [wWitchChallenge]
 cp CHALLENGE_REDUCED_RARITY
 jr nz, .noLuckPenalty
+.luckPenalty
 ld a, b
 sub CHALLENGE_REDUCED_RARITY_PENALTY
 jr nc, .luckStillGood          ; the bonus covered the penalty; a = what is left

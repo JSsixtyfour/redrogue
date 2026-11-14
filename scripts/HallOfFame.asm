@@ -32,6 +32,8 @@ HallOfFameResetEventsAndSaveScript:
 	jr c, .aiRetry
 	rfarcall RunRecordsCommit      ; publishes once: it idles the timer, so
 	                               ; later Endless circuits commit nothing
+	farcall RunChallengesCommitClear ; badges and heat; idempotent, so an
+	                               ; Endless clear can only add to them
 	predef HallOfFamePC
 	; Endless mode (custom_functions/endless.asm): on an eligible clear, offer
 	; to continue. YES prepares the next circuit and sets up a script warp to

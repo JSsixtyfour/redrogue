@@ -182,6 +182,13 @@ PCWitchSetup::
     cp CHALLENGE_GAMBLERS_PARADISE
     jr z, .rollChallenge   ; Game Corner replaces a route, not a gym
 .gotChallenge
+    ; A challenge the run already has (Dorm PC run challenges) would pay a
+    ; prize for no new downside: roll again. Never loops: several ids have no
+    ; run counterpart (custom_functions/run_challenges.asm).
+    ld d, a
+    farcall WitchChallengeIsRunActive ; keeps d and the carry
+    ld a, d
+    jp c, .rollChallenge
     ld [wWitchChallenge], a   ; a = 1-based challenge id
     ; In "Witch Zone Effects" ($3A). farcall clobbers a/b/c/hl; none is live
     ; here (d/e are loaded just below).

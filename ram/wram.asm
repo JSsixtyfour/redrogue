@@ -324,7 +324,11 @@ wMenuCursorLocation:: dw
 
 ; Unsaved. Set only across the start-menu bag's build and blocking list call.
 wFieldBagListActive:: db
-	ds 1
+; Unsaved. RUN_CH_TURN_LIMIT's turns left this battle, counting down from
+; 6 + round (WitchInitTurnLimit); the drain starts at 0. Its own byte because
+; the witch's limit/count pair shares a UNION with her other challenges, and a
+; run challenge can be on at the same time as any of them.
+wRunTurnsLeft:: db
 
 ; how many times should HandleMenuInput poll the joypad state before it returns?
 wMenuJoypadPollCount:: db
@@ -3223,7 +3227,10 @@ wFossilMon:: db
 ; from the ds 2 pad here (saved; schema 5).
 wPlayerStarterForm:: db
 
-	ds 1
+; Highest heat of any Hall of Fame clear (schema 21, carved from this saved
+; pad): the run challenges' weights plus Ironman and difficulty, set by
+; RunChallengesCommitClear. Kept for life. custom_functions/run_challenges.asm.
+wBestHeat:: db
 
 ; trainer classes start at OPP_ID_OFFSET
 wEnemyMonOrTrainerClass:: db
@@ -3266,18 +3273,27 @@ wWhichDungeonWarp:: db
 wFurthestRunsFirst:: ds 8
 
 wStatusFlags1:: db
-	ds 1
+; Run challenge badges (schema 21): bit RUN_CH_* set once a run is cleared at
+; the Hall of Fame with that challenge on. RUN_CH_ 0-7 here, 8-15 in
+; wChallengeBadgesHi; the extras (no toggle, or combinations) in
+; wChallengeBadges2. Three single saved vanilla pads between the status flags,
+; kept for life. custom_functions/run_challenges.asm.
+wChallengeBadges:: db
 wStatusFlags2:: db
 wCableClubDestinationMap::
 wStatusFlags3:: db
 wStatusFlags4:: db
-	ds 1
+wChallengeBadgesHi:: db ; see wChallengeBadges
 wStatusFlags5:: db
-	ds 1
+wChallengeBadges2:: db ; BIT_CHBADGE_*; see wChallengeBadges
 wStatusFlags6:: db
 wStatusFlags7:: db
 wElite4Flags:: db
-	ds 1
+; This run's broken run-challenge badge conditions (schema 21, carved from the
+; saved pad here): bits BIT_CHBADGE_IRONMAN/SET_STYLE/NO_GIFTS, plus the lowest
+; difficulty heat seen + 1 in bits 6-7. Cleared at run start, not by the reset.
+; custom_functions/run_challenges.asm.
+wRunChallengeBroken:: db
 wMovementFlags:: db
 
 wCompletedInGameTradeFlags:: dw
@@ -3294,7 +3310,11 @@ wSpecialCollected:: ds 2
 wCardKeyDoorY:: db
 wCardKeyDoorX:: db
 
-	ds 2
+; The run challenges chosen at the Dorm PC (schema 21), bit RUN_CH_*, read with
+; the run_challenge macro. Editable only between runs; NOT cleared by the run
+; reset, so the next run starts with the same choice. Carved from saved padding
+; (ClearVariablesOnEnterMap zeroes only the two card key bytes above).
+wRunChallenges:: ds 2
 
 wFirstLockTrashCanIndex:: db
 wSecondLockTrashCanIndex:: db

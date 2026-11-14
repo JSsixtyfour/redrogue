@@ -74,12 +74,15 @@ DecrementPP:
 	ldh a, [hWhoseTurn]
 	and a
 	ret nz
+	run_challenge RUN_CH_DOUBLE_PP ; the same, all run (Dorm PC)
+	jr nz, .doublePP
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_WITCH_ACCEPTED, a
 	ret z
 	ld a, [wWitchChallenge]
 	cp CHALLENGE_DOUBLE_PP
 	ret nz
+.doublePP
 	ld a, [hl]
 	and PP_MASK          ; PP only - ignore the PP Up count packed in bits 6-7
 	ret z                ; already at 0 - never wrap into the PP Up bits

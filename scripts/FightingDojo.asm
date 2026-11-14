@@ -55,12 +55,15 @@ FightingDojo_Script:
 FightingDojoShowRandomItem:
 	ld a, TOGGLE_FIGHTING_DOJO_RANDOM_ITEM
 	ld [wToggleableObjectIndex], a
+	run_challenge RUN_CH_NO_RANDOM_ITEM
+	jr nz, .hide
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_WITCH_ACCEPTED, a
 	jr z, .show
 	ld a, [wWitchChallenge]
 	cp CHALLENGE_NO_RANDOM_ITEM
 	jr nz, .show
+.hide
 	predef_jump HideObject
 .show
 	predef_jump ShowObject

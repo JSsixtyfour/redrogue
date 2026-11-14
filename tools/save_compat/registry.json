@@ -151,6 +151,12 @@
    "to": "20",
    "steps": ["flagsRenumbered", "lobbyHealLatchCleared"],
    "verified": "2026-11-14 (Claude): no field moves. ROUTE_17 dropped from the event generator's live maps (FOLLOWUPS #98); the regeneration renumbered 453 events (246 bits rewritten), translated by name. wStatusFlags4 bit 1 (BIT_UNKNOWN_4_1 -> BIT_LOBBY_HEAL_HANDLED) cleared. Converter 32 pass/1 legacy skip; 'schema 19 to 20' checks every event by name and the latch bit, and fails with either step removed. Real-save gate passed: six saves (lobby, route, cave, forest, cemetery, facility) made on the archived schema-19 release ROM c4931070 convert and pass saves.py continue on the schema-20 build; the unconverted lobby save is refused. Those saves had bit 1 already clear (no trainer battle), so the latch is covered by the synthetic test only. Evidence builds/gate19_c4931070/. BGB/hardware acceptance pending."
+  },
+  {
+   "from": "20",
+   "to": "21",
+   "steps": ["runChallengesAdded"],
+   "verified": "2026-11-14 (Claude): run challenges. Seven saved pads carved (wBestHeat, wChallengeBadges/Hi/2, wRunChallengeBroken, wRunChallenges), nothing moves; all zero except wRunChallengeBroken = 7 (a run whose start was never seen earns no IRONMAN, SET STYLE or NO GIFTS badge); loss record cleared. Synthetic converter test only so far; the real-save gate is pending."
   }
  ]
 }

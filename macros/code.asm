@@ -26,3 +26,11 @@ MACRO dict
 	ENDC
 	jp z, \2
 ENDM
+
+; Run challenges (constants/ram_constants.asm RUN_CH_*): NZ when run challenge
+; \1 is on for this run. 5 bytes, clobbers a only, so it drops in beside an
+; existing witch `bit BIT_WITCH_ACCEPTED` / `cp CHALLENGE_*` test.
+MACRO run_challenge
+	ld a, [wRunChallenges + (\1) / 8]
+	bit (\1) % 8, a
+ENDM

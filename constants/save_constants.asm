@@ -92,7 +92,13 @@
 ; write-only BIT_UNKNOWN_4_1 (set by every trainer battle, never cleared), is now
 ; BIT_LOBBY_HEAL_HANDLED, a once-per-visit latch; lobbyHealLatchCleared clears it
 ; so a save made in the lobby still gets the exit-door heal warning.
-DEF SAVE_SCHEMA_ID EQU 20
+; Schema 21 (2026-11-14, run challenges): wRunChallenges, wChallengeBadges/Hi/2,
+; wBestHeat and wRunChallengeBroken take seven saved pads (the ds 1 after
+; wPlayerStarterForm, the four between the status flags, the ds 2 after
+; wCardKeyDoorX). Nothing moves. Migration runChallengesAdded zeroes them,
+; marks the run in progress as having broken every badge condition (its start
+; was never seen), and clears the loss-recovery record.
+DEF SAVE_SCHEMA_ID EQU 21
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; Transient invalid magic while a writer owns the save. Completed headers and

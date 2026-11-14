@@ -19,6 +19,7 @@ RunRecordsInit::
 	ld bc, 2
 	xor a
 	call FillMemory
+	call RunChallengesNewGame
 RunTimerReset::
 	xor a
 	ld [wRunTimerState], a
@@ -32,7 +33,7 @@ RunTimerStart::
 	call FillMemory
 	ld a, 1
 	ld [wRunTimerState], a
-	ret
+	jp RunChallengesStartRun
 
 ; VBlank leaf: no shared scratch, UI, SRAM or nested farcalls.
 RunTimerTick::
