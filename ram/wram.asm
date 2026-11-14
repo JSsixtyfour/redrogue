@@ -3290,7 +3290,7 @@ wStatusFlags6:: db
 wStatusFlags7:: db
 wElite4Flags:: db
 ; This run's broken run-challenge badge conditions (schema 21, carved from the
-; saved pad here): bits BIT_CHBADGE_IRONMAN/SET_STYLE/NO_GIFTS, plus the lowest
+; saved pad here): bits BIT_CHBADGE_IRONMAN/SET_STYLE, plus the lowest
 ; difficulty heat seen + 1 in bits 6-7. Cleared at run start, not by the reset.
 ; custom_functions/run_challenges.asm.
 wRunChallengeBroken:: db

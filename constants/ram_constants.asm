@@ -309,18 +309,17 @@ DEF CHALLENGE_REDUCED_RARITY_PENALTY EQU 51
 	const RUN_CH_PRICIER_ITEMS    ; 12 run only: money mart purchases +25%
 	const RUN_CH_FULL_PARTIES     ; 13 run only: trainers never field one fewer
 	const RUN_CH_FEWER_REWARDS    ; 14 run only: fewer reward Pokemon
+	const RUN_CH_NO_GIFTS         ; 15 run only: no bridge gift rooms are rolled
 DEF NUM_RUN_CHALLENGES EQU const_value ; offered in the Dorm PC list
-	const RUN_CH_RESERVED_15      ; 15 reserved: LEGENDARY LEADERS follow-up
 ASSERT const_value <= 16, "wRunChallenges / wChallengeBadges hold 16 bits"
 
 ; wChallengeBadges2 bits: badges with no Dorm PC toggle, plus combinations.
 	const_def
 	const BIT_CHBADGE_IRONMAN     ; 0 cleared with Ironman on all run
 	const BIT_CHBADGE_SET_STYLE   ; 1 cleared with battle style SET all run
-	const BIT_CHBADGE_NO_GIFTS    ; 2 cleared without taking a bridge gift
-	const BIT_CHBADGE_THREE       ; 3 cleared with 3+ run challenges at once
-	const BIT_CHBADGE_SIX         ; 4 cleared with 6+ run challenges at once
-	const BIT_CHBADGE_ALL         ; 5 cleared with every run challenge on
+	const BIT_CHBADGE_THREE       ; 2 cleared with 3+ run challenges at once
+	const BIT_CHBADGE_SIX         ; 3 cleared with 6+ run challenges at once
+	const BIT_CHBADGE_ALL         ; 4 cleared with every run challenge on
 DEF NUM_CHBADGE_EXTRA EQU const_value
 
 ; FEWER REWARDS withholds the stage reward Pokemon on the 0-based rounds whose bit is

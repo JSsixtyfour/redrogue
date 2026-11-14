@@ -20,13 +20,13 @@
 
 SECTION "Run Challenges", ROMX, BANK[$12]
 
-; wRunChallengeBroken layout. Bits 0-2 use the BIT_CHBADGE_* index of the badge
+; wRunChallengeBroken layout. Bits 0-1 use the BIT_CHBADGE_* index of the badge
 ; they break, so a clear can award `~broken & RUN_BROKEN_FLAGS` directly.
 ; Bits 6-7 hold the lowest difficulty heat seen this run, plus 1 (0 = never
 ; seen; a save converted mid-run counts as no difficulty heat).
-DEF RUN_BROKEN_FLAGS EQU (1 << BIT_CHBADGE_IRONMAN) | (1 << BIT_CHBADGE_SET_STYLE) | (1 << BIT_CHBADGE_NO_GIFTS)
+DEF RUN_BROKEN_FLAGS EQU (1 << BIT_CHBADGE_IRONMAN) | (1 << BIT_CHBADGE_SET_STYLE)
 DEF RUN_DIFF_HEAT_MASK EQU %11000000
-ASSERT BIT_CHBADGE_IRONMAN < 6 && BIT_CHBADGE_SET_STYLE < 6 && BIT_CHBADGE_NO_GIFTS < 6
+ASSERT BIT_CHBADGE_IRONMAN < 6 && BIT_CHBADGE_SET_STYLE < 6
 
 DEF RUN_HEAT_IRONMAN EQU 3
 
@@ -338,6 +338,7 @@ RunChallengeWeights:
 	db 1 ; RUN_CH_PRICIER_ITEMS
 	db 2 ; RUN_CH_FULL_PARTIES
 	db 2 ; RUN_CH_FEWER_REWARDS
+	db 2 ; RUN_CH_NO_GIFTS
 ASSERT @ - RunChallengeWeights == NUM_RUN_CHALLENGES
 
 ; ============================================================
@@ -677,12 +678,14 @@ RunChallengeNames:
 	dw RunChallengeNameSame, RunChallengeNameTurns, RunChallengeNameHeal
 	dw RunChallengeNamePhys, RunChallengeNameSpec, RunChallengeNameMoney
 	dw RunChallengeNamePrice, RunChallengeNameFull, RunChallengeNameFewer
+	dw RunChallengeNameGifts
 RunChallengeDescs:
 	dw RunChallengeDescRarity, RunChallengeDescFoes, RunChallengeDescLevels
 	dw RunChallengeDescItem, RunChallengeDescSlowed, RunChallengeDescPP
 	dw RunChallengeDescSame, RunChallengeDescTurns, RunChallengeDescHeal
 	dw RunChallengeDescPhys, RunChallengeDescSpec, RunChallengeDescMoney
 	dw RunChallengeDescPrice, RunChallengeDescFull, RunChallengeDescFewer
+	dw RunChallengeDescGifts
 ASSERT (RunChallengeDescs - RunChallengeNames) == NUM_RUN_CHALLENGES * 2
 
 	run_challenge_text Rarity, "POOR REWARDS", "Rewards roll less<NEXT>rare Pokemon."
@@ -700,6 +703,7 @@ ASSERT (RunChallengeDescs - RunChallengeNames) == NUM_RUN_CHALLENGES * 2
 	run_challenge_text Price, "PRICIER ITEMS", "Marts charge a<NEXT>quarter extra."
 	run_challenge_text Full, "FULL PARTIES", "Trainers always<NEXT>field full teams."
 	run_challenge_text Fewer, "FEWER REWARDS", "No Pokemon rewards<NEXT>after gym 1 and 5."
+	run_challenge_text Gifts, "NO GIFTS", "No gift rooms<NEXT>open before gyms."
 
 ; ============================================================
 ; RunChallengesRecordsShow - RECORDS' CHALLENGES pages (RoomRecordsMenu):
@@ -715,10 +719,10 @@ RunChallengesRecordsShow::
 	hlcoord 0, 0
 	lb bc, 16, 18
 	call TextBoxBorder
-	hlcoord 2, 1
+	hlcoord 2, 0                  ; on the top border: page 1 needs every inner row
 	ld de, .Title
 	call PlaceString
-	hlcoord 16, 1
+	hlcoord 15, 0
 	ld a, [wBuffer + 1]
 	add CHARVAL("1")
 	ld [hli], a
@@ -741,7 +745,7 @@ RunChallengesRecordsShow::
 	ld d, [hl]
 	ld e, a
 	ld a, [wBuffer + 2]
-	add 2                         ; screen row 2 + id
+	inc a                         ; screen row 1 + id
 	hlcoord 2, 0
 	ld bc, SCREEN_WIDTH
 	call AddNTimes
@@ -779,7 +783,7 @@ RunChallengesRecordsShow::
 	ld d, [hl]
 	ld e, a
 	ld a, [wBuffer + 2]
-	add 3                         ; screen row 3 + badge
+	add 2                         ; screen row 2 + badge
 	hlcoord 2, 0
 	ld bc, SCREEN_WIDTH
 	call AddNTimes
@@ -843,11 +847,10 @@ RunChallengesRecordsShow::
 .BestHeat
 	db "BEST HEAT@"
 .ExtraNames
-	dw .Ironman, .SetStyle, .NoGifts, .Three, .Six, .All
-	ASSERT 6 == NUM_CHBADGE_EXTRA
+	dw .Ironman, .SetStyle, .Three, .Six, .All
+	ASSERT 5 == NUM_CHBADGE_EXTRA
 .Ironman:  db "IRONMAN@"
 .SetStyle: db "SET STYLE@"
-.NoGifts:  db "NO GIFTS@"
 .Three:    db "3+ AT ONCE@"
 .Six:      db "6+ AT ONCE@"
 .All:      db "ALL AT ONCE@"

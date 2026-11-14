@@ -13,10 +13,11 @@ from test_save_header import ARTIFACTS, REPO_ROOT
 
 EVENTS = parse_rgbds_constants(REPO_ROOT / "constants" / "event_constants.asm")
 RAM = parse_rgbds_constants(REPO_ROOT / "constants" / "ram_constants.asm")
+RAM_ROUND = parse_rgbds_constants(REPO_ROOT / "constants" / "round_constants.asm")
 
-NUM = RAM["RUN_CH_FEWER_REWARDS"] + 1  # NUM_RUN_CHALLENGES (the parser skips const_value aliases)
-WEIGHTS = [1, 2, 2, 1, 2, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2]  # RunChallengeWeights
-IRONMAN, SET_STYLE, NO_GIFTS = (RAM["BIT_CHBADGE_" + n] for n in ("IRONMAN", "SET_STYLE", "NO_GIFTS"))
+NUM = RAM["RUN_CH_NO_GIFTS"] + 1  # NUM_RUN_CHALLENGES (the parser skips const_value aliases)
+WEIGHTS = [1, 2, 2, 1, 2, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 2]  # RunChallengeWeights
+IRONMAN, SET_STYLE = (RAM["BIT_CHBADGE_" + n] for n in ("IRONMAN", "SET_STYLE"))
 THREE, SIX, ALL = (RAM["BIT_CHBADGE_" + n] for n in ("THREE", "SIX", "ALL"))
 CARRY = 0x10
 
@@ -86,13 +87,13 @@ class RunChallengeTest(unittest.TestCase):
     def test_commit_awards_badges_extras_combos_and_best_heat(self):
         self.choose(*range(NUM))
         self.options(ironman=True, shift=False, difficulty=0)
-        self.call("RunChallengesStartRun")
-        self.h.write8("wRunChallengeBroken", self.h.read8("wRunChallengeBroken") | (1 << NO_GIFTS))
+        self.options(ironman=True, shift=True, difficulty=0)
+        self.call("RunChallengesStartRun")              # SET STYLE broken: SHIFT at run start
         self.call("RunChallengesCommitClear")
         self.assertEqual(self.h.read8("wChallengeBadges"), 0xFF)
         self.assertEqual(self.h.read8("wChallengeBadgesHi"), (1 << (NUM - 8)) - 1)
         extras = self.h.read8("wChallengeBadges2")
-        self.assertEqual(extras, (1 << IRONMAN) | (1 << SET_STYLE) | (1 << THREE) | (1 << SIX) | (1 << ALL))
+        self.assertEqual(extras, (1 << IRONMAN) | (1 << THREE) | (1 << SIX) | (1 << ALL))
         self.assertEqual(self.h.read8("wBestHeat"), sum(WEIGHTS) + 3)
         # A smaller later clear keeps everything earned.
         self.choose(3)
@@ -145,6 +146,20 @@ class RunChallengeTest(unittest.TestCase):
         self.choose(RAM["RUN_CH_NO_RANDOM_ITEM"])
         self.h.write8("wBattleCount", 1)
         self.assertEqual(self.call("RewardChallengeFlags")["E"], 0b10)
+
+    def test_no_gifts_keeps_the_guaranteed_gift_doors_shut(self):
+        # Two badges: the last gym of the first gift window, where a gift is mandatory.
+        h = self.h
+        h.write8("wObtainedBadges", (1 << (RAM_ROUND["PAIR_BADGES_A"] - 1)) - 1)
+        h.write8("wRogueFlagsBitfield", h.read8("wRogueFlagsBitfield") | (1 << RAM["BIT_ROGUE_GYM_NEXT"]))
+        h.write8("wStatusFlags6", h.read8("wStatusFlags6") & ~(1 << RAM["BIT_DEBUG2_MODE"]))
+        for on in (False, True):
+            with self.subTest(no_gifts=on):
+                h.write8("wBridgeState", 0)
+                h.write8("wBridgeOfferedLo", 0)
+                self.choose(*([RAM["RUN_CH_NO_GIFTS"]] if on else []))
+                fired = bool(self.call("BridgeRollAndAssign")["F"] & CARRY)
+                self.assertEqual(fired, not on)
 
     def test_witch_party_limit_rerolled_while_fewer_rewards_on(self):
         self.choose(RAM["RUN_CH_FEWER_REWARDS"])

@@ -59,6 +59,9 @@ ENDC
 	ld a, [wRogueFlagsBitfield]
 	bit BIT_ROGUE_GYM_NEXT, a
 	jr z, .no
+	; The NO GIFTS run challenge: the doors stay ordinary stage doors.
+	run_challenge RUN_CH_NO_GIFTS
+	jr nz, .no
 	; gate: already hit the per-run cap?
 	call GetBridgeCount
 	cp BRIDGE_PER_RUN

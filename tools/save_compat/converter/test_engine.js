@@ -305,7 +305,7 @@ test("schema 20 to 21: run challenge padding initializes, broken badges marked, 
   const from = PKG.schemas["20"], to = PKG.schemas["21"];
   const save = syntheticSave("20"), pkg = packageTargeting("21");
   const fields = [["wBestHeat", 1, 0], ["wChallengeBadges", 1, 0], ["wChallengeBadgesHi", 1, 0],
-    ["wChallengeBadges2", 1, 0], ["wRunChallengeBroken", 1, 7], ["wRunChallenges", 2, 0]];
+    ["wChallengeBadges2", 1, 0], ["wRunChallengeBroken", 1, 3], ["wRunChallenges", 2, 0]];
   const changed = new Set();
   for (const [name, size] of fields) {
     const at = wramOffset(to, name);

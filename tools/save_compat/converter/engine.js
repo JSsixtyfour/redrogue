@@ -622,7 +622,7 @@
           return "run challenge padding layout not recognised";
         bytes.fill(0, at, at + carved[i][3]);
       }
-      bytes[wramOffset(to, "wRunChallengeBroken")] = 0x07;
+      bytes[wramOffset(to, "wRunChallengeBroken")] = 0x03; // IRONMAN, SET STYLE broken
       var error = STEPS.lossRecoveryAdded(bytes, from, to);
       if (error) return error;
       recomputeChecksums(bytes, to, ["main"]);
