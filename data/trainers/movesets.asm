@@ -3,12 +3,12 @@
 ; (MOVESET_REVISION_IMPLEMENTATION_PLAN.md). NOT wired into `make` - edit the
 ; catalog, re-run by hand and commit both. Never hand-edit this file.
 ;
-; Catalog: 2571 rows, 2391 ACTIVE, 104 ARCHIVED, 73 EXCLUDED, 1 HELD, 2 REJECTED. Emitted: 2391 sets from the ACTIVE rows.
-; Level-bumped: 24 records had lvl_min raised to the level the mon's
+; Catalog: 2571 rows, 2388 ACTIVE, 107 ARCHIVED, 73 EXCLUDED, 1 HELD, 2 REJECTED. Emitted: 2388 sets from the ACTIVE rows.
+; Level-bumped: 26 records had lvl_min raised to the level the mon's
 ;   line first learns all four moves (lvl_max raised to match if passed).
 ;   Mew, Mewtwo, Celebi, Lugia and Ho-Oh are exempt (LEVEL_BUMP_EXEMPT).
 ; TM level gate: 807 records had lvl_min raised to the gate of their
-;   strongest TM-only move (TM_GATE_LEVEL_*, balance_constants.asm); 364
+;   strongest TM-only move (TM_GATE_LEVEL_*, balance_constants.asm); 363
 ;   catalog segments sat wholly under it and are not emitted. Same exemption.
 ; Plus 28 character sets (levels 1-100, tagged `; roster <Prefix>`, not gated)
 ;   from the Sets tables in data/trainers/PARTY_ROSTER.md.
@@ -1018,7 +1018,7 @@ Moveset_SANDSHREW::
 	db EARTHQUAKE, ROCK_SLIDE, SAND_ATTACK, SUBMISSION, TIER_NORMAL, 207, 33, 100
 
 SECTION "Movesets 2", ROMX, BANK[$3B]
-; 7464 of 7483 budgeted bytes
+; 7472 of 7483 budgeted bytes
 
 Moveset_SANDSLASH::
 	db SWORDS_DANCE, EARTHQUAKE, BODY_SLAM, HYPER_BEAM, TIER_ELITE, 8, 40, 100
@@ -1150,8 +1150,6 @@ Moveset_EKANS::
 	db EARTHQUAKE, ACID, SCREECH, BODY_SLAM, TIER_NORMAL, 5, 45, 55
 	db EARTHQUAKE, STRENGTH, GLARE, ACID, TIER_NORMAL, 109, 45, 55
 	db EARTHQUAKE, MEGA_DRAIN, GLARE, BITE, TIER_NORMAL, 105, 45, 55
-	db WRAP, LEER, NO_MOVE, NO_MOVE, TIER_NORMAL, 2, 5, 5
-	db WRAP, LEER, POISON_STING, NO_MOVE, TIER_NORMAL, 2, 10, 10
 Moveset_PARAS::
 	db SPORE, SLASH, DIG, MEGA_DRAIN, TIER_NORMAL, 5, 45, 55
 	db STUN_SPORE, MEGA_DRAIN, LEECH_LIFE, DIG, TIER_NORMAL, 108, 22, 30
@@ -2087,14 +2085,14 @@ Moveset_STANTLER::
 	db BODY_SLAM, PSYCHIC_M, THUNDER_WAVE, EARTHQUAKE, TIER_HARD, 2, 36, 100
 	db HYPNOSIS, BODY_SLAM, EARTHQUAKE, HYPER_BEAM, TIER_HARD, 2, 36, 100
 	db BODY_SLAM, PSYCHIC_M, THUNDERBOLT, EARTHQUAKE, TIER_HARD, 2, 36, 100
-
-SECTION "Movesets 3", ROMX, BANK[$29]
-; 616 of 4733 budgeted bytes
-
 Moveset_HITMONTOP::
 	db SUBMISSION, BODY_SLAM, COUNTER, DIG, TIER_HARD, 2, 36, 100 ; salvaged EARTHQUAKE->DIG
 	db SUBMISSION, DIG, BODY_SLAM, DOUBLE_EDGE, TIER_HARD, 2, 36, 100 ; salvaged EARTHQUAKE->DIG, HYPER_BEAM->DOUBLE_EDGE
 	db COUNTER, BODY_SLAM, DIG, DOUBLE_EDGE, TIER_NORMAL, 2, 40, 100 ; salvaged EARTHQUAKE->DIG, HYPER_BEAM->DOUBLE_EDGE
+
+SECTION "Movesets 3", ROMX, BANK[$29]
+; 592 of 4733 budgeted bytes
+
 Moveset_MILTANK::
 	db BODY_SLAM, EARTHQUAKE, THUNDER_WAVE, REST, TIER_ELITE, 2, 40, 100
 	db BODY_SLAM, EARTHQUAKE, ICE_BEAM, THUNDERBOLT, TIER_HARD, 2, 36, 100
@@ -2421,7 +2419,7 @@ MovesetSpeciesIndex::
 	dw Moveset_ZUBAT
 	db 6, BANK(Moveset_ZUBAT)
 	dw Moveset_EKANS
-	db 7, BANK(Moveset_EKANS)
+	db 5, BANK(Moveset_EKANS)
 	dw Moveset_PARAS
 	db 6, BANK(Moveset_PARAS)
 	dw Moveset_POLIWHIRL

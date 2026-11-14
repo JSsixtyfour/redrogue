@@ -92,7 +92,7 @@ fodder.
 ### Misty (WATER)
 
 **Band 1: rounds 1-2**
-- Aces (round 1): Wartortle, Poliwhirl, Seaking, Starmie
+- Aces (round 1): Wartortle, Poliwhirl, Seaking
 - Aces: Starmie, Tentacruel, Vaporeon
 - Fodder: Seel, Psyduck, Krabby, Kabuto, Shellder, Omanyte, Poliwag, Tentacool, Horsea, Goldeen, Magikarp, Eevee, Slowpoke, Squirtle, Remoraid (johto), Wooper (johto), Marill (johto), Totodile (johto), Corsola (johto), Wiglett (warp)
 
@@ -384,6 +384,7 @@ off-type ace the way Persian is for Giovanni.
 ### Pryce (ICE)
 
 **Band 1: rounds 1-2**
+- Aces (round 1): Piloswine (johto), Sneasel (johto), Alolan Sandslash (warp)
 - Aces: Dewgong, Piloswine (johto), Sneasel (johto), Alolan Sandslash (warp)
 - Fodder: Seel, Shellder, Swinub (johto), Sneasel (johto), Alolan Vulpix (warp), Alolan Sandshrew (warp)
 

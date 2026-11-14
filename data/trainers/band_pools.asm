@@ -195,7 +195,6 @@
 	band_ace WARTORTLE
 	band_ace POLIWHIRL
 	band_ace SEAKING
-	band_ace STARMIE
 	band_johto
 	band_warp
 	band_end
@@ -2087,6 +2086,13 @@
 	band_warp
 	band_mon VULPIX, 1
 	band_mon SANDSHREW, 1
+	band_end
+	band_pool Pryce_AceR1
+	band_johto
+	band_ace PILOSWINE
+	band_ace SNEASEL
+	band_warp
+	band_ace SANDSLASH, 1
 	band_end
 	band_pool Pryce_Ace2
 	band_ace CLOYSTER
