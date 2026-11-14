@@ -10,7 +10,7 @@
 	INCBIN "gfx/pokemon/front/ekans.dim" ; sprite dimensions
 	dw EkansPicFront, EkansPicBack
 
-	db WRAP, LEER, NO_MOVE, NO_MOVE ; level 1 learnset
+	db POISON_STING, LEER, BIND, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset

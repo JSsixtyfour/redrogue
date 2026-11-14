@@ -271,14 +271,12 @@ Rogue_Lab_Script_PokeballText_3:
 ; We then fall through to walk Blue to that ball.
 OaksLabRivalPicksAndWalks:
 	rfarcall RunTimerStart
-	farcall RivalPickStarter
+	rfarcall RivalPickStarter
 	; fall through
 
 ; Walk Blue to his chosen ball. wRivalStarterBallSpriteIndex = ROGUE_STARTER_POKEBALL_1/2/3
-; (1/2/3) = left(x=6)/middle(x=7)/right(x=8). Blue starts at (4,3). The "1" tables route
-; via row 5 (used when the player stands on row 4 and would block row 4); the
-; "2" tables route via row 4. Middle/Right tables match vanilla; Left adds a
-; row-5 variant and keeps the vanilla far-right (xCoord==9) reposition case.
+; (1/2/3) = left(x=6)/middle(x=7)/right(x=8). Blue starts at (4,3).
+; The "1" tables detour via row 5; the "2" tables take row 4 directly.
 MoveRivalToChosenBall:
 	ld a, [wRivalStarterBallSpriteIndex]
 	cp ROGUE_STARTER_POKEBALL_1 ; 1 = left
@@ -293,22 +291,18 @@ MoveRivalToChosenBall:
 	ld de, RivalRightBallMovement2
 	jr .move
 .middleBall
+	ld a, [wXCoord]
+	cp 8 ; the direct path ends at column 7
+	jr nc, .middleDirect
 	ld a, [wYCoord]
 	cp 4
 	ld de, RivalMiddleBallMovement1
 	jr z, .move
+.middleDirect
 	ld de, RivalMiddleBallMovement2
 	jr .move
 .leftBall
-	;ld a, [wXCoord]
-	;cp 9 ; player to the right of the table (rival offscreen)?
-	;jr z, .leftBallReposition
-	;ld a, [wYCoord]
-	;cp 4
-	;ld de, RivalLeftBallMovement1
-	;jr z, .move
 	ld de, RivalLeftBallMovement2
-	jr .move
 .move
 	ld a, OAKSLAB_RIVAL
 	ldh [hSpriteIndex], a
@@ -325,13 +319,6 @@ MoveRivalToChosenBall:
 	ld [wOaksLabCurScript], a
 	ret
 
-;RivalLeftBallMovement1:
-;	db NPC_MOVEMENT_DOWN
-;	db NPC_MOVEMENT_DOWN
-;	db NPC_MOVEMENT_RIGHT
-;	db NPC_MOVEMENT_RIGHT
-;	db NPC_MOVEMENT_UP
-;	db -1 ; end
 RivalLeftBallMovement2:
 	db NPC_MOVEMENT_DOWN
 	db NPC_MOVEMENT_RIGHT

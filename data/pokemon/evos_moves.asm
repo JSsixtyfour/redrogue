@@ -1281,14 +1281,13 @@ ArbokEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
-	db 9,  POISON_STING
-	db 15, BITE
-	db 18, ACID
+	db 12, BITE
+	db 15, ACID
+	db 20, WRAP
 	db 22, SUBSTITUTE
 	db 25, GLARE
 	db 30, SCREECH
 	db 35, SLUDGE
-	db 38, WRAP
 	db 0
 ; Tutoring Learnset   
     db 2, HEADBUTT
@@ -2583,14 +2582,14 @@ EkansEvosMoves:
 	db EVOLVE_LEVEL, 22, ARBOK
 	db 0
 ; Learnset
-	db 9,  POISON_STING
+	
 	db 12, BITE
 	db 15, ACID
+	db 20, WRAP
 	db 22, SUBSTITUTE
 	db 25, GLARE
 	db 30, SCREECH
 	db 35, SLUDGE
-	db 47, WRAP
 	db 0
 ; Tutoring Learnset   
     db 2, HEADBUTT
@@ -4328,10 +4327,10 @@ PinecoEvosMoves:
 ; Learnset - TACKLE already granted at level 1 (PROTECT does not exist in
 ; Gen 1 and was dropped, see base_stats/pineco.asm); RAPID_SPIN/SPIKES do not
 ; exist in Gen 1, replaced with HARDEN/PIN_MISSILE.
-	db 8, SELFDESTRUCT
+
     db 9, LEECH_LIFE
-    db 11, HARDEN ; was RAPID_SPIN
-	db 12, TAKE_DOWN
+	db 11, TAKE_DOWN
+	db 18, SELFDESTRUCT
     db 20, TWINEEDLE
 	db 25, BIDE
 	db 36, EXPLOSION
@@ -4346,10 +4345,9 @@ ForretressEvosMoves:
 	db 0
 ; Learnset - TACKLE/SELFDESTRUCT already granted at level 1 (PROTECT does not
 ; exist in Gen 1 and was dropped, see base_stats/forretress.asm)
-	db 8, SELFDESTRUCT
-    db 9, LEECH_LIFE
-    db 11, HARDEN ; was RAPID_SPIN
-	db 12, TAKE_DOWN
+	db 9, LEECH_LIFE
+	db 11, TAKE_DOWN
+	db 18, SELFDESTRUCT
     db 20, TWINEEDLE
 	db 25, BIDE
 	db 36, EXPLOSION

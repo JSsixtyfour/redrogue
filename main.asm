@@ -532,6 +532,9 @@ INCLUDE "engine/pokemon/get_levelup_moves.asm"
 ; the entries hold bare `dw` record pointers, so table and records can never be
 ; split from each other or from EvosMovesPointerTable, which they fall back to.
 INCLUDE "data/pokemon/form_evos_moves.asm"
+; Pokedex page 3 (what a mon evolves into). Same bank rule: it walks the lists
+; in place and calls the real evolution gate; ASSERTed in the file.
+INCLUDE "custom_functions/dex_evo_page.asm"
 
 SECTION "Pokemon Data 1", ROMX    ; marcelnote - new, moved from Battle Engine 7
 

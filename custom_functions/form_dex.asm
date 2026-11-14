@@ -790,6 +790,7 @@ FormDexShowData:
 	pop af
 	ld [wLoadedMon + MON_CATCH_RATE], a
 	call FormDexBaseStats
+	farcall DexShowEvoPage ; page 3 (custom_functions/dex_evo_page.asm)
 .waitForButtonPress
 	call JoypadLowSensitivity
 	ldh a, [hJoy5]

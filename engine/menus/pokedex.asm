@@ -261,9 +261,11 @@ ShowPokedexDataInternal:
 	farcall PrintRewardOfferDVs
 	ld a, [wRewardInfoSlot]
 	and a
-	jr z, .waitForButtonPress
+	jr z, .evolutionPage
 	ld a, [wCurPartySpecies]
 	call PlayCry
+.evolutionPage
+	farcall DexShowEvoPage ; page 3 (custom_functions/dex_evo_page.asm)
 .waitForButtonPress
 	call JoypadLowSensitivity
 	ldh a, [hJoy5]
