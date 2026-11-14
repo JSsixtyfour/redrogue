@@ -29,20 +29,11 @@ OaksLab_Script:
    ResetEvent EVENT_BRIDGE_RECEIVE_GIFT
    ResetEvent EVENT_BRIDGE_INTRO
 .bridgeReady
-   ; hide the intro-only rival + 3 starter balls (they don't belong in a
-   ; bridge visit and would crowd sprite VRAM); Oak shows by default.
+   ; Hide the intro-only rival. Preserve the starter-ball toggles: the
+   ; unpicked ball stays in its original spot on later bridge visits.
    ld a, TOGGLE_OAKS_LAB_RIVAL
    ld [wToggleableObjectIndex], a
    predef HideObject
-   ;ld a, TOGGLE_ROGUE_STARTER_POKEBALL_1
-   ;ld [wToggleableObjectIndex], a
-   ;predef HideObject
-   ;ld a, TOGGLE_ROGUE_STARTER_POKEBALL_2
-   ;ld [wToggleableObjectIndex], a
-   ;predef HideObject
-   ;ld a, TOGGLE_ROGUE_STARTER_POKEBALL_3
-   ;ld [wToggleableObjectIndex], a
-   ;predef HideObject
    farcall PatchBridgeExitAll   ; reroute EVERY exit onward (incl. the north REWARD_ROOM exit)
    jp EnableAutoTextBoxDrawing
 
@@ -110,10 +101,22 @@ OaksLab_TextPointers:
 	dw_const OaksLabOakSelectMonText, TEXT_OAKSLAB_OAK_SELECT_MON
 
 
+; Z permits starter selection. Bridge offers reuse the starter buffers, so
+; a remaining ball must never read them, even when Debug 2 skipped the intro.
+OaksLabCheckStarterSelection:
+	ld a, [wWarpedFromWhichMap]
+	cp INDIGO_PLATEAU_LOBBY
+	jr z, .blocked
+	CheckEvent EVENT_GOT_STARTER
+	ret
+.blocked
+	or 1
+	ret
+
 Rogue_Lab_Script_PokeballText_1:
 	text_asm
 	push bc
-	CheckEvent EVENT_GOT_STARTER
+	call OaksLabCheckStarterSelection
 	jr z, .GetMon
 .greedy
 	ld hl, GreedyText
@@ -163,7 +166,7 @@ Rogue_Lab_Script_PokeballText_1:
 Rogue_Lab_Script_PokeballText_2:
 	text_asm
 	push bc
-	CheckEvent EVENT_GOT_STARTER
+	call OaksLabCheckStarterSelection
 	jr z, .GetMon
 .greedy
 	ld hl, GreedyText
@@ -213,7 +216,7 @@ Rogue_Lab_Script_PokeballText_2:
 Rogue_Lab_Script_PokeballText_3:
 	text_asm
 	push bc
-	CheckEvent EVENT_GOT_STARTER
+	call OaksLabCheckStarterSelection
 	jr z, .GetMon
 .greedy
 	ld hl, GreedyText
