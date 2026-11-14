@@ -39,7 +39,7 @@ CHOSEN_MAPS = {
     "ECRUTEAK_GYM": "PAL_CAVE",  # beats its CEMETERY tileset
     "CIANWOOD_GYM": "PAL_CAVE",
     "OLIVINE_GYM": "PAL_PEWTER",
-    "MAHOGANY_GYM": "PAL_CYANMON",
+    "MAHOGANY_GYM": "PAL_FOREST_WINTER",  # FOREST tileset, pinned winter
     "BLACKTHORN_GYM": "PAL_CERULEAN",  # beats its CEMETERY tileset
     "IGAS_DOJO": "PAL_FUCHSIA",
     "KOGAS_ROOM": "PAL_INDIGO",

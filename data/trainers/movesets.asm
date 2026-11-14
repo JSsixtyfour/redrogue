@@ -4,7 +4,7 @@
 ; catalog, re-run by hand and commit both. Never hand-edit this file.
 ;
 ; Catalog: 2571 rows, 2388 ACTIVE, 107 ARCHIVED, 73 EXCLUDED, 1 HELD, 2 REJECTED. Emitted: 2388 sets from the ACTIVE rows.
-; Level-bumped: 26 records had lvl_min raised to the level the mon's
+; Level-bumped: 27 records had lvl_min raised to the level the mon's
 ;   line first learns all four moves (lvl_max raised to match if passed).
 ;   Mew, Mewtwo, Celebi, Lugia and Ho-Oh are exempt (LEVEL_BUMP_EXEMPT).
 ; TM level gate: 807 records had lvl_min raised to the gate of their

@@ -451,7 +451,7 @@ MapPalettes:
 	db ECRUTEAK_GYM,              PAL_CAVE
 	db CIANWOOD_GYM,              PAL_CAVE
 	db OLIVINE_GYM,               PAL_PEWTER
-	db MAHOGANY_GYM,              PAL_CYANMON
+	db MAHOGANY_GYM,              PAL_FOREST_WINTER ; FOREST tileset, winter patch
 	db BLACKTHORN_GYM,            PAL_CERULEAN
 	db IGAS_DOJO,                 PAL_FUCHSIA
 	db KOGAS_ROOM,                PAL_INDIGO

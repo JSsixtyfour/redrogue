@@ -8,7 +8,7 @@ Music_JigglypuffSong_Ch1::
 	volume 7, 7
 	vibrato 8, 2, 4
 	duty_cycle 2
-	duty_cycle_pattern 2, 2, 1, 1
+	red_duty_cycle_pattern 2, 2, 1, 1
 	toggle_perfect_pitch
 	note_type 13, 6, 7
 	octave 4
@@ -29,7 +29,7 @@ Music_JigglypuffSong_Ch1::
 Music_JigglypuffSong_Ch2::
 	vibrato 5, 1, 5
 	duty_cycle 2
-	duty_cycle_pattern 0, 0, 2, 2
+	red_duty_cycle_pattern 0, 0, 2, 2
 	note_type 12, 10, 7
 	octave 4
 	note E_, 8

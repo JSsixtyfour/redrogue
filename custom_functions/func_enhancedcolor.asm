@@ -557,6 +557,8 @@ ResolveEnhancedBasePalSet::
 	jr z, .procForest
 	cp PROCEDURAL_FACILITY
 	jr z, .procFacility
+	cp MAHOGANY_GYM ; always winter, matching LoadProcForestTreeTiles
+	jr z, .winter
 	; Pokemon Mansion is not rolled - it always gets the same warm set the
 	; Facility's coin flip uses for its own "Mansion" result. Four explicit
 	; compares because the map IDs are not contiguous ($A5, then $D6-$D8).
@@ -578,6 +580,10 @@ ResolveEnhancedBasePalSet::
 
 .mansion
 	ld b, ENH_BASE_FACILITY_RED
+	jr .store
+
+.winter
+	ld b, ENH_BASE_FOREST_WINTER
 	jr .store
 
 .procCave
@@ -715,6 +721,8 @@ LoadEnhancedOverworldPaletteCommand::
 ; names the previous map here. Read the latched season, not that stale cache.
 GetOverworldTilePalPointer:
 	ld a, [w2CurMap]
+	cp MAHOGANY_GYM ; always winter, matching ResolveEnhancedBasePalSet
+	jr z, .trees
 	cp PROCEDURAL_FOREST
 	jr z, .forest
 	cp PROCEDURAL_FOREST_GROTTO

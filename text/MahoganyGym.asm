@@ -137,7 +137,7 @@ _MahoganyGymTrainer4BattleText::
 	done
 
 _MahoganyGymTrainer4EndBattleText::
-	text "Whew!"
+	text "Whew" ; COOLTRAINER♂ prefix leaves line 1 only 4 tiles
 	line "Do you see how"
 	cont "serious we are?"
 	prompt

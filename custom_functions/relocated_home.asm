@@ -140,6 +140,11 @@ LoadGBPal_::
 	ldh [rOBP0], a
 	ld a, [hli]
 	ldh [rOBP1], a
+	; Same test the three banked bodies open with: skips their three Bankswitch
+	; round trips every overworld frame on DMG / SGB (FOLLOWUPS #12, Step A).
+	ldh a, [hGBC]
+	and a
+	ret z
 	call UpdateGBCPal_BGP
 	call UpdateGBCPal_OBP0
 	call UpdateGBCPal_OBP1

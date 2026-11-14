@@ -2,6 +2,11 @@
 ; Carry: the complete seasonal sheet was copied. Clear: use ordinary loader.
 LoadProcForestTreeTiles:
 	ldh a, [hCurMap]
+	; Mahogany Gym is always winter. Its MapPalettes row, the enhanced base set
+	; and GetOverworldTilePalPointer are pinned to winter the same way.
+	ld hl, ProcForestWinterRuns
+	cp MAHOGANY_GYM
+	jr z, .seasonal
 	cp PROCEDURAL_FOREST
 	jr z, .forest
 	cp PROCEDURAL_FOREST_GROTTO

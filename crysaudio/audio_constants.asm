@@ -89,7 +89,7 @@ DEF NOISE_CHAN_F EQU 2 ; bit set in CHAN5-CHAN7
 	const SOUND_DUTY_LOOP    ; 2
 	const SOUND_UNKN_0B      ; 3
 	const SOUND_PITCH_OFFSET ; 4
-	const SOUND_UNKN_0D      ; 5
+	const SOUND_RED_DUTY     ; 5: Red duty pattern timing, cleared by ChannelInit
 	const SOUND_UNKN_0E      ; 6
 	const SOUND_UNKN_0F      ; 7
 

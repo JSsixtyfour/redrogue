@@ -115,6 +115,10 @@ RunDifficultyHeat:
 	db 0 ; DIFFICULTY_VERY_EASY
 	db 1 ; DIFFICULTY_HARD
 	db 2 ; DIFFICULTY_VERY_HARD
+	; Unused 5-7: wOptions2 & DIFFICULTY_MASK is 3 bits, so a corrupt options
+	; byte reads these instead of the code that follows.
+	db 0, 0, 0
+ASSERT @ - RunDifficultyHeat == DIFFICULTY_MASK + 1
 ASSERT DIFFICULTY_NORMAL == 0 && DIFFICULTY_EASY == 1 && DIFFICULTY_VERY_EASY == 2
 ASSERT DIFFICULTY_HARD == 3 && DIFFICULTY_VERY_HARD == 4
 

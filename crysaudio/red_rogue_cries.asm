@@ -127,7 +127,7 @@ PokemonCries::
 	mon_cry CRY_WEEDLE,        238,  129 ; Weedle (Gen 1, unchanged)
 	mon_cry CRY_BLASTOISE,     255,  129 ; Kakuna (Gen 1, unchanged)
 	mon_cry CRY_BLASTOISE,      96,  256 ; Beedrill (Gen 1, unchanged)
-	mon_cry CRY_SQUIRTLE,      -16,  320 ; Crobat (Crystal)
+	mon_cry CRY_CROBAT,        -16,  320 ; Crobat (Crystal; Squirtle notes, Crystal duty timing)
 	mon_cry CRY_DIGLETT,       153,  160 ; Dodrio (Gen 1, unchanged)
 	mon_cry CRY_NIDOQUEEN,     175,  192 ; Primeape (Gen 1, unchanged)
 	mon_cry CRY_DIGLETT,        42,  144 ; Dugtrio (Gen 1, unchanged)

@@ -26,14 +26,20 @@ RunTimerReset::
 	ret
 
 ; Called only after a starter has been accepted, before the rival walks.
+; Preserves de: OaksLabRivalPicksAndWalks carries the taken slot in e across
+; this call into RivalPickStarter, and RunChallengesCheckOptions loads e. That
+; caller's bank ($07) has no room for its own save.
 RunTimerStart::
+	push de
 	ld hl, wRunTimerState
 	ld bc, 5
 	xor a
 	call FillMemory
 	ld a, 1
 	ld [wRunTimerState], a
-	jp RunChallengesStartRun
+	call RunChallengesStartRun
+	pop de
+	ret
 
 ; VBlank leaf: no shared scratch, UI, SRAM or nested farcalls.
 RunTimerTick::

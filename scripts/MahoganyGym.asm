@@ -18,17 +18,19 @@ MahoganyGym_Script:
 	ret
 
 PryceShowOrHideExitBlock:
-; Blocks or clears the exit to the next room.
+; Blocks or clears the exit to the next room. FOREST blockset: $1B is all floor
+; tile $30; $17 keeps that floor on top but walls the lower half, so the exit
+; warps on row 0 cannot be reached until Pryce is beaten.
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_1, [hl]
 	res BIT_CUR_MAP_LOADED_1, [hl]
 	ret z
 	CheckEvent EVENT_BEAT_PRYCE
 	jr z, .blockExitToNextRoom
-	ld a, $5
+	ld a, $1b
 	jp .setExitBlock
 .blockExitToNextRoom
-	ld a, $24
+	ld a, $17
 .setExitBlock
 	ld [wNewTileBlockID], a
 	lb bc, 0, 2
@@ -111,9 +113,9 @@ MahoganyGymScriptReceiveTM:
 MahoganyGym_TextPointers:
 	def_text_pointers
 	dw_const MahoganyGymPryceText,            TEXT_MAHOGANYGYM_PRYCE
-	dw_const MahoganyGymCooltrainerM2Text,      TEXT_MAHOGANYGYM_COOLTRAINER_M2
-	dw_const MahoganyGymCooltrainerM3Text,      TEXT_MAHOGANYGYM_COOLTRAINER_M3
-	dw_const MahoganyGymCooltrainerM4Text,      TEXT_MAHOGANYGYM_COOLTRAINER_M4
+	dw_const MahoganyGymCooltrainerMText,      TEXT_MAHOGANYGYM_COOLTRAINER_M
+	dw_const MahoganyGymCooltrainerFText,      TEXT_MAHOGANYGYM_COOLTRAINER_F
+	dw_const MahoganyGymHikerText,      TEXT_MAHOGANYGYM_HIKER
 	dw_const MahoganyGymGuideText,              TEXT_MAHOGANYGYM_GYM_GUIDE
 	dw_const MahoganyGymPryceWaitTakeThisText, TEXT_MAHOGANYGYM_PRYCE_WAIT_TAKE_THIS
 	dw_const MahoganyGymReceivedTMText,         TEXT_MAHOGANYGYM_RECEIVED_TM
@@ -135,11 +137,11 @@ MahoganyGymTrainerHeaders:
 ; project_gametrainer_def_trainers_inheritance_bug.
 	def_trainers 2
 MahoganyGymTrainerHeader0:
-	trainer EVENT_BEAT_MAHOGANY_GYM_TRAINER_0, 2, MahoganyGymCooltrainerM2BattleText, MahoganyGymCooltrainerM2EndBattleText, MahoganyGymCooltrainerM2AfterBattleText
+	trainer EVENT_BEAT_MAHOGANY_GYM_TRAINER_0, 3, MahoganyGymCooltrainerMBattleText, MahoganyGymCooltrainerMEndBattleText, MahoganyGymCooltrainerMAfterBattleText
 MahoganyGymTrainerHeader1:
-	trainer EVENT_BEAT_MAHOGANY_GYM_TRAINER_1, 5, MahoganyGymCooltrainerM3BattleText, MahoganyGymCooltrainerM3EndBattleText, MahoganyGymCooltrainerM3AfterBattleText
+	trainer EVENT_BEAT_MAHOGANY_GYM_TRAINER_1, 4, MahoganyGymCooltrainerFBattleText, MahoganyGymCooltrainerFEndBattleText, MahoganyGymCooltrainerFAfterBattleText
 MahoganyGymTrainerHeader2:
-	trainer EVENT_BEAT_MAHOGANY_GYM_TRAINER_2, 5, MahoganyGymCooltrainerM4BattleText, MahoganyGymCooltrainerM4EndBattleText, MahoganyGymCooltrainerM4AfterBattleText
+	trainer EVENT_BEAT_MAHOGANY_GYM_TRAINER_2, 3, MahoganyGymHikerBattleText, MahoganyGymHikerEndBattleText, MahoganyGymHikerAfterBattleText
 	db -1 ; end
 
 MahoganyGymReceivedTMText:
@@ -216,58 +218,58 @@ ReceivedGlacierBadgeText:
 	sound_get_key_item
 	text_end
 
-MahoganyGymCooltrainerM2Text:
+MahoganyGymCooltrainerMText:
 	text_asm
 	ld hl, MahoganyGymTrainerHeader0
 	call TalkToTrainer
 	jp TextScriptEnd
 
-MahoganyGymCooltrainerM2BattleText:
-	text_far _MahoganyGymTrainer2BattleText
+MahoganyGymCooltrainerMBattleText:
+	text_far _MahoganyGymTrainer4BattleText
 	text_end
 
-MahoganyGymCooltrainerM2EndBattleText:
-	text_far _MahoganyGymTrainer2EndBattleText
+MahoganyGymCooltrainerMEndBattleText:
+	text_far _MahoganyGymTrainer4EndBattleText
 	text_end
 
-MahoganyGymCooltrainerM2AfterBattleText:
-	text_far _MahoganyGymTrainer2AfterBattleText
+MahoganyGymCooltrainerMAfterBattleText:
+	text_far _MahoganyGymTrainer4AfterBattleText
 	text_end
 
-MahoganyGymCooltrainerM3Text:
+MahoganyGymCooltrainerFText:
 	text_asm
 	ld hl, MahoganyGymTrainerHeader1
 	call TalkToTrainer
 	jp TextScriptEnd
 
-MahoganyGymCooltrainerM3BattleText:
+MahoganyGymCooltrainerFBattleText:
 	text_far _MahoganyGymTrainer3BattleText
 	text_end
 
-MahoganyGymCooltrainerM3EndBattleText:
+MahoganyGymCooltrainerFEndBattleText:
 	text_far _MahoganyGymTrainer3EndBattleText
 	text_end
 
-MahoganyGymCooltrainerM3AfterBattleText:
+MahoganyGymCooltrainerFAfterBattleText:
 	text_far _MahoganyGymTrainer3AfterBattleText
 	text_end
 
-MahoganyGymCooltrainerM4Text:
+MahoganyGymHikerText:
 	text_asm
 	ld hl, MahoganyGymTrainerHeader2
 	call TalkToTrainer
 	jp TextScriptEnd
 
-MahoganyGymCooltrainerM4BattleText:
-	text_far _MahoganyGymTrainer4BattleText
+MahoganyGymHikerBattleText:
+	text_far _MahoganyGymTrainer2BattleText
 	text_end
 
-MahoganyGymCooltrainerM4EndBattleText:
-	text_far _MahoganyGymTrainer4EndBattleText
+MahoganyGymHikerEndBattleText:
+	text_far _MahoganyGymTrainer2EndBattleText
 	text_end
 
-MahoganyGymCooltrainerM4AfterBattleText:
-	text_far _MahoganyGymTrainer4AfterBattleText
+MahoganyGymHikerAfterBattleText:
+	text_far _MahoganyGymTrainer2AfterBattleText
 	text_end
 
 MahoganyGymGuideText:

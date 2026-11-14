@@ -79,6 +79,70 @@ class SuperTransformHPTest(unittest.TestCase):
                          "the write-back caps HP at the party mon's own max HP")
         self.assertEqual(self.word("wBattleMonMaxHP"), enemy_max, "the battle pool stays borrowed")
 
+    def run_slot_two_level_up(self, move: str) -> None:
+        """A Transformed mon in party slot 2 levels up mid-battle.
+
+        GainExperience's in-battle check used to load wPlayerMonNumber into b,
+        and .transformedLevelUp then added bc as "max HP gained": 256 per party
+        index on top of the real gain. Slot 1 hid it (b = 0). Ditto leads from
+        slot 2 because slot 1 is fainted at the first send-out; its level byte
+        is lowered by one at GainExperience entry so the award crosses exactly
+        one level with a known party max HP change.
+        """
+        h = self.h
+        species = parse_rgbds_constants(ROOT / "constants/pokemon_constants.asm")
+        moves = parse_rgbds_constants(ROOT / "constants/move_constants.asm")
+        trainers = parse_trainer_constants(ROOT / "constants/trainer_constants.asm")
+        h.inject_fight2_spec(
+            [{"species": species["MAGIKARP"], "level": 50, "moves": [moves["SPLASH"]]},
+             {"species": species["DITTO"], "level": 50, "moves": [moves[move]]}],
+            [{"species": species["SNORLAX"], "level": 50,
+              "moves": [moves["TACKLE"], moves["SPLASH"]]}],
+            trainer_class=trainers["COOLTRAINER_M"], ai_tier=3)
+
+        h.register_hook("StartBattle.playerSendOutFirstMon",
+                        lambda _: self.set_word("wPartyMon1HP", 0))
+        transformed = h.hook_flag(
+            "ReapplyPlayerStatEffectsAfterTransform",
+            lambda: self.set_word("wEnemyMonHP", 1))
+        before, after = {}, {}
+
+        def at_gain() -> None:
+            if before:
+                return
+            h.write8("wPartyMon2Level", h.read8("wPartyMon2Level") - 1)
+            before.update(battle=self.word("wBattleMonMaxHP"),
+                          party=self.word("wPartyMon2MaxHP"),
+                          active=h.read8("wPlayerMonNumber"),
+                          status3=h.read8("wPlayerBattleStatus3"))
+
+        h.hook_flag("GainExperience", at_gain)
+        h.hook_flag("GainExperience.recalcStatChanges",
+                    lambda: after or after.update(battle=self.word("wBattleMonMaxHP"),
+                                                  party=self.word("wPartyMon2MaxHP")))
+        crashed = h.hook_flag("CrashScreen")
+        h.boot_fight2(seed=1)
+        for _ in range(900):
+            if after or crashed["count"]:
+                break
+            h.tap("a", 1)
+            h.tick(8)
+        self.assertEqual(crashed["count"], 0)
+        self.assertTrue(transformed["count"], f"{move} never finished")
+        self.assertTrue(after, "the Transformed mon never levelled up in battle")
+        self.assertEqual(before["active"], 1, "Ditto must be the active mon, from slot 2")
+        self.assertTrue(before["status3"] & (1 << TRANSFORMED_BIT))
+        gain = after["party"] - before["party"]
+        self.assertLess(gain, 256)
+        self.assertEqual(after["battle"] - before["battle"], gain,
+                         "battle max HP grows by exactly the party's max HP gain")
+
+    def test_slot_two_level_up_after_transform(self) -> None:
+        self.run_slot_two_level_up("TRANSFORM")
+
+    def test_slot_two_level_up_after_super_transform(self) -> None:
+        self.run_slot_two_level_up("SUPER_TRANSFORM")
+
     def test_write_back_caps_only_above_max(self) -> None:
         h = self.h
         h.boot_fight2(seed=1)

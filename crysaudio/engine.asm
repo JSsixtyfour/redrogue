@@ -884,6 +884,17 @@ HandleTrackVibrato:
 	add hl, bc
 	bit SOUND_DUTY_LOOP, [hl] ; duty cycle looping
 	jr z, .next
+	bit SOUND_RED_DUTY, [hl]
+	jr z, .rotateDuty
+; Red's Audio*_PlayNextNote writes the initial duty without rotating the
+; stored pattern. Audio*_ApplyDutyCyclePattern runs only between notes.
+; wCurTrackDuty already holds that initial duty on a new-note tick.
+	ld hl, CHANNEL_NOTE_FLAGS
+	add hl, bc
+	ld a, [hl]
+	and (1 << NOTE_NOISE_SAMPLING) | (1 << NOTE_REST)
+	jr nz, .next
+.rotateDuty
 	ld hl, CHANNEL_DUTY_CYCLE_PATTERN
 	add hl, bc
 	ld a, [hl]
@@ -1463,7 +1474,7 @@ MusicCommands:
 	dw Music_Volume
 	dw Music_PitchOffset
 	dw MusicE7 ; unused
-	dw MusicE8 ; unused
+	dw Music_RedDutyCyclePattern
 	dw Music_TempoRelative ; unused
 	dw Music_RestartChannel
 	dw Music_NewSong ; unused
@@ -1943,28 +1954,28 @@ Music_DutyCyclePattern:
 	ld hl, CHANNEL_FLAGS2
 	add hl, bc
 	set SOUND_DUTY_LOOP, [hl] ; duty cycle looping
+	res SOUND_RED_DUTY, [hl]
 	; sound duty sequence
 	call GetMusicByte
 	rrca
 	rrca
+	jr Music_StoreDutyCyclePattern
+
+Music_RedDutyCyclePattern:
+; Red's Audio*_duty_cycle_pattern stores the unrotated byte and its first
+; duty. This command opts in per stream; Crystal's $de keeps its own timing.
+	ld hl, CHANNEL_FLAGS2
+	add hl, bc
+	set SOUND_DUTY_LOOP, [hl]
+	set SOUND_RED_DUTY, [hl]
+	call GetMusicByte
+Music_StoreDutyCyclePattern:
 	ld hl, CHANNEL_DUTY_CYCLE_PATTERN
 	add hl, bc
 	ld [hl], a
 	; update duty cycle
 	and $c0 ; only uses top 2 bits
 	ld hl, CHANNEL_DUTY_CYCLE
-	add hl, bc
-	ld [hl], a
-	ret
-
-MusicE8:
-; unused
-; params: 1
-	ld hl, CHANNEL_FLAGS2
-	add hl, bc
-	set SOUND_UNKN_0D, [hl]
-	call GetMusicByte
-	ld hl, CHANNEL_FIELD2A
 	add hl, bc
 	ld [hl], a
 	ret

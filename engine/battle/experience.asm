@@ -285,9 +285,9 @@ ENDC
 	adc b
 	ld [hl], a ; wPartyMon*HP
 	ld a, [wPlayerMonNumber]
-	ld b, a
+	ld e, a ; not b: .transformedLevelUp reads bc as the max HP gain
 	ldh a, [hWhichPokemon]
-	cp b ; is the current mon in battle?
+	cp e ; is the current mon in battle?
 	jr nz, .printGrewLevelText
 ; current mon is in battle
 	ld a, [wPlayerBattleStatus3]

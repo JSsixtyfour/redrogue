@@ -8,7 +8,7 @@ SFX_Battle_27_Ch5:
 	sound_ret
 
 SFX_Battle_27_Ch6:
-	duty_cycle_pattern 2, 3, 0, 3
+	red_duty_cycle_pattern 2, 3, 0, 3
 	square_note 15, 2, -7, 1992
 .loop1:
 	square_note 15, 12, -7, 1991

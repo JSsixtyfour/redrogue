@@ -204,10 +204,11 @@ MACRO unknownmusic0xe7
 	db \1 ; unknown
 ENDM
 
-	const unknownmusic0xe8_cmd ; $e8
-MACRO unknownmusic0xe8
-	db unknownmusic0xe8_cmd
-	db \1 ; unknown
+	const red_duty_cycle_pattern_cmd ; $e8, unused in the Crystal donor
+MACRO red_duty_cycle_pattern
+; Same two-byte size as duty_cycle_pattern, with Red's note-boundary behavior.
+	db red_duty_cycle_pattern_cmd
+	db (\1 << 6) | (\2 << 4) | (\3 << 2) | (\4 << 0)
 ENDM
 
 	const tempo_relative_cmd ; $e9
