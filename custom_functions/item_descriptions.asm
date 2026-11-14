@@ -20,8 +20,48 @@ DEF ITEM_DESC_SCRATCH EQUS "wMoveBuffer + 80"
 ;          column 1, the vanilla text lines)
 ; The caller has already blanked both lines. Items without an entry print
 ; nothing. TMs/HMs print their move's type, PP, power and accuracy.
-; Clobbers everything.
+; In the mart's BUY list (clerk layout + PRICEDITEMLISTMENU) an ordinary item
+; also shows how many the bag holds at columns 16-18, past ITEM_DESC_WIDTH.
+; TMs and key items are skipped: the clerk does not offer one already owned.
+; The SELL list rows already show their quantity, and the credit vendor
+; (CREDITLISTMENU) shares the clerk layout but has its own list ID.
+; Clobbers everything, wCurItem included (safe: the list menu reloads it from
+; the list on A, and PrintListMenuEntries already uses it as scratch).
 PrintItemDescription::
+	ld a, d
+	and a
+	jr z, .describe           ; the bag's info box
+	ld a, [wListMenuID]
+	cp PRICEDITEMLISTMENU
+	jr nz, .describe
+	push de
+	call .describe
+	pop de
+	ld a, e
+	cp HM01                   ; TMs and HMs: the same test .describe uses
+	ret nc
+	ld [wCurItem], a          ; IsKeyPocketItem reads wCurItem
+	farcall IsKeyPocketItem   ; carry = key pocket item
+	ret c
+	ld a, [wCurItem]
+	ld b, a
+	predef GetQuantityOfItemInBag ; b = how many the bag holds
+	ld a, b
+	ld [ITEM_DESC_SCRATCH], a
+	hlcoord 16, 14
+	ld de, .BagLabel
+	call PlaceString
+	hlcoord 16, 16
+	ld [hl], '×'
+	inc hl
+	ld de, ITEM_DESC_SCRATCH
+	lb bc, 1, 2               ; the bag's own ×NN format (PrintListMenuEntries)
+	jp PrintNumber
+
+.BagLabel:
+	db "BAG@"
+
+.describe
 	ld a, d
 	and a
 	ld bc, SCREEN_WIDTH       ; bag: the second line is the next row

@@ -384,7 +384,7 @@ WaitSFX::
 	and BATTLE_SPEED_MASK
 	cp BATTLE_SPEED_X4
 	ret z
-.waitForSfx
+.waitForSfx:: ; Evolution's completion jingle must finish before its screen clears.
 
 ; infinite loop until sfx is done playing
 

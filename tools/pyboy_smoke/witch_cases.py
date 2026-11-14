@@ -2530,7 +2530,7 @@ def c05(run: Run) -> None:
 
     h.register_hook("RogueApplyWitchLevelBonus", entry)
     h.register_hook("RogueApplyWitchLevelBonus.lvlBonusOk", exit_)
-    before = talk_and_verify(run, "Foes will be")
+    before = talk_and_verify(run, "higher leveled")
     run.play_zone()
     run.notes.append(f"rows {rows[:8]}")
     run.must_reach("the level helper ran for enemies", len(rows) >= 4)

@@ -2920,9 +2920,18 @@
 	band_ace CLEFABLE
 	band_ace WIGGLYTUFF
 	band_johto
+	band_ace MILTANK
 	band_warp
 	band_end
-	band_pool NurseJoy_Fod2
+	band_same NurseJoy_Fod2, NurseJoy_Fod1
+	band_pool NurseJoy_Ace3
+	band_ace CHANSEY
+	band_ace CLEFABLE
+	band_ace WIGGLYTUFF
+	band_johto
+	band_warp
+	band_end
+	band_pool NurseJoy_Fod3
 	band_mon JIGGLYPUFF
 	band_mon MAGNEMITE
 	band_mon CLEFAIRY
@@ -2942,8 +2951,6 @@
 	band_warp
 	band_mon VAPOREON, 2
 	band_end
-	band_same NurseJoy_Ace3, NurseJoy_Ace2
-	band_same NurseJoy_Fod3, NurseJoy_Fod2
 	band_pool NurseJoy_Ace4
 	band_ace CHANSEY
 	band_ace SNORLAX

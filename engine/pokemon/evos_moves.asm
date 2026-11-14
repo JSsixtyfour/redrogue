@@ -233,7 +233,9 @@ Evolution_PartyMonLoop: ; loop over party mons
 	call PrintText_NoCreatingTextBox
 	ld a, SFX_GET_ITEM_2
 	call PlaySoundWaitForCurrent
-	call WaitForSoundToFinish
+	; Finish the evolution jingle before clearing the result, even at 4X.
+	; Otherwise battle cleanup waits for its tail on an already blank screen.
+	call WaitSFX.waitForSfx
 	ld c, 40
 	call DelayFrames
 	call ClearScreen

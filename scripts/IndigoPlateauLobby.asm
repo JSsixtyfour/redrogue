@@ -22,6 +22,9 @@ IndigoPlateauLobby_Script:
 	; the Lobby nurse deliberately does not update it when healing.
 	ld a, SILPH_CO_DORM
 	ld [wLastBlackoutMap], a
+	; New visit: re-arm the exit-door heal warning (LobbyHealWarning).
+	ld hl, wStatusFlags4
+	res BIT_LOBBY_HEAL_HANDLED, [hl]
 
 	; Pick the next random stage and patch the exit warp before deriving either
 	; the visible door block or the active sign count from that selection.
@@ -53,7 +56,7 @@ IndigoPlateauLobby_Script:
 	call PCClerksSetup
 	rfarcall PCWitchSetup
 	rfarcall PCPsychicSetup    ; after SelectAndPatchLobbyExit: reads wRogueMap; also rolls salesman/trader/tutor
-	farcall LobbyKeySwapAnnounce
+	rfarcall LobbyKeySwapAnnounce ; once per entry; rst form saves 4 B of this full bank
 
 .normal
 	; Door 2's baked-in notepad is absent when its block is a wall. Refresh on
@@ -74,12 +77,14 @@ IndigoPlateauLobby_Script:
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_2, [hl]
 	res BIT_CUR_MAP_LOADED_2, [hl]
-	ret z
 	; Re-apply the exit door on EVERY map load, not just the first entry:
 	; LoadMapData rebuilds the blocks from ROM, so continuing a save made in the
 	; lobby would otherwise show door 2 open even though the selection says it
 	; is a wall.
-	jp Lobby_UpdateExitDoor
+	jp nz, Lobby_UpdateExitDoor
+	; Ordinary frame: remind an unhealed player standing at an exit door. Lives
+	; in a roomy bank; this bank has only a handful of bytes free.
+	rfarjp LobbyHealWarning
 	;ResetEvent EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH
 	; Reset Elite Four events if the player started challenging them before
 	;ld hl, wElite4Flags
@@ -87,7 +92,6 @@ IndigoPlateauLobby_Script:
 	;res BIT_STARTED_ELITE_4, [hl]
 	;ret z
 	;ResetEventRange INDIGO_PLATEAU_EVENTS_START, EVENT_LANCES_ROOM_LOCK_DOOR
-	ret
 
 IndigoPlateauLobby_TextPointers:
 	def_text_pointers
@@ -319,7 +323,7 @@ Lobby_UpdateExitDoor:
 	lb bc, 0, 5
 	predef_jump ReplaceTileBlock
 
-Lobby_IsDoor2Blocked:
+Lobby_IsDoor2Blocked:: ; also farcalled by LobbyHealWarning
 	farcall LegendaryBossClosedDoors
 	bit 1, e
 	ret nz

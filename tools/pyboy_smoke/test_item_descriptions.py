@@ -33,7 +33,8 @@ ITEMLISTMENU = 4
 BIT_NO_MENU_BUTTON_SOUND = 5
 
 # The subset of constants/charmap.asm these screens use.
-CHARS = {0x50: "@", 0x7F: " ", 0xE3: "-", 0xE9: "%", 0xBA: "e'", 0xEA: "<", 0xED: ">"}
+CHARS = {0x50: "@", 0x7F: " ", 0xE3: "-", 0xE9: "%", 0xBA: "e'", 0xEA: "<", 0xED: ">",
+         0xF1: "×"}
 CHARS.update({0x80 + i: chr(ord("A") + i) for i in range(26)})
 CHARS.update({0xA0 + i: chr(ord("a") + i) for i in range(26)})
 CHARS.update({0xF6 + i: chr(ord("0") + i) for i in range(10)})
@@ -246,13 +247,48 @@ class BagDescriptionRuntimeTest(ItemDescriptionRuntimeBase):
                 self.assertEqual(self.tile_row(19, 16, 1), "W")
 
 
+def item_id(name: str) -> int:
+    constants = (REPO_ROOT / "constants" / "item_constants.asm").read_text()
+    match = re.search(rf"^\s*const {name}\s*; \$([0-9A-F]{{2}})", constants, re.MULTILINE)
+    assert match is not None, name
+    return int(match.group(1), 16)
+
+
 class MartDescriptionRuntimeTest(ItemDescriptionRuntimeBase):
+    """The BUY list also shows how many of an ordinary item the bag holds, at
+    columns 16-18 past the 14-tile description (PrintItemDescription)."""
+
+    def bag_count_column(self) -> tuple[str, str]:
+        return self.tile_row(15, 14, 4), self.tile_row(15, 16, 4)
+
+    def give(self, item: int, quantity: int) -> None:
+        regs = self.h.pyboy.register_file
+        regs.B, regs.C = item, quantity
+        self.run_routine("GiveItem")
+
+    def shown_potions(self) -> int:
+        self.open_mart([POTION], cursor=0)
+        self.run_routine("PrintBagInfoText")
+        label, count = self.bag_count_column()
+        self.assertEqual(label, " BAG")
+        match = re.fullmatch(r" ×\s?(\d{1,2})", count.replace("<F1>", "×"))
+        self.assertIsNotNone(match, count)
+        return int(match.group(1))
+
     def test_clerk_box_describes_the_item(self) -> None:
         self.open_mart([POTION], cursor=0)
         self.run_routine("PrintBagInfoText")
-        self.assertEqual(self.tile_row(1, 14, 18), "Restores 20 HP")
+        self.assertEqual(self.tile_row(1, 14, 14), "Restores 20 HP")
         self.assertEqual(self.tile_row(1, 15, 18), "")
-        self.assertEqual(self.tile_row(1, 16, 18), "to one POKe'MON")
+        self.assertEqual(self.tile_row(1, 16, 14), "to one POKe'MON")
+        # the count stays inside the box: column 19 is the border
+        self.assertEqual(self.tile_row(19, 14, 1), "W")
+        self.assertEqual(self.tile_row(19, 16, 1), "W")
+
+    def test_buy_list_shows_the_bag_count(self) -> None:
+        before = self.shown_potions()
+        self.give(POTION, 3)
+        self.assertEqual(self.shown_potions(), before + 3)
 
     def test_clerk_box_describes_a_tm(self) -> None:
         first = machine_item_id()
@@ -261,7 +297,21 @@ class MartDescriptionRuntimeTest(ItemDescriptionRuntimeBase):
         self.run_routine("PrintBagInfoText")
         line1, line2 = expected_tm_lines("THUNDERBOLT")
         self.assertEqual(self.tile_row(1, 14, 18), line1)
-        self.assertEqual(self.tile_row(1, 16, 18), line2)
+        self.assertEqual(self.tile_row(1, 16, 18), line2)  # and no count
+
+    def test_key_item_shows_no_count(self) -> None:
+        self.open_mart([item_id("LEFTOVERS")], cursor=0)
+        self.run_routine("PrintBagInfoText")
+        self.assertEqual(self.bag_count_column(), ("", ""))
+
+    def test_sell_list_shows_no_count(self) -> None:
+        # SELL is ITEMLISTMENU with the bag info box off; its rows carry ×qty
+        self.open_mart([POTION], cursor=0)
+        self.h.write8("wListMenuID", ITEMLISTMENU)
+        self.set_list([POTION], two_byte=True, cursor=0)
+        self.run_routine("PrintBagInfoText")
+        self.assertEqual(self.tile_row(1, 14, 14), "Restores 20 HP")
+        self.assertEqual(self.bag_count_column(), ("", ""))
 
     def test_players_pc_list_keeps_its_plain_box(self) -> None:
         h = self.h

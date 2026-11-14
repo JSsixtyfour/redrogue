@@ -444,21 +444,18 @@ RosterSpeciesAlreadyUsed:
 
 INCLUDE "data/balance/trainer_levels.asm"
 
-; Applies all active trainer-level modifiers after a base level is written, in
+; Applies all active enemy-level modifiers after a base level is written, in
 ; this order: Endless growth, the witch's +10%, the LEVELS setting, then the
 ; 1..ENEMY_MAX_LEVEL clamp (inside RogueApplyDifficulty). Endless goes first so both
 ; percentages scale the whole level, as they do in the original circuit.
+; Trainers and wild-area mons share one funnel: challenge 5 raises every foe,
+; wild ones included (the wild path used to skip the witch bonus).
 ; No register arguments. Clobbers a and the Divide/Multiply HRAM scratch;
 ; preserves bc, de, and hl for callers that are walking trainer data.
 RogueApplyTrainerLevelModifiers::
-	call RogueApplyEndlessLevelBonus
-	call RogueApplyWitchLevelBonus
-	jp RogueApplyDifficulty
-
-; The wild-area version: no witch level bonus there (never was), the same
-; Endless growth and LEVELS setting. Same register contract.
 RogueApplyWildLevelModifiers::
 	call RogueApplyEndlessLevelBonus
+	call RogueApplyWitchLevelBonus
 	jp RogueApplyDifficulty
 
 ; wCurEnemyLevel += the Endless level bonus for the run's progress

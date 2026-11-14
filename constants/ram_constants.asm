@@ -152,7 +152,10 @@ DEF NUM_BADGES EQU const_value
 ; wStatusFlags4
 	const_def
 	const BIT_GOT_LAPRAS              ; 0
-	const BIT_UNKNOWN_4_1             ; 1
+	; Set by the nurse's heal or by the lobby's exit-door heal warning, cleared on
+	; each fresh lobby entry: the warning (LobbyHealWarning) fires at most once a
+	; visit and never after a heal. Was vanilla's write-only BIT_UNKNOWN_4_1.
+	const BIT_LOBBY_HEAL_HANDLED      ; 1
 	const BIT_USED_POKECENTER         ; 2
 	const BIT_GOT_STARTER             ; 3
 	const BIT_NO_BATTLES              ; 4

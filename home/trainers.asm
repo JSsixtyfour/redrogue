@@ -189,8 +189,6 @@ StartTrainerBattle::
 	ld hl, wStatusFlags3
 	set BIT_TALKED_TO_TRAINER, [hl]
 	set BIT_PRINT_END_BATTLE_TEXT, [hl]
-	ld hl, wStatusFlags4
-	set BIT_UNKNOWN_4_1, [hl]
 	ld hl, wCurMapScript
 	inc [hl] ; increment map script index (next script function is usually EndTrainerBattle)
 	ret

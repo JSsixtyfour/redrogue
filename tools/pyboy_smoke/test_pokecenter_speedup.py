@@ -24,7 +24,7 @@ class PokemonCenterSourceContractTest(unittest.TestCase):
         self.assertNotIn("declinedHealing", flow)
         self.assertIn("call SaveScreenTilesToBuffer1", flow)
         self.assertIn("bit BIT_USED_POKECENTER, [hl]", flow)
-        self.assertIn("set BIT_UNKNOWN_4_1, [hl]", flow)
+        self.assertIn("set BIT_LOBBY_HEAL_HANDLED, [hl]", flow)
         self.assertIn("set BIT_USED_POKECENTER, [hl]", flow)
         self.assertLess(
             flow.index("ld hl, PokemonCenterFirstHealText"),

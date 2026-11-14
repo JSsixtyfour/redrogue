@@ -594,8 +594,8 @@ Sneaky, venomous, urban-pest flavour rather than a type theme (Gen 1 has no Dark
 - Fodder: Jigglypuff, Magnemite, Clefairy, Pikachu, Porygon, Squirtle, Ponyta, Marill (johto), Swinub (johto), Sunkern (johto), Togepi (johto), Chikorita (johto), Sylveon (warp)
 
 **Band 2: rounds 3-4**
-- Aces: Chansey, Clefable, Wigglytuff
-- Fodder: Jigglypuff, Magnemite, Clefairy, Pikachu, Porygon, Squirtle, Ponyta, Marill (johto), Swinub (johto), Sunkern (johto), Togepi (johto), Chikorita (johto), Sylveon (warp), Chansey, Kangaskhan, Miltank (johto)
+- Aces: Chansey, Clefable, Wigglytuff, Miltank (johto)
+- Fodder: Jigglypuff, Magnemite, Clefairy, Pikachu, Porygon, Squirtle, Ponyta, Marill (johto), Swinub (johto), Sunkern (johto), Togepi (johto), Chikorita (johto), Sylveon (warp)
 
 **Band 3: rounds 5-6**
 - Aces: Chansey, Clefable, Wigglytuff

@@ -35,11 +35,9 @@
 	RGB  2,  2,  2
 	RGB  3,  3,  3
 
-	; Row 2, Master Ball (OBJ 3): bright purple top. A real GBC LCD crushes dark
-	; colours and shows little blue, so brightness has to come from red: 15,6,23
-	; read as an Ultra Ball on hardware, and 22,0,31 sits too close to Great's blue.
+	; Row 2, Master Ball (OBJ 3): deeper purple, pending real GBC acceptance.
 	RGB 31, 31, 31
-	RGB 28,  0, 31
+	RGB 22,  0, 23
 	RGB 10,  4, 12
 	RGB  3,  3,  3
 

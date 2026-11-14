@@ -75,9 +75,9 @@ _WitchChallenge4Text::
 	prompt
 
 _WitchChallenge5Text::
-	text "Trainers will have"
-	line "higher level"
-	cont "#MON"
+	text "#MON will be"
+	line "higher leveled"
+	cont "than usual."
 	prompt
 
 _WitchChallenge6Text::

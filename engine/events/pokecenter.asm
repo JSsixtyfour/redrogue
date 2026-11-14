@@ -2,7 +2,7 @@ DisplayPokemonCenterDialogue_::
 	call SaveScreenTilesToBuffer1 ; save screen
 	ld hl, wStatusFlags4
 	bit BIT_USED_POKECENTER, [hl]
-	set BIT_UNKNOWN_4_1, [hl]
+	set BIT_LOBBY_HEAL_HANDLED, [hl] ; healed: no lobby exit-door warning
 	set BIT_USED_POKECENTER, [hl]
 	jr nz, .repeatHealText
 	ld hl, PokemonCenterFirstHealText
