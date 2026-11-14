@@ -24,8 +24,10 @@ LOBBY, REWARD_ROOM = MAPS["INDIGO_PLATEAU_LOBBY"], MAPS["REWARD_ROOM"]
 # constants/toggle_constants.asm: TOGGLE_ROGUE_REWARD_POKEBALL_1..3
 REWARD_BALL_TOGGLES = (0x0B, 0x0C, 0x0D)
 STAGE_ITEM_TOGGLE = 0x0E  # TOGGLE_STAGE_RANDOM_ITEM: the Reward Room's object 4
-EVENT_STEP_FORWARD = 297
-EVENT_GOT_ROGUE_POKEMON = 230
+# Read from the generated file: tools/gen_event_constants.py renumbers events.
+EVENTS = parse_rgbds_constants(REPO_ROOT / "constants" / "event_constants.asm")
+EVENT_STEP_FORWARD = EVENTS["EVENT_STEP_FORWARD"]
+EVENT_GOT_ROGUE_POKEMON = EVENTS["EVENT_GOT_ROGUE_POKEMON"]
 TRADE_ACTIVE_BIT = RAM["BIT_ROGUE_TRADE_ACTIVE"]
 TRADE_NPC_TOGGLE = 0x0F  # TOGGLE_ROGUE_TRADE_NPC: the Reward Room's object 5
 START_LEVEL = parse_rgbds_constants(REPO_ROOT / "constants" / "balance_constants.asm", ROUNDS)["STARTER_LEVEL"]

@@ -145,6 +145,12 @@
    "to": "19",
    "steps": ["recordsAdded"],
    "verified": "2026-11-04 (Claude): PC Records. Three saved pads carved (wFurthestRunsFirst/Last, wSpecialCollected), nothing moves; table empty, held specials credited, loss record cleared. Real-save gate passed: six saves (lobby, route, cave, forest, cemetery, facility) made on the schema-18 build 621bb0cc convert and pass saves.py continue on the schema-19 build; the unconverted control is refused. A fixture with real specials and noise in the old pads credits exactly the five held specials, not a stale box copy or a tutor gift, with 78 Dex flag bytes exact on two boots. Evidence: redrogue-dexforms/builds/dexforms_gate/ (old19, records). BGB/hardware acceptance pending."
+  },
+  {
+   "from": "19",
+   "to": "20",
+   "steps": ["flagsRenumbered", "lobbyHealLatchCleared"],
+   "verified": "2026-11-14 (Claude): no field moves. ROUTE_17 dropped from the event generator's live maps (FOLLOWUPS #98); the regeneration renumbered 453 events (246 bits rewritten), translated by name. wStatusFlags4 bit 1 (BIT_UNKNOWN_4_1 -> BIT_LOBBY_HEAL_HANDLED) cleared. Converter 32 pass/1 legacy skip; 'schema 19 to 20' checks every event by name and the latch bit, and fails with either step removed. Real-save gate passed: six saves (lobby, route, cave, forest, cemetery, facility) made on the archived schema-19 release ROM c4931070 convert and pass saves.py continue on the schema-20 build; the unconverted lobby save is refused. Those saves had bit 1 already clear (no trainer battle), so the latch is covered by the synthetic test only. Evidence builds/gate19_c4931070/. BGB/hardware acceptance pending."
   }
  ]
 }

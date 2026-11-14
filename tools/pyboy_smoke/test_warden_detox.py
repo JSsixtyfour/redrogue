@@ -22,7 +22,9 @@ TYPES = parse_rgbds_constants(ROOT / "constants/type_constants.asm")
 PALETTES = parse_rgbds_constants(ROOT / "constants/palette_constants.asm")
 MAPS = parse_map_constants(ROOT / "constants/map_constants.asm")
 MON = 44
-GIFT_EVENT_BYTE, GIFT_EVENT_BIT = 26, 5  # EVENT_BRIDGE_RECEIVE_GIFT
+# Read from the generated file: tools/gen_event_constants.py renumbers events.
+GIFT_EVENT_BYTE, GIFT_EVENT_BIT = divmod(
+    parse_rgbds_constants(ROOT / "constants/event_constants.asm")["EVENT_BRIDGE_RECEIVE_GIFT"], 8)
 DETOX_INDEX = 7  # WardenGiftList's eighth entry
 VARIANT, SHINY = 4, 16
 HUD_TILE = 8 * 20 + 13  # player HUD cell, hlcoord 13, 8

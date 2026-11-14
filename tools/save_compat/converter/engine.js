@@ -607,6 +607,21 @@
       return null;
     },
 
+    // Schema 19 -> 20: wStatusFlags4 bit 1 was vanilla's write-only BIT_UNKNOWN_4_1, set by every
+    // trainer battle and never cleared, so nearly every old save holds it. It is now
+    // BIT_LOBBY_HEAL_HANDLED, the lobby's once-per-visit heal-warning latch (cleared on each fresh
+    // lobby entry). Left set, a save made in the lobby would skip the warning for that visit.
+    // Cleared, the warning can still only fire for a hurt party, so a save made after a nurse heal
+    // is not warned spuriously.
+    lobbyHealLatchCleared: function (bytes, from, to) {
+      var at = wramOffset(to, "wStatusFlags4");
+      if (at < 0 || wramOffset(from, "wStatusFlags4") !== at)
+        return "status flags layout not recognised";
+      bytes[at] &= ~(1 << 1) & 0xff;
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
     // Schema 13 -> 14: Endless depth/flags take the final two saved pad bytes.
     // Zero initializes an ordinary run, with no continuation pending.
     endlessAdded: function (bytes, from, to) {

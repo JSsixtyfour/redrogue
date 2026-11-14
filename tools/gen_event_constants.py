@@ -323,11 +323,9 @@ EXTRA_SEEDS = {
     # UndergroundPathRoute6 -> UndergroundPathNorthSouth, both themselves
     # unreachable dead ends. Verified: dropping these three strands no other map.
     "SS_ANNE_B1F", "SS_ANNE_B1F_ROOMS",
-    # ROUTE_17 is retired as a stage (its rogue wiring was removed 2026-11-11)
-    # and stays here only so this regeneration does not renumber events. Drop it
-    # at the next save-layout change that needs a schema bump anyway:
-    # FOLLOWUPS.md #98.
-    "GAME_CORNER", "ROUTE_17", "ROUTE_24",
+    # ROUTE_17 was dropped here at schema 20 (2026-11-14): it is retired as a
+    # stage (rogue wiring removed 2026-11-11), so its events are graveyarded.
+    "GAME_CORNER", "ROUTE_24",
     # Karate Master mini-boss stage (miniboss.asm KarateMaps). Reached only by
     # the lobby's ROGUE_MAP door resolution, never by a static warp.
     "FIGHTING_DOJO",
@@ -615,6 +613,11 @@ def reachable_maps():
 
 
 SCAN_EXCLUDED_DIRS = {"tmp", ".git", "pyboy_smoke", ".claude", "builds"}
+# Whole-tree copies at a fixed path. tools/music_kit/out (gitignored) holds the
+# music tester's copy of the source, constants/event_constants.asm included, so
+# scanning it made every event look referenced: nothing was graveyarded and the
+# layout overflowed NUM_EVENTS (measured 2026-11-14: 643 LIVE, needs 648 bits).
+SCAN_EXCLUDED_PATHS = {"tools/music_kit/out"}
 
 
 def scrape_refs(names):
@@ -622,8 +625,11 @@ def scrape_refs(names):
     nameset = set(names)
     for dirpath, dirnames, files in os.walk(ROOT):
         # Prune in place so os.walk never descends into excluded trees.
-        dirnames[:] = [d for d in dirnames if d not in SCAN_EXCLUDED_DIRS]
-        parts = os.path.relpath(dirpath, ROOT).replace("\\", "/").split("/")
+        rel = os.path.relpath(dirpath, ROOT).replace("\\", "/")
+        dirnames[:] = [d for d in dirnames if d not in SCAN_EXCLUDED_DIRS
+                       and (d if rel == "." else rel + "/" + d)
+                       not in SCAN_EXCLUDED_PATHS]
+        parts = rel.split("/")
         # .claude holds agent worktrees: full checkouts whose EVENT_ refs
         # (possibly from another branch) must not count as references here.
         # builds/ (gitignored) holds whole-tree snapshots with the same refs.

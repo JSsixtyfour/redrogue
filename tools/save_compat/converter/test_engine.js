@@ -259,6 +259,48 @@ test("schema 18 to 19: records padding initializes empty, all other bytes surviv
   assert.equal(api.checksumStatus(out.bytes, to).main, true);
 });
 
+test("schema 19 to 20: events keep their meaning by name, only the heal latch bit is cleared", () => {
+  const full = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
+  const from = full(19), to = full(20);
+  const save = syntheticSave("19"), pkg = packageTargeting("20");
+  const flags = wramOffset(from, "wStatusFlags4"), ev = wramOffset(from, "wEventFlags");
+  save[flags] = 0xff;
+  save[flags + 1] = 0x5a; // the pad after it must not change
+  let x = 0x13579bdf;
+  for (let i = 0; i < 64; i++) { x = (Math.imul(x, 1103515245) + 12345) >>> 0; save[ev + i] = x >>> 24; }
+  recomputeChecksums(save, from);
+  const out = api.convert(save, pkg, { mode: "continue" });
+  assert.equal(out.ok, true, out.reason);
+  const b = out.bytes;
+  assert.equal(wramOffset(to, "wStatusFlags4"), flags);
+  assert.equal(b[flags], 0xfd, "only BIT_LOBBY_HEAL_HANDLED (bit 1) is cleared");
+  assert.equal(b[flags + 1], 0x5a);
+  const bit = (bytes, i) => (bytes[ev + (i >> 3)] >> (i & 7)) & 1;
+  const n = to.constants.NUM_EVENTS;
+  const names = Object.keys(to.constants).filter((k) => k.startsWith("EVENT_") && to.constants[k] >= 0 && to.constants[k] < n);
+  let moved = 0;
+  for (const k of names) {
+    const nb = to.constants[k];
+    const olds = names.filter((j) => to.constants[j] === nb && j in from.constants).map((j) => from.constants[j]);
+    assert.ok(olds.length, `${k}: no name existed at schema 19`);
+    assert.equal(bit(b, nb), olds.some((o) => bit(save, o)) ? 1 : 0, `${k} (bit ${nb})`);
+    if (!olds.includes(nb)) moved++;
+  }
+  assert.ok(moved > 0, "expected renumbered events");
+  // Route 17's live bits went to the graveyard; Route 24's trainers took them (measured diff).
+  assert.equal(from.constants.EVENT_BEAT_ROUTE_17_TRAINER_0, 345);
+  assert.equal(to.constants.EVENT_BEAT_ROUTE_24_TRAINER_0, 346);
+  assert.equal(bit(b, 346), bit(save, from.constants.EVENT_BEAT_ROUTE_24_TRAINER_0));
+  const changed = new Set([flags]);
+  for (let i = 0; i < 64; i++) changed.add(ev + i);
+  const sum = to.checksums.find((c) => c.name === "main");
+  changed.add(offsetOf(sum.at_bank, sum.at));
+  for (let i = 0; i < 8; i++) changed.add(0x2040 + i);
+  for (let i = 0; i < save.length; i++)
+    if (!changed.has(i)) assert.equal(b[i], save[i], `unrelated byte ${i}`);
+  assert.equal(api.checksumStatus(b, to).main, true);
+});
+
 // Full schema (with constants), for checks the trimmed package cannot make.
 const fullSchema = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
 

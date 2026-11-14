@@ -86,7 +86,13 @@
 ; wSpecialCollected take three saved pads. Nothing moves. Migration recordsAdded
 ; zero-fills them, credits held special forms, and clears the loss-recovery
 ; record. Also absorbs NUM_SPRITES $73 -> $79 (six sprites appended, no id moved).
-DEF SAVE_SCHEMA_ID EQU 19
+; Schema 20 (2026-11-14): no field moves. ROUTE_17 left the event generator's
+; live maps (retired stage, FOLLOWUPS #98) and the regeneration renumbered the
+; events; flagsRenumbered translates them by name. wStatusFlags4 bit 1, vanilla's
+; write-only BIT_UNKNOWN_4_1 (set by every trainer battle, never cleared), is now
+; BIT_LOBBY_HEAL_HANDLED, a once-per-visit latch; lobbyHealLatchCleared clears it
+; so a save made in the lobby still gets the exit-door heal warning.
+DEF SAVE_SCHEMA_ID EQU 20
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; Transient invalid magic while a writer owns the save. Completed headers and
