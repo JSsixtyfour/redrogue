@@ -995,6 +995,11 @@ INCLUDE "custom_functions/reward_offer_info.asm"
 SECTION "Rental Core", ROMX, BANK[$31]
 INCLUDE "custom_functions/rental_core.asm"
 
+; Lobby exit-door heal reminder, rfarjp'd every frame from the lobby script
+; (bank $06 has only a few bytes free). Pinned beside Rental Core for room.
+SECTION "Lobby Heal Warning", ROMX, BANK[$31]
+INCLUDE "custom_functions/lobby_heal_warning.asm"
+
 SECTION "Loss Recovery", ROMX, BANK[$2A]
 INCLUDE "custom_functions/loss_recovery.asm"
 

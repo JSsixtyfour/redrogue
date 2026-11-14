@@ -256,10 +256,11 @@ def item_id(name: str) -> int:
 
 class MartDescriptionRuntimeTest(ItemDescriptionRuntimeBase):
     """The BUY list also shows how many of an ordinary item the bag holds, at
-    columns 16-18 past the 14-tile description (PrintItemDescription)."""
+    columns 16-18 past the 14-tile description (PrintItemDescription): "BAG"
+    on the empty middle row 15, "×NN" on row 16."""
 
     def bag_count_column(self) -> tuple[str, str]:
-        return self.tile_row(15, 14, 4), self.tile_row(15, 16, 4)
+        return self.tile_row(15, 15, 4), self.tile_row(15, 16, 4)
 
     def give(self, item: int, quantity: int) -> None:
         regs = self.h.pyboy.register_file
@@ -278,11 +279,11 @@ class MartDescriptionRuntimeTest(ItemDescriptionRuntimeBase):
     def test_clerk_box_describes_the_item(self) -> None:
         self.open_mart([POTION], cursor=0)
         self.run_routine("PrintBagInfoText")
-        self.assertEqual(self.tile_row(1, 14, 14), "Restores 20 HP")
-        self.assertEqual(self.tile_row(1, 15, 18), "")
+        self.assertEqual(self.tile_row(1, 14, 18), "Restores 20 HP")  # no label beside line 1
+        self.assertEqual(self.tile_row(1, 15, 14), "")
         self.assertEqual(self.tile_row(1, 16, 14), "to one POKe'MON")
         # the count stays inside the box: column 19 is the border
-        self.assertEqual(self.tile_row(19, 14, 1), "W")
+        self.assertEqual(self.tile_row(19, 15, 1), "W")
         self.assertEqual(self.tile_row(19, 16, 1), "W")
 
     def test_buy_list_shows_the_bag_count(self) -> None:

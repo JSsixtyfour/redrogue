@@ -21,7 +21,8 @@ DEF ITEM_DESC_SCRATCH EQUS "wMoveBuffer + 80"
 ; The caller has already blanked both lines. Items without an entry print
 ; nothing. TMs/HMs print their move's type, PP, power and accuracy.
 ; In the mart's BUY list (clerk layout + PRICEDITEMLISTMENU) an ordinary item
-; also shows how many the bag holds at columns 16-18, past ITEM_DESC_WIDTH.
+; also shows how many the bag holds at columns 16-18, past ITEM_DESC_WIDTH:
+; "BAG" on the empty middle row 15, "×NN" beside line 2 on row 16.
 ; TMs and key items are skipped: the clerk does not offer one already owned.
 ; The SELL list rows already show their quantity, and the credit vendor
 ; (CREDITLISTMENU) shares the clerk layout but has its own list ID.
@@ -48,7 +49,7 @@ PrintItemDescription::
 	predef GetQuantityOfItemInBag ; b = how many the bag holds
 	ld a, b
 	ld [ITEM_DESC_SCRATCH], a
-	hlcoord 16, 14
+	hlcoord 16, 15            ; the empty middle row, apart from line 1
 	ld de, .BagLabel
 	call PlaceString
 	hlcoord 16, 16
