@@ -183,6 +183,8 @@ class Species:
     form: int = 0
     display_name: str = ""
     form_group: str | None = None
+    # The stone (item constant name) of each ITEM entry in `evos`, else "".
+    evo_items: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         if not self.base_species:
@@ -227,6 +229,9 @@ def _entry_identity(args: list[str]) -> str:
     return species_key(args[0], form)
 
 
+_EVO_ITEMS: dict[str, list[str]] = {}  # label -> stone name per entry, "" if none
+
+
 def _evolution_lists(lines: list[str]) -> dict[str, list[tuple[int, int, str]]]:
     """Parse only the evolution prefix; an explicit zero is finality."""
     out: dict[str, list[tuple[int, int, str]]] = {}
@@ -237,6 +242,7 @@ def _evolution_lists(lines: list[str]) -> dict[str, list[tuple[int, int, str]]]:
         if match:
             current = match.group(1)
             out[current] = []
+            _EVO_ITEMS[current] = []
             continue
         if current is None or not code:
             continue
@@ -263,6 +269,7 @@ def _evolution_lists(lines: list[str]) -> dict[str, list[tuple[int, int, str]]]:
             raise ValueError(f"unparsed evolution line under {current}: {code!r}")
         level = _int(parts[2] if method == EVOLVE_ITEM else parts[1])
         out[current].append((method, level, species_key(parts[-1], form)))
+        _EVO_ITEMS[current].append(parts[1] if method == EVOLVE_ITEM else "")
     return out
 
 
@@ -315,7 +322,8 @@ def load_species() -> dict[str, Species]:
             continue                     # MissingNo slots
         exp, growth = stats[name]
         out[name] = Species(name, iid, exp, growth, list(evos_by_label.get(label, [])),
-                            base_species=name, display_name=name)
+                            base_species=name, display_name=name,
+                            evo_items=list(_EVO_ITEMS.get(label, [])))
 
     # Only assembled records and the authoritative pointer table participate.
     form_table = _lines("data/pokemon/form_evos_moves.asm")
@@ -362,7 +370,8 @@ def load_species() -> dict[str, Species]:
         out[key] = Species(key, out[base].internal_id, int(exp.group(1)), growth.group(1),
                            list(form_lists[pointers[key]]), base, form,
                            display.group(1) if display else key,
-                           "JOHTO" if key in johto_pairs else "WARP")
+                           "JOHTO" if key in johto_pairs else "WARP",
+                           list(_EVO_ITEMS[pointers[key]]))
     return out
 
 

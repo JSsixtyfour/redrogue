@@ -102,6 +102,8 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
 - Trainer switch timing was based on their Pokémon's speed stat in RBY. I changed this to match player battles and later games, switches always take priority now.
 - Enemy Trainers (and for the most part, Players) cannot use items in battle.
 
+- [Evolution guide](docs/EVOLUTIONS.md): every evolution and how it works, with the Pokédex's last page showing what your run allows
+
 # Credits
 ## Pokémon Red Rogue Team
 ### Developer

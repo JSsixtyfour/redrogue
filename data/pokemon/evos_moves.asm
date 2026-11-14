@@ -1044,10 +1044,10 @@ GrowlitheEvosMoves:
 OnixEvosMoves:
 ; Evolutions
 ; Species Groups Phase 2: canon Onix->Steelix is a trade-holding-Metal-Coat
-; evolution; this project has no Metal Coat item, so - matching KEP's own
-; fallback path for the same species - a plain level threshold is used
-; instead.
-	db EVOLVE_LEVEL, 38, STEELIX
+; evolution. This project has no Metal Coat, so it is a plain trade evolution
+; that also fires by level-up at 38, like Scyther->Scizor. Steelix is a Johto
+; species, so the group gate holds it back until Johto is active.
+	db EVOLVE_TRADE, 38, STEELIX
 	db 0
 ; Learnset
 	db 12, ROCK_THROW
