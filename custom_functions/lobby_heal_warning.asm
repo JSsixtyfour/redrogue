@@ -18,6 +18,17 @@
 ; PP is not checked: max PP needs the move table and PP Ups, which the nurse
 ; already covers via HealParty.
 ;
+; IF SPACE GETS TIGHT: this can be cut to the nurse flag alone. Delete
+; LobbyPartyNeedsHealing and the door-open farcalls, and warn whenever the latch
+; is clear at (8,1)/(10,1). The nurse already sets the latch, so the only loss
+; is that a fit party (or a walled-off door 2) also gets the reminder. Cutting
+; the feature outright frees all of this section, plus the lobby script's
+; rfarjp, the latch reset on entry, and the rename in ram_constants.asm.
+;
+; Per-frame cost: away from the door tiles it is the rst far jump, a bank
+; switch, one bit test and the coordinate compares. The two door farcalls and
+; the party scan run only while standing on a door tile, until the latch is set.
+;
 ; Clobbers everything. Returns straight to RunMapScript.
 ; ============================================================
 LobbyHealWarning::
@@ -101,10 +112,9 @@ LobbyPartyNeedsHealing:
 	ret
 
 LobbyHealWarningText:
-	text "You have not"
-	line "visited the"
-	cont "NURSE."
+	text "WARNING:"
 
-	para "Are you sure you"
-	line "want to leave?"
+	para "You have not"
+	line "visited the"
+	cont "NURSE!"
 	done
