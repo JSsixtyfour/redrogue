@@ -44,6 +44,6 @@
 	; Master Ball: deeper purple top (colour 1), pending real GBC acceptance.
 	; Colour 2 is the STANDARD ball's red top.
 	RGB 31, 31, 31
-	RGB 22,  0, 23
+	RGB 14,  0, 10
 	RGB 26,  4,  4
 	RGB  3,  3,  3

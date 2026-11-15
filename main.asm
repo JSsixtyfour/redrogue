@@ -111,6 +111,7 @@ INCLUDE "engine/debug/debug_fight2.asm"
 ; floating ROMX sections, so that edge is a farcall too. Kept out of bank1 for
 ; the usual reason: bank1 has no slack.
 INCLUDE "engine/debug/debug2_config.asm"
+INCLUDE "engine/debug/debug_ball_colors.asm"
 
 ; The debug build's crash screen, entered from the $38 vector (home/header.asm).
 ; Its own SECTION, pinned to $3A beside "Build ID" (layout.link); empty in

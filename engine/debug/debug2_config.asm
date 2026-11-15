@@ -873,14 +873,22 @@ Debug2ApplyRoundState::
 DebugMenuRun::
 .menu
 	call ClearScreen
-; Five double-spaced options sit on rows 5, 7, 9, 11 and 13, so the box needs
-; 9 inner rows (it was 7 for four options). It starts on row 4 to stay above
-; the build date/ID on the bottom two rows.
+IF DEF(_BALL_COLORS)
+; Six double-spaced options, rows 3-13; build identity remains on rows 16-17.
+	hlcoord 3, 2
+	ld b, 11
+	ld c, 13
+ELSE
 	hlcoord 5, 4
 	ld b, 9
 	ld c, 9
+ENDC
 	call TextBoxBorder
+IF DEF(_BALL_COLORS)
+	hlcoord 5, 3
+ELSE
 	hlcoord 7, 5
+ENDC
 	ld de, DebugMenuOptions
 	call PlaceString
 	hlcoord 2, SCREEN_HEIGHT - 2
@@ -896,11 +904,23 @@ DebugMenuRun::
 	ld [wMenuWatchedKeys], a
 	xor a
 	ld [wMenuJoypadPollCount], a
-	ld a, 4
-	ld [wMaxMenuItem], a
+IF DEF(_BALL_COLORS)
 	ld a, 5
+ELSE
+	ld a, 4
+ENDC
+	ld [wMaxMenuItem], a
+IF DEF(_BALL_COLORS)
+	ld a, 3
+ELSE
+	ld a, 5
+ENDC
 	ld [wTopMenuItemY], a
+IF DEF(_BALL_COLORS)
+	ld a, 4
+ELSE
 	ld a, 6
+ENDC
 	ld [wTopMenuItemX], a
 	xor a
 	ldh [hCurrentMenuItem], a
@@ -911,6 +931,13 @@ DebugMenuRun::
 	bit B_PAD_B, a
 	ret nz
 	ldh a, [hCurrentMenuItem]
+IF DEF(_BALL_COLORS)
+	cp 5 ; BALL COLORS?
+	jr nz, .notBallColors
+	rfarcall DebugBallColors
+	jr .menu
+.notBallColors
+ENDC
 	cp 4 ; MUSIC?
 	ret nz
 	call DebugSoundTest
@@ -921,7 +948,12 @@ DebugMenuOptions:
 	next "FIGHT 2"
 	next "DEBUG"
 	next "DEBUG 2"
+IF DEF(_BALL_COLORS)
+	next "MUSIC"
+	next "BALL COLORS@"
+ELSE
 	next "MUSIC@"
+ENDC
 
 ; ----------------------------------------------------------------------------
 ; DebugSoundTest - plays every song id in the Music table, in the real engine

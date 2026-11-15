@@ -23,6 +23,10 @@ rom_obj := \
 pokered_obj        := $(rom_obj:.o=_red.o)
 pokeblue_obj       := $(rom_obj:.o=_blue.o)
 pokeblue_debug_obj := $(rom_obj:.o=_blue_debug.o)
+# Optional workbench: only main.asm differs; keep its object and ROM separate
+# so building this can never leave the tuner in an ordinary debug build.
+pokeblue_debug_ball_colors_obj := $(subst main_blue_debug.o,main_blue_debug_ball_colors.o,$(pokeblue_debug_obj))
+optional_roms := pokeblue_debug_ball_colors.gbc
 pokered_vc_obj     := $(rom_obj:.o=_red_vc.o)
 pokeblue_vc_obj    := $(rom_obj:.o=_blue_vc.o)
 
@@ -60,6 +64,8 @@ RGBGFXFLAGS  ?= -Weverything
 	blue \
 	debug \
 	blue_debug \
+	ball_colors \
+	test_ball_colors \
 	red_vc \
 	blue_vc \
 	clean \
@@ -90,6 +96,9 @@ red:        pokered.gbc
 blue:       pokeblue.gbc
 debug:      pokeblue_debug.gbc
 blue_debug: pokeblue_debug.gbc
+ball_colors: pokeblue_debug_ball_colors.gbc
+test_ball_colors: pokeblue_debug_ball_colors.gbc
+	REDROGUE_BALL_COLORS_ROM=pokeblue_debug_ball_colors python3 tools/pyboy_smoke/test_debug_ball_colors.py
 red_vc:     pokered.patch
 blue_vc:    pokeblue.patch
 
@@ -118,6 +127,8 @@ tidy:
 	      $(pokeblue_vc_obj) \
 	      $(pokeblue_debug_obj) \
 	      $(roms:.gbc=_buildid.o) \
+	      $(optional_roms) $(optional_roms:.gbc=.sym) $(optional_roms:.gbc=.map) \
+	      $(optional_roms:.gbc=_buildid.o) main_blue_debug_ball_colors.o \
 	      $(patches:.patch=_vc_buildid.o) \
 	      $(depfiles) \
 	      rgbdscheck.o
@@ -247,6 +258,7 @@ endif
 $(pokered_obj):        RGBASMFLAGS += -D _RED
 $(pokeblue_obj):       RGBASMFLAGS += -D _BLUE
 $(pokeblue_debug_obj): RGBASMFLAGS += -D _BLUE -D _DEBUG
+main_blue_debug_ball_colors.o: RGBASMFLAGS += -D _BLUE -D _DEBUG -D _BALL_COLORS
 $(pokered_vc_obj):     RGBASMFLAGS += -D _RED -D _RED_VC
 $(pokeblue_vc_obj):    RGBASMFLAGS += -D _BLUE -D _BLUE_VC
 
@@ -283,6 +295,7 @@ endef
 $(foreach obj, $(pokered_obj), $(eval $(call DEP,$(obj),$(obj:_red.o=.asm))))
 $(foreach obj, $(pokeblue_obj), $(eval $(call DEP,$(obj),$(obj:_blue.o=.asm))))
 $(foreach obj, $(pokeblue_debug_obj), $(eval $(call DEP,$(obj),$(obj:_blue_debug.o=.asm))))
+$(eval $(call DEP,main_blue_debug_ball_colors.o,main.asm))
 $(foreach obj, $(pokered_vc_obj), $(eval $(call DEP,$(obj),$(obj:_red_vc.o=.asm))))
 $(foreach obj, $(pokeblue_vc_obj), $(eval $(call DEP,$(obj),$(obj:_blue_vc.o=.asm))))
 
@@ -293,6 +306,7 @@ RGBLINKFLAGS += -d
 pokered.gbc:        RGBLINKFLAGS += -p 0x00
 pokeblue.gbc:       RGBLINKFLAGS += -p 0x00
 pokeblue_debug.gbc: RGBLINKFLAGS += -p 0xff
+pokeblue_debug_ball_colors.gbc: RGBLINKFLAGS += -p 0xff
 pokered_vc.gbc:     RGBLINKFLAGS += -p 0x00
 pokeblue_vc.gbc:    RGBLINKFLAGS += -p 0x00
 
@@ -300,6 +314,7 @@ RGBFIXFLAGS += -cjsv -n 0 -k 01 -l 0x33 -m MBC3+RAM+BATTERY -r 03
 pokered.gbc:        RGBFIXFLAGS += -p 0x00 -t "POKEMON RED"
 pokeblue.gbc:       RGBFIXFLAGS += -p 0x00 -t "POKEMON BLUE"
 pokeblue_debug.gbc: RGBFIXFLAGS += -p 0xff -t "POKEMON BLUE"
+pokeblue_debug_ball_colors.gbc: RGBFIXFLAGS += -p 0xff -t "POKEMON BLUE"
 pokered_vc.gbc:     RGBFIXFLAGS += -p 0x00 -t "POKEMON RED"
 pokeblue_vc.gbc:    RGBFIXFLAGS += -p 0x00 -t "POKEMON BLUE"
 

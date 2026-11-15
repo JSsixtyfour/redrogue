@@ -37,7 +37,7 @@
 
 	; Row 2, Master Ball (OBJ 3): deeper purple, pending real GBC acceptance.
 	RGB 31, 31, 31
-	RGB 22,  0, 23
+	RGB 14,  0, 10
 	RGB 10,  4, 12
 	RGB  3,  3,  3
 
