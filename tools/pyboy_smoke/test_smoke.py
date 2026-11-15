@@ -613,10 +613,12 @@ class AIPhaseZeroSmokeTest(HarnessTestCase):
         # Real award/level-up/learn-move paths. Only slot 5 earns EXP;
         # earlier ineligible and fainted slots and a trailing fainted slot
         # also exercise the paths that must not pop the saved amount.
-        for level, experience, final_level, learns_move, learn_levels in (
-            (19, 19 ** 3, 19, False, ()),
-            (18, 19 ** 3 - 1, 19, False, (19,)),
-            (18, 21 ** 3 - 1, 21, True, (19, 20, 21)),
+        # Pikachu learns Slam at 20 and ThunderPunch at 22.
+        for level, experience, final_level, learn_levels, learned_moves, name_prefix in (
+            (19, 19 ** 3, 19, (), (), None),
+            (18, 19 ** 3 - 1, 19, (19,), (), None),
+            (18, 21 ** 3 - 1, 21, (19, 20, 21), (0x15,), [0x92, 0x8B]),  # SL
+            (18, 22 ** 3 - 1, 22, (19, 20, 21, 22), (0x15, 0x09), [0x93, 0x87]),  # TH
         ):
             with self.subTest(level=level, experience=experience):
                 observed.clear()
@@ -654,12 +656,11 @@ class AIPhaseZeroSmokeTest(HarnessTestCase):
                 self.assertEqual(observed["level"], final_level)
                 self.assertEqual(observed["stack_before"], observed["stack_after"])
                 self.assertEqual(tuple(observed.get("learn_levels", ())), learn_levels)
-                if learns_move:
-                    # Lv 20 teaches THUNDERPUNCH then SLAM (Yellow), so the name
-                    # left in wStringBuffer is the second, later-listed move.
-                    self.assertIn(0x09, observed["moves"])  # THUNDERPUNCH
-                    self.assertIn(0x15, observed["moves"])  # SLAM
-                    self.assertEqual(observed["string_prefix"], [0x92, 0x8B])  # SL
+                expected_moves = [0x21, *learned_moves]
+                expected_moves.extend([0] * (4 - len(expected_moves)))
+                self.assertEqual(observed["moves"], expected_moves)
+                if name_prefix is not None:
+                    self.assertEqual(observed["string_prefix"], name_prefix)
 
     def test_badge_reboost_only_changes_the_recalculated_stat(self) -> None:
         assert self.harness is not None

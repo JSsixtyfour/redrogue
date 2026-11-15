@@ -383,14 +383,16 @@ ENDC
 	pop de                           ; d = first crossed level
 	ld e, a                          ; e = final level
 	push bc                          ; preserve previous wCurEnemyLevel for exit
+	; GetMoveName uses wCurSpecies as its name-list index. The learning
+	; routine and fusion path leave wPokedexNum holding the primary species.
+	ld a, [wCurSpecies]
+	ld [wPokedexNum], a
 .learnMovesForCrossedLevel
 	ld a, d
 	ld [wCurEnemyLevel], a
 	push de
 	xor a ; PLAYER_PARTY_DATA
 	ld [wMonDataLocation], a
-	ld a, [wCurSpecies]
-	ld [wPokedexNum], a
 	predef LearnMoveFromLevelUp
 	; Fusion (Phase 5b): after the PRIMARY's level-up moves, also learn the
 	; SECONDARY species' moves for this crossed level. Primary then secondary

@@ -18,7 +18,8 @@ class FormIdentityTests(unittest.TestCase):
 
         key = parse.species_key("JIGGLYPUFF", 1)
         sp = self.game.species[key]
-        self.assertEqual((sp.base_species, sp.form, sp.base_exp), ("JIGGLYPUFF", 1, 76))
+        # 211 matches Sandy Shocks, its paradox partner (data/pokemon/forms/screamtail.asm).
+        self.assertEqual((sp.base_species, sp.form, sp.base_exp), ("JIGGLYPUFF", 1, 211))
         self.assertEqual(sp.evos, [])
         cfg = model.Config(groups=("KANTO", "JOHTO", "WARP"))
         for level in (1, 35, 50, 100):

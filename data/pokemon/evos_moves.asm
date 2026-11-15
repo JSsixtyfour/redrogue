@@ -2037,10 +2037,10 @@ PikachuEvosMoves:
 	db 8, THUNDER_WAVE
 	db 11, TAIL_WHIP
 	db 15, DOUBLE_TEAM
-	db 20, THUNDERPUNCH
 	db 20, SLAM ; Yellow level-up move restored
+	db 21, THUNDERPUNCH
 	db 24, HEADBUTT
-	db 30, THUNDERBOLT
+	db 26, THUNDERBOLT
 	db 36, AGILITY
 	db 41, THUNDER
 	db 50, LIGHT_SCREEN
@@ -2066,13 +2066,14 @@ RaichuEvosMoves:
 	db 6, QUICK_ATTACK
 	db 8, THUNDER_WAVE
 	db 11, TAIL_WHIP
-	db 15, DOUBLE_TEAM
-	db 20, THUNDERPUNCH
-	db 24, HEADBUTT
-	db 30, THUNDERBOLT
-	db 36, AGILITY
-	db 41, THUNDER
-	db 50, LIGHT_SCREEN
+	db 17, DOUBLE_TEAM
+	db 22, SLAM ; Yellow level-up move restored
+	db 23, THUNDERPUNCH
+	db 27, HEADBUTT
+	db 28, THUNDERBOLT
+	db 39, AGILITY
+	db 45, THUNDER
+	db 52, LIGHT_SCREEN
 	db 0
 ; Tutoring Learnset  
     db 2, HEADBUTT
