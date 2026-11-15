@@ -297,7 +297,10 @@ ASM_HEADER = """\
 ;           band's Ace<n> (the doc's `- Aces (round r):` line).
 ;
 ; Each pool has a Kanto run, then `band_johto`, then `band_warp`, then
-; `band_end`. A run only takes part when its species group is on. A form entry
+; `band_warp_johto`, then `band_end`. A run only takes part when its species
+; group is on. The Warp run's entries after `band_warp_johto` also need Johto
+; on: forms of Johto species and Warp evolutions of Johto lines (Weavile,
+; Mamoswine...). The tool sorts them there itself. A form entry
 ; without an index (e.g. `band_mon GEODUDE`) may still ROLL a form when Time
 ; Warp is on, exactly like any procedural mon.
 ;
@@ -313,19 +316,50 @@ ASM_HEADER = """\
 """
 
 
+_NEEDS_JOHTO = None
+
+
+def needs_johto(species, form):
+    """True if a Time Warp entry also needs Johto on: a Johto-group species (any
+    form: Paldean Wooper, Hisuian Qwilfish, Galarian Slowking, Ursaluna,
+    Honchkrow...), Espeon/Umbreon, or a Warp-group species that evolves from a
+    Johto-group one (Weavile, Mamoswine, Mismagius, Porygon-Z). These go in the
+    run's band_warp_johto tail, which RogueBuildParty drops with Johto off."""
+    global _NEEDS_JOHTO
+    if _NEEDS_JOHTO is None:
+        groups = load_rarity_groups()
+        graph = load_evolution_graph()
+        warp_of_johto = {to for frm, tos in graph.items() if groups.get(frm) == "johto"
+                         for to in tos if groups.get(to) == "warp"}
+        _NEEDS_JOHTO = (groups, warp_of_johto)
+    groups, warp_of_johto = _NEEDS_JOHTO
+    return (groups.get(species) == "johto" or (species, form) in JOHTO_FORMS
+            or species in warp_of_johto)
+
+
 def pool_lines(kind, entries):
-    """The body lines of one pool, kanto/johto/warp runs in doc order."""
+    """The body lines of one pool, kanto/johto/warp runs in doc order, except
+    that the Warp run's Johto-needing entries move to its band_warp_johto tail."""
     macro = "band_ace" if kind == "Ace" else "band_mon"
+
+    def line(species, form):
+        return ("\t{} {}".format(macro, species) if form is None
+                else "\t{} {}, {}".format(macro, species, form))
+
     lines = []
     for group in GROUPS:
         if group == "johto":
             lines.append("\tband_johto")
         elif group == "warp":
             lines.append("\tband_warp")
-        for species, form, g in entries:
-            if g == group:
-                lines.append("\t{} {}".format(macro, species) if form is None
-                             else "\t{} {}, {}".format(macro, species, form))
+        run = [(sp, form) for sp, form, g in entries if g == group]
+        if group == "warp":
+            tail = [e for e in run if needs_johto(*e)]
+            lines.extend(line(*e) for e in run if not needs_johto(*e))
+            lines.append("\tband_warp_johto")
+            lines.extend(line(*e) for e in tail)
+        else:
+            lines.extend(line(*e) for e in run)
     lines.append("\tband_end")
     return lines
 
@@ -394,6 +428,8 @@ def parse_asm(text):
             group = "johto"
         elif op == "band_warp":
             group = "warp"
+        elif op == "band_warp_johto":
+            pass  # still the Warp run; the tail is a sort order, not a doc tag
         elif op == "band_end":
             cur = None
         elif op in ("band_ace", "band_mon"):

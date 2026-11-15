@@ -185,9 +185,22 @@ FormJohtoPairs::
 FormJohtoPairsEnd::
 ; Everything else is Time Warp: Glaceon/Leafeon (Gen 4), Sylveon (Gen 6), all
 ; Alolan (Gen 7), Galarian/Hisuian/Perrserker (Gen 8), Paldean and the
-; convergents/paradoxes (Gen 9). Honchkrow (Gen 4) and Ursaluna (Gen 8) are Warp
-; forms on Johto bases, so they need both groups, as Mamoswine does. So are
-; Hisuian Qwilfish and Overqwil (Gen 8, on Johto's QWILFISH).
+; convergents/paradoxes (Gen 9).
+;
+; A Warp form whose species is a JOHTO species needs both groups, as Mamoswine
+; does: Paldean Wooper, Clodsire, Hisuian Qwilfish, Overqwil, Honchkrow,
+; Galarian Slowking and Ursaluna. IsFormAllowed reads this list; the Warp
+; rarity pool keeps its two direct picks behind WarpGreatball.defaultEvos, and
+; tools/gen_party_roster.py sorts trainer-pool entries that need Johto into
+; each Warp run's tail (BandPool_*_WarpJohto).
+FormJohtoWarpSpecies::
+	db WOOPER    ; Paldean Wooper
+	db QUAGSIRE  ; Clodsire
+	db QWILFISH  ; Hisuian Qwilfish, Overqwil
+	db MURKROW   ; Honchkrow
+	db SLOWKING  ; Galarian Slowking
+	db URSARING  ; Ursaluna
+FormJohtoWarpSpeciesEnd::
 
 ; ===========================================================================
  ; Rarity picks are explicit in engine/pokemon/rarity.asm. There is no form

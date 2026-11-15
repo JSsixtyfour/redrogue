@@ -192,7 +192,12 @@ DEF POOL_FORM_ROLL_KEEP EQU $7F
 ; active are skipped, so a pool automatically shrinks to the player's unlock
 ; state with no scanning and no per-entry group byte.
 ;
-; db kanto_count, johto_count, warp_count, dw list
+; The Time Warp run ends in a tail of entries that also need Johto (forms of
+; Johto species, Weavile/Mamoswine/Mismagius/Porygon-Z): its byte packs the
+; whole run's count in the low nibble and that tail's length in the high one.
+; With Johto off the tail is dropped, so a Warp-only run cannot draw them.
+;
+; db kanto_count, johto_count, johto_warp_tail << 4 | warp_count, dw list
 DEF POOL_TABLE_ENTRY_SIZE EQU 5
 
 ; --- Party spec flags ------------------------------------------------------

@@ -381,18 +381,24 @@ def load_species() -> dict[str, Species]:
 class Tier:
     base: list[str]      # rollable base forms
     all: list[str]       # base + _Evos, used only for classification
+    # Direct picks after `.defaultEvos:` but before _Evos: rolled only with Johto
+    # AND Warp on (RarityJohtoWarp / RarityWarpJohto in rarity.asm).
+    conditional: list[str] = field(default_factory=list)
 
 
 def load_rarity() -> dict[str, list[Tier]]:
     """{group: [tier 0..4]} from engine/pokemon/rarity.asm."""
     lists: dict[str, list[str]] = {}
     evos_at: dict[str, int] = {}
+    evos_end: dict[str, int] = {}
     current: str | None = None
     for raw in _lines("engine/pokemon/rarity.asm"):
         code = _code(raw)
         if current and code == '.defaultEvos:':
             evos_at[current] = len(lists[current])
             continue
+        if current and code.endswith('_Evos:'):
+            evos_end[current] = len(lists.get(current, []))
         m = re.match(r"^((?:Kanto|Johto|Warp)[A-Za-z]+?)(_Evos|_End)?:$", code)
         if m:
             base, suffix = m.group(1), m.group(2)
@@ -416,7 +422,8 @@ def load_rarity() -> dict[str, list[Tier]]:
         for t in tier_names:
             species = lists.get(prefix + t, [])
             n_base = evos_at.get(prefix + t, len(species))
-            tiers.append(Tier(species[:n_base], species))
+            n_direct = evos_end.get(prefix + t, n_base)
+            tiers.append(Tier(species[:n_base], species, species[n_base:n_direct]))
         out[group] = tiers
     kanto_total = sum(len(t.all) for t in out["KANTO"])
     if kanto_total != 151:
@@ -435,6 +442,8 @@ BOOSTED_FAMILY = {'SWINUB': 1, 'PILOSWINE': 1, 'MAMOSWINE': 1,
 def base_species_for_tier(rarity, group, tier, groups):
     """Effective direct picks, including RogueGetTierEntry's conditional view."""
     picks = rarity[group][tier].base
+    if group == 'WARP' and {'JOHTO', 'WARP'} <= set(groups):
+        return picks + rarity[group][tier].conditional
     if group == 'JOHTO' and {'JOHTO', 'WARP'} <= set(groups):
         if tier == 0:
             return [species for species in picks if species not in BOOSTED_ROOTS]

@@ -85,10 +85,21 @@ ASSERT RarityJohtoWarpEnd - RarityJohtoWarp == 4 * RARITY_TIER_ENTRY_SIZE
 ; Kanto Time Warp - unlocked after the second champion win. Populated in Phase 2.
 RarityWarp:
 	rarity_tier WarpPokeball
+	rarity_tier WarpGreatball, WarpGreatball.defaultEvos
+	rarity_tier WarpUltraball
+	rarity_tier WarpMasterball
+	rarity_tier WarpUber
+
+; When Johto AND Warp are active, Warp also rolls the forms of Johto species
+; (Paldean Wooper, Hisuian Qwilfish). Only the Great Ball row differs.
+RarityWarpJohto:
+	rarity_tier WarpPokeball
 	rarity_tier WarpGreatball
 	rarity_tier WarpUltraball
 	rarity_tier WarpMasterball
 	rarity_tier WarpUber
+RarityWarpJohtoEnd:
+ASSERT RarityWarpJohtoEnd - RarityWarpJohto == NUM_RARITY_TIERS * RARITY_TIER_ENTRY_SIZE
 
 
 ; Each entry explicitly names its species and form. Omitted form means 0.
@@ -499,6 +510,10 @@ WarpGreatball:
 	rarity_mon VULPIX, 1 ; Alolan Vulpix
 	rarity_mon PONYTA, 1 ; Galarian Ponyta
 	rarity_mon SLOWPOKE, 1 ; Galarian Slowpoke
+.defaultEvos:
+; Conditional direct picks: forms of JOHTO species, so they need Johto as well
+; as Warp, as Mamoswine does. Excluded by the default RarityWarp row; the
+; RarityWarpJohto row (Johto + Warp both active) includes them.
 	rarity_mon WOOPER, 1 ; Paldean Wooper
 	rarity_mon QWILFISH, 1 ; Hisuian Qwilfish
 WarpGreatball_Evos:
@@ -597,6 +612,8 @@ ASSERT RARITY_TIER_ENTRY_SIZE == 4, "RogueGetTierEntry hardcodes a 4-byte stride
 RogueGetTierEntry::
 	push de
 	push af
+	cp SPECIES_GROUP_WARP
+	jr z, .warpGroup
 	cp SPECIES_GROUP_JOHTO
 	jr nz, .ordinaryGroup
 	ld a, b
@@ -606,6 +623,12 @@ RogueGetTierEntry::
 	jr nz, .ordinaryGroup
 	pop af
 	ld hl, RarityJohtoWarp
+	jr .tierTable
+.warpGroup
+	call RogueSwinubRarityBoostActive
+	jr nz, .ordinaryGroup
+	pop af
+	ld hl, RarityWarpJohto
 	jr .tierTable
 .ordinaryGroup
 	pop af
@@ -638,7 +661,8 @@ RogueGetTierEntry::
 
 ; Z SET only if both expansions are unlocked AND enabled for this run: the
 ; Swinub line is then Great Ball and the Teddiursa line Master Ball
-; (see RarityJohtoWarp).
+; (see RarityJohtoWarp), and Warp rolls the forms of Johto species
+; (see RarityWarpJohto).
 ; The same condition owns pool selection and family classification.
 ; CLOBBERS af only; bc/de/hl preserved by RogueGetActiveGroupMask.
 RogueSwinubRarityBoostActive::

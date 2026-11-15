@@ -87,7 +87,9 @@ class ExplicitRarityFormsTest(unittest.TestCase):
                 self.assertEqual(list(self.rom_bytes(label, len(expected)*2)),
                                  [x for pair in expected for x in pair], label)
                 ordinary += [sp for sp, form in expected if not form]
-                direct_forms += [pair for pair in direct if pair[1]]
+                # Conditional picks (after .defaultEvos, e.g. Paldean Wooper,
+                # which needs Johto + Warp) are still direct picks of some row.
+                direct_forms += [pair for pair in pairs(before) if pair[1]]
                 _, addr = self.h.symbols.get(label)
                 self.assertEqual(list(table[tier_id*4:tier_id*4+4]),
                                  [len(direct), len(expected), addr & 255, addr >> 8], label)

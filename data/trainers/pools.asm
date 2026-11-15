@@ -25,6 +25,7 @@
 ;   FooPool_Johto:  ; Johto run
 ;       pool_mon HOOTHOOT
 ;   FooPool_Warp:   ; Time Warp run (empty here)
+;   FooPool_WarpJohto: ; its tail that needs Johto on too (empty here)
 ;   FooPool_End:
 
 ; \1 = species, \2 = optional form spec (default POOL_FORM_ROLL).
@@ -42,12 +43,16 @@ MACRO pool_mon
 	ENDC
 ENDM
 
-; \1 = pool label. Requires \1, \1_Johto, \1_Warp and \1_End.
+; \1 = pool label. Requires \1, \1_Johto, \1_Warp, \1_WarpJohto and \1_End.
+; The Time Warp byte packs the run's count (low nibble) with the length of its
+; \1_WarpJohto tail (high nibble), the entries that need Johto on as well.
 MACRO trainer_pool
 	db (\1_Johto - \1)      / POOL_ENTRY_SIZE ; Kanto run count
 	db (\1_Warp  - \1_Johto) / POOL_ENTRY_SIZE ; Johto run count
-	db (\1_End   - \1_Warp)  / POOL_ENTRY_SIZE ; Time Warp run count
+	db (((\1_End - \1_WarpJohto) / POOL_ENTRY_SIZE) << 4) | ((\1_End - \1_Warp) / POOL_ENTRY_SIZE)
 	dw \1
+	ASSERT (\1_End - \1_Warp) / POOL_ENTRY_SIZE < 16, "\1: Time Warp run too long to pack"
+	ASSERT \1_WarpJohto >= \1_Warp && \1_WarpJohto <= \1_End, "\1: bad _WarpJohto tail"
 ENDM
 
 ; --- Banded pools (data/trainers/band_pools.asm, from PARTY_ROSTER.md) -----
@@ -139,6 +144,7 @@ FalknerPool_Johto:
 	pool_mon YANMA
 	pool_mon GLIGAR
 FalknerPool_Warp:
+FalknerPool_WarpJohto:
 FalknerPool_End:
 
 ; The other 16 gym leaders' pools are the banded pools in

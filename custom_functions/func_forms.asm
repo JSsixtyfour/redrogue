@@ -336,7 +336,8 @@ RogueRollFormForSpecies::
 ; OUTPUT: carry SET if the form may appear
 ; CLOBBERS: af   (bc, de, hl PRESERVED)
 ;
-; Warp is the default and Johto the listed exception - see FormJohtoPairs.
+; Warp is the default and Johto the listed exception - see FormJohtoPairs. A
+; Warp form of a Johto species needs Johto too - see FormJohtoWarpSpecies.
 ; ---------------------------------------------------------------------------
 IsFormAllowed:
 	push bc
@@ -360,17 +361,32 @@ IsFormAllowed:
 	dec a
 	jr nz, .loop
 .warp
+; A Warp form of a JOHTO species needs both groups (FormJohtoWarpSpecies).
+	ld hl, FormJohtoWarpSpecies
+	ld c, FormJohtoWarpSpeciesEnd - FormJohtoWarpSpecies
+.johtoBaseLoop
+	ld a, [hli]
+	cp b
+	jr z, .johtoBase
+	dec c
+	jr nz, .johtoBaseLoop
 	ld a, 1 << BIT_GROUP_WARP
+	jr .test
+.johtoBase
+	ld a, (1 << BIT_GROUP_JOHTO) | (1 << BIT_GROUP_WARP)
 	jr .test
 .johto
 	pop af                       ; discard the loop counter
 	ld a, 1 << BIT_GROUP_JOHTO
 .test
-	and d                        ; is that group active this run?
+	ld c, a                      ; c = every group this form needs
+	and d
+	cp c                         ; all of them active this run?
 	pop hl
 	pop bc                       ; pops do not disturb the flags
-	ret z                        ; locked - carry clear
-	scf
+	scf                          ; scf leaves Z alone
+	ret z                        ; allowed - carry set
+	ccf                          ; locked - carry clear
 	ret
 
 ; ---------------------------------------------------------------------------

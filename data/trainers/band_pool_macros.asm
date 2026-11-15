@@ -47,6 +47,15 @@ BandPool_{BAND_CUR}_Warp:
 	ENDC
 ENDM
 
+; The Time Warp run's tail of entries that need Johto on as well (forms of
+; Johto species, and Warp evolutions of Johto lines). gen_party_roster.py
+; sorts them here; see the trainer_pool macro in pools.asm.
+MACRO band_warp_johto
+	IF BAND_POOL_PASS == 2
+BandPool_{BAND_CUR}_WarpJohto:
+	ENDC
+ENDM
+
 MACRO band_end
 	IF BAND_POOL_PASS == 2
 BandPool_{BAND_CUR}_End:

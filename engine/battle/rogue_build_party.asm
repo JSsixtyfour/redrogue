@@ -1312,7 +1312,7 @@ PartyGenDrawFromPoolId:
 	ld a, [hli]
 	ld c, a                        ; c = Johto run count
 	ld a, [hli]
-	ld d, a                        ; d = Time Warp run count
+	ld d, a                        ; d = Johto tail << 4 | Time Warp run count
 	ld a, [hli]
 	ld e, a
 	ld a, [hl]
@@ -1329,6 +1329,25 @@ PartyGenDrawFromPoolId:
 	pop de
 	pop bc
 	ld e, a                        ; e = active group mask
+
+; Unpack the Time Warp byte. Its run ends in a tail that needs Johto on as well
+; (forms of Johto species, Weavile, Mamoswine...); with Johto off that tail is
+; not drawable. It is the END of the run, and so of the list, so trimming the
+; count is enough - no later run's offset depends on it.
+	ld a, d
+	and $0f
+	ld h, a                        ; h = the whole Time Warp run (hl is stacked)
+	bit BIT_GROUP_JOHTO, e
+	jr nz, .warpCounted
+	ld a, d
+	swap a
+	and $0f                        ; a = the Johto tail
+	cpl
+	inc a
+	add h
+	ld h, a                        ; h = the run without its Johto tail
+.warpCounted
+	ld d, h                        ; d = drawable Time Warp count
 
 ; --- total the ACTIVE runs ---
 	xor a
