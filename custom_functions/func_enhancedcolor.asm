@@ -2307,8 +2307,14 @@ DecrementAllColorsGBC_improved:
 	call nz, DelayFrame	;Delay a frame in 60 fps mode to get the timing down right for any fades
 	pop af
 	jr nz, .return
+	; A single-speed step spans two frames with rIE off, and their two VBlanks
+	; merge into the one pending interrupt that fires at the rIE restore above,
+	; so this supplies the second frame's audio tick. Keep it after the restore:
+	; that handler already ends its OAM DMA at LY 0, and anything placed ahead of
+	; it pushes its VRAM work into visible lines. Measured 2026-11-14: 2.0 frames
+	; and 2 ticks per step, this call done by LY 48, no VBlank nested inside it.
 	push de
-	call UpdateSound ; Crystal audio: the missed VBlank tick (interrupts are off)
+	call UpdateSound
 	pop de
 .return
 	ld a, 1
@@ -2455,8 +2461,14 @@ IncrementAllColorsGBC_improved:
 	call nz, DelayFrame	;Delay a frame in 60 fps mode to get the timing down right for any fades
 	pop af
 	jr nz, .return
+	; A single-speed step spans two frames with rIE off, and their two VBlanks
+	; merge into the one pending interrupt that fires at the rIE restore above,
+	; so this supplies the second frame's audio tick. Keep it after the restore:
+	; that handler already ends its OAM DMA at LY 0, and anything placed ahead of
+	; it pushes its VRAM work into visible lines. Measured 2026-11-14: 2.0 frames
+	; and 2 ticks per step, this call done by LY 48, no VBlank nested inside it.
 	push de
-	call UpdateSound ; Crystal audio: the missed VBlank tick (interrupts are off)
+	call UpdateSound
 	pop de
 .return
 	ld a, 1

@@ -1239,6 +1239,15 @@ TransferPalColorLCDDisabled:
 ; Banked bodies for the HOME UpdateGBCPal_* entry stubs. Keep the hardware and
 ; no-change gates from Shin Red, then tail-call the conversion routines in this
 ; same section.
+; All three in one bank switch, for LoadGBPal_ on every overworld frame
+; (FOLLOWUPS #12, Step B). Sequential on purpose: the Enhanced BGP update marks
+; the OBP caches current itself, so each body must compare after the previous
+; one has run, exactly as three separate calls did.
+UpdateGBCPal_All_::
+	call UpdateGBCPal_BGP_
+	call UpdateGBCPal_OBP0_
+	jp UpdateGBCPal_OBP1_
+
 UpdateGBCPal_BGP_::
 	ldh a, [hGBC]
 	and a

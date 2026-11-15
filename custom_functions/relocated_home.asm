@@ -145,9 +145,13 @@ LoadGBPal_::
 	ldh a, [hGBC]
 	and a
 	ret z
-	call UpdateGBCPal_BGP
-	call UpdateGBCPal_OBP0
-	call UpdateGBCPal_OBP1
+	; One bank switch for all three (Step B). The HOME stubs this replaces kept
+	; c and de; the banked bodies do not.
+	push bc
+	push de
+	farcall UpdateGBCPal_All_
+	pop de
+	pop bc
 	ret
 
 GBFadeInFromBlack_::
