@@ -646,7 +646,6 @@ DEF ANY_FACING EQU $d0
 	hidden_events_for MAHOGANY_GYM
 	hidden_event  3,  1, GymStatues, SPRITE_FACING_UP
 	hidden_event  6,  1, GymStatues, SPRITE_FACING_UP
-	hidden_event  6,  9, GymStatues, SPRITE_FACING_UP
 	db -1 ; end
 
 ; Only statues with open floor directly below are listed: GymStatues answers only
