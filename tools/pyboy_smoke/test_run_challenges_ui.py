@@ -109,6 +109,38 @@ class RunChallengesUITest(unittest.TestCase):
         self.assertEqual(h.read8("wMaxMenuItem"), 5, "did not return to the PC menu")
         self.assertEqual(self.row(10, 10), text("CHALLENGES"))
 
+    def test_log_off_with_toggles_restores_menu_spacing(self):
+        """With TOGGLES the PC menu is single-spaced (BIT_DOUBLE_SPACED_MENU set).
+        LOG OFF used to leave that set, and the double-spaced START menu's cursor
+        then stepped one row, onto the blank line between items (CODEBASE_SCAN 3.1)."""
+        h = self.h
+        h.boot_debug1(self.maps["SILPH_CO_DORM"])
+        h.set_event(EVENTS["EVENT_JOHTO_ACTIVATED"])
+        for _ in range(10):
+            if h.read8("wYCoord") <= 2:
+                break
+            self.step("up")
+        self.step("left")
+        self.step("up")
+        self.press("a", 60)
+        for _ in range(40):
+            if h.read8("wMaxMenuItem") == 6 and h.read8("wTopMenuItemY") == 1:
+                break
+            self.press("a", 20)
+        self.assertEqual(h.read8("wMaxMenuItem"), 6, "TOGGLES row present")
+        self.assertTrue(h.read8("hUILayoutFlags") & 2, "the PC menu is single-spaced")
+        for _ in range(6):
+            self.press("down")
+        self.press("a", 120)                      # LOG OFF
+        for _ in range(6):
+            self.press("b", 20)
+        h.tick(60)
+        self.assertFalse(h.read8("hUILayoutFlags") & 2, "LOG OFF restores double spacing")
+        self.press("start", 40)
+        self.press("down", 20)
+        rows = [i // TILE_ROW for i, t in enumerate(h.read_bytes("wTileMap", 360)) if t == 0xED]
+        self.assertEqual(rows, [4], "one DOWN lands on the second START menu item")
+
     def test_records_page_shows_badges_and_best_heat(self):
         h = self.h
         self.open_pc()

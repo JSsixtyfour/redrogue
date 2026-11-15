@@ -227,6 +227,11 @@ class WardenDetoxTest(unittest.TestCase):
         h = self.h
         base, _, given = self.give(1, "BULBASAUR", "GRASS", "POISON", flags=SHINY)
         self.assertTrue(given)
+        # give() leaves hCurMap = WARDENS_HOUSE while the lobby is the loaded map, and
+        # each call_routine lets the parked game run out a real frame. Put the true
+        # map back first, as test_it_survives_a_save_and_reload does: on 2026-11-14 a
+        # layout shift moved the frame boundary and that mismatched frame ran into data.
+        h.write8("hCurMap", MAPS["INDIGO_PLATEAU_LOBBY"])
         stripped = list(h.pyboy.memory[base:base + 8])
         h.write8("wBoxCount", 0)
         h.write8("wBoxSpecies", 0xFF)

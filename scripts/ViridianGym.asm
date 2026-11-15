@@ -2,9 +2,6 @@ ViridianGym_Script:
     call GiovanniShowOrHideExitBlock
 	CheckEvent EVENT_ENTER_ROOM
 	call z, .initial
-	ld hl, .CityName
-	ld de, .LeaderName
-	call LoadGymLeaderAndCityName
 	call EnableAutoTextBoxDrawing
 	ld hl, ViridianGymTrainerHeaders
 	ld de, ViridianGym_ScriptPointers
@@ -13,12 +10,6 @@ ViridianGym_Script:
 	ld [wViridianGymCurScript], a
 	ret
 
-.CityName:
-	db "VIRIDIAN CITY@"
-
-.LeaderName:
-	db "GIOVANNI@"
-    
 .initial:
 SetEvent EVENT_ENTER_ROOM
 farcall GymLeaderRandomItem

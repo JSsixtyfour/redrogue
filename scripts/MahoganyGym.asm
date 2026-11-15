@@ -1,14 +1,10 @@
 MahoganyGym_Script:
 	call PryceShowOrHideExitBlock
 	CheckEvent EVENT_ENTER_ROOM
-	jr nz, .loadGymNames
+	jr nz, .afterFirstEntry
 	SetEvent EVENT_ENTER_ROOM
 	farcall GymLeaderRandomItem
-.loadGymNames
-	; Unsaved buffers must be rebuilt after Continue, as in Viridian Gym.
-	ld hl, MahoganyGymNames.CityName
-	ld de, MahoganyGymNames.LeaderName
-	call LoadGymLeaderAndCityName
+.afterFirstEntry
 	call EnableAutoTextBoxDrawing
 	ld hl, MahoganyGymTrainerHeaders
 	ld de, MahoganyGym_ScriptPointers
@@ -35,15 +31,6 @@ PryceShowOrHideExitBlock:
 	ld [wNewTileBlockID], a
 	lb bc, 0, 2
 	predef_jump ReplaceTileBlock
-
-; Authored names; one-time setup runs inline above.
-MahoganyGymNames:
-
-.CityName:
-	db "MAHOGANY TOWN@"
-
-.LeaderName:
-	db "PRYCE@"
 
 MahoganyGymResetScripts:
 	xor a

@@ -1,14 +1,10 @@
 BlackthornGym_Script:
 	call ClairShowOrHideExitBlock
 	CheckEvent EVENT_ENTER_ROOM
-	jr nz, .loadGymNames
+	jr nz, .afterFirstEntry
 	SetEvent EVENT_ENTER_ROOM
 	farcall GymLeaderRandomItem
-.loadGymNames
-	; Unsaved buffers must be rebuilt after Continue, as in Viridian Gym.
-	ld hl, BlackthornGymNames.CityName
-	ld de, BlackthornGymNames.LeaderName
-	call LoadGymLeaderAndCityName
+.afterFirstEntry
 	call EnableAutoTextBoxDrawing
 	ld hl, BlackthornGymTrainerHeaders
 	ld de, BlackthornGym_ScriptPointers
@@ -33,15 +29,6 @@ ClairShowOrHideExitBlock:
 	ld [wNewTileBlockID], a
 	lb bc, 0, 2
 	predef_jump ReplaceTileBlock
-
-; Authored names; one-time setup runs inline above.
-BlackthornGymNames:
-
-.CityName:
-	db "BLACKTHORN CITY@"
-
-.LeaderName:
-	db "CLAIR@"
 
 BlackthornGymResetScripts:
 	xor a

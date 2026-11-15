@@ -21,6 +21,16 @@ EXPECTED_STATUES = {
     "CIANWOOD": 4, "OLIVINE": 2, "MAHOGANY": 3, "BLACKTHORN": 6,
 }
 
+# GymStatueNames_* labels (custom_functions/gym_statue_names.asm): the statue
+# fills the name buffers itself when read (FOLLOWUPS #101).
+STATUE_NAMES = {
+    "VIOLET": ("VioletCity", "Falkner"), "AZALEA": ("AzaleaTown", "Bugsy"),
+    "GOLDENROD": ("GoldenrodCity", "Whitney"), "ECRUTEAK": ("EcruteakCity", "Morty"),
+    "CIANWOOD": ("CianwoodCity", "Chuck"), "OLIVINE": ("OlivineCity", "Jasmine"),
+    "MAHOGANY": ("MahoganyTown", "Pryce"), "BLACKTHORN": ("BlackthornCity", "Clair"),
+}
+TEXT_END = 0x50
+
 GOLDENROD_WIDTH = 10
 GOLDENROD_OPEN_BLOCK = 0x33
 # Trees and door as drawn before Whitney is beaten, then the blocks that replace them.
@@ -59,8 +69,19 @@ class GymStatueTest(unittest.TestCase):
                 self.beat_gym_trainers(h, gym)
                 h.write8("wRogueCurGymBadgeMask", BADGE_MASK)
                 statue = h.hook_flag("GymStatues")
-                text = h.hook_flag("PrintPredefTextID")
+                printed = []
+                text = h.hook_flag("PrintPredefTextID", lambda: printed.append(
+                    (h.read_bytes("wGymCityName", 17), h.read_bytes("wGymLeaderName", 11))))
+                expected = []
+                for label in STATUE_NAMES[gym]:
+                    bank, address = h.symbols.get("GymStatueNames_" + label)
+                    raw = list(h.pyboy.memory[bank, address:address + 17])
+                    expected.append(raw[:raw.index(TEXT_END) + 1])
                 for x, y in cells:
+                    for i in range(17):
+                        h.write8("wGymCityName", 0, offset=i)  # a stale name cannot pass
+                    for i in range(11):
+                        h.write8("wGymLeaderName", 0, offset=i)
                     before = statue["count"], text["count"]
                     h.write8("wXCoord", x)
                     h.write8("wYCoord", y + 1)
@@ -69,6 +90,9 @@ class GymStatueTest(unittest.TestCase):
                     h.tick(10)
                     self.assertGreater(statue["count"], before[0], f"statue at {(x, y)} did not answer")
                     self.assertGreater(text["count"], before[1], f"statue at {(x, y)} printed nothing")
+                    city, leader = printed[-1]
+                    self.assertEqual(list(city[:len(expected[0])]), expected[0], f"city at {(x, y)}")
+                    self.assertEqual(list(leader[:len(expected[1])]), expected[1], f"leader at {(x, y)}")
                     for _ in range(30):
                         h.tap("b", 6)
                 self.assertFalse(h.hook_errors)

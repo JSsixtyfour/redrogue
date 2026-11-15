@@ -1,14 +1,10 @@
 OlivineGym_Script:
 	call JasmineShowOrHideExitBlock
 	CheckEvent EVENT_ENTER_ROOM
-	jr nz, .loadGymNames
+	jr nz, .afterFirstEntry
 	SetEvent EVENT_ENTER_ROOM
 	farcall GymLeaderRandomItem
-.loadGymNames
-	; Unsaved buffers must be rebuilt after Continue, as in Viridian Gym.
-	ld hl, OlivineGymNames.CityName
-	ld de, OlivineGymNames.LeaderName
-	call LoadGymLeaderAndCityName
+.afterFirstEntry
 	call EnableAutoTextBoxDrawing
 	ld hl, OlivineGymTrainerHeaders
 	ld de, OlivineGym_ScriptPointers
@@ -33,15 +29,6 @@ JasmineShowOrHideExitBlock:
 	ld [wNewTileBlockID], a
 	lb bc, 0, 2
 	predef_jump ReplaceTileBlock
-
-; Authored names; one-time setup runs inline above.
-OlivineGymNames:
-
-.CityName:
-	db "OLIVINE CITY@"
-
-.LeaderName:
-	db "JASMINE@"
 
 OlivineGymResetScripts:
 	xor a

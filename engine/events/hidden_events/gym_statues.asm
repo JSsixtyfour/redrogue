@@ -6,6 +6,9 @@ GymStatues:
 	ld a, [wSpritePlayerStateData1FacingDirection]
 	cp SPRITE_FACING_UP
 	ret nz
+	; The statue text prints wGymCityName / wGymLeaderName. They are filled
+	; here, when read, rather than by every gym script on every frame (#101).
+	rfarcall LoadGymStatueNames
 ; Which badge this gym awards comes from wRogueCurGymBadgeMask, NOT from the map
 ; id. It used to be a MapBadgeFlags lookup keyed on hCurMap, which was correct
 ; only while gym map == leader == badge bit. With a rolled gym lineup the badge

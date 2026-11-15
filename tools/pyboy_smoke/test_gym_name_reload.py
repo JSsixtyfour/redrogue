@@ -1,4 +1,8 @@
-"""Unsaved statue names rebuild after Continue without rerolling gym setup."""
+"""Statue names are right after Continue, and Continue does not reroll gym setup.
+
+The names are unsaved buffers. Since FOLLOWUPS #101 the statue fills them when it
+is read (LoadGymStatueNames), so the check calls that loader, as GymStatues does,
+before the save and again after a cold Continue."""
 import unittest
 from pathlib import Path
 
@@ -11,16 +15,22 @@ ARTIFACTS = Path(__file__).parent / "artifacts" / "gym_name_reload"
 MAPS = parse_map_constants(ROOT / "constants/map_constants.asm")
 TRAINERS = parse_trainer_class_indexes(ROOT / "constants/trainer_constants.asm")
 GYMS = (
-    ("PEWTER_GYM", "PewterGym", "PewterGymNames", "initial"),
-    ("CERULEAN_GYM", "CeruleanGym", "CeruleanGym_Script", "CeruleanGym_Script"),
-    ("VERMILION_GYM", "VermilionGym", "VermilionGym_Script", "VermilionGym_Script"),
-    ("CELADON_GYM", "CeladonGym", "CeladonGym_Script", "CeladonGym_Script"),
-    ("FUCHSIA_GYM", "FuchsiaGym", "FuchsiaGym_Script", "FuchsiaGym_Script"),
-    ("SAFFRON_GYM", "SaffronGym", "SaffronGym_Script", "SaffronGym_Script"),
-    ("CINNABAR_GYM", "CinnabarGym", "CinnabarGymSetMapAndTiles", "CinnabarGymSetMapAndTiles"),
-    ("VIRIDIAN_GYM", "ViridianGym", "ViridianGym_Script", "ViridianGym_Script"),
-    *[(name.upper() + "_GYM", name + "Gym", name + "GymNames", "initial" + name)
-      for name in ("Violet", "Azalea", "Goldenrod", "Ecruteak", "Cianwood", "Olivine", "Mahogany", "Blackthorn")],
+    ("PEWTER_GYM", "PewterCity", "Brock"),
+    ("CERULEAN_GYM", "CeruleanCity", "Misty"),
+    ("VERMILION_GYM", "VermilionCity", "LtSurge"),
+    ("CELADON_GYM", "CeladonCity", "Erika"),
+    ("FUCHSIA_GYM", "FuchsiaCity", "Koga"),
+    ("SAFFRON_GYM", "SaffronCity", "Sabrina"),
+    ("CINNABAR_GYM", "CinnabarIsland", "Blaine"),
+    ("VIRIDIAN_GYM", "ViridianCity", "Giovanni"),
+    ("VIOLET_GYM", "VioletCity", "Falkner"),
+    ("AZALEA_GYM", "AzaleaTown", "Bugsy"),
+    ("GOLDENROD_GYM", "GoldenrodCity", "Whitney"),
+    ("ECRUTEAK_GYM", "EcruteakCity", "Morty"),
+    ("CIANWOOD_GYM", "CianwoodCity", "Chuck"),
+    ("OLIVINE_GYM", "OlivineCity", "Jasmine"),
+    ("MAHOGANY_GYM", "MahoganyTown", "Pryce"),
+    ("BLACKTHORN_GYM", "BlackthornCity", "Clair"),
 )
 
 
@@ -31,8 +41,15 @@ class GymNameReloadTest(unittest.TestCase):
     def terminated(values):
         return list(values[:values.index(0x50) + 1])
 
+    def statue_names(self, h, expected):
+        """Run the statue's loader (as GymStatues does) and read both buffers."""
+        return h.call_routine("LoadGymStatueNames", capture=lambda x: {
+            destination: self.terminated(x.read_bytes(destination, 17 if destination == "wGymCityName" else 11))
+            for destination in expected})
+
     def check_gym(self, entry, janine=False):
-        map_name, stem, current_owner, old_owner = entry
+        map_name, city, leader = entry
+        leader = "Janine" if janine else leader
         ARTIFACTS.mkdir(parents=True, exist_ok=True)
         h = RedRogueHarness(ROOT, ARTIFACTS, cgb_mode=self.cgb)
         try:
@@ -49,13 +66,11 @@ class GymNameReloadTest(unittest.TestCase):
             h.boot_debug1(MAPS[map_name])
             self.assertTrue(save_reload.settle(h))
             self.assertEqual(setups["count"], 1, "initial setup must run once")
-            owner = current_owner if current_owner + ".CityName" in h.symbols._symbols else old_owner
             expected = {}
-            for destination, suffix, size in (("wGymCityName", ".CityName", 17),
-                                               ("wGymLeaderName", ".JanineName" if janine else ".LeaderName", 11)):
-                bank, address = h.symbols.get(owner + suffix)
+            for destination, label, size in (("wGymCityName", city, 17), ("wGymLeaderName", leader, 11)):
+                bank, address = h.symbols.get("GymStatueNames_" + label)
                 expected[destination] = self.terminated(list(h.pyboy.memory[bank, address:address + size]))
-                self.assertEqual(self.terminated(h.read_bytes(destination, size)), expected[destination])
+            self.assertEqual(self.statue_names(h, expected), expected)
             h.tick(30)
             self.assertEqual(setups["count"], 1, "ordinary updates must not reroll setup")
             save_reload.save_now(h)
@@ -67,8 +82,7 @@ class GymNameReloadTest(unittest.TestCase):
                 self.assertTrue(boot.overworld)
                 boot.h.tick(30)
                 self.assertEqual(rerolls["count"], 0, "Continue must not rerun one-time setup")
-                for destination, value in expected.items():
-                    self.assertEqual(boot.h.read_bytes(destination, len(value)), value)
+                self.assertEqual(self.statue_names(boot.h, expected), expected)
                 self.assertFalse(boot.h.hook_errors)
             finally:
                 boot.close()

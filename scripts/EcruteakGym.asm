@@ -1,14 +1,10 @@
 EcruteakGym_Script:
 	call MortyShowOrHideExitBlock
 	CheckEvent EVENT_ENTER_ROOM
-	jr nz, .loadGymNames
+	jr nz, .afterFirstEntry
 	SetEvent EVENT_ENTER_ROOM
 	farcall GymLeaderRandomItem
-.loadGymNames
-	; Unsaved buffers must be rebuilt after Continue, as in Viridian Gym.
-	ld hl, EcruteakGymNames.CityName
-	ld de, EcruteakGymNames.LeaderName
-	call LoadGymLeaderAndCityName
+.afterFirstEntry
 	call EnableAutoTextBoxDrawing
 	ld hl, EcruteakGymTrainerHeaders
 	ld de, EcruteakGym_ScriptPointers
@@ -33,15 +29,6 @@ MortyShowOrHideExitBlock:
 	ld [wNewTileBlockID], a
 	lb bc, 0, 2
 	predef_jump ReplaceTileBlock
-
-; Authored names; one-time setup runs inline above.
-EcruteakGymNames:
-
-.CityName:
-	db "ECRUTEAK CITY@"
-
-.LeaderName:
-	db "MORTY@"
 
 EcruteakGymResetScripts:
 	xor a

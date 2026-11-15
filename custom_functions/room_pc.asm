@@ -219,6 +219,12 @@ RoomPC::
 	call RogueGroupToggleMenu
 	jp .menu
 .logOff
+	; The top menu is single-spaced while TOGGLES is present (BIT_DOUBLE_SPACED_MENU
+	; set, inverted name). Every vanilla menu assumes it clear: left set, the
+	; START menu's cursor stepped one row and stopped between items.
+	ldh a, [hUILayoutFlags]
+	res BIT_DOUBLE_SPACED_MENU, a
+	ldh [hUILayoutFlags], a
 	; Erase the menu box back to the plain text-box screen, and give the
 	; VBlank transfer its full three frames to land. AutoBgMapTransfer moves
 	; only one third of wTileMap per frame, so doing anything else here before

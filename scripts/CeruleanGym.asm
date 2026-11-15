@@ -1,14 +1,10 @@
 CeruleanGym_Script:
     call MistyShowOrHideExitBlock
 	CheckEvent EVENT_ENTER_ROOM
-	jr nz, .loadGymNames
+	jr nz, .afterFirstEntry
 	SetEvent EVENT_ENTER_ROOM
     farcall GymLeaderRandomItem
-.loadGymNames
-	; Unsaved buffers must be rebuilt after Continue, as in Viridian Gym.
-	ld hl, CeruleanGym_Script.CityName
-	ld de, CeruleanGym_Script.LeaderName
-	call LoadGymLeaderAndCityName
+.afterFirstEntry
 	call EnableAutoTextBoxDrawing
 	ld hl, CeruleanGymTrainerHeaders
 	ld de, CeruleanGym_ScriptPointers
@@ -18,12 +14,6 @@ CeruleanGym_Script:
 	ret
 
 
-.CityName:
-	db "CERULEAN CITY@"
-
-.LeaderName:
-	db "MISTY@"
-    
 MistyShowOrHideExitBlock:
 ; Blocks or clears the exit to the next room.
 	ld hl, wCurrentMapScriptFlags

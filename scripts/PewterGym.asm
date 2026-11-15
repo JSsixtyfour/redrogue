@@ -1,14 +1,10 @@
 PewterGym_Script:
     call BrockShowOrHideExitBlock
 	CheckEvent EVENT_ENTER_ROOM
-	jr nz, .loadGymNames
+	jr nz, .afterFirstEntry
 	SetEvent EVENT_ENTER_ROOM
     farcall GymLeaderRandomItem
-.loadGymNames
-	; Unsaved buffers must be rebuilt after Continue, as in Viridian Gym.
-	ld hl, PewterGymNames.CityName
-	ld de, PewterGymNames.LeaderName
-	call LoadGymLeaderAndCityName
+.afterFirstEntry
 	call EnableAutoTextBoxDrawing
 	ld hl, PewterGymTrainerHeaders
 	ld de, PewterGym_ScriptPointers
@@ -19,15 +15,6 @@ PewterGym_Script:
     
 BrockShowOrHideExitBlock:
 	GymExitBlock EVENT_BEAT_BROCK, $24, $5, 2, 0
-
-; Authored names; one-time setup runs inline above.
-PewterGymNames:
-
-.CityName:
-	db "PEWTER CITY@"
-
-.LeaderName:
-	db "BROCK@"
 
 PewterGymResetScripts:
 	xor a

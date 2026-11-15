@@ -1,14 +1,10 @@
 GoldenrodGym_Script:
 	call WhitneyShowOrHideExitBlock
 	CheckEvent EVENT_ENTER_ROOM
-	jr nz, .loadGymNames
+	jr nz, .afterFirstEntry
 	SetEvent EVENT_ENTER_ROOM
 	farcall GymLeaderRandomItem
-.loadGymNames
-	; Unsaved buffers must be rebuilt after Continue, as in Viridian Gym.
-	ld hl, GoldenrodGymNames.CityName
-	ld de, GoldenrodGymNames.LeaderName
-	call LoadGymLeaderAndCityName
+.afterFirstEntry
 	call EnableAutoTextBoxDrawing
 	ld hl, GoldenrodGymTrainerHeaders
 	ld de, GoldenrodGym_ScriptPointers
@@ -36,15 +32,6 @@ WhitneyShowOrHideExitBlock:
 	ld [wNewTileBlockID], a
 	lb bc, 1, 4
 	predef_jump ReplaceTileBlock
-
-; Authored names; one-time setup runs inline above.
-GoldenrodGymNames:
-
-.CityName:
-	db "GOLDENROD CITY@"
-
-.LeaderName:
-	db "WHITNEY@"
 
 GoldenrodGymResetScripts:
 	xor a

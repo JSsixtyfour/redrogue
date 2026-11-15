@@ -1,14 +1,10 @@
 CianwoodGym_Script:
 	call ChuckShowOrHideExitBlock
 	CheckEvent EVENT_ENTER_ROOM
-	jr nz, .loadGymNames
+	jr nz, .afterFirstEntry
 	SetEvent EVENT_ENTER_ROOM
 	farcall GymLeaderRandomItem
-.loadGymNames
-	; Unsaved buffers must be rebuilt after Continue, as in Viridian Gym.
-	ld hl, CianwoodGymNames.CityName
-	ld de, CianwoodGymNames.LeaderName
-	call LoadGymLeaderAndCityName
+.afterFirstEntry
 	call EnableAutoTextBoxDrawing
 	ld hl, CianwoodGymTrainerHeaders
 	ld de, CianwoodGym_ScriptPointers
@@ -33,15 +29,6 @@ ChuckShowOrHideExitBlock:
 	ld [wNewTileBlockID], a
 	lb bc, 0, 2
 	predef_jump ReplaceTileBlock
-
-; Authored names; one-time setup runs inline above.
-CianwoodGymNames:
-
-.CityName:
-	db "CIANWOOD CITY@"
-
-.LeaderName:
-	db "CHUCK@"
 
 CianwoodGymResetScripts:
 	xor a

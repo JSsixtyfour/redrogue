@@ -7,14 +7,10 @@ CinnabarGym_Script:
 
 CinnabarGymSetMapAndTiles:
 	CheckEvent EVENT_ENTER_ROOM
-	jr nz, .loadGymNames
+	jr nz, .afterFirstEntry
 	SetEvent EVENT_ENTER_ROOM
     farcall GymLeaderRandomItem
-.loadGymNames
-	; Unsaved buffers must be rebuilt after Continue, as in Viridian Gym.
-	ld hl, CinnabarGymSetMapAndTiles.CityName
-	ld de, CinnabarGymSetMapAndTiles.LeaderName
-	call LoadGymLeaderAndCityName
+.afterFirstEntry
 	ld hl, wCurrentMapScriptFlags
 	bit BIT_CUR_MAP_LOADED_1, [hl]
 	res BIT_CUR_MAP_LOADED_1, [hl]
@@ -23,12 +19,6 @@ CinnabarGymSetMapAndTiles:
 	ret
 
 
-.CityName:
-	db "CINNABAR ISLAND@"
-
-.LeaderName:
-	db "BLAINE@"
-   
 
 CinnabarGymResetScripts:
 	xor a ; SCRIPT_CINNABARGYM_DEFAULT
