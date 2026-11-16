@@ -21,8 +21,6 @@
 ; leer removed from moltres
 ; hyper beam pushed back for dragonair and agility
 ; jigglypuff double edge pushed back
-; thunderwave pushed back jolteon
-; left off at ekans
 
 EvosMovesPointerTable:
 	table_width 2, EvosMovesPointerTable
@@ -2490,7 +2488,7 @@ FlareonEvosMoves:
 	db 41, GROWTH
 	db 42, SMOG ; Yellow level-up move restored
 	db 47, FIRE_SPIN
-	db 52, FIRE_BLAST
+	db 50, FIRE_BLAST
 	db 0
 ; Tutoring Learnset  
     db 2, GROWTH
@@ -2502,14 +2500,14 @@ JolteonEvosMoves:
 ; Learnset
 	db 8, SAND_ATTACK
 	db 23, QUICK_ATTACK
-	db 26, THUNDERSHOCK
+	db 24, THUNDERSHOCK
+	db 28, THUNDER_WAVE
 	db 30, DOUBLE_KICK
+	db 35, PIN_MISSILE
 	db 36, THUNDERBOLT
 	db 37, TAIL_WHIP ; Red/Blue level-up move restored
-	db 39, PIN_MISSILE
 	db 41, AGILITY
-	db 47, THUNDER_WAVE
-	db 52, THUNDER
+	db 50, THUNDER
 	db 0
 ; Tutoring Learnset  
     db 2, GROWTH
@@ -2530,7 +2528,7 @@ VaporeonEvosMoves:
 	db 39, HAZE
 	db 41, ACID_ARMOR
 	db 47, REST
-	db 52, HYDRO_PUMP
+	db 50, HYDRO_PUMP
 	db 0
 ; Tutoring Learnset  
     db 2, GROWTH
@@ -2841,7 +2839,8 @@ ChinchouEvosMoves:
 	db 0
 ; Learnset - canon Gen 2 levels; FLAIL/SPARK do not exist in Gen 1, replaced
 ; with THUNDERSHOCK/BUBBLEBEAM.
-	db 5, SUPERSONIC
+	db 8, SUPERSONIC
+	db 10, THUNDER_WAVE
 	db 13, THUNDERSHOCK ; was FLAIL
 	db 17, WATER_GUN
 	db 25, BUBBLEBEAM ; was SPARK

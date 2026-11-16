@@ -997,8 +997,8 @@ ItemUseMedicine:
 	ld a, [hld] ; status ailment
 	and a ; does the pokemon have a status ailment?
 	jp z, .healingItemNoEffect
-	ld a, FULL_HEAL
-	ld [wCurItem], a
+	; The status handler's default mask already cures every ailment.
+	; Keep FULL_RESTORE as the item ID so consumption removes the right item.
 	dec hl
 	dec hl
 	dec hl
@@ -1220,6 +1220,10 @@ ItemUseMedicine:
 	call RemoveUsedItem
 	pop hl
 .skipRemovingItem
+	; A full-HP Full Restore took the status-only path, with no HP-bar coords.
+	ld a, [wPartyMenuTypeOrMessageID]
+	cp FULL_HEAL_MSG
+	jr z, .playStatusAilmentCuringSound
 	ld a, [wCurItem]
 	cp FULL_RESTORE
 	jr c, .playStatusAilmentCuringSound
@@ -1965,6 +1969,9 @@ ItemUsePPRestore:
 	ldh a, [hWhichPokemon]
 	push af
 	ld a, [wCurItem]
+	; Party selection overwrites wCurItem (alias wCurPartySpecies), and
+	; .useElixir converts wPPRestoreItem to an Ether ID. Keep the original.
+	push af
 	ld [wPPRestoreItem], a
 .chooseMon
 	xor a
@@ -2024,10 +2031,12 @@ ItemUsePPRestore:
 	ld hl, PPIncreasedText
 	call PrintText
 .done
-	pop af
-	ldh [hWhichPokemon], a
 	call GBPalWhiteOut
 	call RunDefaultPaletteCommand
+	pop af
+	ld [wCurItem], a
+	pop af
+	ldh [hWhichPokemon], a
 	jp RemoveUsedItem
 .afterRestoringPP ; after using a (Max) Ether/Elixir
 	ldh a, [hWhichPokemon]
@@ -2139,6 +2148,7 @@ ItemUsePPRestore:
 .itemNotUsed
 	call GBPalWhiteOut
 	call RunDefaultPaletteCommand
+	pop af ; discard the saved item ID on cancellation or no effect
 	pop af
 	xor a
 	ld [wActionResultOrTookBattleTurn], a ; item use failed

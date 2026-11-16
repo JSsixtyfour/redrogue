@@ -10,7 +10,7 @@
 	INCBIN "gfx/pokemon/front/chinchou.dim" ; sprite dimensions
 	dw ChinchouPicFront, ChinchouPicBack
 
-	db BUBBLE, THUNDER_WAVE, NO_MOVE, NO_MOVE ; level 1 learnset
+	db BUBBLE, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset
 	db GROWTH_SLOW ; growth rate
 
 	; tm/hm learnset
