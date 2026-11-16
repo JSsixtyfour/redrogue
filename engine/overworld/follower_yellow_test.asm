@@ -547,30 +547,10 @@ FollowerPrepareMap::
 	ld [wSprite15StateData2 + SPRITESTATEDATA2_MAPX], a
 	ld a, $fe ; Yellow following marker; movement never goes through TryWalking
 	ld [wSprite15StateData2 + SPRITESTATEDATA2_MOVEMENTBYTE1], a
-	ld a, e
-	cp 3
-	jr z, .faceDown
-	cp 7
-	jr z, .faceOpposite
-	cp 2
-	jr z, .computeFacing
-	cp 5
-	jr z, .computeFacing
+	; Arrival placement does not determine facing. Start aligned with the
+	; player, then refresh at the first sprite update after player dispatch.
 	ld a, [wSpritePlayerStateData1FacingDirection]
-	jr .storeFacing
-.faceDown
-	ld a, SPRITE_FACING_DOWN
-	jr .storeFacing
-.faceOpposite
-	ld a, [wSpritePlayerStateData1FacingDirection]
-	xor 4
-	jr .storeFacing
-.computeFacing
-	call FollowerComputeFacing
-	jr .clearSpawnState
-.storeFacing
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
-.clearSpawnState
 	xor a
 	ld [wFollowerSpawnState], a
 	; Movement status remains zero. The normal slot-15 UpdateSprites pass owns
@@ -821,6 +801,10 @@ FollowerFacePlayer:
 ; Yellow Func_fc793: initialize screen geometry in the normal update pass,
 ; reconstruct the lag queue, and leave overlap hidden.
 FollowerInitializeSpawn:
+	; The player has already updated this pass. Copy arrival facing here so
+	; map-load facing cannot leave the first visible follower frame reversed.
+	ld a, [wSpritePlayerStateData1FacingDirection]
+	ld [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
 	call FollowerInitializeScreenPosition
 	call FollowerRefreshQueue
 	ld a, FOLLOWER_STATUS_READY
