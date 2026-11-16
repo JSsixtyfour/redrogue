@@ -426,8 +426,8 @@ def load_rarity() -> dict[str, list[Tier]]:
             tiers.append(Tier(species[:n_base], species, species[n_base:n_direct]))
         out[group] = tiers
     kanto_total = sum(len(t.all) for t in out["KANTO"])
-    if kanto_total != 151:
-        raise ValueError(f"rarity.asm Kanto pool parsed as {kanto_total} species, expected 151")
+    if kanto_total != 152:
+        raise ValueError(f"rarity.asm Kanto pool parsed as {kanto_total} species, expected 152 (conditional Mankey)")
     return out
 
 
@@ -442,6 +442,10 @@ BOOSTED_FAMILY = {'SWINUB': 1, 'PILOSWINE': 1, 'MAMOSWINE': 1,
 def base_species_for_tier(rarity, group, tier, groups):
     """Effective direct picks, including RogueGetTierEntry's conditional view."""
     picks = rarity[group][tier].base
+    if group == 'KANTO' and 'WARP' in groups:
+        if tier == 0:
+            return [species for species in picks if species != 'MANKEY']
+        return picks + rarity[group][tier].conditional
     if group == 'WARP' and {'JOHTO', 'WARP'} <= set(groups):
         return picks + rarity[group][tier].conditional
     if group == 'JOHTO' and {'JOHTO', 'WARP'} <= set(groups):
@@ -462,6 +466,8 @@ def classify(rarity: dict[str, list[Tier]], species: str, groups=()) -> tuple[st
     for group in GROUPS:
         for t, tier in enumerate(rarity[group]):
             if species in tier.all:
+                if species in ('MANKEY', 'PRIMEAPE') and 'WARP' in groups:
+                    return group, 2
                 if species in BOOSTED_FAMILY and {'JOHTO', 'WARP'} <= set(groups):
                     return group, BOOSTED_FAMILY[species]
                 return group, t

@@ -52,13 +52,21 @@ ASSERT RarityGroupTableEnd - RarityGroupTable == NUM_SPECIES_GROUPS * 2, "Rarity
 RarityKanto:
 	rarity_tier KantoPokeball
 	rarity_tier KantoGreatball
+	rarity_tier KantoUltraball, KantoUltraball.defaultEvos
+	rarity_tier KantoMasterball
+	rarity_tier KantoUber
+
+; Warp promotes the whole Mankey line to Ultra Ball. Exclude its leading
+; Poke Ball direct entry and expose its conditional Ultra Ball entry.
+RarityKantoWarp:
+	db (KantoPokeball_Evos - KantoPokeball.withoutMankey) / 2
+	db (KantoPokeball_End - KantoPokeball.withoutMankey) / 2
+	dw KantoPokeball.withoutMankey
+	rarity_tier KantoGreatball
 	rarity_tier KantoUltraball
 	rarity_tier KantoMasterball
 	rarity_tier KantoUber
 
-; Johto - unlocked after the first champion win. Being populated in Phase 2;
-; every tier still empty here is skipped by the roller, so a partially filled
-; group behaves exactly like a fully filled smaller one.
 RarityJohto:
 	rarity_tier JohtoPokeball
 	rarity_tier JohtoGreatball, JohtoGreatball.defaultEvos
@@ -114,6 +122,8 @@ MACRO rarity_mon
 ENDM
 
 KantoPokeball:
+	rarity_mon MANKEY
+.withoutMankey:
 	rarity_mon CATERPIE
 	rarity_mon WEEDLE
 	rarity_mon PIDGEY
@@ -121,7 +131,6 @@ KantoPokeball:
 	rarity_mon FARFETCHD
 	rarity_mon EKANS
 	rarity_mon DITTO
-	rarity_mon MANKEY
 	rarity_mon KRABBY
 	rarity_mon CUBONE
 	rarity_mon GRIMER
@@ -261,6 +270,8 @@ KantoUltraball:
 	rarity_mon MAGMAR
 	rarity_mon PINSIR
 	rarity_mon AERODACTYL
+.defaultEvos:
+	rarity_mon MANKEY ; direct only with Warp active
 KantoUltraball_Evos:
 ; stage 2
 	rarity_mon HAUNTER
@@ -491,10 +502,9 @@ WarpPokeball_Evos:
 ; rarity_mon ARCANINE, 1 ; Hisuian Growlithe -> Hisuian Arcanine
 ; rarity_mon ELECTRODE, 1 ; Hisuian Voltorb -> Hisuian Electrode
 ; rarity_mon SANDSLASH, 1 ; Alolan Sandshrew -> Alolan Sandslash
-; from Primeape/Magneton (Kanto POKEBALL evolved forms) and Farfetch'd
-; (Kanto POKEBALL base) - see PrimeapeEvosMoves/MagnetonEvosMoves/
+; from Magneton (Kanto POKEBALL evolved form) and Farfetch'd
+; (Kanto POKEBALL base) - see MagnetonEvosMoves/
 ; FarfetchdEvosMoves - and Piloswine (Johto POKEBALL).
-	rarity_mon ANNIHILAPE
 	rarity_mon MAGNEZONE
 	rarity_mon SIRFETCHD
 	rarity_mon MAMOSWINE ; classified as Great Ball with Johto + Warp
@@ -549,6 +559,7 @@ WarpUltraball:
 	rarity_mon MR_MIME, 1 ; Galarian Mr. Mime
 	rarity_mon MAGNETON, 1 ; Sandy Shocks; never evolves
 WarpUltraball_Evos:
+	rarity_mon ANNIHILAPE
 ; Evolution-only form references. Commented entries are NOT direct picks.
 ; from Galarian Mr. Mime (level 42).
 	rarity_mon MR_RIME
@@ -582,10 +593,10 @@ WarpUber_Evos:
 ; Evolution-only form references. Commented entries are NOT direct picks.
 WarpUber_End:
 
-; The Kanto pool must still describe exactly the 151 Kanto species.
+; 151 unique Kanto species plus the conditional duplicate of Mankey.
 ASSERT (KantoPokeball_End - KantoPokeball) + (KantoGreatball_End - KantoGreatball) + \
        (KantoUltraball_End - KantoUltraball) + (KantoMasterball_End - KantoMasterball) + \
-       (KantoUber_End - KantoUber) == 151 * 2, "Kanto rarity pool is no longer 151 species"
+       (KantoUber_End - KantoUber) == 152 * 2, "Kanto pool must contain 151 species plus conditional Mankey"
 
 
 ; ===========================================================================
@@ -612,6 +623,8 @@ ASSERT RARITY_TIER_ENTRY_SIZE == 4, "RogueGetTierEntry hardcodes a 4-byte stride
 RogueGetTierEntry::
 	push de
 	push af
+	cp SPECIES_GROUP_KANTO
+	jr z, .kantoGroup
 	cp SPECIES_GROUP_WARP
 	jr z, .warpGroup
 	cp SPECIES_GROUP_JOHTO
@@ -623,6 +636,13 @@ RogueGetTierEntry::
 	jr nz, .ordinaryGroup
 	pop af
 	ld hl, RarityJohtoWarp
+	jr .tierTable
+.kantoGroup
+	call RogueGetActiveGroupMask
+	bit BIT_GROUP_WARP, a
+	jr z, .ordinaryGroup
+	pop af
+	ld hl, RarityKantoWarp
 	jr .tierTable
 .warpGroup
 	call RogueSwinubRarityBoostActive
@@ -1053,24 +1073,29 @@ RogueEnemyTeamHasUber::
 ; species now reports "not found" rather than reading off the end of the table.
 ; ---------------------------------------------------------------------------
 RogueClassifySpecies::
-	ld e, a                      ; e = species; survives RogueGetTierEntry
-	ld d, 0                      ; d = group index
+	ld e, a
+	ld d, 0
+	; Form zero retains the species-only API used by group/evolution gates.
+RogueClassifyIdentity::
+; d = form, e = species. Exact explicit pair first, then base-species fallback
+; for evolved forms whose rarity is inherited from their ordinary family.
+	ld c, 0
 .groupLoop
-	ld b, 0                      ; b = tier index
+	ld b, 0
 .tierLoop
-	push bc                      ; save tier index
-	ld a, d
-	call RogueGetTierEntry       ; hl = list, b = base, c = total
+	push bc
+	ld a, c
+	call RogueGetTierEntry
 	ld a, c
 	and a
-	jr z, .nextTier              ; empty tier
-	ld b, c                      ; b = bytes left to scan
+	jr z, .nextTier
+	ld b, c
 .scan
 	ld a, [hli]
 	cp e
 	jr nz, .nextEntry
-	ld a, [hl]                   ; species-only classification ignores form entries
-	and a
+	ld a, [hl]
+	cp d
 	jr z, .hit
 .nextEntry
 	inc hl
@@ -1082,15 +1107,32 @@ RogueClassifySpecies::
 	ld a, b
 	cp NUM_RARITY_TIERS
 	jr c, .tierLoop
-	inc d
-	ld a, d
+	inc c
+	ld a, c
 	cp NUM_SPECIES_GROUPS
 	jr c, .groupLoop
-	scf                          ; not in any pool
+	ld a, d
+	and a
+	jr z, .unknown
+	ld a, e
+	jp RogueClassifySpecies
+.unknown
+	scf
 	ret
 .hit
-	pop bc                       ; b = tier index
-	ld c, d                      ; c = group index
+	pop bc
+	ld a, e
+	cp MANKEY
+	jr z, .mankeyFamily
+	cp PRIMEAPE
+	jr nz, .otherFamilies
+.mankeyFamily
+	call RogueGetActiveGroupMask
+	bit BIT_GROUP_WARP, a
+	jr z, .classified
+	ld b, RARITY_TIER_ULTRABALL
+	jr .classified
+.otherFamilies
 	ld a, e
 	cp SWINUB
 	jr z, .swinubFamily
@@ -1128,6 +1170,7 @@ RogueClassifySpecies::
 RogueClassifySpeciesLegacy::
 	call RogueClassifySpecies
 	ret c
+RogueTierToLegacy:
 	ld a, b
 	cp RARITY_TIER_UBER
 	jr c, .notUber
@@ -1158,6 +1201,17 @@ RogueClassifySpeciesFar::
 	ld c, 1                      ; unknown species - treat as pokeball class
 .ok
 	ld e, c
+	ret
+
+; d = explicit form, e = species -> e = legacy class, farcall-safe.
+RogueClassifyIdentityFar::
+	call RogueClassifyIdentity
+	jr c, .unknown
+	call RogueTierToLegacy
+	ld e, c
+	ret
+.unknown
+	ld e, 1
 	ret
 
 ; ---------------------------------------------------------------------------
@@ -1223,3 +1277,30 @@ RogueIsSpeciesEvolutionAllowed::
 .allow
 	scf
 	ret
+
+; d = index in party followed by current box, e = species.
+; Both traders retain the selected ownership slot until this valuation.
+; Output e = legacy class; inputs/output survive Bankswitch.
+RogueClassifyOwnedMonFar::
+	ld a, [wPartyCount]
+	ld b, a
+	ld a, d
+	cp b
+	ld hl, wPartyMon1CatchRate
+	ld bc, PARTYMON_STRUCT_LENGTH
+	jr c, .slot
+	ld a, [wPartyCount]
+	ld b, a
+	ld a, d
+	sub b
+	ld hl, wBoxMon1CatchRate
+	ld bc, BOXMON_STRUCT_LENGTH
+.slot
+	call AddNTimes
+	ld a, [hl]
+	and FORM_MASK
+	rlca
+	rlca
+	rlca
+	ld d, a
+	jp RogueClassifyIdentityFar

@@ -1,3 +1,5 @@
+SECTION "Turn Rewind", ROMX, BANK[$10]
+
 ; custom_functions/turn_rewind.asm
 ;
 ; LIVE as of 2026-08-07. This was briefly cut because wiring it in overflowed
@@ -61,7 +63,8 @@ TurnRewindInit::
 TurnRewindSnapshot::
 	ld a, TURN_REWIND
 	ld [wCurItem], a
-	call GetKeyItemPower           ; same bank as key_item_pocket.asm - plain call
+	farcall GetKeyItemPowerInE
+	ld a, e
 	and a
 	ret z                          ; not active - nothing to snapshot
 

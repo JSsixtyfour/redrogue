@@ -1562,8 +1562,9 @@ PCTraderSuperNerdSetup::
     ;
     ; The species goes in e and the class comes back in e because Bankswitch
     ; destroys a/bc/hl on both sides of a farcall (see RogueClassifySpeciesFar).
+    ld d, c                     ; combined party/box index
     ld e, a                     ; e = species the trader wants
-    farcall RogueClassifySpeciesFar
+    farcall RogueClassifyOwnedMonFar
     ld c, e                     ; c = class 1-4
     .get_pokemon
     push bc

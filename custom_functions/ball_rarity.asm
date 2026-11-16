@@ -157,6 +157,9 @@ RefreshBallRarityCache::
 	ld a, [hli]
 	push hl
 	push bc
+	ld de, wRoguePokemonForm1 - wRoguePokemon1 - 1
+	add hl, de
+	ld d, [hl]
 	call BallRaritySetSpeciesSlot
 	pop bc
 	pop hl
@@ -195,7 +198,7 @@ BallRarityItemSlot:
 	pop bc
 	ret
 
-; a = species (0 = no offer), c = sprite slot. Colours slot c by the species'
+; a = species (0 = no offer), d = form, c = sprite slot. Colours slot c by the species'
 ; legacy class (Uber folds into Master; unknown species read as Poke Ball) when
 ; that slot really shows a Poke Ball. Clobbers all but c.
 BallRaritySetSpeciesSlot:
@@ -205,7 +208,7 @@ BallRaritySetSpeciesSlot:
 	call BallRarityIsBallSlot
 	ret nz
 	push bc
-	farcall RogueClassifySpeciesFar ; e = class 1-4; only d/e cross Bankswitch
+	farcall RogueClassifyIdentityFar ; d = form, e = species -> e = class
 	pop bc
 	ld a, e
 	dec a                ; class 1-4 -> palette 0-3

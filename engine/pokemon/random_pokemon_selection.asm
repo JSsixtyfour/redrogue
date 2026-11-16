@@ -403,11 +403,11 @@ RogueRewardTradeRoll::
     ; d = retry counter and e = partyCount are both live here, and
     ; RogueClassifySpecies uses de as its scan cursors, so save them.
     push de
-    call RogueClassifySpeciesLegacy ; c = class 1-4, carry set if not in any pool
-    pop de                          ; pop does not touch flags, so carry survives
-    ld b, c
-    jr nc, .gotClass
-    ld b, 1                         ; unknown species - treat as pokeball class
+    ld e, a
+    ld d, c                         ; selected party index
+    call RogueClassifyOwnedMonFar   ; e = form-aware class
+    ld b, e
+    pop de                          ; restore retry counter and party count
 .gotClass
     ; masterball always excluded (no higher tier to offer)
     ld a, b

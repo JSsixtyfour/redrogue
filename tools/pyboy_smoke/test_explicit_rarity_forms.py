@@ -102,7 +102,8 @@ class ExplicitRarityFormsTest(unittest.TestCase):
                     # The harness state has Johto + Warp on: boosted families.
                     expected_tier = {SPECIES['SWINUB']: 1, SPECIES['PILOSWINE']: 1,
                                      SPECIES['MAMOSWINE']: 1, SPECIES['TEDDIURSA']: 3,
-                                     SPECIES['URSARING']: 3}.get(species, tier_id)
+                                     SPECIES['URSARING']: 3, SPECIES['MANKEY']: 2,
+                                     SPECIES['PRIMEAPE']: 2}.get(species, tier_id)
                     self.assertEqual(self.h.last_call_registers['E'], expected_tier,
                                      (label, species))
                 for index, pair in enumerate(direct):
@@ -120,7 +121,7 @@ class ExplicitRarityFormsTest(unittest.TestCase):
                     self.assertEqual((regs['D'], regs['E']), pair, (label, index))
         # Swinub and Teddiursa have two physical placements each; the active
         # tier view exposes one.
-        self.assertEqual(len(ordinary), 254)
+        self.assertEqual(len(ordinary), 255)
         self.assertEqual(ordinary.count(SPECIES['SWINUB']), 2)
         self.assertEqual(ordinary.count(SPECIES['TEDDIURSA']), 2)
         self.assertEqual(len(set(ordinary)), 252)
