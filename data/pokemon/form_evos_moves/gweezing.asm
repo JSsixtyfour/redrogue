@@ -9,9 +9,10 @@ GweezingFormEvosMoves:
 ; learnset, seeded by tools/gen_form_evos_moves.py. Hand-edit freely;
 ; this file is never regenerated.
 ; Learnset
-	db 23, ACID
-	db 27, SMOKESCREEN
-	db 33, SLUDGE
+	db 10, SMOKESCREEN
+	db 15, ACID
+	db 25, SLUDGE
+	db 33, TOXIC
 	db 38, AMNESIA
 	db 40, SELFDESTRUCT
 	db 45, HAZE

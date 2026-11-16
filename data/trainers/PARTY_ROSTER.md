@@ -63,12 +63,12 @@ The gym leaders' team sizes and levels, straight from `constants/balance_constan
 
 ## Gym leaders
 
-**Brock edits applied (2026-09-28):** Brock is Rock only (Sandshrew/Diglett are real off-type);
+**Brock edits applied (2026-09-28):**
 Aerodactyl out of the gym 1-2 aces; Sudowoodo added to gym 5-8 fodder; Steelix is ace-only: the
 engine evolves Onix at L43, so from gyms 7-8 (fodder L44+) Steelix is an ace and Onix leaves the
 fodder.
 
-### Brock (ROCK)  (yours)
+### Brock (ROCK)
 
 **Band 1: rounds 1-2**
 - Aces: Onix, Sudowoodo (johto)

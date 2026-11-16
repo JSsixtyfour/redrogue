@@ -1506,9 +1506,11 @@ KoffingEvosMoves:
 	evo_item_form 1, MOON_STONE, 1, WEEZING ; Galarian Weezing
 	db 0
 ; Learnset
-	db 23, ACID
-	db 27, SMOKESCREEN
-	db 33, SLUDGE
+	db 10, SMOKESCREEN
+	db 12, POISON_GAS
+	db 15, ACID
+	db 25, SLUDGE
+	db 33, TOXIC
 	db 38, AMNESIA
 	db 40, SELFDESTRUCT
 	db 45, HAZE
@@ -1516,7 +1518,6 @@ KoffingEvosMoves:
 	db 0
     
 ; Tutoring Learnset   
-    db 2, POISON_GAS
     db 2, PSYBEAM
     db 2, PSYWAVE
     db 2, SCREECH
@@ -1569,7 +1570,7 @@ SeelEvosMoves:
 	db 5, GROWL
     db 9, BUBBLE
 	db 13, WATER_GUN
-	db 16, AURORA_BEAM
+	db 18, AURORA_BEAM
 	db 21, REST
 	db 25, BUBBLEBEAM
 	db 32, TAKE_DOWN
@@ -2819,7 +2820,7 @@ DewgongEvosMoves:
 	db 5, GROWL
     db 9, BUBBLE
 	db 13, WATER_GUN
-	db 16, AURORA_BEAM
+	db 18, AURORA_BEAM
 	db 21, REST
 	db 25, BUBBLEBEAM
 	db 32, TAKE_DOWN
@@ -3227,16 +3228,16 @@ WeezingEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
-	db 23, ACID
-	db 27, SMOKESCREEN
-	db 33, SLUDGE
+	db 10, SMOKESCREEN
+	db 15, ACID
+	db 25, SLUDGE
+	db 33, TOXIC
 	db 38, AMNESIA
 	db 40, SELFDESTRUCT
 	db 45, HAZE
 	db 48, EXPLOSION
 	db 0
 ; Tutoring Learnset  
-    db 2, POISON_GAS
     db 2, PSYBEAM
     db 2, PSYWAVE
     db 2, SCREECH
