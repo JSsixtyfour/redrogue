@@ -80,10 +80,18 @@ THE LIMITS
    would otherwise turn it into broken noise.
 
 3. VOLUME
-     Ch1 and Ch2: velocity sets the volume (it has 8 steps, not 127). In
-          MuseScore, dynamics (p, mf, f) change the velocity.
+     Ch1 and Ch2: MIDI velocity selects volume 0-15, in groups of eight.
+          1-7 = 0 (silent), 8-15 = 1, 16-23 = 2, 24-31 = 3,
+          32-39 = 4, 40-47 = 5, 48-55 = 6, 56-63 = 7,
+          64-71 = 8, 72-79 = 9, 80-87 = 10, 88-95 = 11,
+          96-103 = 12, 104-111 = 13, 112-119 = 14, 120-127 = 15.
+          Velocity 0 means note-off. Use MIDI numbers, not a DAW's percent
+          display. In MuseScore, dynamics (p, mf, f) change the velocity.
      Ch3: no volume control. It is always full volume, so velocity does
           nothing there. Put quiet parts on Ch1 or Ch2 instead.
+     Ch4: each drum has its own fixed envelope. Velocity does not make a
+          drum quieter; it only chooses the winner of simultaneous hits.
+     Mixer volume/CC automation does not export into the game's dynamics.
 
 4. DRUMS (Ch4): ONE HIT AT A TIME, 19 SOUNDS.
    The game's drum kit has 19 noise sounds and no real kick drum. You can
@@ -194,10 +202,17 @@ the game), and what the game plays is authoritative.
                View > Synthesizer > Fluid > Add). Then open the Mixer and, for
                each instrument, choose the Red Rogue Game Boy sound.
                Export: File > Export > MIDI.
-  FL Studio:   on a channel, load the Fruity SoundFont Player (or DirectWave)
-               and open the .sf2; pick a preset per channel. Name the channels
-               Ch1, Ch2, Ch3, Ch4 (add the sound, like "Ch1 Square 50", if you
-               like), then File > Export > MIDI file.
+  FL Studio:   load Fruity LSD in a Mixer effect slot, then browse to
+               "Red Rogue Game Boy.dls". Set its port to 1 and route MIDI Out
+               channels to that same port. Use MIDI channels 1, 2, 3 and 10;
+               select the two Squares, a Wave and Game Boy Drums in LSD.
+               Name the MIDI tracks Ch1 Square 50, Ch2 Square 25, Ch3 Wave 6
+               (or your chosen timbres), and Ch4. Preset selection alone
+               does not tell the converter which square/wave to use.
+               DLS square velocity response is approximate; use the exact
+               MIDI table above and check the exported MIDI in the tester.
+               Ch3 and drum DLS presets ignore velocity for loudness.
+               See DLS QUICK START.txt in DAW Samples for the full map.
   Other:       any program that can load a .sf2 SoundFont works the same way.
                Without SoundFont support, the .sfz files (free sfizz plugin)
                and looping .wav files in the three folders do the same job.

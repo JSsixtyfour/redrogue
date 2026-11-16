@@ -24,6 +24,7 @@ import wave
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import sf2  # noqa: E402
+import dls  # noqa: E402
 
 RATE = 48000
 # 11 cycles of A4 (440 Hz) fit exactly in 1200 samples, so the loop is seamless
@@ -145,12 +146,15 @@ def build_soundfont(path, waves, drums):
         inst = sf.instrument("Wave %d" % idx, [sf2.Zone(smp, WAVE_KEYS[0], WAVE_KEYS[1], loop=True)])
         sf.preset("Wave %d" % idx, 0, wave_preset(idx), inst)
     smps = [sf.sample("drum%02d" % k, d, RATE, 60) for k, d in enumerate(drums)]
-    zones = [sf2.Zone(smps[k], k, k) for k in range(19)]
-    zones += [sf2.Zone(smps[k], g, g) for g, k in sorted(GM_DRUMS.items())]
+    # Each alias must play the recording at its original pitch, not transpose
+    # it from the sample's arbitrary root (60).
+    zones = [sf2.Zone(smps[k], k, k, root=k) for k in range(19)]
+    zones += [sf2.Zone(smps[k], g, g, root=g) for g, k in sorted(GM_DRUMS.items())]
     kit = sf.instrument("Game Boy Drums", zones)
     sf.preset("Drums", 0, 9, kit)
     sf.preset("Game Boy Drums", 128, 0, kit)
     sf.write(path)
+    dls.write(os.path.splitext(path)[0] + '.dls', sf)
 
 
 def build(repo, drum_dir, out):
@@ -191,8 +195,76 @@ def build(repo, drum_dir, out):
         f.write("\n".join(lines) + "\n")
 
     build_soundfont(os.path.join(out, SF2_NAME), read_waves(repo), drums)
+    write_dls_guide(os.path.join(out, 'DLS QUICK START.txt'))
 
     print("sample pack: %s" % out)
+
+
+def write_dls_guide(path):
+    guide = '''RED ROGUE DLS: FL STUDIO QUICK START
+
+Load Fruity LSD in a Mixer effect slot. Browse to Red Rogue Game Boy.dls.
+Set LSD's port to 1; set each MIDI Out channel to port 1 too.
+Use MIDI channels 1, 2, 3 for melody and channel 10 for drums.
+Select instruments by NAME in LSD: two Squares, one Wave, Game Boy Drums.
+The melodic Drums preset is also available for hosts using a normal channel.
+Keep the DLS alongside your project: FL stores its path, not the bank itself.
+
+Name exported tracks Ch1 Square 50, Ch2 Square 25, Ch3 Wave 6, Ch4,
+substituting your chosen square duties/wave. Program changes are discarded
+by the tester: choosing an LSD patch does not set the game's timbre.
+Retain the Template.mid Loop track for looping. Export MIDI and use the
+existing DROP YOUR SONG HERE tester. This is a sample-bank add-on, not a ROM.
+
+VOLUME IN THE GAME (ordinary MIDI notes, without custom envelope commands)
+Ch1/Ch2 use floor(MIDI velocity / 8), volume values 0 through 15:
+'''
+    for level in range(16):
+        guide += '  %3d-%3d -> %2d%s\n' % (max(1, level * 8), level * 8 + 7,
+                                             level, ' (silent)' if level == 0 else '')
+    guide += '''Velocity 0 is note-off. These are MIDI 0-127 values, not FL percentages.
+Ch3 is always full volume in the tester, regardless of velocity.
+Ch4 uses each recorded drum's fixed envelope, regardless of velocity.
+When drum hits overlap, the tester keeps the highest-velocity simultaneous
+hit (lowest MIDI note breaks ties) and cuts a hit at the next hit.
+Mixer faders and MIDI CC volume automation do not become game dynamics.
+
+DLS Level 1 square dynamics are continuous and only approximate the game's
+steps. Wave and drum patches override velocity loudness. All previews still
+differ from the Game Boy's mixing, envelopes, filtering and single-voice
+retrigger behavior. Check final balance and rapid drum sequences in the
+tester. Do not compensate by altering the composition to match a DAW mixer.
+
+DRUMS: USE MIDI NUMBERS, NOT OCTAVE LABELS
+Hosts disagree on octave names. Native keys 0-18 select the 19 GB sounds;
+GM keys 35-81 are aliases using exactly the tester's gm_drums.json mapping.
+Keys 19-34 and 82-127 are unsupported. There is no acoustic kick drum.
+Every mapped key plays the recording at its original pitch.
+
+  MIDI   GB sound          GM aliases
+'''
+    for key, name in enumerate(DRUM_NAMES):
+        aliases = ', '.join(str(g) for g, k in sorted(GM_DRUMS.items()) if k == key)
+        guide += '  %3d    %-17s %s\n' % (key, name, aliases)
+    guide += '''
+PROGRAMS (zero-based; some hosts display these as 1-20)
+0-3: Square 12.5/25/50/75; 4-8: Wave 0-4; 9: Drums;
+10-19: Wave 5-14. Percussion bank: program 0 = Game Boy Drums.
+Squares support MIDI 36-127; waves support MIDI 24-119.
+
+ACCEPTANCE IN FL (not automated here)
+Load the bank; verify squares sustain until note-off and all waves sound.
+Compare native snare key 0 with GM key 38: same sound, same pitch.
+Compare native key 3 with GM keys 35/36: same sound, same pitch.
+Audition all 19 native keys against the tester, then a rapid drum sequence.
+Compare Ch1 velocities 7/8, 63/64, 119/120 in the tester; Ch3/drums should
+not change loudness with velocity. Check your exported MIDI values.
+
+FL reference:
+https://www.image-line.com/fl-studio-learning/fl-studio-beta-online-manual/html/plugins/Fruity%20LSD.htm
+'''
+    with open(path, 'w', newline='\r\n') as f:
+        f.write(guide)
 
 
 def main():

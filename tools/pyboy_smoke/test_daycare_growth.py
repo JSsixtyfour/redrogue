@@ -1,4 +1,4 @@
-"""Exercise daycare growth quotes, deferred commits, and elapsed-time fees."""
+"""Exercise daycare growth quotes, deferred commits, and per-level fees."""
 import unittest
 
 from harness import RedRogueHarness
@@ -39,7 +39,7 @@ class DaycareGrowthTest(unittest.TestCase):
             h.write8("wBattleCount", (48 + elapsed) & 255)
             h.write8("wPartyCount", 6 if outcome == "full" else 2)
             start = h.address("wPlayerMoney")
-            h.pyboy.memory[start:start + 3] = bcd3(20000)
+            h.pyboy.memory[start:start + 3] = bcd3(149 if outcome == "poor" else 50000)
 
         def reward(_):
             h.write8("wCurEnemyLevel", target)
@@ -47,10 +47,6 @@ class DaycareGrowthTest(unittest.TestCase):
 
         def choice(_):
             h.write8("hCurrentMenuItem", int(outcome == "decline"))
-            return_from_call(h)
-
-        def funds(_):
-            h.pyboy.register_file.F = 0x10 if outcome == "poor" else 0
             return_from_call(h)
 
         def moved(_):
@@ -61,11 +57,11 @@ class DaycareGrowthTest(unittest.TestCase):
         def capture(h):
             return {"level": h.read8(level_label), "exp": h.read_bytes(exp_label, 3),
                     "grown": h.read8("wDayCareNumLevelsGrown" + suffix),
-                    "cost": h.read_bytes("wDayCareTotalCost" + suffix, 2),
+                    "cost": h.read_bytes("wDayCareTotalCost" + suffix, 3),
                     "money": h.read_bytes("wPlayerMoney", 3)}
 
         hooks = {"GetRewardMonLevel": reward, "YesNoChoice": choice,
-                 "HasEnoughMoney": funds, "MoveMon": moved}
+                 "MoveMon": moved}
         for label in ("PrintText", "GetPartyMonName", "PlaySoundWaitForCurrent",
                       "DisplayTextBoxID"):
             hooks[label] = lambda _: return_from_call(h)
@@ -75,11 +71,11 @@ class DaycareGrowthTest(unittest.TestCase):
                                 hooks=hooks, capture=capture))
         return result
 
-    def test_minimum_growth_catchup_cap_and_time_prices(self):
+    def test_price_matches_minimum_growth_catchup_and_cap(self):
         cases = [(60, 45, 8, 61), (45, 45, 8, 46), (30, 45, 8, 45),
                  (60, 45, 9, 61), (60, 45, 1, 61), (30, 45, 0, 30),
                  (self.cap - 1, self.cap, 8, self.cap),
-                 (self.cap, 45, 8, self.cap)]
+                 (self.cap, 45, 8, self.cap), (1, 100, 1, 100)]
         for entry in ("LobbyDaycareLady", "LobbyDaycareGentleman", "DaycareGentlemanText"):
             for level, target, elapsed, expected in cases:
                 with self.subTest(entry=entry, level=level, elapsed=elapsed):
@@ -87,9 +83,9 @@ class DaycareGrowthTest(unittest.TestCase):
                     self.assertTrue(result.get("moved"))
                     self.assertEqual(result["level"], expected)
                     self.assertEqual(result["exp"], list((expected ** 3).to_bytes(3, "big")))
-                    fee = ((elapsed + 7) // 8) * 500
-                    self.assertEqual(result["cost"], bcd3(fee)[1:])
-                    self.assertEqual(result["money"], bcd3(20000 - fee))
+                    fee = (expected - level) * 150
+                    self.assertEqual(result["cost"], bcd3(fee))
+                    self.assertEqual(result["money"], bcd3(50000 - fee))
 
     def test_unsuccessful_withdrawal_preserves_level_experience_and_money(self):
         for entry in ("LobbyDaycareLady", "LobbyDaycareGentleman", "DaycareGentlemanText"):
@@ -100,7 +96,7 @@ class DaycareGrowthTest(unittest.TestCase):
                     self.assertEqual(result["grown"], 1)
                     self.assertEqual(result["level"], 60)
                     self.assertEqual(result["exp"], list((60 ** 3).to_bytes(3, "big")))
-                    self.assertEqual(result["money"], bcd3(20000))
+                    self.assertEqual(result["money"], bcd3(149 if outcome == "poor" else 50000))
 
     def test_automatic_owned_recovery_matches_minimum_growth(self):
         h = self.h
@@ -121,6 +117,8 @@ class DaycareGrowthTest(unittest.TestCase):
                         h.write8("wBattleCount", 48 + elapsed)
                         h.write8("wPartyCount", 0)
                         h.write8("wPartySpecies", 255)
+                        start = h.address("wPlayerMoney")
+                        h.pyboy.memory[start:start + 3] = bcd3(5000)
                     def reward(_):
                         h.write8("wCurEnemyLevel", target)
                         return_from_call(h)
@@ -129,7 +127,9 @@ class DaycareGrowthTest(unittest.TestCase):
                             "DaycareRetrieveUpgrade": lambda _: return_from_call(h)},
                         capture=lambda h: {"level": h.read8("wPartyMon1Level"),
                             "exp": h.read_bytes("wPartyMon1Exp", 3),
-                            "count": h.read8("wPartyCount")})
+                            "count": h.read8("wPartyCount"),
+                            "money": h.read_bytes("wPlayerMoney", 3)})
                     self.assertEqual(result["count"], 1)
                     self.assertEqual(result["level"], expected)
                     self.assertEqual(result["exp"], list((expected ** 3).to_bytes(3, "big")))
+                    self.assertEqual(result["money"], bcd3(5000 - (expected - level) * 150))

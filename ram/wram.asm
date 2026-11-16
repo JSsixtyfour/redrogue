@@ -894,15 +894,15 @@ NEXTU
 ; the level of the mon at the time it entered day care
 wDayCareStartLevel:: db
 wDayCareNumLevelsGrown:: db
-wDayCareTotalCost:: dw ; BCD
-wDayCarePerLevelCost:: dw ; BCD (always $100)
+wDayCareTotalCost:: dw ; first two bytes of the BCD fee
+wDayCarePerLevelCost:: dw ; final byte of the BCD fee, then spare scratch
 
 NEXTU
 ; the level of the mon at the time it entered day care
 wDayCareStartLevel2:: db
 wDayCareNumLevelsGrown2:: db
-wDayCareTotalCost2:: dw ; BCD
-wDayCarePerLevelCost2:: dw ; BCD (always $100)
+wDayCareTotalCost2:: dw ; first two bytes of the BCD fee
+wDayCarePerLevelCost2:: dw ; final byte of the BCD fee, then spare scratch
 ; The deposit battle counts used to sit at the end of these two members. Sibling
 ; members of a union share offsets, so slot 1's and slot 2's count were ONE byte:
 ; depositing at one daycare reset the other's "battles since drop-off" to 0. The

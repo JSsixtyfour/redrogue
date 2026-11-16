@@ -1,8 +1,7 @@
-"""Automatic rental daycare billing caps payment and clears only its holder."""
+"""Automatic daycare recovery caps payment and reclaims rentals for free."""
 import unittest
 
 from harness import RedRogueHarness
-from source_constants import parse_rgbds_constants
 from test_save_header import ARTIFACTS, REPO_ROOT
 from test_move_tutor_prices import run_entry, bcd3
 
@@ -11,7 +10,6 @@ class RentalDaycareTest(unittest.TestCase):
     def setUp(self):
         self.h = RedRogueHarness(REPO_ROOT, ARTIFACTS)
         self.h.boot_to_lobby()
-        self.round = parse_rgbds_constants(REPO_ROOT / "constants/round_constants.asm")["ROUND_BATTLES"]
 
     def tearDown(self):
         self.h.close()
@@ -20,60 +18,20 @@ class RentalDaycareTest(unittest.TestCase):
         start = h.address("wPlayerMoney")
         h.pyboy.memory[start:start + 3] = bcd3(amount)
 
-    def test_fee_rounding_shortfall_exact_surplus_and_battle_wrap(self):
-        for slot in (0, 1):
-            deposit = "wDayCareDepositBattleCount" + ("2" if slot else "")
-            for elapsed in (0, 1, self.round, self.round + 1, 2 * self.round + 1, 255):
-                # Capped at Y9999, where the lobby's 2-byte fee saturates (2026-10-29).
-                fee = min(9999, ((elapsed + self.round - 1) // self.round) * 500)
-                for balance in (0, max(0, fee - 1), fee, fee + 800):
-                    with self.subTest(slot=slot, elapsed=elapsed, balance=balance):
-                        def setup(h):
-                            self.money(h, balance)
-                            h.write8(deposit, 250)
-                            h.write8("wBattleCount", (250 + elapsed) & 255)
-                        result = run_entry(self.h, "RentalChargeDaycare", registers={"E": slot},
-                                           setup=setup, capture=lambda h: {
-                                               "money": h.read_bytes("wPlayerMoney", 3),
-                                               "quote": h.read_bytes("hMoney", 3),
-                                           })
-                        self.assertEqual(result["quote"], bcd3(fee))
-                        self.assertEqual(result["money"], bcd3(max(0, balance - fee)))
-
-    def test_quote_table_at_the_endless_carry_boundaries(self):
-        # Elapsed values around the Endless carry (up to 183+72) and the Y9999 cap.
-        table = {0: 0, 1: 500, 7: 500, 8: 500, 9: 1000, 152: 9500,
-                 153: 9999, 160: 9999, 255: 9999}
-        for slot in (0, 1):
-            deposit = "wDayCareDepositBattleCount" + ("2" if slot else "")
-            for elapsed, fee in table.items():
-                with self.subTest(slot=slot, elapsed=elapsed):
-                    def setup(h):
-                        self.money(h, 10000)
-                        h.write8(deposit, 1)
-                        h.write8("wBattleCount", (1 + elapsed) & 255)
-                    result = run_entry(self.h, "RentalChargeDaycare", registers={"E": slot},
-                                       setup=setup, capture=lambda h: {
-                                           "money": h.read_bytes("wPlayerMoney", 3),
-                                           "quote": h.read_bytes("hMoney", 3)})
+    def test_fee_shortfall_exact_surplus_and_five_digit_totals(self):
+        for levels in (0, 1, 3, 67, 234):
+            fee = levels * 150
+            for balance in (0, max(0, fee - 1), fee, fee + 800):
+                with self.subTest(levels=levels, balance=balance):
+                    result = run_entry(
+                        self.h, "RentalChargeDaycare", registers={"E": levels},
+                        setup=lambda h: self.money(h, balance),
+                        capture=lambda h: {
+                            "money": h.read_bytes("wPlayerMoney", 3),
+                            "quote": h.read_bytes("hMoney", 3),
+                        })
                     self.assertEqual(result["quote"], bcd3(fee))
-                    self.assertEqual(result["money"], bcd3(10000 - fee))
-
-    def test_depth_zero_full_circuit_hold_still_bills_nine_rounds(self):
-        # Ordinary run: deposited at count 1, Champion at 73: elapsed 72, 9 rounds.
-        for slot in (0, 1):
-            deposit = "wDayCareDepositBattleCount" + ("2" if slot else "")
-            def setup(h):
-                self.money(h, 5000)
-                h.write8("wEndlessDepth", 0)
-                h.write8(deposit, 1)
-                h.write8("wBattleCount", 73)
-            result = run_entry(self.h, "RentalChargeDaycare", registers={"E": slot},
-                               setup=setup, capture=lambda h: {
-                                   "money": h.read_bytes("wPlayerMoney", 3),
-                                   "quote": h.read_bytes("hMoney", 3)})
-            self.assertEqual(result["quote"], bcd3(4500))
-            self.assertEqual(result["money"], bcd3(500))
+                    self.assertEqual(result["money"], bcd3(max(0, balance - fee)))
 
     def test_reclaim_clears_rental_holder_and_preserves_other_daycare_and_contract(self):
         for slot in (0, 1):
@@ -114,7 +72,7 @@ class RentalDaycareTest(unittest.TestCase):
             self.assertEqual(result["other_deposit"], 77)
             self.assertEqual(result["cost"], [0] * 6)
             self.assertEqual(result["snapshot"], before["snapshot"])
-            self.assertEqual(result["money"], [0] * 3)
+            self.assertEqual(result["money"], bcd3(200))
 
     def test_reclaim_clears_only_rental_effect_before_daycare_reuse(self):
         for slot in (0, 1):

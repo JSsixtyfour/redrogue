@@ -112,49 +112,9 @@ DaycareGentlemanText:
 	cp PARTY_LENGTH
 	ld hl, .NoRoomForMonText
 	jp z, .leaveMonInDayCare
-	; price = $500 per ROUND_BATTLES started since deposit, rounded up
-	ld a, [wBattleCount]
-	ld b, a
-	ld a, [wDayCareDepositBattleCount]
-	ld c, a
-	ld a, b
-	sub c                       ; a = battles fought since deposit
-	ld b, 0                     ; b = rounds to charge
-	jr z, .stagesElapsedDone    ; no battles: free (and the gate above kept it from growing)
-	dec a                       ; round up any partial round
-	inc b
-.countStagesElapsed
-	cp ROUND_BATTLES
-	jr c, .stagesElapsedDone
-	sub ROUND_BATTLES
-	inc b
-	jr .countStagesElapsed
-.stagesElapsedDone
-	ld de, wDayCareTotalCost
-	xor a
-	ld [de], a
-	inc de
-	ld [de], a
-	ld hl, wDayCarePerLevelCost
-	ld a, $5
-	ld [hli], a
-	ld [hl], $0
-	ld a, b                     ; a = stages elapsed (price multiplier; 0 = free)
-	and a
-	jr z, .noCost
-	ld b, a
-	ld c, 2
-.calcPriceLoop
-	push hl
-	push de
-	push bc
-	predef AddBCDPredef
-	pop bc
-	pop de
-	pop hl
-	dec b
-	jr nz, .calcPriceLoop
-.noCost
+	ld a, [wDayCareNumLevelsGrown]
+	ld e, a
+	rfarcall DaycareQuotePickup
 	ld hl, .OweMoneyText
 	call PrintText
 	ld a, MONEY_BOX
@@ -166,19 +126,16 @@ DaycareGentlemanText:
 	and a
 	jp nz, .leaveMonInDayCare
 	ld hl, wDayCareTotalCost
-	ldh [hMoney], a
-	ld a, [hli]
-	ldh [hMoney + 1], a
-	ld a, [hl]
-	ldh [hMoney + 2], a
+	ld de, hMoney
+	ld bc, 3
+	call CopyData
 	call HasEnoughMoney
 	jr nc, .enoughMoney
 	ld hl, .NotEnoughMoneyText
 	jp .leaveMonInDayCare
 
 .enoughMoney
-	; Commit the reported growth before the zeroing below (the grown count is the
-	; price's top byte) and before MoveMon, which recomputes level from exp.
+	; Commit the reported growth before MoveMon, which recomputes level from exp.
 	ld a, [wDayCareNumLevelsGrown]
 	and a
 	jr z, .growthCommitted
@@ -203,9 +160,8 @@ DaycareGentlemanText:
 .growthCommitted
 	xor a
 	ld [wDayCareInUse], a
-	ld hl, wDayCareNumLevelsGrown
-	ld [hli], a
-	inc hl
+	ld [wDayCareNumLevelsGrown], a
+	ld hl, wDayCareTotalCost + 2
 	ld de, wPlayerMoney + 2
 	ld c, $3
 	predef SubBCDPredef

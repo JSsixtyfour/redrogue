@@ -110,7 +110,7 @@ EndlessContinue:
 	; arrival, BEFORE step 5 clears wRogueFlagsBitfield (BIT_WITCH_ACCEPTED).
 	farcall WitchSettlePendingPrize
 
-	; --- 3. Elapsed progress. Daycare growth/price and rental time are
+	; --- 3. Elapsed progress. Daycare growth eligibility and rental time are
 	; (wBattleCount - deposit snapshot) mod 256. Rebase each snapshot so its
 	; elapsed value carries over to the count of 1 below, held at
 	; DAYCARE_ELAPSED_CARRY_MAX: unheld, 256 battles wrapped it to zero, which

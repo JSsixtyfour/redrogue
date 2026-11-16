@@ -4,7 +4,7 @@ import io
 
 import test_rental_settlement as boxed
 from routine_session import isolated_routine_calls
-from test_move_tutor_prices import run_entry, return_from_call
+from test_move_tutor_prices import bcd3, run_entry, return_from_call
 from source_constants import parse_map_constants, parse_rgbds_constants
 from test_save_header import REPO_ROOT
 
@@ -65,7 +65,7 @@ class RentalDaycareFallbackTest(boxed.RentalSettlementTest):
         self.assertEqual(h.read_bytes("wPartyMon1Exp", 3), [0,0,216])
         self.assertEqual(h.read8("wPartySpecies"), species["DITTO"])
 
-    def test_retained_deposit_after_three_continuations_grows_once_and_bills_the_cap(self):
+    def test_retained_deposit_after_three_continuations_bills_for_levels_gained(self):
         species = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
         max_level = parse_rgbds_constants(REPO_ROOT / "constants/battle_constants.asm")["MAX_LEVEL"]
         h = self.h
@@ -91,14 +91,14 @@ class RentalDaycareFallbackTest(boxed.RentalSettlementTest):
         h.write8("wBattleCount", 1)
         h.write8("wPartyCount", 0)
         start = h.address("wPlayerMoney")
-        h.pyboy.memory[start:start + 3] = [0x02, 0x00, 0x00]  # 20000
+        h.pyboy.memory[start:start + 3] = bcd3(50000)
         self.live_entry(lambda h: None)
         self.assertEqual(h.read8("wPartyCount"), 1)
         self.assertEqual(h.read8("wPartyMons", offset=12), 30)
         level = h.read8("wPartyMon1Level")
         self.assertGreater(level, 5)
         self.assertLessEqual(level, max_level)
-        self.assertEqual(h.read_bytes("wPlayerMoney", 3), [0x01, 0x00, 0x01])  # 20000 - 9999
+        self.assertEqual(h.read_bytes("wPlayerMoney", 3), bcd3(50000 - (level - 5) * 150))
         self.assertEqual(h.read8("wDayCareInUse"), 0)
 
     def daycare(self, h, slot, marker, deposit=0):
@@ -162,10 +162,10 @@ class RentalDaycareFallbackTest(boxed.RentalSettlementTest):
             self.assertEqual(h.read8("wPartyCount"), 1)
             self.assertEqual(h.read8("wPartyMons", offset=12), 30 + slot)
 
-    def test_rental_daycare_then_owned_daycare_are_billed_independently(self):
+    def test_only_owned_daycare_recovery_is_billed(self):
         effect_offset = self.h.address("wBridgeSelectedEffects") - self.h.address("wMainDataStart")
         for rental in (0, 1):
-            for balance, expected in ((200, 0), (1000, 0), (1200, 200)):
+            for balance, expected in ((100, 0), (150, 0), (1200, 1050)):
                 def setup(h):
                     self.seed(h, 5, {}, 247 + rental)
                     self.daycare(h, 0, 30)
@@ -175,13 +175,17 @@ class RentalDaycareFallbackTest(boxed.RentalSettlementTest):
                     h.write8("wBridgeSelectedEffectOwner2", 248 - rental)
                     h.write8("wBridgeSelectedEffect2", 4)
                     h.write8("wBattleCount", 1)
-                    digits = f"{balance:06d}"
                     start = h.address("wPlayerMoney")
-                    h.pyboy.memory[start:start + 3] = [int(digits[i:i+2], 16) for i in (0,2,4)]
+                    h.pyboy.memory[start:start + 3] = bcd3(balance)
+                def minimum_target(_):
+                    self.h.write8("wCurEnemyLevel", 1)
+                    return_from_call(self.h)
+
                 # Growth is exercised separately; this isolates real billing,
                 # MoveMon ownership and clearing, without interactive upgrades.
                 result = run_entry(self.h, "RentalSettleAndSave", setup=setup,
-                    hooks={"DaycareRetrieveUpgrade": lambda _: return_from_call(self.h)},
+                    hooks={"DaycareRetrieveUpgrade": lambda _: return_from_call(self.h),
+                           "GetRewardMonLevel": minimum_target},
                     capture=lambda h: {"money": h.read_bytes("wPlayerMoney",3),
                         "marker": h.read8("wPartyMons", offset=12),
                         "effects": h.read_bytes("wBridgeSelectedEffects", 4),
@@ -190,7 +194,7 @@ class RentalDaycareFallbackTest(boxed.RentalSettlementTest):
                 self.assertTrue(result["flags"] & 16)
                 self.assertEqual(result["marker"], 31 - rental)
                 self.assertEqual(result["occupied"], [0,0])
-                self.assertEqual(result["money"], [0, expected // 100, 0])
+                self.assertEqual(result["money"], bcd3(expected))
                 self.assertEqual(result["effects"], [0, 0, 1, 4])
                 # run_entry restores its baseline after capture, so inspect
                 # the transaction's saved bytes before that fixture rollback.

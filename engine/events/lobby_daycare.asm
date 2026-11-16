@@ -21,10 +21,8 @@
 ;     via procedural_stage_hooks.asm's .addExitBattles), so "no battles" means
 ;     "has not been through another map". The level used to jump straight to the
 ;     lobby tier the moment it was deposited, for $0.
-;   - Price rounds UP to the next round: $500 per started block of ROUND_BATTLES,
-;     $0 only when no battles have passed. With the old floor, one route (5
-;     battles) grew the mon and still cost nothing.
-; scripts/Daycare.asm carries the same two changes for the vanilla daycare map.
+;   - Pickup costs DAYCARE_PRICE_PER_LEVEL per level actually gained.
+; scripts/Daycare.asm uses the same growth gate and fee.
 
 LobbyDaycareLady::
 	call SaveScreenTilesToBuffer2
@@ -134,49 +132,9 @@ LobbyDaycareLady::
 	cp PARTY_LENGTH
 	ld hl, LobbyDaycareNoRoomForMonText
 	jp z, .leaveMonInDayCare
-	; price = $500 per ROUND_BATTLES started since deposit, rounded up
-	ld a, [wBattleCount]
-	ld b, a
-	ld a, [wDayCareDepositBattleCount2]
-	ld c, a
-	ld a, b
-	sub c                       ; a = battles fought since deposit
-	ld b, 0                     ; b = rounds to charge
-	jr z, .stagesElapsedDone    ; no battles: free (and the gate above kept it from growing)
-	dec a                       ; round up any partial round
-	inc b
-.countStagesElapsed
-	cp ROUND_BATTLES
-	jr c, .stagesElapsedDone
-	sub ROUND_BATTLES
-	inc b
-	jr .countStagesElapsed
-.stagesElapsedDone
-	ld de, wDayCareTotalCost2
-	xor a
-	ld [de], a
-	inc de
-	ld [de], a
-	ld hl, wDayCarePerLevelCost2
-	ld a, DAYCARE_PRICE_PER_ROUND_BCD
-	ld [hli], a
-	ld [hl], $0
-	ld a, b                     ; a = rounds to charge (price multiplier; 0 = free)
-	and a
-	jr z, .noCost
-	ld b, a
-	ld c, 2
-.calcPriceLoop
-	push hl
-	push de
-	push bc
-	predef AddBCDPredef
-	pop bc
-	pop de
-	pop hl
-	dec b
-	jr nz, .calcPriceLoop
-.noCost
+	ld a, [wDayCareNumLevelsGrown2]
+	ld e, a
+	call DaycareQuotePickup
 	ld hl, LobbyDaycareOweMoneyText
 	call PrintText
 	ld a, MONEY_BOX
@@ -187,12 +145,10 @@ LobbyDaycareLady::
 	ldh a, [hCurrentMenuItem]
 	and a
 	jp nz, .leaveMonInDayCare
-	ld hl, wDayCareTotalCost2
-	ldh [hMoney], a
-	ld a, [hli]
-	ldh [hMoney + 1], a
-	ld a, [hl]
-	ldh [hMoney + 2], a
+	ld hl, wDayCareTotalCost
+	ld de, hMoney
+	ld bc, 3
+	call CopyData
 	call HasEnoughMoney
 	jr nc, .enoughMoney
 	ld hl, LobbyDaycareNotEnoughMoneyText
@@ -200,8 +156,7 @@ LobbyDaycareLady::
 
 .enoughMoney
 	; Commit the growth reported above, now that the mon is really leaving. Has
-	; to run before the zeroing below (wDayCareNumLevelsGrown2 is the top byte of
-	; the 3-byte price) and before MoveMon, which recomputes level from exp.
+	; to run before MoveMon, which recomputes level from exp.
 	ld a, [wDayCareNumLevelsGrown2]
 	and a
 	jr z, .growthCommitted
@@ -226,9 +181,8 @@ LobbyDaycareLady::
 .growthCommitted
 	xor a
 	ld [wDayCareInUse2], a
-	ld hl, wDayCareNumLevelsGrown2
-	ld [hli], a
-	inc hl
+	ld [wDayCareNumLevelsGrown2], a
+	ld hl, wDayCareTotalCost + 2
 	ld de, wPlayerMoney + 2
 	ld c, $3
 	predef SubBCDPredef
@@ -377,49 +331,9 @@ LobbyDaycareGentleman::
 	cp PARTY_LENGTH
 	ld hl, LobbyDaycareNoRoomForMonText
 	jp z, .leaveMonInDayCare
-	; price = $500 per ROUND_BATTLES started since deposit, rounded up
-	ld a, [wBattleCount]
-	ld b, a
-	ld a, [wDayCareDepositBattleCount]
-	ld c, a
-	ld a, b
-	sub c                       ; a = battles fought since deposit
-	ld b, 0                     ; b = rounds to charge
-	jr z, .stagesElapsedDone    ; no battles: free (and the gate above kept it from growing)
-	dec a                       ; round up any partial round
-	inc b
-.countStagesElapsed
-	cp ROUND_BATTLES
-	jr c, .stagesElapsedDone
-	sub ROUND_BATTLES
-	inc b
-	jr .countStagesElapsed
-.stagesElapsedDone
-	ld de, wDayCareTotalCost
-	xor a
-	ld [de], a
-	inc de
-	ld [de], a
-	ld hl, wDayCarePerLevelCost
-	ld a, DAYCARE_PRICE_PER_ROUND_BCD
-	ld [hli], a
-	ld [hl], $0
-	ld a, b                     ; a = rounds to charge (price multiplier; 0 = free)
-	and a
-	jr z, .noCost
-	ld b, a
-	ld c, 2
-.calcPriceLoop
-	push hl
-	push de
-	push bc
-	predef AddBCDPredef
-	pop bc
-	pop de
-	pop hl
-	dec b
-	jr nz, .calcPriceLoop
-.noCost
+	ld a, [wDayCareNumLevelsGrown]
+	ld e, a
+	call DaycareQuotePickup
 	ld hl, LobbyDaycareOweMoneyText
 	call PrintText
 	ld a, MONEY_BOX
@@ -431,11 +345,9 @@ LobbyDaycareGentleman::
 	and a
 	jp nz, .leaveMonInDayCare
 	ld hl, wDayCareTotalCost
-	ldh [hMoney], a
-	ld a, [hli]
-	ldh [hMoney + 1], a
-	ld a, [hl]
-	ldh [hMoney + 2], a
+	ld de, hMoney
+	ld bc, 3
+	call CopyData
 	call HasEnoughMoney
 	jr nc, .enoughMoney
 	ld hl, LobbyDaycareNotEnoughMoneyText
@@ -467,9 +379,8 @@ LobbyDaycareGentleman::
 .growthCommitted
 	xor a
 	ld [wDayCareInUse], a
-	ld hl, wDayCareNumLevelsGrown
-	ld [hli], a
-	inc hl
+	ld [wDayCareNumLevelsGrown], a
+	ld hl, wDayCareTotalCost + 2
 	ld de, wPlayerMoney + 2
 	ld c, $3
 	predef SubBCDPredef
@@ -512,6 +423,47 @@ LobbyDaycareGentleman::
 .leaveMonInDayCare               ; the stored mon was never modified, nothing to undo
 .done
 	jp PrintText
+
+; e = quoted levels. Keep the three-byte price in existing menu scratch
+; across the text and confirmation prompt. Both daycare slots alias this area.
+DaycareQuotePickup::
+	ASSERT wDayCareTotalCost == wDayCareTotalCost2
+	ASSERT wDayCareTotalCost + 2 == wDayCarePerLevelCost
+	call DaycareQuoteGrowth
+	ld hl, hMoney
+	ld de, wDayCareTotalCost
+	ld bc, 3
+	jp CopyData
+
+; e = levels gained. Returns the three-byte BCD fee in hMoney.
+DaycareQuoteGrowth::
+	xor a
+	ldh [hMoney], a
+	ldh [hMoney + 1], a
+	ldh [hMoney + 2], a
+	ld a, e
+	and a
+	ret z
+	push de
+	ld hl, .unitPrice
+	ld de, hItemPrice
+	ld bc, 3
+	call CopyData
+	pop bc
+	ld b, c
+.priceLoop
+	push bc
+	ld hl, hItemPrice + 2
+	ld de, hMoney + 2
+	ld c, 3
+	predef AddBCDPredef
+	pop bc
+	dec b
+	jr nz, .priceLoop
+	ret
+
+.unitPrice
+	bcd3 DAYCARE_PRICE_PER_LEVEL
 
 LobbyDaycareIntroText:
 	text_far _DaycareGentlemanIntroText

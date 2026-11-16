@@ -1004,61 +1004,9 @@ RentalRejectAction:
 	cont "or fused!"
 	prompt
 
-; Automatic cleanup only. e = daycare slot (0 or 1).
-; Quote the normal $500 per started ROUND_BATTLES in hMoney, then charge
-; min(balance, quote). No prompts, refusal or debt; voluntary scripts unchanged.
-; Clobbers hMoney and hItemPrice (existing transaction scratch).
+; e = levels gained during automatic owned recovery. Pay up to the balance.
 RentalChargeDaycare::
-	ld hl, wDayCareDepositBattleCount
-	ld a, e
-	and a
-	jr z, .depositReady
-	ld hl, wDayCareDepositBattleCount2
-.depositReady
-	ld a, [wBattleCount]
-	sub [hl] ; the ordinary daycare's elapsed battles (EndlessContinue holds it)
-	ld b, 0
-	jr z, .roundsReady
-	dec a
-	inc b
-.roundLoop
-	cp ROUND_BATTLES
-	jr c, .roundsReady
-	sub ROUND_BATTLES
-	inc b
-	jr .roundLoop
-.roundsReady
-	xor a
-	ldh [hMoney], a
-	ldh [hMoney + 1], a
-	ldh [hMoney + 2], a
-	ldh [hItemPrice], a
-	ldh [hItemPrice + 2], a
-	ld a, DAYCARE_PRICE_PER_ROUND_BCD
-	ldh [hItemPrice + 1], a
-	ld a, b
-	and a
-	ret z
-.priceLoop
-	push bc
-	ld hl, hItemPrice + 2 ; predef changes ROM bank, so source must be RAM
-	ld de, hMoney + 2
-	ld c, 3
-	predef AddBCDPredef
-	pop bc
-	dec b
-	jr nz, .priceLoop
-	; Cap the quote at Y9999, where the lobby's 2-byte fee saturates (AddBCD),
-	; so a long Endless hold costs the same either way.
-	ldh a, [hMoney]
-	and a
-	jr z, .quoted
-	xor a
-	ldh [hMoney], a
-	ld a, $99
-	ldh [hMoney + 1], a
-	ldh [hMoney + 2], a
-.quoted
+	rfarcall DaycareQuoteGrowth
 	call HasEnoughMoney
 	jr c, .shortfall
 	ld hl, hMoney + 2
@@ -1085,11 +1033,6 @@ RentalReclaimDaycare::
 	and a
 	ret
 .first
-	ld a, [wDayCareInUse]
-	and a
-	jr z, .clearFirst
-	ld e, 0
-	call RentalChargeDaycare
 .clearFirst
 	ld hl, wDayCareInUse
 	ld bc, wDayCareInUse2 - wDayCareInUse
@@ -1099,11 +1042,6 @@ RentalReclaimDaycare::
 	ld hl, wDayCareStartLevel
 	jr .clearCost
 .second
-	ld a, [wDayCareInUse2]
-	and a
-	jr z, .clearSecond
-	ld e, 1
-	call RentalChargeDaycare
 .clearSecond
 	ld hl, wDayCareInUse2
 	ld bc, wStolenSaveSnapshot - wDayCareInUse2
@@ -1112,7 +1050,7 @@ RentalReclaimDaycare::
 	ld [wDayCareDepositBattleCount2], a
 	ld hl, wDayCareStartLevel2
 .clearCost
-	ld bc, 6 ; start level, growth, total cost and per-round scratch
+	ld bc, 6 ; start level, growth and quote scratch
 	xor a
 	call FillMemory
 .clearOwner
@@ -1432,9 +1370,6 @@ RentalFindDaycareFallback::
 ; Caller has reclaimed the rental and confirmed the party is empty.
 RentalRetrieveDaycare::
 	push de
-	call RentalChargeDaycare
-	pop de
-	push de
 	rfarcall GetRewardMonLevel
 	pop de
 	ld hl, wDayCareMonBoxLevel
@@ -1470,6 +1405,11 @@ RentalRetrieveDaycare::
 .commitGrowth
 	ld [hl], a
 	push af ; target level
+	push de
+	sub b ; actual gain from the deposited level
+	ld e, a
+	call RentalChargeDaycare
+	pop de
 	ld a, d
 	ld [wMonDataLocation], a
 	call LoadMonData
