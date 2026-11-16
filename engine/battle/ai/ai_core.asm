@@ -86,7 +86,7 @@ AITierCeiling:
 ; HP/stat stages stay live at every tier (design decision, 2026-08-25: a human
 ; opponent can see all of those on screen too).
 AITierLayers:
-	dw AI_REDUNDANT                                                        ; T0 Novice
+	dw AI_REDUNDANT | AI_TYPES                                             ; T0 Novice (types: immunity only)
 	dw AI_REDUNDANT | AI_BASIC | AI_TYPES | AI_SETUP                       ; T1 Competent
 	dw AI_REDUNDANT | AI_BASIC | AI_TYPES | AI_SETUP | AI_SMART \
 	   | AI_DAMAGE                                                         ; T2 Skilled

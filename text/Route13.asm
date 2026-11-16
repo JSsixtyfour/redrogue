@@ -152,8 +152,8 @@ _Route13TrainerTips2Text::
 	text "TRAINER TIPS"
 
 	para "Use SELECT to"
-	line "switch items in"
-	cont "the ITEM window!"
+	line "switch ITEM order"
+	cont "in ITEM BAG!“"
 	done
 
 _Route13SignText::

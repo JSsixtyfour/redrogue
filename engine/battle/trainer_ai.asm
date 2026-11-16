@@ -1138,9 +1138,9 @@ AIOwnsPhysicalMove:
 	ld [wBuffer + AI_BUF_PHYSICAL], a
 	ret
 
-; encourages moves that are effective against the player's mon (even if non-damaging).
-; discourage damaging moves that are ineffective or not very effective against the player's mon,
-; unless there's no damaging move that deals at least neutral damage
+; All tiers heavily discourage type-immune attacks. T1+ also encourage effective
+; moves (even non-damaging) and mildly discourage resisted moves when another
+; damaging type is available. Fixed-damage and called moves bypass this layer.
 AIMoveChoiceModification3:
 	ld hl, wBuffer - 1 ; temp move selection array (-1 byte offset)
 	ld de, wEnemyMonMoves ; enemy moves
@@ -1194,6 +1194,23 @@ AIMoveChoiceModification3:
 	pop bc
 	pop hl
 	ld a, [wTypeEffectiveness]
+	and a
+	jr nz, .scoreEffectiveness
+; Type-immune attacks are whole-move no-ops, just like AI_REDUNDANT's heavy
+; cases. Do not require alternative coverage before discouraging them.
+; The effect exceptions above still work; zero-power status/setup moves do
+; not generally obey their listed type's damage immunity.
+	ld a, [wEnemyMovePower]
+	and a
+	jr z, .nextMove
+	ld a, AI_SATURATE
+	jr .discourageMove
+.scoreEffectiveness
+; Novices share the no-op immunity check, but no weakness/resistance strategy.
+	ld a, [wAITier] ; cached tier + 1
+	cp 1
+	jr z, .nextMove
+	ld a, [wTypeEffectiveness]
 	cp EFFECTIVE
 	jr z, .nextMove
 	jr c, .notEffectiveMove
@@ -1243,9 +1260,10 @@ AIMoveChoiceModification3:
 	pop de
 	pop hl
 	and a
-	jr z, .nextMove
+	jp z, .nextMove
 	; Phase 2b: was `inc [hl]`.
 	ld a, AI_NUDGE
+.discourageMove
 	call AIDiscourage
 	jp .nextMove
 ; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM

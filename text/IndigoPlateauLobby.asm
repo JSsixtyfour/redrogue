@@ -492,28 +492,28 @@ _LobbyDoor1GiovanniMoneyText::
 _LobbyDoor1KarateHealingText::
 	text_far _LobbyDoor1HeadingText
 	text "KARATE MASTER"
-	cont "RARITY BOOST"
+	line "RARITY BOOST"
 	cont "HEALING ITEMS@"
 	text_end
 
 _LobbyDoor1KarateStatText::
 	text_far _LobbyDoor1HeadingText
 	text "KARATE MASTER"
-	cont "RARITY BOOST"
+	line "RARITY BOOST"
 	cont "STAT BOOSTS@"
 	text_end
 
 _LobbyDoor1KarateTMText::
 	text_far _LobbyDoor1HeadingText
 	text "KARATE MASTER"
-	cont "RARITY BOOST"
+	line "RARITY BOOST"
 	cont "TM ITEMS@"
 	text_end
 
 _LobbyDoor1KarateMoneyText::
 	text_far _LobbyDoor1HeadingText
 	text "KARATE MASTER"
-	cont "RARITY BOOST"
+	line "RARITY BOOST"
 	cont "MONEY@"
 	text_end
 
@@ -576,28 +576,28 @@ _LobbyDoor2GiovanniMoneyText::
 _LobbyDoor2KarateHealingText::
 	text_far _LobbyDoor2HeadingText
 	text "KARATE MASTER"
-	cont "RARITY BOOST"
+	line "RARITY BOOST"
 	cont "HEALING ITEMS@"
 	text_end
 
 _LobbyDoor2KarateStatText::
 	text_far _LobbyDoor2HeadingText
 	text "KARATE MASTER"
-	cont "RARITY BOOST"
+	line "RARITY BOOST"
 	cont "STAT BOOSTS@"
 	text_end
 
 _LobbyDoor2KarateTMText::
 	text_far _LobbyDoor2HeadingText
 	text "KARATE MASTER"
-	cont "RARITY BOOST"
+	line "RARITY BOOST"
 	cont "TM ITEMS@"
 	text_end
 
 _LobbyDoor2KarateMoneyText::
 	text_far _LobbyDoor2HeadingText
 	text "KARATE MASTER"
-	cont "RARITY BOOST"
+	line "RARITY BOOST"
 	cont "MONEY@"
 	text_end
 
