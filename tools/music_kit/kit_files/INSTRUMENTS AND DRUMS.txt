@@ -8,10 +8,17 @@ CH1 and CH2: square waves. Pick the pulse width in the track name.
     Square 25     hollow           Duty 1
     Square 50     full, flute-like Duty 2
     Square 75     sounds almost the same as 25   Duty 3
-  Volume follows note velocity in 8 steps.
+  Volume = floor(MIDI velocity / 8), values 0-15. MIDI 1-7 is silent;
+  120-127 is maximum. See READ ME FIRST for the complete table.
 
 CH3: wave channel, 15 wave shapes (put "Wave N" in the track name).
-  Always full volume. Waves 0-4 are the classic ones.
+  Kit v4 MIDI velocity: 1-42 = 25%, 43-84 = 50%, 85-127 = 100%.
+  Older testers forced full volume. Install the complete v4 kit; to keep
+  an older song's balance, set Ch3 velocity to 85-127. Velocity 0 is note-off.
+  SF2/SFZ preview these bands automatically. DLS1 requires manual Wave N
+  25%/50% preset selection (plain Wave N is 100%); still set MIDI velocity
+  for the exported song. See READ ME FIRST and DAW Samples/DLS QUICK START.
+  Waves 0-4 are the classic ones.
      0 smooth, round        1 smooth, a little flatter
      2 hollow, flute-like   3 reedy, wobbly
      4 bright, buzzy        5 stepped, nasal

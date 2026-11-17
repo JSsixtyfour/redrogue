@@ -19,6 +19,7 @@ GEN_ATTACK_VOL_ENV = 34
 GEN_RELEASE_VOL_ENV = 38
 GEN_INSTRUMENT = 41
 GEN_KEY_RANGE = 43
+GEN_VEL_RANGE = 44
 GEN_INITIAL_ATTENUATION = 48
 GEN_SAMPLE_ID = 53
 GEN_SAMPLE_MODES = 54
@@ -28,10 +29,12 @@ PAD = 46  # the spec wants 46 zero points after every sample
 
 
 class Zone:
-    def __init__(self, sample, lo, hi, loop=False, root=None, attenuation=0, release=-7973):
+    def __init__(self, sample, lo, hi, loop=False, root=None, attenuation=0, release=-7973,
+                 velocity=(0, 127), fixed_velocity=False):
         # release is in timecents: -7973 = 10 ms, so a note-off doesn't click
         self.sample, self.lo, self.hi, self.loop = sample, lo, hi, loop
         self.root, self.attenuation, self.release = root, attenuation, release
+        self.velocity, self.fixed_velocity = velocity, fixed_velocity
 
 
 def _name(s):
@@ -102,12 +105,16 @@ class SF2:
         pbag += struct.pack("<HH", len(pgen) // 4, 0)
         pgen += _gen(0, 0)
 
-        inst, ibag, igen = b"", b"", b""
+        inst, ibag, igen, imod = b"", b"", b"", b""
         for name, zones in self.instruments:
             inst += _name(name) + struct.pack("<H", len(ibag) // 4)
             for z in zones:
-                ibag += struct.pack("<HH", len(igen) // 4, 0)
+                ibag += struct.pack("<HH", len(igen) // 4, len(imod) // 10)
                 igen += _gen(GEN_KEY_RANGE, (z.lo, z.hi))
+                igen += _gen(GEN_VEL_RANGE, z.velocity)
+                if z.fixed_velocity:
+                    # Override SF2's default concave velocity -> attenuation.
+                    imod += struct.pack('<HHhHH', 0x0502, GEN_INITIAL_ATTENUATION, 0, 0, 0)
                 if z.attenuation:
                     igen += _gen(GEN_INITIAL_ATTENUATION, z.attenuation)
                 igen += _gen(GEN_RELEASE_VOL_ENV, z.release)
@@ -117,7 +124,7 @@ class SF2:
                     igen += _gen(GEN_OVERRIDING_ROOT_KEY, z.root)
                 igen += _gen(GEN_SAMPLE_ID, z.sample)  # must be the zone's last generator
         inst += _name("EOI") + struct.pack("<H", len(ibag) // 4)
-        ibag += struct.pack("<HH", len(igen) // 4, 0)
+        ibag += struct.pack("<HH", len(igen) // 4, len(imod) // 10)
         igen += _gen(0, 0)
 
         shdr = b""
@@ -128,7 +135,7 @@ class SF2:
         mod = b"\0" * 10  # the terminal (empty) modulator record
         return _list(b"pdta", _chunk(b"phdr", phdr), _chunk(b"pbag", pbag), _chunk(b"pmod", mod),
                      _chunk(b"pgen", pgen), _chunk(b"inst", inst), _chunk(b"ibag", ibag),
-                     _chunk(b"imod", mod), _chunk(b"igen", igen), _chunk(b"shdr", shdr))
+                     _chunk(b"imod", imod + mod), _chunk(b"igen", igen), _chunk(b"shdr", shdr))
 
     def write(self, path):
         def z(s):  # zero-terminated, even length

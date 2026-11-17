@@ -339,8 +339,9 @@ function ConvertMidi {
 
 	# Ch3 (wave) volume: the engine writes (volume nibble << 5) to NR32, so only
 	# its low two bits count: 0=mute 1=100% 2=50% 3=25% (crysaudio/engine.asm
-	# .load_wave_pattern: and $f0, sla a). pokemid writes velocity-derived 0-15
-	# there, which mutes most notes. Force full volume. Waves 0-14 are real
+	# .load_wave_pattern: and $f0, sla a). The normalizer now encodes original
+	# velocity bands as pokemid velocities 24/16/8, yielding codes 3/2/1.
+	# Preserve those codes. Waves 0-14 are real
 	# (crysaudio/wave_samples.asm; 0-4 are Red's five); 15 means "keep the
 	# loaded wave", so clamp to 0-14. Kit v1 (old engine) clamped to 0-4.
 	if ($blocks.Contains('Ch3')) {
@@ -350,14 +351,17 @@ function ConvertMidi {
 			if ($b[$i] -match '^(\s*)note_type\s+(\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*$') {
 				$wave = [Math]::Max(0, [Math]::Min(14, [int]$Matches[4]))
 				if ($wave -ge 5) { $newWaves[$wave] = 1 }
-				$b[$i] = "$($Matches[1])note_type $($Matches[2]), 1, $wave"
+				$vol = [int]$Matches[3]
+				# pokemid may initialize volume 0 for a leading rest. Note-ons
+				# still select 1-3 through the normalized velocity.
+				if ($vol -lt 0 -or $vol -gt 3) { Fail "Unexpected Ch3 volume $vol after MIDI normalization." }
+				$b[$i] = "$($Matches[1])note_type $($Matches[2]), $vol, $wave"
 			}
 		}
 		if ($newWaves.Count) {
 			Say "  Note: Ch3 uses wave $((@($newWaves.Keys) | Sort-Object) -join ', '). Kit versions before 2 played waves above 4 as wave 4." 'Yellow'
 		}
-		# Velocity changes used to differ only in volume; now they're identical
-		# repeats. Drop a note_type equal to the last one, but only within straight
+		# Drop identical note_type repeats, but only within straight
 		# runs: labels and flow commands reset what "last" means.
 		$last = $null
 		$kept = New-Object System.Collections.Generic.List[string]

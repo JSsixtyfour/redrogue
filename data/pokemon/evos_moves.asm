@@ -595,7 +595,7 @@ GrimerEvosMoves:
 	db 19, POISON_GAS
 	db 24, ACID_ARMOR
 	db 27, MINIMIZE
-	db 33, SLUDGE
+	db 30, SLUDGE
 	db 37, BODY_SLAM
 	db 42, TOXIC
 	db 45, SCREECH
@@ -1414,12 +1414,11 @@ MagmarEvosMoves:
 	db 0
 ; Learnset
 	db 10, SMOG
-	db 15, LEER
+	db 15, SMOKESCREEN
 	db 20, CONFUSE_RAY
-	db 31, FIRE_PUNCH
-	db 40, SMOKESCREEN
-	db 43, FLAMETHROWER
-	db 54, FIRE_BLAST
+	db 28, FIRE_PUNCH
+	db 40, FLAMETHROWER
+	db 50, FIRE_BLAST
 	db 0
 ; Tutoring Learnset   
     db 2, HEADBUTT
@@ -1458,10 +1457,10 @@ ElectabuzzEvosMoves:
     db 17, LOW_KICK
 	db 20, THUNDER_WAVE
 	db 25, SCREECH
-	db 31, THUNDERPUNCH
+	db 30, THUNDERPUNCH
 	db 40, LIGHT_SCREEN
-	db 43, THUNDERBOLT
-	db 54, THUNDER
+	db 41, THUNDERBOLT
+	db 51, THUNDER
 	db 0
     
 ; Tutoring Learnset   
@@ -3104,7 +3103,7 @@ MukEvosMoves:
 	db 19, POISON_GAS
 	db 24, ACID_ARMOR
 	db 27, MINIMIZE
-	db 33, SLUDGE
+	db 30, SLUDGE
 	db 37, BODY_SLAM
 	db 42, TOXIC
 	db 45, SCREECH
@@ -3591,11 +3590,11 @@ PonytaEvosMoves:
 	db 0
 ; Learnset
     db 7, TAIL_WHIP
+	db 11, QUICK_ATTACK
 	db 19, STOMP
 	db 25, DOUBLE_KICK
 	db 33, FLAMETHROWER
 	db 35, AGILITY
-	db 35, GROWL ; Red/Blue level-up move restored
 	db 36, FIRE_SPIN
 	db 40, TAKE_DOWN
 	db 45, FIRE_BLAST
@@ -3603,9 +3602,7 @@ PonytaEvosMoves:
 ; Tutoring Learnset   
     db 2, TACKLE
     db 2, HEADBUTT
-    db 2, DOUBLE_KICK
     db 2, HYPNOSIS
-    db 2, QUICK_ATTACK
     db 2, THRASH
     db 2, LOW_KICK
     db 0
@@ -3614,6 +3611,7 @@ RapidashEvosMoves:
 	db 0
 ; Learnset
     db 7, TAIL_WHIP
+	db 11, QUICK_ATTACK
 	db 19, STOMP
 	db 25, DOUBLE_KICK
 	db 28, GROWL
@@ -3627,9 +3625,7 @@ RapidashEvosMoves:
 ; Tutoring Learnset   
     db 2, TACKLE
     db 2, HEADBUTT
-    db 2, DOUBLE_KICK
     db 2, HYPNOSIS
-    db 2, QUICK_ATTACK
     db 2, THRASH
     db 2, LOW_KICK
     db 2, FURY_ATTACK
@@ -5280,12 +5276,11 @@ MagmortarEvosMoves:
 ; Learnset - from tmp/kep/data/pokemon/evos_moves.asm, already Gen 1 valid;
 ; EMBER already granted at level 1.
 	db 10, SMOG
-	db 15, LEER
+	db 15, SMOKESCREEN
 	db 20, CONFUSE_RAY
-	db 31, FIRE_PUNCH
-	db 40, SMOKESCREEN
-	db 43, FLAMETHROWER
-	db 54, FIRE_BLAST
+	db 28, FIRE_PUNCH
+	db 40, FLAMETHROWER
+	db 50, FIRE_BLAST
 	db 0
 ; Tutoring Learnset
 	db 2, HEADBUTT ; inherited from Magmar

@@ -15,7 +15,7 @@ AgrimerFormEvosMoves:
 	db 19, POISON_GAS
 	db 24, ACID_ARMOR
 	db 27, MINIMIZE
-	db 33, SLUDGE
+	db 30, SLUDGE
 	db 37, BODY_SLAM
 	db 42, TOXIC
 	db 45, SCREECH

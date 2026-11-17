@@ -10,7 +10,7 @@
 	INCBIN "gfx/pokemon/front/ponyta.dim" ; sprite dimensions
 	dw PonytaPicFront, PonytaPicBack
 
-	db EMBER, NO_MOVE, NO_MOVE, NO_MOVE ; level 1 learnset
+	db EMBER, TACKLE, GROWL, NO_MOVE ; level 1 learnset
 	db GROWTH_MEDIUM_FAST ; growth rate
 
 	; tm/hm learnset

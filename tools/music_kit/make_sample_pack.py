@@ -15,6 +15,7 @@ Hz). So Ch3 is in tune, but its range is an octave lower (MIDI 24-119).
 """
 
 import json
+import copy
 import os
 import re
 import shutil
@@ -111,11 +112,12 @@ def wave_preset(idx):
     return 4 + idx if idx < 5 else 5 + idx
 
 
-def sfz_looped(path, sample, keys):
+def sfz_looped(path, sample, keys, wave_voice=False):
     with open(path, "w", newline="\r\n") as f:
         f.write("// Red Rogue music kit. Load in any SFZ player (e.g. free sfizz plugin).\n")
-        f.write("<region> sample=%s lokey=%d hikey=%d pitch_keycenter=%d\n" % (sample, keys[0], keys[1], KEY_A4))
-        f.write("loop_mode=loop_continuous loop_start=0 loop_end=%d amp_veltrack=100 ampeg_release=0.01\n" % (LOOP_LEN - 1))
+        for lo, hi, db in ([(1, 42, -12.0412), (43, 84, -6.0206), (85, 127, 0)] if wave_voice else [(1, 127, 0)]):
+            f.write("<region> sample=%s lokey=%d hikey=%d pitch_keycenter=%d lovel=%d hivel=%d volume=%s\n" % (sample, keys[0], keys[1], KEY_A4, lo, hi, db))
+            f.write("loop_mode=loop_continuous loop_start=0 loop_end=%d amp_veltrack=%d ampeg_release=0.01\n" % (LOOP_LEN - 1, 0 if wave_voice else 100))
 
 
 def read_wav(path):
@@ -143,7 +145,10 @@ def build_soundfont(path, waves, drums):
     for idx in range(NUM_WAVES):
         nibs = waves[idx]
         smp = sf.sample("wave%d" % idx, pcm(looped(lambda p: AMP * (7.5 - nibs[int(p * 32)]) / 7.5)), RATE, KEY_A4, (0, LOOP_LEN))
-        inst = sf.instrument("Wave %d" % idx, [sf2.Zone(smp, WAVE_KEYS[0], WAVE_KEYS[1], loop=True)])
+        inst = sf.instrument("Wave %d" % idx, [
+            sf2.Zone(smp, *WAVE_KEYS, loop=True, velocity=(lo, hi),
+                     attenuation=atten, fixed_velocity=True)
+            for lo, hi, atten in [(1, 42, 120), (43, 84, 60), (85, 127, 0)]])
         sf.preset("Wave %d" % idx, 0, wave_preset(idx), inst)
     smps = [sf.sample("drum%02d" % k, d, RATE, 60) for k, d in enumerate(drums)]
     # Each alias must play the recording at its original pitch, not transpose
@@ -154,7 +159,25 @@ def build_soundfont(path, waves, drums):
     sf.preset("Drums", 0, 9, kit)
     sf.preset("Game Boy Drums", 128, 0, kit)
     sf.write(path)
-    dls.write(os.path.splitext(path)[0] + '.dls', sf)
+    # DLS1 ignores velocity ranges: never export stacked SF2 velocity zones.
+    # Keep the original full-volume wave presets and add fixed-level choices.
+    ds = copy.deepcopy(sf)
+    for idx in range(NUM_WAVES):
+        inst_id = 4 + idx
+        name, zones = ds.instruments[inst_id]
+        zone = copy.deepcopy(zones[-1])
+        zone.velocity = (0, 127)
+        ds.instruments[inst_id] = (name, [zone])
+        _, start, end, ls, le, rate, root = ds.samples[zone.sample]
+        source = struct.unpack('<%dh' % (end-start), ds.pcm[start*2:end*2])
+        for offset, percent in enumerate((25, 50)):
+            sample = ds.sample('w%d_%d' % (idx, percent),
+                               [round(v * percent / 100) for v in source],
+                               rate, root, (ls-start, le-start))
+            label = 'Wave %d %d%%' % (idx, percent)
+            inst = ds.instrument(label, [sf2.Zone(sample, *WAVE_KEYS, loop=True)])
+            ds.preset(label, 0, 20 + idx * 2 + offset, inst)
+    dls.write(os.path.splitext(path)[0] + '.dls', ds)
 
 
 def build(repo, drum_dir, out):
@@ -174,7 +197,7 @@ def build(repo, drum_dir, out):
         base = "wave%d" % idx
         # GB DAC: nibble 0..15 -> +1..-1 (sign doesn't matter for timbre); keep stair steps
         write_wav(os.path.join(wv, base + ".wav"), looped(lambda p: AMP * (7.5 - nibs[int(p * 32)]) / 7.5), (0, LOOP_LEN - 1))
-        sfz_looped(os.path.join(wv, base + ".sfz"), base + ".wav", WAVE_KEYS)
+        sfz_looped(os.path.join(wv, base + ".sfz"), base + ".wav", WAVE_KEYS, wave_voice=True)
 
     dr = os.path.join(out, "Ch4 - Drums")
     raw = []
@@ -223,14 +246,21 @@ Ch1/Ch2 use floor(MIDI velocity / 8), volume values 0 through 15:
         guide += '  %3d-%3d -> %2d%s\n' % (max(1, level * 8), level * 8 + 7,
                                              level, ' (silent)' if level == 0 else '')
     guide += '''Velocity 0 is note-off. These are MIDI 0-127 values, not FL percentages.
-Ch3 is always full volume in the tester, regardless of velocity.
+Ch3 in kit version 4: MIDI 1-42 = 25%, 43-84 = 50%, 85-127 = 100%.
+Older testers forced Ch3 to 100%. Use the NEW tester, not just this DLS.
+Existing MIDI may now sound quieter: set Ch3 notes to 85-127 to retain the
+old full-volume sound. These percentages are amplitude, not perceived loudness.
 Ch4 uses each recorded drum's fixed envelope, regardless of velocity.
 When drum hits overlap, the tester keeps the highest-velocity simultaneous
 hit (lowest MIDI note breaks ties) and cuts a hit at the next hit.
 Mixer faders and MIDI CC volume automation do not become game dynamics.
 
 DLS Level 1 square dynamics are continuous and only approximate the game's
-steps. Wave and drum patches override velocity loudness. All previews still
+steps. DLS1 cannot reliably select velocity layers. Its Wave N presets stay
+at 100%; choose Wave N 25% or Wave N 50% manually to preview quieter notes.
+These patches do not set exported velocity: also set the MIDI velocity band.
+SF2/SFZ waves switch the three bands automatically (SF2 attenuation rounded
+to 0.1 dB). Drum patches override velocity loudness. All previews still
 differ from the Game Boy's mixing, envelopes, filtering and single-voice
 retrigger behavior. Check final balance and rapid drum sequences in the
 tester. Do not compensate by altering the composition to match a DAW mixer.
@@ -250,6 +280,7 @@ Every mapped key plays the recording at its original pitch.
 PROGRAMS (zero-based; some hosts display these as 1-20)
 0-3: Square 12.5/25/50/75; 4-8: Wave 0-4; 9: Drums;
 10-19: Wave 5-14. Percussion bank: program 0 = Game Boy Drums.
+20-49: pairs Wave 0 25%/50% through Wave 14 25%/50% (DLS only).
 Squares support MIDI 36-127; waves support MIDI 24-119.
 
 ACCEPTANCE IN FL (not automated here)
@@ -257,8 +288,9 @@ Load the bank; verify squares sustain until note-off and all waves sound.
 Compare native snare key 0 with GM key 38: same sound, same pitch.
 Compare native key 3 with GM keys 35/36: same sound, same pitch.
 Audition all 19 native keys against the tester, then a rapid drum sequence.
-Compare Ch1 velocities 7/8, 63/64, 119/120 in the tester; Ch3/drums should
-not change loudness with velocity. Check your exported MIDI values.
+Compare Ch1 velocities 7/8, 63/64, 119/120 in the tester. For Ch3 compare
+42/43 and 84/85, then loop through quiet/loud notes using the same wave.
+Drums should not change loudness with velocity. Check exported MIDI values.
 
 FL reference:
 https://www.image-line.com/fl-studio-learning/fl-studio-beta-online-manual/html/plugins/Fruity%20LSD.htm

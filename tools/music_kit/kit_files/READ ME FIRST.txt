@@ -5,6 +5,15 @@ Make a MIDI in your music program (MuseScore, FL Studio, anything that exports
 .mid), drag it onto "DROP YOUR SONG HERE", and the game opens playing your song
 on the title screen. No install needed.
 
+UPDATING FROM AN OLDER KIT
+-------------------------
+This is kit version 4. Extract it into a NEW folder and use its
+"DROP YOUR SONG HERE.bat". Keep your songs; do not copy the old _engine over
+the new one. Updating only the DLS/SF2 does not update the tester.
+Ch3 now follows three velocity bands: 1-42 = 25%, 43-84 = 50%, 85-127 = 100%.
+For an older song to keep its previous full-volume Ch3, use velocities 85-127.
+Read VOLUME below before adjusting your mix.
+
 
 QUICK START
 -----------
@@ -87,8 +96,13 @@ THE LIMITS
           96-103 = 12, 104-111 = 13, 112-119 = 14, 120-127 = 15.
           Velocity 0 means note-off. Use MIDI numbers, not a DAW's percent
           display. In MuseScore, dynamics (p, mf, f) change the velocity.
-     Ch3: no volume control. It is always full volume, so velocity does
-          nothing there. Put quiet parts on Ch1 or Ch2 instead.
+     Ch3 (kit version 4): MIDI velocity 1-42 = 25% volume,
+          43-84 = 50%, 85-127 = 100%. Velocity 0 is note-off.
+          The hardware offers these three levels, not a smooth fade.
+          Older testers forced full volume: install this complete new kit.
+          Existing songs may sound quieter. To preserve their old balance,
+          set Ch3 velocities to 85-127. The original MIDI is never changed.
+          Native .asm songs keep their explicitly authored volume settings.
      Ch4: each drum has its own fixed envelope. Velocity does not make a
           drum quieter; it only chooses the winner of simultaneous hits.
      Mixer volume/CC automation does not export into the game's dynamics.
@@ -211,7 +225,11 @@ the game), and what the game plays is authoritative.
                does not tell the converter which square/wave to use.
                DLS square velocity response is approximate; use the exact
                MIDI table above and check the exported MIDI in the tester.
-               Ch3 and drum DLS presets ignore velocity for loudness.
+               DLS1 waves need manual preview selection: Wave N = 100%,
+               Wave N 25% or Wave N 50% = quieter. Also set MIDI velocity;
+               the patch alone does not change exported game volume.
+               SF2/SFZ waves follow the three velocity bands automatically.
+               Drum DLS presets ignore velocity for loudness.
                See DLS QUICK START.txt in DAW Samples for the full map.
   Other:       any program that can load a .sf2 SoundFont works the same way.
                Without SoundFont support, the .sfz files (free sfizz plugin)

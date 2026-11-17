@@ -280,7 +280,13 @@ function ConvertTo-CleanMidi([byte[]]$d, [hashtable]$GmDrums) {
 					$active[$e.P].End = $e.Tick; $active.Remove($e.P)
 				}
 			} elseif ($e.Kind -eq 'on') {
-				$evs.Add([pscustomobject]@{ Tick = $e.Tick; Order = 2; Seq = $seq++; Bytes = [byte[]]@(0x90, $e.P, $e.V) })
+				$v = $e.V
+				# Quantize BEFORE pokemid loses the low three velocity bits.
+				# Its floor(v/8) becomes the NR32 code: 3=25%, 2=50%, 1=100%.
+				if ($ch -eq 'Ch3') {
+					$v = if ($v -le 42) { 24 } elseif ($v -le 84) { 16 } else { 8 }
+				}
+				$evs.Add([pscustomobject]@{ Tick = $e.Tick; Order = 2; Seq = $seq++; Bytes = [byte[]]@(0x90, $e.P, $v) })
 			} else {
 				$evs.Add([pscustomobject]@{ Tick = $e.Tick; Order = 0; Seq = $seq++; Bytes = [byte[]]@(0x80, $e.P, 0) })
 			}

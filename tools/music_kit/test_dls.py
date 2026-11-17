@@ -39,12 +39,12 @@ class DLSExportTest(unittest.TestCase):
             lists = {b[:4]: b[4:] for t, b, _ in top if t == b'LIST'}
             pool = child(data[12:], b'ptbl')
             size, count = struct.unpack_from('<II', pool)
-            self.assertEqual((size, count), (8, 38))
-            offsets = struct.unpack_from('<38I', pool, 8)
+            self.assertEqual((size, count), (8, 68))
+            offsets = struct.unpack_from('<68I', pool, 8)
             waves = list(chunks(lists[b'wvpl']))
             self.assertEqual(tuple(p for _, _, p in waves), offsets)
             instruments = list(chunks(lists[b'lins']))
-            self.assertEqual(len(instruments), 21)
+            self.assertEqual(len(instruments), 51)
             aliases = dict(enumerate(range(19))) | pack.GM_DRUMS
             drum_count = 0
             for _, ins, _ in instruments:
@@ -71,6 +71,23 @@ class DLSExportTest(unittest.TestCase):
                         self.assertEqual(loops, 1)
                         self.assertEqual(struct.unpack_from('<IIII', options, 20), (16, 0, 0, 1200))
             self.assertEqual(drum_count, 2)
+            # DLS1 fixed-level presets use scaled PCM, not unsupported layers.
+            for idx in range(15):
+                original = child(waves[4 + idx][1][4:], b'data')
+                original = struct.unpack('<1200h', original)
+                for offset, gain in enumerate((0.25, 0.5)):
+                    pcm = child(waves[38 + idx * 2 + offset][1][4:], b'data')
+                    self.assertEqual(struct.unpack('<1200h', pcm),
+                                     tuple(round(v * gain) for v in original))
+            sfdata = sf.read_bytes()
+            pdta = next(b[4:] for t, b, _ in chunks(sfdata, 12)
+                        if t == b'LIST' and b[:4] == b'pdta')
+            generators = list(struct.iter_unpack('<HH', child(pdta, b'igen')))
+            bands = [value for op, value in generators if op == 44]
+            for lo, hi in ((1, 42), (43, 84), (85, 127)):
+                self.assertEqual(bands.count(lo | hi << 8), 15)
+            mods = list(struct.iter_unpack('<HHhHH', child(pdta, b'imod')))
+            self.assertEqual(mods[:-1], [(0x0502, 48, 0, 0, 0)] * 45)
 
 
 if __name__ == '__main__':

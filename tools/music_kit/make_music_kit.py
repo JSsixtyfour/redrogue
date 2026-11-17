@@ -385,7 +385,7 @@ def main():
         "kitDate": date, "buildHash": git, "rgbds": RGBDS_VERSION, "pokemid": "0.9", "mgba": MGBA_VERSION,
         "crystalTracker": TRACKER_VERSION,
         # 3 (2026-11-08): loop set by a "Loop" track; begin/end markers are song-wide
-        "kitSchema": 3, "engine": ENGINE_ID,
+        "kitSchema": 4, "engine": ENGINE_ID,
         "engineHashes": engine_hashes(), "romSha256": sha256_file(os.path.join(REPO, "pokered.gbc")),
         "importBudget": budget, "songIdRoom": id_room, "romSpace": space,
         "flags": flags,
@@ -470,6 +470,12 @@ def main():
     record_title.cmd_kitswitch(os.path.join(out, "test.gbc"), os.path.join(out, "test.map"))
 
     # 3e. Waves above 4 reach the song, and the converter says so.
+    log("check: all Ch3 velocity bands through the staged converter")
+    asm = os.path.join(out, "wave_velocity.asm")
+    print(convert(os.path.join(WORK, "wave_velocity.mid")), end="")
+    convert(os.path.join(WORK, "wave_velocity.mid"), "-NoBuild", "-OutAsm", winpath(asm))
+    test_midis.check_wave_velocity(open(asm).read())
+
     log("check: wave5.mid keeps wave 6")
     asm = os.path.join(out, "wave5.asm")
     said = convert(os.path.join(WORK, "wave5.mid"), "-NoBuild", "-OutAsm", winpath(asm))

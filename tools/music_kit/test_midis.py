@@ -252,6 +252,37 @@ def loop_tests(out):
     smf.write(os.path.join(out, "conflicting_markers.mid"), tracks, ppq=MS_Q)
 
 
+def wave_velocity(path):
+    """All nonzero velocities, including both exact Ch3 band boundaries."""
+    t = smf.Track("Ch3 Wave 6")
+    for v in range(1, 128):
+        t.note(v * Q, Q // 2, 60, v, 2)  # leading rest exercises initial mute
+    smf.write(path, [t])
+
+
+def check_wave_velocity(text):
+    import re
+    block = text.split("Music_KitPreview_Ch3::", 1)[1]
+    parts = re.split(r"^([.\w]+):\s*$", block, flags=re.M)
+    labels = {parts[i]: parts[i+1].splitlines() for i in range(1, len(parts), 2)}
+    heard = []
+    def walk(label, volume=None):
+        for line in labels[label]:
+            m = re.search(r"note_type \d+, (\d+), (\d+)", line)
+            if m:
+                volume = int(m[1])
+                if volume:  # leading rest initializes mute and wave 0
+                    assert int(m[2]) == 6, line
+            m = re.search(r"sound_call (\S+)", line)
+            if m:
+                volume = walk(m[1], volume)
+            if re.match(r"\s*note ", line):
+                heard.append(volume)
+        return volume
+    walk('.loop')
+    assert heard == [3 if v <= 42 else 2 if v <= 84 else 1 for v in range(1, 128)], heard
+
+
 def write_all(out):
     os.makedirs(out, exist_ok=True)
     drumtest(os.path.join(out, "drumtest.mid"))
@@ -260,6 +291,7 @@ def write_all(out):
     daw_like(out)
     kitswitch(os.path.join(out, "kitswitch.mid"))
     wave5(os.path.join(out, "wave5.mid"))
+    wave_velocity(os.path.join(out, "wave_velocity.mid"))
     format0(os.path.join(out, "format0.mid"))
     notation_gaps(os.path.join(out, "notation_gaps.mid"))
     loop_tests(out)
