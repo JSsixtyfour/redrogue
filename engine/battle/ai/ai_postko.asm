@@ -18,14 +18,19 @@ DEF PK_BEST_SLOT EQU 29
 DEF PK_MON_LENGTH EQU 29
 ASSERT wEnemyMonPP + NUM_MOVES - wEnemyMon == PK_MON_LENGTH
 
-; Lexicographic preference, then expected attack damage, then the old type/
-; health/status score and party order (the enumeration already breaks ties).
+; Candidates compare by quality tier, then the old type/health/status score,
+; then expected attack damage, then party order (the enumeration already breaks
+; exact ties). Damage beneath the legacy score: more damage short of a KO is no
+; reason to send in a mon that matches up worse. A KO is its own tier (FINISH).
 ; If ALL reserves are threatened, their potential retaliation still breaks ties:
 ; the defensive scan uses maximum rolls/hit counts, not a certain prediction.
-DEF PK_FINISH EQU 4 ; reliable immediate KO, with time to deliver it
-DEF PK_SURVIVE_REPLY EQU 3
+DEF PK_FINISH EQU 5 ; reliable immediate KO, with time to deliver it
+DEF PK_SURVIVE_COMFORT EQU 4 ; survives and keeps the B5 margin (AI_RESERVE_HALF_KEEPS)
+DEF PK_SURVIVE_REPLY EQU 3 ; survives, but the hit takes that margin
 DEF PK_FIRST_REPLY EQU 2 ; fragile, but gets an attack before being KO'd
 DEF PK_DOOMED EQU 1 ; damaging move, but no safe opportunity to deliver it
+ASSERT PK_SURVIVE_COMFORT == PK_SURVIVE_REPLY + 1
+ASSERT PK_FINISH > PK_SURVIVE_COMFORT
 
 AIRankPostKOSendOut::
 	farcall AIRankSendOutCandidates
@@ -61,6 +66,14 @@ AIRankPostKOSendOut::
 	cp [hl]
 	jr c, .next
 	jr nz, .better
+; Same tier: the legacy score (lower is better) before damage. Enumeration is
+; in nondecreasing score order, so this is normally a tie or a loss; the lower
+; branch keeps the rule exact if that ever stops holding.
+	ld a, [wBuffer + AI_BUF_BESTPARTYSCORE]
+	ld hl, wBuffer + PK_BEST_TYPE
+	cp [hl]
+	jr c, .better
+	jr nz, .next
 	ld a, [wBuffer + PK_DAMAGE + 1]
 	ld hl, wBuffer + PK_BEST_DAMAGE + 1
 	sub [hl]
@@ -150,7 +163,17 @@ AIPostKOReply:
 ; Ask the established uncached fair-play defensive scan before staging the
 ; attacker's full block. It preserves the live mon and active KO caches.
 	farcall AIBestReserveSurvivesThreat
+; PK_SURVIVES: 0 = KO'd, 1 = survives, 2 = survives with the B5 margin. The same
+; scan leaves its answer in AI_BUF_RESERVEHALF at no extra cost: KEEPS means more
+; than half its HP is left (a faster reserve) or 3x the hit is below its HP (a
+; slower one, which takes a second hit before acting again). UNKNOWN (a Super
+; Fang was scanned) is not a margin. KEEPS is only ever written with e = 1.
+	ld a, [wBuffer + AI_BUF_RESERVEHALF]
+	cp AI_RESERVE_HALF_KEEPS
 	ld a, e
+	jr nz, .storeSurvives
+	inc a
+.storeSurvives
 	ld [wBuffer + PK_SURVIVES], a
 	pk_push wEnemyMon, PK_MON_LENGTH
 	pk_push wEnemyMoveNum, MOVE_LENGTH
@@ -266,7 +289,8 @@ AIPostKOReply:
 	and a
 	ld a, PK_FIRST_REPLY
 	jr z, .checkFinish
-	ld a, PK_SURVIVE_REPLY
+	ld a, [wBuffer + PK_SURVIVES]
+	add PK_SURVIVE_REPLY - 1 ; 1 -> SURVIVE_REPLY, 2 -> SURVIVE_COMFORT
 .checkFinish
 	ld b, a
 	ld a, [wEnemyMoveEffect]

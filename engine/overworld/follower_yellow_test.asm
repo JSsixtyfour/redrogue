@@ -480,7 +480,6 @@ FollowerPrepareMap::
 	add 4
 	ld c, a
 	ld a, [wFollowerSpawnState]
-	ld e, a
 	and a
 	jr z, .storeSpawnCoords
 	cp 1
@@ -547,8 +546,13 @@ FollowerPrepareMap::
 	ld [wSprite15StateData2 + SPRITESTATEDATA2_MAPX], a
 	ld a, $fe ; Yellow following marker; movement never goes through TryWalking
 	ld [wSprite15StateData2 + SPRITESTATEDATA2_MOVEMENTBYTE1], a
-	; Arrival placement does not determine facing. Start aligned with the
-	; player, then refresh at the first sprite update after player dispatch.
+	; Deliberate divergence from Yellow CalculatePikachuFacingDirection, which
+	; picks facing per spawn state (3 forces down, 7 faces opposite, 2/5 face
+	; the player). Here arrival placement does not determine facing: start
+	; aligned with the player, and FollowerInitializeSpawn re-copies it at the
+	; first slot-15 update. In this tree the outcomes match Yellow anyway: state
+	; 2 spawns directly behind the player, state 3 is hidden while overlapping,
+	; and nothing writes states 5 or 7.
 	ld a, [wSpritePlayerStateData1FacingDirection]
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
 	xor a
@@ -800,9 +804,13 @@ FollowerFacePlayer:
 
 ; Yellow Func_fc793: initialize screen geometry in the normal update pass,
 ; reconstruct the lag queue, and leave overlap hidden.
+; Also reached from FollowerUpdate for movement status 0 after the lead could
+; not follow (and for any unexpected status), so a revived lead that skipped
+; FollowerRefreshAfterText takes the player's facing here too.
 FollowerInitializeSpawn:
-	; The player has already updated this pass. Copy arrival facing here so
-	; map-load facing cannot leave the first visible follower frame reversed.
+	; Not in Yellow: the player has already updated this pass, so copy the
+	; arrival facing here. The value stored by FollowerPrepareMap at map load
+	; can be stale and left the first visible follower frame reversed.
 	ld a, [wSpritePlayerStateData1FacingDirection]
 	ld [wSprite15StateData1 + SPRITESTATEDATA1_FACINGDIRECTION], a
 	call FollowerInitializeScreenPosition

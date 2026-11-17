@@ -153,7 +153,7 @@ _Route13TrainerTips2Text::
 
 	para "Use SELECT to"
 	line "switch ITEM order"
-	cont "in ITEM BAG!“"
+	cont "in ITEM BAG!"
 	done
 
 _Route13SignText::

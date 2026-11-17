@@ -71,6 +71,30 @@ class PostKOTest(unittest.TestCase):
         self.h.write8("wEnemyMon3PP", 0)
         self.assertEqual(self.select(), 1)
 
+    def test_comfortable_survivor_beats_a_stronger_reply_that_barely_survives(self):
+        # Both survive Starmie's Thunderbolt and have equal legacy scores. The
+        # first takes most of its HP and hits harder; the bulky second keeps the
+        # B5 margin (slower than the player: 3x the hit stays below its HP).
+        self.boot([self.mon("SLOWBRO", ["THUNDERBOLT"]),
+                   self.mon("SLOWBRO", ["TACKLE"])])
+        self.word("wEnemyMon3Special", 400)
+        self.assertEqual(self.select(), 2)
+        self.word("wEnemyMon3Special", 100)  # control: no margin either side
+        self.assertEqual(self.select(), 1)  # same tier: damage decides again
+
+    def test_legacy_score_outranks_damage_within_a_tier(self):
+        # Both bulky Slowbro keep the margin. The poisoned one (+10 legacy) hits
+        # far harder, but extra damage short of a KO does not buy a worse mon.
+        self.boot([self.mon("SLOWBRO", ["TACKLE"]),
+                   self.mon("SLOWBRO", ["THUNDERBOLT"])])
+        for slot in (2, 3):
+            self.word(f"wEnemyMon{slot}Special", 400)
+        self.word("wBattleMonHP", 900)  # 400-Special Thunderbolt must not be a FINISH
+        self.h.write8("wEnemyMon3Status", 1 << 3)  # poison
+        self.assertEqual(self.select(), 1)
+        self.h.write8("wEnemyMon3Status", 0)  # control: equal scores
+        self.assertEqual(self.select(), 2)  # damage breaks the tie
+
     def test_faster_fragile_finisher_then_paralysis_reverses_choice(self):
         self.boot([self.mon("ELECTRODE", ["THUNDERBOLT"]),
                    self.mon("SLOWBRO", ["THUNDERBOLT"])])

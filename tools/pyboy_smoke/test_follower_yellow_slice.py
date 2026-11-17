@@ -251,10 +251,24 @@ class YellowFollowerSliceTests(unittest.TestCase):
             r"(?s)\.spawnAhead.*?SPRITE_FACING_UP.*?SPRITE_FACING_LEFT.*?"
             r"jr \.spawnRight",
         )
-        self.assertRegex(prepare, r"(?s)\.faceDown\s+ld a, SPRITE_FACING_DOWN")
-        self.assertRegex(prepare, r"(?s)\.faceOpposite.*?xor 4")
-        self.assertRegex(prepare, r"(?s)\.computeFacing\s+call FollowerComputeFacing")
+        # Arrival facing deliberately copies the player rather than Yellow's
+        # per-state table, then is refreshed after player dispatch.
+        self.assertRegex(
+            prepare,
+            r"(?s)\.storeSpawnCoords.*?"
+            r"ld a, \[wSpritePlayerStateData1FacingDirection\]\s+"
+            r"ld \[wSprite15StateData1 \+ SPRITESTATEDATA1_FACINGDIRECTION\], a",
+        )
         self.assertRegex(prepare, r"xor a\s+ld \[wFollowerSpawnState\], a")
+        initialize = self.core.split("FollowerInitializeSpawn:", 1)[1].split(
+            "FollowerDequeueCommand:", 1
+        )[0]
+        self.assertRegex(
+            initialize,
+            r"(?s)ld a, \[wSpritePlayerStateData1FacingDirection\]\s+"
+            r"ld \[wSprite15StateData1 \+ SPRITESTATEDATA1_FACINGDIRECTION\], a\s+"
+            r"call FollowerInitializeScreenPosition",
+        )
 
     def test_battle_return_preserves_slot_15_before_spawn_scheduling(self):
         prepare = self.core.split("FollowerPrepareMap::", 1)[1].split(

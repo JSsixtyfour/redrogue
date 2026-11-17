@@ -66,7 +66,8 @@ AIPartySlotBit:
 ; penalty is relative: if all living reserves are in bad shape, the
 ; lowest-scoring one still wins (the inherited best-of-a-bad-set contract).
 ; For T2/T3 after a faint, AIRankPostKOSendOut refines this order by survival
-; and immediate retaliation. The original score remains its final tiebreak.
+; (and its margin) and immediate retaliation. Within a tier the original score
+; decides, ahead of expected damage.
 ;
 ; Clobbers af, bc, de, hl.
 AISelectSendOut::

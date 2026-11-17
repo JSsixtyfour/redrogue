@@ -29,9 +29,17 @@ class TypeImmunityTest(gaps._MoveLayerGapsBase):
 
     def test_fixed_damage_called_moves_and_self_setup_are_not_blocked(self):
         for move in ('SEISMIC_TOSS', 'NIGHT_SHADE', 'SUPER_FANG', 'METRONOME',
-                     'MIRROR_MOVE', 'SWORDS_DANCE'):
+                     'MIRROR_MOVE', 'SWORDS_DANCE', 'COUNTER'):
             with self.subTest(move=move):
                 self.assertEqual(self.scores(('FIRE', 'GHOST'), [move])[0], self.ai['AI_SCORE_BASE'])
+
+    def test_counter_damage_is_not_scored_off_the_type_chart(self):
+        # Counter skips AdjustDamageForMoveType: neither GHOST immunity nor a
+        # NORMAL weakness changes what it does.
+        for types in (('NORMAL', 'NORMAL'), ('GHOST', 'POISON')):
+            with self.subTest(types=types):
+                self.assertEqual(self.scores(types, ['COUNTER', 'SURF'])[0],
+                                 self.ai['AI_SCORE_BASE'])
 
     def test_resistance_keeps_existing_small_penalty(self):
         self.assertEqual(self.scores(('ROCK', 'ROCK'), ['HYPER_BEAM', 'SURF'])[0],

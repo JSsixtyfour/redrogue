@@ -277,7 +277,7 @@ Every mapped key plays the recording at its original pitch.
         aliases = ', '.join(str(g) for g, k in sorted(GM_DRUMS.items()) if k == key)
         guide += '  %3d    %-17s %s\n' % (key, name, aliases)
     guide += '''
-PROGRAMS (zero-based; some hosts display these as 1-20)
+PROGRAMS (zero-based; some hosts display these as 1-50)
 0-3: Square 12.5/25/50/75; 4-8: Wave 0-4; 9: Drums;
 10-19: Wave 5-14. Percussion bank: program 0 = Game Boy Drums.
 20-49: pairs Wave 0 25%/50% through Wave 14 25%/50% (DLS only).

@@ -93,13 +93,11 @@ def duration_estimate(g: parse.GameData, run: model.Run) -> float:
 def sink_price_yen(g: parse.GameData, knob: str) -> int:
     """A lobby sink price in yen. The salesman and TM knobs are ONE BCD byte of
     THOUSANDS since 2026-09-28 ($20 = 20,000; the ROM splits it across the top
-    two money bytes, see the *_WORD DEFs). The daycare's is still the old
-    middle-byte form (2-byte $05,$00 = 500), so it is x 100. The Move Tutor
-    fees are plain integers (TutorMovePrices encodes them with bcd3)."""
-    if knob.startswith("MOVE_TUTOR_PRICE"):
+    two money bytes, see the *_WORD DEFs). The Move Tutor fees and the
+    daycare's per-level fee are plain integers (encoded with bcd3)."""
+    if knob.startswith(("MOVE_TUTOR_PRICE", "DAYCARE_PRICE")):
         return g.knobs[knob]
-    scale = 100 if knob.startswith("DAYCARE") else 1000
-    return model.bcd(g.knobs[knob]) * scale
+    return model.bcd(g.knobs[knob]) * 1000
 
 
 TM_TIERS = ("F", "D", "C", "B", "A", "S")
@@ -119,7 +117,7 @@ def shop_prices(g: parse.GameData) -> dict[str, int]:
         "pp_up": g.item_prices["PP_UP"],
         "rare_candy": g.item_prices["RARE_CANDY"],
         "salesman_pokeball": sink_price_yen(g, "SALESMAN_PRICE_POKEBALL_BCD"),
-        "daycare_round": sink_price_yen(g, "DAYCARE_PRICE_PER_ROUND_BCD"),
+        "daycare_level": sink_price_yen(g, "DAYCARE_PRICE_PER_LEVEL"),
     }
     for t in TM_TIERS:
         out[f"tm_{t}"] = sink_price_yen(g, f"TM_PRICE_{t}_BCD")
@@ -324,7 +322,7 @@ def section_money(g: parse.GameData, args, out: Path) -> list[str]:
     lines.append("|---|---|")
     names = {"full_restore": "Full Restore", "revive": "Revive", "vitamin": "Vitamin / HP Up",
              "pp_up": "PP Up", "rare_candy": "Rare Candy", "salesman_pokeball": "salesman Pokeball",
-             "daycare_round": "daycare round"}
+             "daycare_level": "daycare level"}
     names |= {f"tm_{t}": f"TM grade {t}" for t in TM_TIERS}
     names |= {f"tutor_{t}": f"tutor grade {t}" for t in TM_TIERS}
     for key, label in names.items():
@@ -333,10 +331,10 @@ def section_money(g: parse.GameData, args, out: Path) -> list[str]:
 
     lines.append("### Purchasing power at each checkpoint\n")
     lines.append("| checkpoint | spendable | Full Restores | Revives | Vitamins | PP Ups | "
-                 "TMs (C) | TMs (B) | TMs (S) | tutor (B) | salesman Pokeballs | daycare rounds |")
+                 "TMs (C) | TMs (B) | TMs (S) | tutor (B) | salesman Pokeballs | daycare levels |")
     lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
     buys = ("full_restore", "revive", "vitamin", "pp_up", "tm_C", "tm_B", "tm_S", "tutor_B",
-            "salesman_pokeball", "daycare_round")
+            "salesman_pokeball", "daycare_level")
     all_rows = []
     for r in rows:
         m = r["spendable"]

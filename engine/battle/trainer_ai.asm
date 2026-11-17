@@ -1140,7 +1140,7 @@ AIOwnsPhysicalMove:
 
 ; All tiers heavily discourage type-immune attacks. T1+ also encourage effective
 ; moves (even non-damaging) and mildly discourage resisted moves when another
-; damaging type is available. Fixed-damage and called moves bypass this layer.
+; damaging type is available. Fixed-damage, called moves and Counter bypass this layer.
 AIMoveChoiceModification3:
 	ld hl, wBuffer - 1 ; temp move selection array (-1 byte offset)
 	ld de, wEnemyMonMoves ; enemy moves
@@ -1153,6 +1153,11 @@ AIMoveChoiceModification3:
 	and a
 	ret z ; no more moves in move set
 	inc de
+; Counter returns doubled wDamage and skips AdjustDamageForMoveType
+; (core.asm HandleCounterMove), so it hits a GHOST and its type never scales it.
+; Tested on the id before ReadMove: 4 bytes, and this bank has none to spare.
+	cp COUNTER
+	jr z, .nextMove
 	call ReadMove
 ; Phase 3 Step 3: fixed-damage moves ignore type effectiveness completely in
 ; this engine - Seismic Toss deals the user's level whatever it hits, and it
@@ -1194,6 +1199,7 @@ AIMoveChoiceModification3:
 	pop bc
 	pop hl
 	ld a, [wTypeEffectiveness]
+	ld c, a ; c is free here; .notEffectiveMove saves bc before reusing it
 	and a
 	jr nz, .scoreEffectiveness
 ; Type-immune attacks are whole-move no-ops, just like AI_REDUNDANT's heavy
@@ -1208,9 +1214,9 @@ AIMoveChoiceModification3:
 .scoreEffectiveness
 ; Novices share the no-op immunity check, but no weakness/resistance strategy.
 	ld a, [wAITier] ; cached tier + 1
-	cp 1
+	dec a
 	jr z, .nextMove
-	ld a, [wTypeEffectiveness]
+	ld a, c
 	cp EFFECTIVE
 	jr z, .nextMove
 	jr c, .notEffectiveMove
