@@ -265,12 +265,23 @@ AIRankSendOutCandidatesBelow:
 	ld [wEnemyMonType1], a
 	ret
 
-; Post-KO refinement enumerates candidates in the original ranking order.
-; Damage estimation can overwrite the threat-type scratch, so rebuild it.
-AIRankRemainingSendOutCandidates::
-	farcall AIBuildPlayerThreatTypes
+; One party slot's full (unbounded) AIScoreSendOutMon score, so the post-KO pass
+; can score every reserve ONCE instead of re-ranking all of them after each
+; candidate (C0 cut 2, AI_T4_REGRET_PLAN, 2026-11-17).
+; INPUT: e = a living party slot that is not the active mon; the believed threat
+; types already built (AI_BUF_THREATTYPES). OUTPUT: e = the score (below $ff).
+; Writes AI_BUF_BESTPARTYSCORE ($ff) and the three bytes AIScoreSendOutMon borrows
+; (wEnemyMonType1/2, wPlayerMoveType): the caller saves and restores them.
+; Clobbers af, bc, d, hl.
+AIScoreSendOutSlot::
 	ld a, $ff
-	jp AIRankSendOutCandidatesBelow
+	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a ; no bound, so nothing is pruned
+	ld a, e
+	ld hl, wEnemyMon1
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld c, wEnemyMon1MaxHP - wEnemyMon1
+	jp AIScoreSendOutMon
 
 ; Scores one enemy mon as a send-out target. LOWER is better.
 ; INPUT:  hl = the mon's struct base, c = offset of its MaxHP. Works on both a

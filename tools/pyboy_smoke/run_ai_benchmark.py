@@ -11,6 +11,7 @@ from statistics import mean
 
 from harness import RedRogueHarness
 import benchmark_policies
+from fight2_driver import Fight2Driver
 
 
 AI_KILL = 5
@@ -412,71 +413,47 @@ def run_tier(
         )
     harness = RedRogueHarness(repo_root, artifacts_dir)
     trials: list[dict[str, object]] = []
-    tier_override = 0 if tier is None else tier + 1
     try:
-        harness.write8("wAIDebugTierOverride", tier_override)
-        harness.hook_flag(
-            "DebugFight2Setup",
-            action=lambda: harness.write8("wAIDebugTierOverride", tier_override),
+        # Hook registration lives in fight2_driver.Fight2Driver (shared with
+        # ai_counterfactual), in the original order: the score and TrainerAI
+        # timing hooks before the policy hook, the policy hook before the turn
+        # telemetry (so it records the move this benchmark actually selected),
+        # and the switch/item flags right after the telemetry.
+        hooked: dict[str, object] = {}
+
+        def before_policy(h: RedRogueHarness) -> None:
+            hooked["scores"] = h.hook_ai_scores()
+            hooked["trainer_ai_calls"] = h.hook_trainer_ai_calls()
+
+        def after_telemetry(h: RedRogueHarness) -> None:
+            hooked["switches"] = h.hook_flag("SwitchEnemyMon")
+            hooked["items"] = [  # assembled only with AI_TRAINER_ITEMS on
+                h.hook_flag(label)
+                for label in (
+                    "AIUseFullRestore", "AIUsePotion", "AIUseSuperPotion",
+                    # AIUseXAccuracy/DireHit/XSpecial are unreferenced vanilla
+                    # code, commented out in the 2026-09-27 code sweep.
+                    "AIUseHyperPotion", "AIUseFullHeal",
+                    "AIUseGuardSpec", "AIUseXAttack",
+                    "AIUseXDefend", "AIUseXSpeed",
+                )
+                if label in h.symbols._symbols
+            ]
+
+        driver = Fight2Driver(
+            harness, tier=tier, player_policy=player_policy, move_powers=move_powers,
+            before_policy=before_policy, after_telemetry=after_telemetry,
         )
-        scores = harness.hook_ai_scores()
-        trainer_ai_calls = harness.hook_trainer_ai_calls()
+        scores = hooked["scores"]
+        trainer_ai_calls = hooked["trainer_ai_calls"]
         all_trainer_ai_calls: list[dict[str, object]] = []
-        harness.register_hook(
-            "MainInBattleLoop.noLinkBattle",
-            lambda _context: harness.write8(
-                "wTestBattlePlayerSelectedMove",
-                choose_player_move(harness, player_policy, move_powers),
-            ),
-        )
-        # Register telemetry after the policy hook so its recorded player move
-        # is the move this benchmark actually selected for the turn.
-        turns = harness.hook_turn_telemetry()
-        switches = harness.hook_flag("SwitchEnemyMon")
-        items = [  # assembled only with AI_TRAINER_ITEMS on
-            harness.hook_flag(label)
-            for label in (
-                "AIUseFullRestore", "AIUsePotion", "AIUseSuperPotion",
-                # AIUseXAccuracy/DireHit/XSpecial are unreferenced vanilla
-                # code, commented out in the 2026-09-27 code sweep.
-                "AIUseHyperPotion", "AIUseFullHeal",
-                "AIUseGuardSpec", "AIUseXAttack",
-                "AIUseXDefend", "AIUseXSpeed",
-            )
-            if label in harness.symbols._symbols
-        ]
-        victories = harness.hook_flag("TrainerBattleVictory")
-        defeats = harness.hook_flag("HandlePlayerBlackOut")
-        # FIGHT, or PKMN (saved item 2) when a switching policy wants out.
-        voluntary: dict[str, int | None] = {"target": None, "count": 0}
-        switch_memo = {"last_turn": False}
-
-        def battle_menu() -> None:
-            target = None
-            if player_policy in benchmark_policies.SWITCHING_POLICIES:
-                target = benchmark_policies.choose_switch(
-                    policy_rules(), benchmark_policies.read_state(harness),
-                    player_policy, switch_memo["last_turn"])
-            switch_memo["last_turn"] = target is not None
-            voluntary["target"] = target
-            harness.write8("wBattleAndStartSavedMenuItem", 0 if target is None else 2)
-
-        harness.hook_flag("DisplayBattleMenu", action=battle_menu)
-        # Open the move menu with the cursor ON the policy's chosen slot. Since
-        # SelectMenuItem mirrors the cursor's move into
-        # wTestBattlePlayerSelectedMove, pinning the cursor to slot 0 made every
-        # trial use slot 0 regardless of policy, and once slot 0 ran out of PP
-        # the "no PP" bounce re-opened the menu on slot 0 forever (seed 1:
-        # 887 bounces, measured 2026-09-24).
-        harness.hook_flag(
-            "MoveSelectionMenu",
-            action=lambda: harness.write8(
-                "wPlayerMoveListIndex",
-                choose_player_slot(harness, player_policy, move_powers)[0],
-            ),
-        )
-        party_inputs, party_modes, party_trace = prepare_party_driver(harness, voluntary)
-        harness.boot_fight2(seed=seed)
+        turns = driver.turns
+        switches = hooked["switches"]
+        items = hooked["items"]
+        victories, defeats = driver.victories, driver.defeats
+        voluntary = driver.voluntary
+        party_trace = driver.party_trace
+        driver.boot(seed)
         identity = matchup_identity(harness)
         fingerprint = matchup_fingerprint(identity)
         rng_state = {
@@ -496,27 +473,14 @@ def run_tier(
 
         for trial_index in range(trials_count):
             harness.load_state(baseline)
-            harness.write8("wAIDebugTierOverride", tier_override)
+            driver.resync()
             score_start, turn_start = len(scores), len(turns)
             trainer_ai_start = len(trainer_ai_calls)
             switch_start = switches["count"]
             player_switch_start = voluntary["count"]
             item_start = sum(item["count"] for item in items)
             victory_start, defeat_start = victories["count"], defeats["count"]
-            handled_party_inputs = party_inputs["count"]
-            party_mode_index = len(party_modes)
-            for _ in range(max_steps):
-                if party_inputs["count"] > handled_party_inputs:
-                    harness.tick(2)
-                    harness.tap("a" if party_modes[party_mode_index] else "b")
-                    handled_party_inputs = party_inputs["count"]
-                    party_mode_index += 1
-                else:
-                    harness.tap("a", 1)
-                    harness.tick(8)
-                if victories["count"] > victory_start or defeats["count"] > defeat_start:
-                    break
-            else:
+            if driver.play(max_steps) == "timeout":
                 image_path, state_path = harness.write_failure_artifacts(
                     f"ai_benchmark_seed{seed}_tier{tier}_trial{trial_index}"
                 )

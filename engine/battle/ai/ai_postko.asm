@@ -49,6 +49,28 @@ AIRankPostKOSendOut::
 	ld a, [wAITier] ; stored as tier + 1, not Bankswitch's destroyed a
 	cp AI_TIER_SKILLED + 1
 	ret c
+; One living reserve is no choice: keep the legacy answer and skip ~265k
+; cycles. FaintEnemyPokemon has already zeroed the fainted mon's party HP, so
+; every living struct is a reserve (if that ever failed, this would only run
+; the pass needlessly, never skip a real choice).
+	ld hl, wEnemyMon1HP
+	ld de, PARTYMON_STRUCT_LENGTH
+	ld a, [wEnemyPartyCount]
+	ld b, a
+	ld c, 0
+.countLiving
+	ld a, [hli]
+	or [hl]
+	dec hl
+	jr z, .notLiving
+	inc c
+.notLiving
+	add hl, de
+	dec b
+	jr nz, .countLiving
+	ld a, c
+	cp 2
+	ret c
 	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
 	cp $ff
 	ret z
@@ -59,6 +81,85 @@ AIRankPostKOSendOut::
 	ld [wBuffer + PK_BEST_QUALITY], a
 	ld [wBuffer + PK_BEST_DAMAGE], a
 	ld [wBuffer + PK_BEST_DAMAGE + 1], a
+; C0 cut 1 (2026-11-17): the scan below is pure computation, run at double speed
+; on CGB with the 60 FPS option, exactly as AIShouldSwitchAtSelectedSpeed wraps
+; the switch predicate. DMG, option-off and already-double callers are untouched.
+; Placed after the early exits so a pass that does no work pays no speed switch.
+	ldh a, [hGBC]
+	and a
+	jr z, .rankLoop
+	ld a, [wOptions2]
+	bit BIT_60_FPS, a
+	jr z, .rankLoop
+	ldh a, [rKEY1]
+	bit 7, a
+	jr nz, .rankLoop
+	predef SetCPUSpeed
+	call .rankLoop
+	predef SingleCPUSpeed
+	ret
+
+; C0 cut 2 (2026-11-17): score every slot ONCE into PARTY_LENGTH stack bytes
+; (score, or $ff = not a candidate), then take each next candidate from that
+; array. Before, each step re-ran the legacy ranker (the since-removed
+; AIRankRemainingSendOutCandidates): a threat-type rebuild plus a full re-score of
+; every reserve (5 x 16.6k cycles measured on five
+; reserves). Same order: lowest score first, a tie keeps the earlier slot, a
+; skipped or ineligible slot never wins. wBuffer is full (30 of 30), hence the
+; stack; the array sits at sp + 0 whenever the loop is at its own level.
+.rankLoop
+	add sp, -PARTY_LENGTH
+	ld a, [wEnemyMonType1]
+	push af
+	ld a, [wEnemyMonType2]
+	push af
+	ld a, [wPlayerMoveType]
+	push af
+	ld e, 0 ; e = slot
+.scoreSlot
+	ld a, [wEnemyPartyCount]
+	cp e
+	jr z, .scored
+	ld d, $ff ; not a candidate unless proven below
+	ld a, [wEnemyMonPartyPos]
+	cp e
+	jr z, .storeScore ; never the mon that is out
+	push de
+	ld hl, wEnemyMon1HP
+	ld a, e
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	ld a, [hli]
+	or [hl]
+	pop de
+	jr z, .storeScore ; fainted
+	push de
+	farcall AIScoreSendOutSlot ; e in, e = score out (de survives the trip)
+	ld a, e
+	pop de
+	ld d, a
+.storeScore
+	ld hl, sp + 6 ; past the three saved bytes
+	ld a, l
+	add e
+	ld l, a
+	adc h
+	sub l
+	ld h, a
+	ld [hl], d
+	inc e
+	jr .scoreSlot
+.scored
+	pop af
+	ld [wPlayerMoveType], a
+	pop af
+	ld [wEnemyMonType2], a
+	pop af
+	ld [wEnemyMonType1], a
+; AIScoreSendOutSlot cleared the bound; the first candidate's own score is the
+; legacy score the loop compares against.
+	ld a, [wBuffer + PK_BEST_TYPE]
+	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a
 .candidate
 	call AIPostKOReply
 	ld a, [wBuffer + PK_QUALITY]
@@ -111,10 +212,37 @@ AIRankPostKOSendOut::
 	ld hl, wBuffer + AI_BUF_SENDOUT_SKIP
 	or [hl]
 	ld [hl], a
-	farcall AIRankRemainingSendOutCandidates
+; Next candidate from the cached scores (see .rankLoop).
+	ld c, a ; c = skip mask, bit N = slot N, shifted out one slot at a time
+	ld a, $ff
+	ld [wBuffer + AI_BUF_BESTPARTYSLOT], a
+	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a
+	ld hl, sp + 0
+	ld e, 0
+.pick
+	ld a, [wEnemyPartyCount]
+	cp e
+	jr z, .picked
+	ld a, [hli]
+	srl c
+	jr c, .pickNext ; already a candidate
+	ld d, a
+	ld a, [wBuffer + AI_BUF_BESTPARTYSCORE]
+	cp d
+	jr c, .pickNext ; the current best is lower
+	jr z, .pickNext ; a tie keeps the earlier slot; $ff never beats the $ff start
+	ld a, d
+	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a
+	ld a, e
+	ld [wBuffer + AI_BUF_BESTPARTYSLOT], a
+.pickNext
+	inc e
+	jr .pick
+.picked
 	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
 	cp $ff
 	jp nz, .candidate
+	add sp, PARTY_LENGTH
 	ld a, [wBuffer + PK_BEST_SLOT]
 	ld [wBuffer + AI_BUF_BESTPARTYSLOT], a
 	ld a, [wBuffer + PK_BEST_TYPE]
@@ -263,10 +391,22 @@ AIPostKOReply:
 	jp z, .nextMove
 .estimate
 	farcall AIEstimateDamage
+; One estimate per move: the reliable path scales wAIDamageEstimate in place,
+; so keep the raw word and restore it for the expected path. Nothing downstream
+; reads any other output of the estimate (re-estimating cost ~20k cycles a move).
+	ld hl, wAIDamageEstimate
+	ld a, [hli]
+	ld l, [hl]
+	ld h, a
+	push hl
 	farcall AIAdjustEnemyDamageForReliableDelivery
 	farcall AIMoveIsReliableKO
-	push af ; reliable KO flag, before the expected-damage estimate
-	farcall AIEstimateDamage
+	pop hl ; flags survive
+	push af ; reliable KO flag
+	ld a, h
+	ld [wAIDamageEstimate], a
+	ld a, l
+	ld [wAIDamageEstimate + 1], a
 	farcall AIScaleDamageForCrit
 	farcall AIAdjustEnemyDamageForExpectedDelivery
 	farcall AIScaleDamageByAccuracy

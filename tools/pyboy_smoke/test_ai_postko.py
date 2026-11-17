@@ -204,6 +204,14 @@ class PostKOTest(unittest.TestCase):
         for staged, species, context in seen:
             self.assertEqual((species, context), (staged, staged))
 
+    def test_single_living_reserve_skips_the_scan(self):
+        self.boot()
+        self.word("wEnemyMon2HP", 0)  # only slot 2 is left: there is no choice
+        estimates = []
+        self.h.register_hook("AIEstimateDamage", lambda _: estimates.append(1))
+        self.assertEqual(self.select(), 2)
+        self.assertEqual(estimates, [])
+
     def test_six_mon_scan_has_bounded_latency_and_stack_use(self):
         self.boot([self.mon("SLOWBRO", ["SURF", "THUNDERBOLT", "PSYCHIC_M", "ICE_BEAM"])
                    for _ in range(5)])
