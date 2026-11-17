@@ -7644,7 +7644,7 @@ ApplyBurnAndParalysisPenaltiesToPlayer:
 	ld a, $1
 	jr ApplyBurnAndParalysisPenalties
 
-ApplyBurnAndParalysisPenaltiesToEnemy:
+ApplyBurnAndParalysisPenaltiesToEnemy::
 	xor a
 
 ApplyBurnAndParalysisPenalties:

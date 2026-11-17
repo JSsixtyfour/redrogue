@@ -80,6 +80,7 @@ INCLUDE "engine/battle/ai/ai_core.asm"
 ; TURN, not once per move, so unlike every AILayer* routine it is not forced
 ; into bank $0E by the scoring-loop dispatch.
 INCLUDE "engine/battle/ai/ai_switching.asm"
+INCLUDE "engine/battle/ai/ai_postko.asm"
 
 ; Pinned to bank $3C: the enemy plans its turn before the battle menu.
 INCLUDE "engine/battle/ai/ai_turn_plan.asm"

@@ -65,6 +65,8 @@ AIPartySlotBit:
 ; status penalty (freeze +40, sleep/paralysis/burn +25, poison +10). Every
 ; penalty is relative: if all living reserves are in bad shape, the
 ; lowest-scoring one still wins (the inherited best-of-a-bad-set contract).
+; For T2/T3 after a faint, AIRankPostKOSendOut refines this order by survival
+; and immediate retaliation. The original score remains its final tiebreak.
 ;
 ; Clobbers af, bc, de, hl.
 AISelectSendOut::
@@ -149,7 +151,7 @@ AISelectSendOut::
 	dec a
 	jr .commit
 .scoredLead
-	call AIRankSendOutCandidates
+	farcall AIRankPostKOSendOut
 
 	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
 	cp $ff
@@ -190,7 +192,7 @@ AISelectSendOut::
 ; OUTPUT: wBuffer + AI_BUF_BESTPARTYSLOT = best slot ($ff = none beat the
 ; bound), AI_BUF_BESTPARTYSCORE = its score. The three bytes PreviewTypeMatchup
 ; is fed through are restored. Clobbers af, bc, de, hl.
-AIRankSendOutCandidates:
+AIRankSendOutCandidates::
 	farcall AIBuildPlayerThreatTypes ; bank $0E; no register contract
 	xor a
 	ld [wBuffer + AI_BUF_SENDOUT_SKIP], a ; a fresh ranking excludes no one (#88)
@@ -261,6 +263,13 @@ AIRankSendOutCandidatesBelow:
 	pop af
 	ld [wEnemyMonType1], a
 	ret
+
+; Post-KO refinement enumerates candidates in the original ranking order.
+; Damage estimation can overwrite the threat-type scratch, so rebuild it.
+AIRankRemainingSendOutCandidates::
+	farcall AIBuildPlayerThreatTypes
+	ld a, $ff
+	jp AIRankSendOutCandidatesBelow
 
 ; Scores one enemy mon as a send-out target. LOWER is better.
 ; INPUT:  hl = the mon's struct base, c = offset of its MaxHP. Works on both a

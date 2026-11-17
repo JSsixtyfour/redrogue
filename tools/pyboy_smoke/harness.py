@@ -823,6 +823,10 @@ class RedRogueHarness:
             )
 
         def selected(_context) -> None:
+            # Post-KO refinement may run several legacy ranking passes. Read
+            # the final result after it restores its winning candidate.
+            pending["best_score"] = self.read8("wBuffer", 18)
+            pending["ranked_slot"] = self.read8("wBuffer", 19)
             pending["selected_slot"] = self.read8("hWhichPokemon")
             records.append(dict(pending))
 
