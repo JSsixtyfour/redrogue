@@ -114,9 +114,25 @@ class Fight2Driver:
                 h.tap("a" if self.party_modes[self._mode_index] else "b")
                 self._handled = self.party_inputs["count"]
                 self._mode_index += 1
-            else:
+            elif stop is None:
                 h.tap("a", 1)
                 h.tick(8)
+            else:
+                # The same 10 frames (A held for the first), one at a time, so a stop lands
+                # within a frame of the hook that asked for it: at the battle menu, before the
+                # menu has consumed an A and opened the move menu (measured 2026-11-17: the
+                # 10-frame step always ran past MoveSelectionMenu).
+                h.pyboy.button_press("a")
+                h.tick(1)
+                h.pyboy.button_release("a")
+                if stop():
+                    return "stopped"
+                for _ in range(9):   # tap's released frame + the 8 that follow it
+                    h.tick(1)
+                    if stop():
+                        return "stopped"
+                    if self.finished(victory_start, defeat_start) is not None:
+                        break
             result = self.finished(victory_start, defeat_start)
             if result is not None:
                 return result

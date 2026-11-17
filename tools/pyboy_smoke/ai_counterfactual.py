@@ -53,6 +53,7 @@ PLAN_MOVE_CHOSEN, PLAN_SWITCH, PLAN_PLANNED, PLAN_ARMED = 7, 6, 5, 4
 PLAN_SLOT_MASK = 0b111
 PP_MASK = 0x3F
 MAX_STEPS = 5000
+LOOKAHEAD = "lookahead_1"
 HEAL_EFFECTS = ("HEAL_EFFECT",)
 SETUP_EFFECTS = (
     *(f"{stat}_UP{n}_EFFECT" for stat in ("ATTACK", "DEFENSE", "SPEED", "SPECIAL", "ACCURACY", "EVASION")
@@ -146,6 +147,11 @@ class Decision:
     enemy_living: int
     player_hp: list[int] = field(default_factory=list)   # [hp, max]
     enemy_hp: list[int] = field(default_factory=list)
+    # Player-side host state at the save, so a replay chooses exactly as pass 1 did: whether
+    # the move menu had already opened (then the lookahead is skipped there) and the move
+    # override in force (a skipped turn still uses the previous turn's lookahead choice).
+    menu_open: bool = False
+    move_override: int | None = None
 
 
 # --------------------------------------------------------------------------- emulator side
@@ -154,9 +160,22 @@ class Replayer:
     """One harness + driver with the decision and outcome hooks registered once; per-branch
     behaviour comes from mutable fields (`self.branch`)."""
 
-    def __init__(self, seed: int, tier: int, policy: str, root: Path = ROOT):
+    def __init__(self, seed: int, tier: int, policy: str, root: Path = ROOT, look_seeds: int = 2):
         import run_ai_benchmark as rab
 
+        # lookahead_1 (A4): best_power's menu path, but each turn's move is chosen by trying
+        # every legal move for one turn over look_seeds seeds and keeping the one that leaves
+        # the AI worst off. It sees the enemy's planned move, so it is an upper-bound
+        # adversary, never a model of a human.
+        self.lookahead_seeds = look_seeds if policy == LOOKAHEAD else 0
+        driver_policy = "best_power" if policy == LOOKAHEAD else policy
+        self.in_trial = False
+        self._trial_menu = False
+        self._menu_flag = False
+        self._move_menus = 0
+        self._menu_mark = 0
+        self.look_turns = 0
+        self.look_skipped = 0
         self.root = root
         self.moves = parse_moves(root)
         battle = parse_rgbds_constants(root / "constants/battle_constants.asm")
@@ -164,8 +183,9 @@ class Replayer:
             "STORING_ENERGY", "THRASHING_ABOUT", "CHARGING_UP", "USING_TRAPPING_MOVE", "INVULNERABLE"))
         self.locked2 = sum(1 << battle[n] for n in ("NEEDS_TO_RECHARGE", "USING_RAGE"))
         self.h = h = RedRogueHarness(root, root / "tools/pyboy_smoke/artifacts")
-        self.driver = Fight2Driver(h, tier=tier, player_policy=policy,
+        self.driver = Fight2Driver(h, tier=tier, player_policy=driver_policy,
                                    move_powers=rab.parse_move_powers(root / "data/moves/moves.asm"))
+        h.register_hook("MoveSelectionMenu", lambda _c: self._count_move_menu())
         self.seed, self.tier, self.policy = seed, tier, policy
         self.outcome: dict[str, float] | None = None
         self.branch: dict[str, object] | None = None
@@ -225,9 +245,106 @@ class Replayer:
             self.h.write8("wRandomTable", b[2 + i], offset=i)
 
     # ---- decision hooks
+    def _count_move_menu(self):
+        self._move_menus += 1
+
     def _on_battle_menu(self):
+        if self.in_trial:
+            self._trial_menu = True   # a lookahead trial reached the next turn
+            return
+        self._menu_flag = True
+        self._menu_mark = self._move_menus
         if self.recorder:
             self.recorder.battle_menu()
+
+    # ---- A4 lookahead player
+    def _host_snapshot(self) -> dict:
+        d = self.driver
+        return {"v": d.victories["count"], "f": d.defeats["count"], "turns": len(d.turns),
+                "pin": d.party_inputs["count"], "pmodes": len(d.party_modes),
+                "handled": d._handled, "mode_index": d._mode_index,
+                "vol": dict(d.voluntary), "memo": dict(d.switch_memo), "mm": self._move_menus}
+
+    def _host_restore(self, s: dict) -> None:
+        d = self.driver
+        d.victories["count"], d.defeats["count"] = s["v"], s["f"]
+        del d.turns[s["turns"]:]
+        d.party_inputs["count"] = s["pin"]
+        del d.party_modes[s["pmodes"]:]
+        d._handled, d._mode_index = s["handled"], s["mode_index"]
+        d.voluntary.clear()
+        d.voluntary.update(s["vol"])
+        d.switch_memo.update(s["memo"])
+        self._move_menus = s["mm"]
+
+    def _board_key(self) -> str:
+        """Emulator-side identity of the board, so the same state always draws the same trial
+        seeds (pass 1 and every as-chosen replay pick the same player move)."""
+        h = self.h
+        data = bytes(h.read_bytes("wBattleMon", 0x20)) + bytes(h.read_bytes("wEnemyMon", 0x20))
+        data += bytes([h.read8("hRandomAdd"), h.read8("hRandomSub")])
+        data += bytes(h.read_bytes("wRandomTable", 10)) + bytes([h.read8("wAITurnPlan")])
+        return hashlib.sha256(data).hexdigest()[:16]
+
+    def lookahead(self) -> None:
+        """Choose this turn's player move by one-turn trials (A4). Call at a battle-menu stop,
+        before the move menu has opened."""
+        import benchmark_policies as bp
+
+        self._menu_flag = False
+        d, h = self.driver, self.h
+        if not self.lookahead_seeds:
+            return
+        if self._move_menus != self._menu_mark:   # the move menu already took the policy's slot
+            self.look_skipped += 1
+            return
+        slots = bp.legal_slots(bp.read_state(h).player)
+        self.look_turns += 1
+        if len(slots) < 2:
+            d.move_override = slots[0]
+            return
+        buf = io.BytesIO()
+        h.save_state(buf)
+        raw = buf.getvalue()
+        key = self._board_key()
+        host = self._host_snapshot()
+        saved = (self.branch, self.recorder, self.outcome)
+        self.branch = self.recorder = None
+        self.in_trial = True
+        means = {}
+        try:
+            for slot in slots:
+                values = []
+                for j in range(self.lookahead_seeds):
+                    h.load_state(io.BytesIO(raw))
+                    self._host_restore(host)
+                    self.outcome, self._trial_menu = None, False
+                    d.move_override = slot
+                    self.reseed(f"look:{key}", j)
+                    d.play(600, stop=lambda: self._trial_menu)
+                    if self.outcome is not None:
+                        values.append(self.outcome["V"])
+                    else:
+                        values.append(self.lost(self.party("player")) - self.lost(self.party("enemy")))
+                means[slot] = statistics.fmean(values)
+        finally:
+            h.load_state(io.BytesIO(raw))
+            self._host_restore(host)
+            self.in_trial, self._trial_menu = False, False
+            self.branch, self.recorder, self.outcome = saved
+        d.move_override = min(slots, key=lambda s: (means[s], s))
+
+    def play(self, extra_stop=None) -> str:
+        """driver.play, running the lookahead at every battle menu when it is on. Returns
+        "stopped" only for extra_stop (the caller handles it, then calls play again)."""
+        while True:
+            result = self.driver.play(
+                MAX_STEPS, stop=lambda: self._menu_flag or bool(extra_stop and extra_stop()))
+            if result != "stopped":
+                return result
+            if extra_stop and extra_stop():
+                return "stopped"
+            self.lookahead()
 
     def _on_scored_lead(self):
         # A faint replacement: not the opening lead, not an armed (planned) switch, and the
@@ -334,6 +451,7 @@ class Recorder:
         self.scored_since_state = 0
         self.pending_send: dict | None = None
         self.decisions: list[Decision] = []
+        self.state_meta = {"menu_open": False, "move_override": None}
 
     def battle_menu(self):
         rp, h = self.rp, self.rp.h
@@ -384,7 +502,8 @@ class Recorder:
                         alt_kinds=kinds, player_living=sum(1 for h, _ in player if h),
                         enemy_living=sum(1 for h, _ in enemy if h),
                         player_hp=[sum(h for h, _ in player), sum(m for _, m in player)],
-                        enemy_hp=[sum(h for h, _ in enemy), sum(m for _, m in enemy)])
+                        enemy_hp=[sum(h for h, _ in enemy), sum(m for _, m in enemy)],
+                        **self.state_meta)
 
 
 def record_battle(rp: Replayer, prepare=None) -> tuple[list[bytes], list[Decision], dict]:
@@ -399,24 +518,32 @@ def record_battle(rp: Replayer, prepare=None) -> tuple[list[bytes], list[Decisio
     rp.driver.boot(rp.seed)
     states: list[bytes] = []
     dropped = 0
-    while True:
-        result = rp.driver.play(MAX_STEPS, stop=lambda: rec.pending_turn is not None)
-        if result != "stopped":
-            break
-        p, rec.pending_turn = rec.pending_turn, None
+
+    def handle(p) -> None:
+        nonlocal dropped
         if p.get("skip"):
-            continue
+            return
         if rec.commits != p["commits"]:   # the enemy committed before the loop regained control
             dropped += 1
-            continue
+            return
         buf = io.BytesIO()
         rp.h.save_state(buf)
         states.append(buf.getvalue())
         rec.state_index = len(states) - 1
         rec.scored_since_state = 0
+        rec.state_meta = {"menu_open": rp._move_menus != rp._menu_mark,
+                          "move_override": rp.driver.move_override}
         if len(p["alts"]) >= 2:
             rec.decisions.append(rec._decision("turn", rec.state_index, 1, p["turn"], p["chosen"],
                                                p["alts"], p["kinds"]))
+
+    while True:
+        result = rp.play(extra_stop=lambda: rec.pending_turn is not None)
+        if result != "stopped":
+            break
+        p, rec.pending_turn = rec.pending_turn, None
+        handle(p)          # save the state BEFORE the player's choice ...
+        rp.lookahead()     # ... then make it (a no-op unless lookahead_1)
     if result == "timeout":
         raise AssertionError("base battle exceeded the step limit")
     rp.recorder = None
@@ -433,7 +560,14 @@ def play_branch(rp: Replayer, state: bytes, decision: Decision, alt: str, k: int
     rp.branch = {"kind": decision.kind, "alt": alt, "k": k, "decision_id": decision_id,
                  "occurrence": decision.occurrence, "seen": 0, "applied": False}
     turns_start = len(rp.driver.turns)
-    result = rp.driver.play(MAX_STEPS)
+    # Every state was saved at a battle-menu stop, before the player chose: choose now, the
+    # same way pass 1 did (the trial seeds come from the board, so the choice repeats).
+    rp._menu_flag = False
+    rp.driver.move_override = decision.move_override
+    if not decision.menu_open:
+        rp._menu_mark = rp._move_menus
+        rp.lookahead()
+    result = rp.play()
     b, rp.branch = rp.branch, None
     out = dict(rp.outcome or {}, result=result, applied=b["applied"],
                turns_after=len(rp.driver.turns) - turns_start, frame=rp.h.pyboy.frame_count)
@@ -451,9 +585,12 @@ def play_branch(rp: Replayer, state: bytes, decision: Decision, alt: str, k: int
 _WORKER: Replayer | None = None
 
 
-def _init_worker(seed, tier, policy):
+RUN_OPTIONS = {"look_seeds": 2, "kinds": None}
+
+
+def _init_worker(seed, tier, policy, look_seeds):
     global _WORKER
-    _WORKER = Replayer(seed, tier, policy)
+    _WORKER = Replayer(seed, tier, policy, look_seeds=look_seeds)
 
 
 def _work(task):
@@ -464,11 +601,15 @@ def _work(task):
 
 def run(seed: int, tier: int, policy: str, k: int, jobs: int, out: Path, limit: int | None) -> dict:
     t0 = time.perf_counter()
-    rp = Replayer(seed, tier, policy)
+    look_seeds, kinds = RUN_OPTIONS["look_seeds"], RUN_OPTIONS["kinds"]
+    rp = Replayer(seed, tier, policy, look_seeds=look_seeds)
     try:
         states, decisions, base = record_battle(rp)
+        base.update(look_turns=rp.look_turns, look_skipped=rp.look_skipped)
     finally:
         rp.close()
+    if kinds:
+        decisions = [d for d in decisions if d.kind in kinds]
     if limit is not None:
         decisions = decisions[:limit]
     tasks = []
@@ -479,7 +620,7 @@ def run(seed: int, tier: int, policy: str, k: int, jobs: int, out: Path, limit: 
                 tasks.append((states[d.state_index], asdict(d), alt, kk, decision_id))
     results: dict[int, dict[str, dict[int, dict]]] = {}
     with ProcessPoolExecutor(max_workers=jobs, initializer=_init_worker,
-                             initargs=(seed, tier, policy)) as pool:
+                             initargs=(seed, tier, policy, look_seeds)) as pool:
         for index, alt, kk, res in pool.map(_work, tasks, chunksize=4):
             results.setdefault(index, {}).setdefault(alt, {})[kk] = res
     records = []
@@ -551,8 +692,14 @@ def main() -> int:
     ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     ap.add_argument("--limit", type=int, default=None, help="only the first N decisions per seed")
     ap.add_argument("--out", type=Path, default=ROOT / "tools/pyboy_smoke/artifacts/ai_counterfactual.jsonl")
+    ap.add_argument("--look-seeds", type=int, default=2,
+                    help=f"--policy {LOOKAHEAD}: trial seeds per player move per turn")
+    ap.add_argument("--kinds", default=None,
+                    help='branch only these decision kinds, e.g. "send_out" (pass 1 still records all)')
     args = ap.parse_args()
     args.out.parent.mkdir(parents=True, exist_ok=True)
+    RUN_OPTIONS["look_seeds"] = args.look_seeds
+    RUN_OPTIONS["kinds"] = set(args.kinds.split(",")) if args.kinds else None
     if args.seeds:
         summary = run_many(parse_seeds(args.seeds), args.tier, args.policy, args.k, args.jobs,
                            args.out, args.limit)

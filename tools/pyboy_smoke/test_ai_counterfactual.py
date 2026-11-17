@@ -156,5 +156,64 @@ class SendOutReplayTest(unittest.TestCase):
             rp.close()
 
 
+class LookaheadPlayerTest(unittest.TestCase):
+    """A4: the lookahead_1 player tries every legal move for one turn and keeps the best."""
+
+    def board(self):
+        species = parse_rgbds_constants(ROOT / "constants/pokemon_constants.asm")
+        moves = parse_rgbds_constants(ROOT / "constants/move_constants.asm")
+        trainers = parse_trainer_constants(ROOT / "constants/trainer_constants.asm")
+
+        def mon(name, names, level):
+            return dict(species=species[name], level=level, moves=[moves[n] for n in names])
+
+        def prepare(h):
+            # best_power picks Thunder by raw power: 0 damage into a Ground type until its PP
+            # runs out, while the Geodude chips away. The Pikachu survives many hits, so a
+            # one-turn trial measures the player's move, not whether one enemy hit lands (a
+            # first draft where Rock Throw OHKO'd the Pikachu made every trial a coin flip).
+            h.inject_fight2_spec([mon("PIKACHU", ["THUNDER", "TACKLE"], 40)],
+                                 [mon("GEODUDE", ["TACKLE", "DEFENSE_CURL"], 22)],
+                                 trainer_class=trainers["COOLTRAINER_M"], ai_tier=3)
+        return prepare
+
+    def test_lookahead_finds_the_move_raw_power_misses(self):
+        outcomes = {}
+        for policy in ("best_power", cf.LOOKAHEAD):
+            rp = cf.Replayer(seed=1, tier=3, policy=policy, look_seeds=2)
+            try:
+                _, _, base = cf.record_battle(rp, prepare=self.board())
+                outcomes[policy] = base
+                if policy == cf.LOOKAHEAD:
+                    self.assertGreater(rp.look_turns, 3)
+                    # Turn 1's menu passes inside boot_fight2, before the driver runs: at
+                    # most that one turn is skipped.
+                    self.assertLessEqual(rp.look_skipped, 1)
+                self.assertEqual(rp.h.hook_errors, [])
+            finally:
+                rp.close()
+        self.assertLess(outcomes[cf.LOOKAHEAD]["V"], outcomes["best_power"]["V"],
+                        f"Tackle-first must leave the AI worse off: {outcomes}")
+
+    def test_lookahead_replays_reproduce_the_base_battle(self):
+        rp = cf.Replayer(seed=1, tier=3, policy=cf.LOOKAHEAD, look_seeds=2)
+        try:
+            states, decisions, base = cf.record_battle(rp, prepare=self.board())
+            self.assertGreater(len(decisions), 3)
+            # decisions[0] is turn 1 (its menu passes during boot: lookahead skipped there);
+            # the middle one is a turn where the lookahead runs again inside the replay.
+            middle = decisions[len(decisions) // 2]
+            self.assertTrue(decisions[0].menu_open)
+            self.assertFalse(middle.menu_open)
+            for d in (decisions[0], middle):
+                out = cf.play_branch(rp, states[d.state_index], d, d.chosen, None, "look-determinism")
+                self.assertNotIn("invalid", out, out)
+                for key in ("V", "player_lost", "enemy_lost", "ai_won"):
+                    self.assertEqual(out[key], base[key], f"decision {d.index} {key}")
+            self.assertEqual(rp.h.hook_errors, [])
+        finally:
+            rp.close()
+
+
 if __name__ == "__main__":
     unittest.main()
