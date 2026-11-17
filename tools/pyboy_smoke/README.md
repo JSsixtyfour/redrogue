@@ -197,6 +197,28 @@ call-order drift before party construction and is intentionally independent of
 AI behavior. The first enemy sent out is not guaranteed to be generated party
 slot 0, so battle-state tests must read the active slot instead of assuming it.
 
+## AI counterfactual regret (`ai_counterfactual.py`)
+
+Plays a FIGHT 2 battle, saves a state at every enemy turn decision and faint
+replacement, then replays each decision once per alternative (every legal move,
+every T2+ switch, every send-out) and seed to the end of the battle. The outcome
+V is the player's party HP fraction lost minus the enemy's (higher is better for
+the AI). Regret is selection-bias guarded: the best alternative is picked on the
+first half of the seeds and measured against the chosen one on the second half.
+Output: one JSONL record per decision and a summary table by (chosen kind ->
+best kind). It is a long replay run, not part of `make smoke`; its own tests
+(`test_ai_counterfactual`) are.
+
+```sh
+python3 tools/pyboy_smoke/ai_counterfactual.py --seeds 100:130 --tier 3 --k 8 --jobs 6
+```
+
+Overrides are applied by a hook at the decision itself, where the RNG is also
+reseeded, so everything up to the decision replays identically. Seed 17 is
+lopsided (the AI never loses a mon there); use expanded seeds 100+. Design and
+gate: `AI_T4_REGRET_PLAN_2026-11-14.md` Phase A. `fight2_driver.py` is the
+FIGHT 2 hook-and-input driver it shares with `run_ai_benchmark.py`.
+
 ## Autoplay soak test
 
 `make autoplay` plays whole runs with an agent that reads game state from RAM
