@@ -330,6 +330,41 @@ def check_loops(out):
             sys.exit("%s: expected a failure mentioning %r, got exit %d:\n%s%s" % (mid, reason, p.returncode, p.stdout, p.stderr))
 
 
+# test_midis.patch_automation: each channel's timbre commands and notes in order
+# (".loop" marks the loop start), and what the window must say.
+PATCH_WANTS = {
+    "Ch1": ["duty_cycle 2", "note", "note", ".loop", "duty_cycle 2", "note", "note", "note", "duty_cycle 3", "note", "note", "note"],
+    "Ch2": ["duty_cycle 2", "note", "note", ".loop", "duty_cycle 3", "note", "note", "note", "note", "note", "note"],
+    "Ch3": ["note_type 12, 1, 2", "note", "note", ".loop", "note_type 12, 1, 10", "note", "note", "note", "note", "note", "note"],
+}
+PATCH_SAYS = ["Ch1: 1 sound change came in the middle of a held note", "Ch2: starts as Square 50",
+              "Ch3: ignored program 0", "Ch3: the sound switches 2 times (Wave 2, Wave 10)"]
+# test_midis.patch_track: the same song, sounds picked by Patch-track notes the
+# way FL Studio users write them (no program changes at all).
+PATCH_TRACK_SAYS = ["Ch1: 1 sound change came in the middle of a held note", "Ch2: starts as Square 50",
+                    "Ch3 Patch: ignored note number 0", "Ch3: the sound switches 2 times (Wave 2, Wave 10)"]
+
+
+def check_patch_automation(text, said, says=PATCH_SAYS, mid="patch_automation.mid"):
+    blocks = re.split(r"^Music_KitPreview_(Ch\d)::$", text, flags=re.M)
+    found = {blocks[i]: blocks[i + 1] for i in range(1, len(blocks), 2)}
+    for ch, want in PATCH_WANTS.items():
+        got = []
+        for line in found.get(ch, "").splitlines():
+            s = line.strip()
+            if s == ".loop:":
+                got.append(".loop")
+            elif s.startswith("duty_cycle") or (ch == "Ch3" and s.startswith("note_type")):
+                got.append(s)
+            elif s.startswith("note "):
+                got.append("note")
+        if got != want:
+            sys.exit("%s %s: expected %r, got %r:\n%s" % (mid, ch, want, got, text))
+    for want in says:
+        if want not in said:
+            sys.exit("%s: expected the window to say %r:\n%s" % (mid, want, said))
+
+
 def check_native_accepts(out):
     log("check: native donor-style song (db byte, Label.local call, single-colon label) is accepted")
     path = os.path.join(WORK, "donor_style.asm")
@@ -483,6 +518,18 @@ def main():
         sys.exit("wave5.mid: wave 6 was not kept:\n" + open(asm).read())
     if "Ch3 uses wave 6" not in said:
         sys.exit("wave5.mid: the converter didn't mention the new wave:\n" + said)
+
+    # 3e'. Patch automation: program changes switch duty/wave mid-song, and the
+    #      loop start re-sets the sound the loop began with.
+    log("check: patch_automation.mid switches sound on program changes")
+    asm = os.path.join(out, "patch_automation.asm")
+    said = convert(os.path.join(WORK, "patch_automation.mid"), "-NoBuild", "-OutAsm", winpath(asm))
+    check_patch_automation(open(asm).read(), said)
+    print(convert(os.path.join(WORK, "patch_automation.mid")), end="")
+    log("check: patch_track.mid switches sound on Patch-track notes")
+    asm = os.path.join(out, "patch_track.asm")
+    said = convert(os.path.join(WORK, "patch_track.mid"), "-NoBuild", "-OutAsm", winpath(asm))
+    check_patch_automation(open(asm).read(), said, PATCH_TRACK_SAYS, "patch_track.mid")
 
     # 3f. Inputs the composer's tools really produce: a Format 0 file, and a
     #     path with spaces, accents and symbols.

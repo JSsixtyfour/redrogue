@@ -32,6 +32,16 @@ DEF PK_DOOMED EQU 1 ; damaging move, but no safe opportunity to deliver it
 ASSERT PK_SURVIVE_COMFORT == PK_SURVIVE_REPLY + 1
 ASSERT PK_FINISH > PK_SURVIVE_COMFORT
 
+; The ranking pass serves two callers (AI_T4_REGRET_PLAN E2, 2026-11-17):
+; FAINT, a free replacement after a faint (AIRankPostKOSendOut), and VOLUNTARY, a
+; T3 switch target that first takes the player's hit on entry
+; (AIRankVoluntaryTarget). Mode and score bound ride in the loop's stack frame.
+DEF PK_MODE_FAINT EQU 0
+DEF PK_MODE_VOLUNTARY EQU 1
+DEF PK_FRAME_MODE EQU PARTY_LENGTH
+DEF PK_FRAME_BOUND EQU PARTY_LENGTH + 1
+DEF PK_FRAME_SIZE EQU PARTY_LENGTH + 2
+
 AIRankPostKOSendOut::
 	farcall AIRankSendOutCandidates
 	ld a, [wEnemyMonPartyPos]
@@ -81,6 +91,10 @@ AIRankPostKOSendOut::
 	ld [wBuffer + PK_BEST_QUALITY], a
 	ld [wBuffer + PK_BEST_DAMAGE], a
 	ld [wBuffer + PK_BEST_DAMAGE + 1], a
+	ld de, PK_MODE_FAINT << 8 | $ff ; d = mode, e = score bound ($ff: none)
+; INPUT d = PK_MODE_*, e = the legacy score a candidate must stay strictly below
+; (AIRankVoluntaryTarget's "beats the active mon" gate). Both survive the predefs.
+.rankWithSpeed
 ; C0 cut 1 (2026-11-17): the scan below is pure computation, run at double speed
 ; on CGB with the 60 FPS option, exactly as AIShouldSwitchAtSelectedSpeed wraps
 ; the switch predicate. DMG, option-off and already-double callers are untouched.
@@ -108,7 +122,13 @@ AIRankPostKOSendOut::
 ; skipped or ineligible slot never wins. wBuffer is full (30 of 30), hence the
 ; stack; the array sits at sp + 0 whenever the loop is at its own level.
 .rankLoop
-	add sp, -PARTY_LENGTH
+; Stack frame at the loop's own level: sp + 0 the score array, sp + PK_FRAME_MODE
+; the mode, sp + PK_FRAME_BOUND the bound (AIPostKOReply reads the mode 2 higher).
+	add sp, -PK_FRAME_SIZE
+	ld hl, sp + PK_FRAME_MODE
+	ld [hl], d
+	inc hl
+	ld [hl], e
 	ld a, [wEnemyMonType1]
 	push af
 	ld a, [wEnemyMonType2]
@@ -157,8 +177,16 @@ AIRankPostKOSendOut::
 	pop af
 	ld [wEnemyMonType1], a
 ; AIScoreSendOutSlot cleared the bound; the first candidate's own score is the
-; legacy score the loop compares against.
-	ld a, [wBuffer + PK_BEST_TYPE]
+; legacy score the loop compares against. Read it from the array: in VOLUNTARY
+; mode PK_BEST_TYPE holds the fallback's 0 floor, not this score.
+	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
+	ld hl, sp + 0
+	add l
+	ld l, a
+	adc h
+	sub l
+	ld h, a
+	ld a, [hl]
 	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a
 .candidate
 	call AIPostKOReply
@@ -241,14 +269,91 @@ AIRankPostKOSendOut::
 .picked
 	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
 	cp $ff
+	jr z, .rankDone
+; The bound (voluntary mode): scores come in nondecreasing order, so the first
+; one at or above the bound ends the enumeration. A faint replacement's bound is
+; $ff, which no score reaches.
+	ld hl, sp + PK_FRAME_BOUND
+	ld a, [wBuffer + AI_BUF_BESTPARTYSCORE]
+	cp [hl]
+	jr nc, .rankDone
+; C0 cut 4 (2026-11-17), exact: candidates come in nondecreasing legacy score and
+; compare by tier, then LOWER legacy score, then damage, and FINISH is the top
+; tier. Once a FINISH leads, a candidate scoring strictly above its legacy score
+; cannot win, and every later one scores at least as much: stop. A tie on the
+; score is still scanned, since it can win on damage.
+	ld a, [wBuffer + PK_BEST_QUALITY]
+	cp PK_FINISH
 	jp nz, .candidate
-	add sp, PARTY_LENGTH
+	ld a, [wBuffer + PK_BEST_TYPE]
+	ld hl, wBuffer + AI_BUF_BESTPARTYSCORE
+	cp [hl]
+	jp nc, .candidate ; the next score is not above the leader's: it can still tie
+.rankDone
+	add sp, PK_FRAME_SIZE
 	ld a, [wBuffer + PK_BEST_SLOT]
 	ld [wBuffer + AI_BUF_BESTPARTYSLOT], a
 	ld a, [wBuffer + PK_BEST_TYPE]
 	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a
 	xor a
 	ld [wBuffer + AI_BUF_SENDOUT_SKIP], a
+	ret
+
+; T3 voluntary switch target (AI_T4_REGRET_PLAN E2, 2026-11-17). Farcalled from
+; AIShouldSwitch ($2C) once a switch trigger has found a better reserve that
+; survives (AIReplacementIsBetterAndSurvives): wBuffer + AI_BUF_BESTPARTYSLOT is
+; that reserve, kept as the fallback. Re-ranks every reserve that beats the
+; active mon's legacy score (the same gate) with the post-KO tiers in VOLUNTARY
+; mode, then re-runs B4 on the slot chosen so B5 (AISacrificeBeatsSwitch) judges
+; it. T2 keeps the old pick. No register inputs; clobbers af, bc, de, hl.
+AIRankVoluntaryTarget::
+	farcall AIGetTier
+	ld a, [wAITier] ; tier + 1
+	cp AI_TIER_EXPERT + 1
+	ret c
+	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
+	ld [wBuffer + PK_BEST_SLOT], a
+; The bound: the active mon's own legacy score, on its live battle struct.
+	farcall AIBuildPlayerThreatTypes
+	ld a, [wEnemyMonType1]
+	push af
+	ld a, [wEnemyMonType2]
+	push af
+	ld a, [wPlayerMoveType]
+	push af
+	farcall AIScoreActiveMon ; e = score (de survives the trip)
+	pop af
+	ld [wPlayerMoveType], a
+	pop af
+	ld [wEnemyMonType2], a
+	pop af
+	ld [wEnemyMonType1], a
+	push de
+	farcall AIRankSendOutCandidates ; the first candidate, in legacy order
+	pop de
+	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
+	cp $ff
+	jr z, .keep
+	ld a, [wBuffer + AI_BUF_BESTPARTYSCORE]
+	cp e
+	jr nc, .keep ; nothing beats the active mon (the caller proved otherwise)
+; The fallback sits at quality 0 with score 0, so only a candidate with a real
+; tier displaces it: one KO'd on entry also scores quality 0 and loses the tie.
+	xor a
+	ld [wBuffer + PK_BEST_TYPE], a
+	ld [wBuffer + PK_BEST_QUALITY], a
+	ld [wBuffer + PK_BEST_DAMAGE], a
+	ld [wBuffer + PK_BEST_DAMAGE + 1], a
+	ld d, PK_MODE_VOLUNTARY
+	call AIRankPostKOSendOut.rankWithSpeed
+	jr .rescan
+.keep
+	ld a, [wBuffer + PK_BEST_SLOT]
+	ld [wBuffer + AI_BUF_BESTPARTYSLOT], a
+	xor a
+	ld [wBuffer + AI_BUF_SENDOUT_SKIP], a
+.rescan
+	farcall AIBestReserveSurvivesThreat ; B4 for the chosen slot, read by B5
 	ret
 
 ; Save byte blocks as stack words, including an odd trailing byte in AF. Used
@@ -296,6 +401,28 @@ AIPostKOReply:
 ; than half its HP is left (a faster reserve) or 3x the hit is below its HP (a
 ; slower one, which takes a second hit before acting again). UNKNOWN (a Super
 ; Fang was scanned) is not a margin. KEEPS is only ever written with e = 1.
+	ld hl, sp + 2 + PK_FRAME_MODE ; above our return address
+	ld a, [hl]
+	cp PK_MODE_VOLUNTARY
+	jr nz, .faintSurvives
+; VOLUNTARY: the reserve takes the player's hit on entry before anything else.
+; KO'd on entry: never a target (quality stays 0). Otherwise B4's KEEPS already
+; prices the entry hit: faster, more than half left after it (it acts, then
+; survives the next hit); slower, 3x the hit below its HP (entry hit, next hit
+; before it acts, and one more). So PK_SURVIVES = KEEPS ? 1 : 0, and the tiers
+; below then read: faster without the margin FIRST_REPLY, slower without it
+; DOOMED, either with it SURVIVE_REPLY, and a reliable KO on either reply path
+; FINISH. UNKNOWN (a Super Fang was scanned) is not a margin.
+	ld a, e
+	and a
+	ret z
+	ld a, [wBuffer + AI_BUF_RESERVEHALF]
+	cp AI_RESERVE_HALF_KEEPS
+	ld a, 0
+	jr nz, .storeSurvives
+	inc a
+	jr .storeSurvives
+.faintSurvives
 	ld a, [wBuffer + AI_BUF_RESERVEHALF]
 	cp AI_RESERVE_HALF_KEEPS
 	ld a, e

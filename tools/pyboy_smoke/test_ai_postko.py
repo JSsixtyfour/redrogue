@@ -60,6 +60,34 @@ class PostKOTest(unittest.TestCase):
         self.h.write8("wAITier", 0)
         self.assertEqual(self.select(), 2)
 
+    def finish_board(self, reserves, specials):
+        """Starmie at 10 HP, so a faster reserve's Thunderbolt is a reliable finish."""
+        self.boot(reserves)
+        self.word("wBattleMonHP", 10)
+        for slot, special in enumerate(specials, start=2):
+            self.word(f"wEnemyMon{slot}Speed", 150)
+            self.word(f"wEnemyMon{slot}Special", special)
+        return self.h.hook_flag("AIPostKOReply")
+
+    def test_finish_leader_prunes_reserves_with_a_worse_legacy_score(self):
+        # C0 cut 4 (2026-11-17). Electrode's worst believed hit is 1x, Charizard's 2x
+        # (Surf, Thunderbolt), so Electrode is enumerated first; once it finishes,
+        # Charizard cannot win on the legacy score and is never staged.
+        replies = self.finish_board([self.mon("ELECTRODE", ["THUNDERBOLT"]),
+                                     self.mon("CHARIZARD", ["FLAMETHROWER"])], [300, 300])
+        self.assertEqual(self.select(), 1)
+        self.assertEqual(replies["count"], 1, "the worse-scored reserve was pruned")
+
+    def test_finish_leader_still_scans_an_equal_score_that_can_win_on_damage(self):
+        # Same species and legacy score: a same-tier, same-score candidate can still win
+        # on damage, so the prune must stage it. (Here both finish a 10-HP Starmie and
+        # the expected damage both read 9, capped at the target's HP as measured, so the
+        # exact tie keeps the earlier slot.)
+        replies = self.finish_board([self.mon("ELECTRODE", ["THUNDERBOLT"]),
+                                     self.mon("ELECTRODE", ["THUNDERBOLT"])], [150, 400])
+        self.assertEqual(self.select(), 1)
+        self.assertEqual(replies["count"], 2, "the equal-score reserve was still staged")
+
     def test_lower_tier_keeps_legacy_type_tie(self):
         self.boot(tier=1)
         self.assertEqual(self.select(), 1)

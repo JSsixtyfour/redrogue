@@ -10,7 +10,9 @@
 #   - loops the whole song when there are no begin/end markers
 #   - turns General MIDI drum notes into Game Boy drums (gm_drums.json) and
 #     keeps one drum hit at a time
-#   - drops everything pokemid can't use (program changes, controllers, ...)
+#   - turns program changes into duty_cycle / note_type markers (patch
+#     automation, numbered like the SoundFont presets)
+#   - drops everything else pokemid can't use (controllers, ...)
 # A file that is already in the shape pokemid wants (Template.mid) comes out
 # equivalent. Must run under Windows PowerShell 5.1.
 
@@ -64,7 +66,10 @@ function Read-MidiFile([byte[]]$d) {
 					$trk.Events.Add([pscustomobject]@{ Tick = $tick; Kind = $(if ($on) { 'on' } else { 'off' }); Ch = ($status -band 0x0F); P = [int]$d[$p]; V = [int]$d[$p + 1]; Seq = $seq++ })
 					if ($on) { $trk.NoteCount++; $trk.Channels[($status -band 0x0F)] = 1 }
 					$p += 2
-				} elseif ($hi -eq 0xC0 -or $hi -eq 0xD0) { $p += 1 } else { $p += 2 }
+				} elseif ($hi -eq 0xC0) {
+					$trk.Events.Add([pscustomobject]@{ Tick = $tick; Kind = 'prog'; Ch = ($status -band 0x0F); P = [int]$d[$p]; Seq = $seq++ })
+					$p += 1
+				} elseif ($hi -eq 0xD0) { $p += 1 } else { $p += 2 }
 			}
 		}
 		$lastTick = 0
@@ -154,6 +159,38 @@ function Get-NameTimbre([string]$ch, [string]$name) {
 	return $null
 }
 
+# Timbre a MIDI program selects on a channel, or $null. The numbers are the
+# SoundFont/DLS presets' (make_sample_pack.py PROGRAMS), so the patch picked for
+# the DAW preview is the sound the game plays: 0-3 Square 12.5/25/50/75 (Ch1/Ch2),
+# 4-8 Wave 0-4, 10-19 Wave 5-14, 20-49 the DLS Wave N 25%/50% pairs (Ch3; the
+# loudness still comes from velocity).
+function Get-ProgramTimbre([string]$ch, [int]$p) {
+	if ($ch -eq 'Ch3') {
+		$w = if ($p -ge 4 -and $p -le 8) { $p - 4 } elseif ($p -ge 10 -and $p -le 19) { $p - 5 } elseif ($p -ge 20 -and $p -le 49) { [int][Math]::Floor(($p - 20) / 2) } else { -1 }
+		if ($w -lt 0) { return $null }
+		return "note_type 1, $w"
+	}
+	if ($p -ge 0 -and $p -le 3) { return "duty_cycle $p" }
+	return $null
+}
+
+# The timbre command a normalized event carries (duty_cycle / note_type text), or $null.
+function Get-TimbreText($e) {
+	$b = $e.Bytes
+	if ($b.Length -lt 3 -or $b[0] -ne 0xFF -or $b[1] -ne 0x01) { return $null }
+	$i = 2; $l = 0
+	do { $x = $b[$i++]; $l = ($l -shl 7) -bor ($x -band 0x7F) } while ($x -band 0x80)
+	$s = $script:Latin1.GetString($b, $i, $l)
+	if ($s -match '^(duty_cycle|note_type)\b') { return $s }
+	return $null
+}
+
+function Format-Timbre([string]$cmd) {
+	if ($cmd -match '^duty_cycle (\d)') { return @('Square 12.5', 'Square 25', 'Square 50', 'Square 75')[[int]$Matches[1]] }
+	if ($cmd -match '^note_type \d+, (\d+)') { return "Wave $($Matches[1])" }
+	return $cmd
+}
+
 # Returns @{ Bytes; Notes; Problems }. Notes are things worth telling the
 # composer (yellow); Problems stop the run.
 function ConvertTo-CleanMidi([byte[]]$d, [hashtable]$GmDrums) {
@@ -182,6 +219,21 @@ function ConvertTo-CleanMidi([byte[]]$d, [hashtable]$GmDrums) {
 	if ($loopTracks.Count -eq 1) {
 		$loopNotes = @($loopTracks[0].Events | Where-Object { $_.Kind -eq 'on' } | ForEach-Object { [int]$_.Tick } | Sort-Object -Unique)
 		$tracks = @($tracks | Where-Object { $_ -ne $loopTracks[0] })
+	}
+
+	# ---- "Ch1 Patch" .. "Ch3 Patch" tracks: each note's MIDI number is a program
+	# number (Get-ProgramTimbre), a program change at the note's start. Same reason
+	# as the Loop track: every program exports notes, while FL Studio's export of
+	# real program changes is unconfirmed (Image-Line docs only cover MIDI Out
+	# sending them live).
+	$patchRe = '(?i)(?<![A-Za-z])Ch([1-3])(?!\d).*(?<![a-z])patch(?![a-z])'
+	$patchNotes = @{} # ChN -> prog events
+	foreach ($t in @($tracks | Where-Object { $_.Name -match $patchRe })) {
+		$null = $t.Name -match $patchRe
+		$k = "Ch$($Matches[1])"
+		if ($patchNotes.ContainsKey($k)) { $problems.Add("Two tracks are named $k Patch. Keep one."); return @{ Bytes = $d; Notes = $notes; Problems = $problems } }
+		$patchNotes[$k] = @($t.Events | Where-Object { $_.Kind -eq 'on' } | ForEach-Object { [pscustomobject]@{ Tick = $_.Tick; Kind = 'prog'; Ch = $_.Ch; P = $_.P; Seq = $_.Seq; FromTrack = $true } })
+		$tracks = @($tracks | Where-Object { $_ -ne $t })
 	}
 	$markBegin = New-Object System.Collections.Generic.List[int]
 	$markEnd = New-Object System.Collections.Generic.List[int]
@@ -246,6 +298,12 @@ function ConvertTo-CleanMidi([byte[]]$d, [hashtable]$GmDrums) {
 	$chan = [ordered]@{}
 	$seq = 0
 	$hasTimbre = @{}
+	$progs = @{} # ChN -> program changes (raw ticks), placed after the grid snap
+	foreach ($k in $patchNotes.Keys) {
+		if (-not $used.Contains($k)) { $notes.Add("Ignored the track '$k Patch': there is no $k track for it to change."); continue }
+		$progs[$k] = New-Object System.Collections.Generic.List[object]
+		foreach ($e in $patchNotes[$k]) { $progs[$k].Add($e) }
+	}
 	$typoSeen = 0
 	foreach ($ch in $used.Keys) {
 		$evs = New-Object System.Collections.Generic.List[object]
@@ -256,7 +314,12 @@ function ConvertTo-CleanMidi([byte[]]$d, [hashtable]$GmDrums) {
 		$srcEvents = New-Object System.Collections.Generic.List[object]
 		foreach ($t in $used[$ch]) { $srcEvents.AddRange($t.Events); if ($t.EndTick -gt $endTick) { $endTick = $t.EndTick } }
 		foreach ($e in ($srcEvents | Sort-Object Tick, Seq)) {
-			if ($e.Kind -eq 'text') {
+			if ($e.Kind -eq 'prog') {
+				if ($ch -ne 'Ch4') {
+					if (-not $progs.ContainsKey($ch)) { $progs[$ch] = New-Object System.Collections.Generic.List[object] }
+					$progs[$ch].Add($e)
+				}
+			} elseif ($e.Kind -eq 'text') {
 				$s = $e.Text.Trim()
 				if ($s -ieq 'begin' -or $s -ieq 'end') {
 					# collected song-wide above; placed on every channel below
@@ -372,6 +435,59 @@ function ConvertTo-CleanMidi([byte[]]$d, [hashtable]$GmDrums) {
 		if ($cmd) { $chan[$ch].Events.Add([pscustomobject]@{ Tick = 0; Order = 1; Seq = $seq++; Bytes = (New-MetaBytes 0x01 $script:Latin1.GetBytes($cmd)) }) }
 	}
 
+	# ---- program changes: patch automation. Each one becomes the matching
+	# duty_cycle / note_type marker. Rules:
+	#   - a channel whose programs are all non-Game Boy ones (MuseScore's Piano,
+	#     Flute...) is left alone: every exporter writes one per track.
+	#   - a change takes effect at the next note. Markers inside a held note
+	#     break pokemid, and Ch3 loads its wave at note start anyway
+	#     (crysaudio/engine.asm .ch3_noise_sampling -> .load_wave_pattern).
+	#   - the track name or a text marker sets the starting sound and beats a
+	#     program change at the same note (exporters write a program at tick 0).
+	foreach ($ch in 'Ch1', 'Ch2', 'Ch3') {
+		if (-not $chan.Contains($ch) -or -not $progs.ContainsKey($ch)) { continue }
+		$mapped = @($progs[$ch] | ForEach-Object { [pscustomobject]@{ Tick = (& $snap $_.Tick); Seq = $_.Seq; P = $_.P; FromTrack = [bool]$_.FromTrack; Cmd = (Get-ProgramTimbre $ch $_.P) } })
+		$good = @($mapped | Where-Object { $_.Cmd })
+		$which = if ($ch -eq 'Ch3') { 'Ch3 takes 4-8, 10-19 or 20-49 (the Wave patches)' } else { "$ch takes 0-3 (the Square patches)" }
+		$badProg = @($mapped | Where-Object { -not $_.Cmd -and -not $_.FromTrack } | ForEach-Object { $_.P } | Sort-Object -Unique)
+		$badNote = @($mapped | Where-Object { -not $_.Cmd -and $_.FromTrack } | ForEach-Object { $_.P } | Sort-Object -Unique)
+		if ($badNote.Count) { $notes.Add("${ch} Patch: ignored note number $($badNote -join ', ') (MIDI numbers, not octave names): $which.") }
+		if (-not $good.Count) { continue }
+		if ($badProg.Count) { $notes.Add("${ch}: ignored program $($badProg -join ', '): $which.") }
+		$evs = $chan[$ch].Events
+		$ons = @($evs | Where-Object { $_.Bytes[0] -eq 0x90 } | ForEach-Object { [int]$_.Tick } | Sort-Object)
+		if (-not $ons.Count) { continue }
+		$spans = New-Object System.Collections.Generic.List[object]
+		$open = $null
+		foreach ($e in ($evs | Sort-Object Tick, Order, Seq)) {
+			if ($e.Bytes[0] -eq 0x90) { $open = $e.Tick }
+			elseif ($e.Bytes[0] -eq 0x80 -and $null -ne $open) { $spans.Add(@($open, $e.Tick)); $open = $null }
+		}
+		$marks = @($evs | Where-Object { Get-TimbreText $_ } | ForEach-Object { [pscustomobject]@{ Tick = [int]$_.Tick; Cmd = (Get-TimbreText $_) } })
+		$atNote = [ordered]@{} # note tick -> the last program change before it
+		$inside = 0
+		foreach ($pc in ($good | Sort-Object Tick, Seq)) {
+			$eff = $ons | Where-Object { $_ -ge $pc.Tick } | Select-Object -First 1
+			if ($null -eq $eff) { continue } # after the last note: changes nothing that plays
+			if (@($spans | Where-Object { $_[0] -lt $pc.Tick -and $pc.Tick -lt $_[1] }).Count) { $inside++ }
+			$atNote[[string]$eff] = $pc
+		}
+		$startIgnored = $null
+		foreach ($k in $atNote.Keys) {
+			$eff = [int]$k; $pc = $atNote[$k]
+			$same = @($marks | Where-Object { $_.Tick -eq $eff })
+			$before = @($marks | Where-Object { $_.Tick -le $eff })
+			if ($same.Count -or ($eff -eq $ons[0] -and $before.Count)) {
+				$wins = if ($same.Count) { $same[-1].Cmd } else { $before[-1].Cmd }
+				if ($eff -eq $ons[0] -and $wins -ne $pc.Cmd) { $startIgnored = @($pc.Cmd, $wins) }
+				continue
+			}
+			$evs.Add([pscustomobject]@{ Tick = $eff; Order = 1; Seq = $seq++; Bytes = (New-MetaBytes 0x01 $script:Latin1.GetBytes($pc.Cmd)); Pc = $true })
+		}
+		if ($inside) { $notes.Add("${ch}: $inside sound change$(if ($inside -ne 1) { 's' }) came in the middle of a held note, so $(if ($inside -ne 1) { 'they take' } else { 'it takes' }) effect from the next note.") }
+		if ($startIgnored) { $notes.Add("${ch}: starts as $(Format-Timbre $startIgnored[1]) (from the track name or a marker), not $(Format-Timbre $startIgnored[0]) (from a program change or Patch track). Remove the sound from the track name to let that pick it.") }
+	}
+
 	# ---- no begin/end anywhere: repeat the whole song
 	$songEnd = 0
 	foreach ($ch in $chan.Keys) {
@@ -451,6 +567,39 @@ function ConvertTo-CleanMidi([byte[]]$d, [hashtable]$GmDrums) {
 		$after = 0
 		foreach ($ch in $chan.Keys) { $after += @($chan[$ch].Events | Where-Object { $_.Bytes[0] -eq 0x90 -and $_.Tick -ge $end }).Count }
 		if ($after) { $notes.Add("$after notes come after the loop end ($(& $at $end)) and are never played. The game only plays up to there.") }
+	}
+
+	# ---- the sound at the loop start. The engine keeps whatever duty/wave was
+	# set last when it jumps back, so a song that changes sound inside the loop
+	# would play its second pass with the wrong one. Set it again at the loop
+	# start when the loop ends on a different sound. Also drop program changes
+	# that repeat the sound already playing.
+	$defaultTimbre = @{ Ch1 = 'duty_cycle 0'; Ch2 = 'duty_cycle 0'; Ch3 = 'note_type 1, 0' }
+	foreach ($ch in 'Ch1', 'Ch2', 'Ch3') {
+		if (-not $chan.Contains($ch)) { continue }
+		$evs = $chan[$ch].Events
+		$state = $defaultTimbre[$ch]
+		$switches = New-Object System.Collections.Generic.List[string]
+		foreach ($e in @($evs | Where-Object { Get-TimbreText $_ } | Sort-Object Tick, Seq)) {
+			$t = Get-TimbreText $e
+			if ($e.Pc) {
+				if ($t -eq $state -or $e.Tick -ge $stop) { [void]$evs.Remove($e); continue }
+				$switches.Add((Format-Timbre $t))
+			}
+			$state = $t
+		}
+		if ($switches.Count) { $notes.Add("${ch}: the sound switches $($switches.Count) time$(if ($switches.Count -ne 1) { 's' }) ($($switches -join ', ')).") }
+		if ($null -eq $begin) { continue }
+		$timbres = @($evs | Where-Object { Get-TimbreText $_ } | Sort-Object Tick, Seq)
+		if (@($timbres | Where-Object { $_.Tick -eq $begin }).Count) { continue } # replayed every pass already
+		$atBegin = $defaultTimbre[$ch]; $atEnd = $defaultTimbre[$ch]
+		foreach ($e in $timbres) {
+			if ($e.Tick -le $begin) { $atBegin = Get-TimbreText $e }
+			if ($e.Tick -lt $stop) { $atEnd = Get-TimbreText $e }
+		}
+		if ($atBegin -ne $atEnd) {
+			$evs.Add([pscustomobject]@{ Tick = $begin; Order = 1; Seq = $seq++; Bytes = (New-MetaBytes 0x01 $script:Latin1.GetBytes($atBegin)) })
+		}
 	}
 
 	foreach ($ch in $chan.Keys) {

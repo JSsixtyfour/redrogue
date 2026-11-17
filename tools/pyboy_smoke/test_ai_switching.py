@@ -556,6 +556,44 @@ class AIShouldSwitchTest(unittest.TestCase):
         self.assertGreaterEqual(2 * hp, max_hp, f"hit {hit}, hp {hp}/{max_hp}")
         self.assertEqual((switched, gate), (False, 1))
 
+    # --- E2 voluntary target (AI_T4_REGRET_PLAN, 2026-11-17) ----------------------
+    # Paired replays measured T3's KO-threat switches losing +0.158 of party HP per
+    # switch to a better TARGET: the pick was the legacy defence-only ranking. T3 now
+    # re-ranks the reserves that beat the active mon with the post-KO tiers, each
+    # after paying the entry hit (AIRankVoluntaryTarget).
+    def voluntary_target(self, ai_tier: int, machamp_hp: int | None = None) -> tuple[bool, int]:
+        def board(h) -> None:
+            if machamp_hp is not None:
+                h.write8("wEnemyMon3HP", machamp_hp >> 8)
+                h.write8("wEnemyMon3HP", machamp_hp & 0xFF, offset=1)
+            self.prime_lethal_hp()  # the KO-threat trigger, above B5's quarter-HP sacrifice
+            h.write8("wBattleMonHP", 0)
+            # Measured: Karate Chop's expected damage 44, Geodude's Tackle 22. At 30 HP the
+            # Chop is a reliable KO (FINISH) and Tackle is not; at 45 both were
+            # SURVIVE_REPLY and the lower legacy score (Geodude) rightly won the tie.
+            h.write8("wBattleMonHP", 30, offset=1)
+
+        switched = self.call_should_switch(
+            self.mon("SNORLAX", ["BODY_SLAM"]),
+            # Electrode's Growl cannot trip the "we KO first" veto. Geodude resists Body
+            # Slam (the legacy pick); Machamp is faster and finishes with Karate Chop.
+            [self.mon("ELECTRODE", ["GROWL"]), self.mon("GEODUDE", ["TACKLE"]),
+             self.mon("MACHAMP", ["KARATE_CHOP"])],
+            ai_tier=ai_tier, reveal=[0], post_boot=board,
+        )
+        return switched, self.harness.read8("wBuffer", offset=19)  # AI_BUF_BESTPARTYSLOT
+
+    def test_t3_voluntary_switch_picks_the_reserve_that_finishes(self) -> None:
+        self.assertEqual(self.voluntary_target(3), (True, 2))
+
+    def test_t3_voluntary_switch_never_picks_a_reserve_the_entry_hit_kos(self) -> None:
+        # The same finisher at 5 HP dies to Body Slam on the way in: Geodude again.
+        self.assertEqual(self.voluntary_target(3, machamp_hp=5), (True, 1))
+
+    def test_t2_voluntary_switch_keeps_the_defensive_pick(self) -> None:
+        # Negative control on the same board: T2 is not re-ranked.
+        self.assertEqual(self.voluntary_target(2), (True, 1))
+
     def test_reserve_that_keeps_half_is_switched_in(self) -> None:
         # Control for the case above: at 2 x hit + 2 HP it keeps more than half.
         switched, gate, *_ = self.sacrifice_case("WIGGLYTUFF", lambda hit: 2 * hit + 2)

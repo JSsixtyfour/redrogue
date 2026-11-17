@@ -252,6 +252,59 @@ def loop_tests(out):
     smf.write(os.path.join(out, "conflicting_markers.mid"), tracks, ppq=MS_Q)
 
 
+def patch_automation(path):
+    """patch_automation.mid: program changes switch the sound mid-song, numbered
+    like the SoundFont presets. 4 bars, a Loop note at bar 2, two half notes a bar.
+    Ch1 (no sound in its name): program 2 at tick 0, program 3 at bar 3 beat 2,
+    inside a held note, so it lands on bar 3 beat 3. The loop starts on Square 50
+    and ends on Square 75, so Square 50 must be set again at the loop start.
+    Ch2 "Ch2 Square 50": program 0 at tick 0 loses to the name; program 3 at bar 2.
+    Ch3: program 0 (not a wave: ignored), 6 (Wave 2) at tick 0, 15 (Wave 10) at
+    bar 2 exactly. Expectations: make_music_kit.py PATCH_WANTS."""
+    def prog(t, tick, ch, p):
+        t._add(tick, bytes([0xC0 | ch, p]), 1)
+
+    t0 = smf.Track()
+    t0.tempo(0, 120)
+    ch1, ch2, ch3 = smf.Track("Ch1"), smf.Track("Ch2 Square 50"), smf.Track("Ch3")
+    prog(ch1, 0, 0, 2); prog(ch1, 2 * BAR + Q, 0, 3)
+    prog(ch2, 0, 1, 0); prog(ch2, BAR, 1, 3)
+    prog(ch3, 0, 2, 0); prog(ch3, 0, 2, 6); prog(ch3, BAR, 2, 15)
+    for bar in range(4):
+        for half in range(2):
+            at = bar * BAR + half * 2 * Q
+            ch1.note(at, 2 * Q, 72 + bar, 100, 0)
+            ch2.note(at, 2 * Q, 64 + bar, 100, 1)
+            ch3.note(at, 2 * Q, 48 + bar, 100, 2)
+    lp = smf.Track("Loop")
+    lp.note(BAR, Q, 72, 80)
+    smf.write(path, [t0, ch1, ch2, ch3, lp])
+
+
+def patch_track(path):
+    """patch_track.mid: patch_automation.mid's song with no program changes at
+    all: the sounds come from "Ch1 Patch" .. "Ch3 Patch" tracks, whose note
+    numbers are program numbers (what an FL Studio user writes). Ch3 Patch's
+    note 0 is not a wave and must be reported. Expectations: make_music_kit.py
+    PATCH_WANTS and PATCH_TRACK_SAYS."""
+    t0 = smf.Track()
+    t0.tempo(0, 120)
+    ch1, ch2, ch3 = smf.Track("Ch1"), smf.Track("Ch2 Square 50"), smf.Track("Ch3")
+    p1, p2, p3 = smf.Track("Ch1 Patch"), smf.Track("Ch2 Patch"), smf.Track("Ch3 Patch")
+    p1.note(0, Q // 4, 2); p1.note(2 * BAR + Q, Q // 4, 3)
+    p2.note(0, Q // 4, 0); p2.note(BAR, Q // 4, 3)
+    p3.note(0, Q // 4, 0); p3.note(0, Q // 4, 6); p3.note(BAR, Q // 4, 15)
+    for bar in range(4):
+        for half in range(2):
+            at = bar * BAR + half * 2 * Q
+            ch1.note(at, 2 * Q, 72 + bar, 100, 0)
+            ch2.note(at, 2 * Q, 64 + bar, 100, 1)
+            ch3.note(at, 2 * Q, 48 + bar, 100, 2)
+    lp = smf.Track("Loop")
+    lp.note(BAR, Q, 72, 80)
+    smf.write(path, [t0, ch1, p1, ch2, p2, ch3, p3, lp])
+
+
 def wave_velocity(path):
     """All nonzero velocities, including both exact Ch3 band boundaries."""
     t = smf.Track("Ch3 Wave 6")
@@ -291,6 +344,8 @@ def write_all(out):
     daw_like(out)
     kitswitch(os.path.join(out, "kitswitch.mid"))
     wave5(os.path.join(out, "wave5.mid"))
+    patch_automation(os.path.join(out, "patch_automation.mid"))
+    patch_track(os.path.join(out, "patch_track.mid"))
     wave_velocity(os.path.join(out, "wave_velocity.mid"))
     format0(os.path.join(out, "format0.mid"))
     notation_gaps(os.path.join(out, "notation_gaps.mid"))

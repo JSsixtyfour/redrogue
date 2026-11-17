@@ -74,6 +74,51 @@ PICKING THE SOUND: put it in the track name
   use the effect markers in Template.mid, for example "duty_cycle 2". A
   marker in the MIDI wins over the name.
 
+CHANGING THE SOUND MID-SONG
+  Ch1, Ch2 and Ch3 can switch sound as often as you like (Ch1 from Square 50
+  to Square 25 for a chorus, Ch3 from Wave 2 to Wave 10). A switch applies
+  from the next note on. Two ways to write one:
+
+  A. A PATCH TRACK (works in every program, including FL Studio)
+     Add a track named "Ch1 Patch" (or Ch2 Patch, Ch3 Patch). In FL Studio,
+     that's another channel in the Channel rack with that name; any
+     instrument will do, it makes no sound in the game. Each note you put on
+     it picks the sound for its channel, starting at that note's time. Only
+     the note's pitch matters, not its length or velocity:
+
+        Ch1 / Ch2 Patch            Ch3 Patch
+        MIDI  FL name  sound       MIDI  FL name  sound    MIDI  FL name  sound
+          0   C0   Square 12.5       4   E0   Wave 0        13   C#1  Wave 8
+          1   C#0  Square 25         5   F0   Wave 1        14   D1   Wave 9
+          2   D0   Square 50         6   F#0  Wave 2        15   D#1  Wave 10
+          3   D#0  Square 75         7   G0   Wave 3        16   E1   Wave 11
+                                     8   G#0  Wave 4        17   F1   Wave 12
+                                    10   A#0  Wave 5        18   F#1  Wave 13
+                                    11   B0   Wave 6        19   G1   Wave 14
+                                    12   C1   Wave 7
+     "FL name" is FL Studio's label, where middle C (MIDI 60) is C5. In a
+     program that calls middle C "C4", every name is one octave lower (C-1
+     instead of C0). The MIDI numbers are what count.
+     The Patch track doesn't change what you hear in FL: to preview a switch,
+     also change the preset on that channel's instrument at the same point,
+     or listen in the tester.
+
+  B. MIDI PROGRAM CHANGES, if your program writes them into the exported
+     MIDI. Same numbers as the table above (they're also the SoundFont
+     presets' numbers: 20-49, the DLS "Wave N 25%/50%" presets, pick Wave N;
+     loudness still comes from velocity). Programs that aren't Game Boy
+     sounds (Piano, Flute...) are ignored.
+
+  Either way:
+  - The track name sets the starting sound and wins over a switch on the
+    first note; remove the sound from the name to let the switch choose.
+  - A switch in the middle of a held note waits for the next note.
+  - Looping is handled: the loop starts again on the sound it started with.
+  - Ch4 has no sound switches (its drums pick their own sounds).
+  The tester window lists every switch it made ("Ch3: the sound switches
+  2 times (Wave 2, Wave 10)"). If your switches aren't listed, they didn't
+  reach the exported MIDI.
+
 
 THE LIMITS
 ----------
@@ -221,8 +266,9 @@ the game), and what the game plays is authoritative.
                channels to that same port. Use MIDI channels 1, 2, 3 and 10;
                select the two Squares, a Wave and Game Boy Drums in LSD.
                Name the MIDI tracks Ch1 Square 50, Ch2 Square 25, Ch3 Wave 6
-               (or your chosen timbres), and Ch4. Preset selection alone
-               does not tell the converter which square/wave to use.
+               (or your chosen timbres), and Ch4. To switch sounds mid-song,
+               add a "Ch1 Patch" (etc.) channel; see CHANGING THE SOUND
+               MID-SONG. The tester window lists each switch it found.
                DLS square velocity response is approximate; use the exact
                MIDI table above and check the exported MIDI in the tester.
                DLS1 waves need manual preview selection: Wave N = 100%,

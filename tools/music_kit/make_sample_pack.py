@@ -234,8 +234,11 @@ The melodic Drums preset is also available for hosts using a normal channel.
 Keep the DLS alongside your project: FL stores its path, not the bank itself.
 
 Name exported tracks Ch1 Square 50, Ch2 Square 25, Ch3 Wave 6, Ch4,
-substituting your chosen square duties/wave. Program changes are discarded
-by the tester: choosing an LSD patch does not set the game's timbre.
+substituting your chosen square duties/wave. To switch sounds mid-song,
+add a channel named Ch1 Patch (Ch2 Patch, Ch3 Patch): each note on it picks
+the sound from that point, its MIDI number being the PROGRAMS number below
+(0 = C0 in FL = Square 12.5; see CHANGING THE SOUND MID-SONG in READ ME
+FIRST). The tester window lists each switch it found.
 Retain the Template.mid Loop track for looping. Export MIDI and use the
 existing DROP YOUR SONG HERE tester. This is a sample-bank add-on, not a ROM.
 

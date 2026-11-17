@@ -273,6 +273,17 @@ AIRankSendOutCandidatesBelow:
 ; Writes AI_BUF_BESTPARTYSCORE ($ff) and the three bytes AIScoreSendOutMon borrows
 ; (wEnemyMonType1/2, wPlayerMoveType): the caller saves and restores them.
 ; Clobbers af, bc, d, hl.
+; The ACTIVE mon's full AIScoreSendOutMon score, on its live battle struct: the
+; bound a voluntary switch target must beat (AIReplacementIsBetter's gate), for
+; AIRankVoluntaryTarget (ai_postko.asm). OUTPUT e. Same borrowed bytes and
+; clobbers as AIScoreSendOutSlot; the caller saves and restores them.
+AIScoreActiveMon::
+	ld a, $ff
+	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a
+	ld hl, wEnemyMon
+	ld c, wEnemyMonMaxHP - wEnemyMon
+	jp AIScoreSendOutMon
+
 AIScoreSendOutSlot::
 	ld a, $ff
 	ld [wBuffer + AI_BUF_BESTPARTYSCORE], a ; no bound, so nothing is pruned
@@ -628,6 +639,11 @@ AIShouldSwitch::
 	jp c, .stay
 	call AIReplacementIsBetterAndSurvives
 	jr nc, .noSafeReserve
+; T3: re-pick WHICH reserve, by what it can do after paying the entry hit
+; (AI_T4_REGRET_PLAN E2, 2026-11-17: the defence-only pick lost +0.158 of party HP
+; per switch to a better target, measured by paired replays). Leaves the B4 answer
+; for the reserve it chose, which B5 reads next.
+	farcall AIRankVoluntaryTarget
 ; B5: a safe reserve exists, but sacrificing the active mon may still be the
 ; better trade (a replacement after a faint enters free) - see the predicate.
 	farcall AISacrificeBeatsSwitch ; carry = sacrifice; survives the return
@@ -725,7 +741,12 @@ AIShouldSwitch::
 ; ...and only into a reserve that is actually better off, or the bad matchup
 ; just moves to the next mon and the free hit is wasted (review F5).
 	call AIReplacementIsBetterAndSurvives
-	jp c, .switch
+	jp nc, .stay
+; The same target re-pick as the KO-threat trigger (measured 2026-11-17: here the
+; switch itself is worth about the same as staying; the chosen target is what
+; lost, +0.052 per switch to the best other target).
+	farcall AIRankVoluntaryTarget
+	jp .switch
 
 .stay
 	and a ; clear carry
