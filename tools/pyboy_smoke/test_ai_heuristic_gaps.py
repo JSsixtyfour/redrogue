@@ -327,10 +327,47 @@ class AISmartGapsTest(_MoveLayerGapsBase):
 
     def test_heal_hp_bands(self):
         # AISmart_Heal: below quarter encourages, quarter-to-half is neutral,
-        # at/above half discourages. maxHP=200 (quarter=50, half=100).
-        self.assertEqual(self.smart_score("RECOVER", {"wEnemyMonHP": (40,)}), 18)
-        self.assertEqual(self.smart_score("RECOVER", {"wEnemyMonHP": (70,)}), 20)
-        self.assertEqual(self.smart_score("RECOVER", {"wEnemyMonHP": (150,)}), 22)
+        # at/above half discourages. maxHP=200 (quarter=50, half=100). Slower,
+        # so the heal race (next tests) does not apply.
+        slower = {"wEnemyMonSpeed": (80,)}
+        self.assertEqual(self.smart_score("RECOVER", {"wEnemyMonHP": (40,), **slower}), 18)
+        self.assertEqual(self.smart_score("RECOVER", {"wEnemyMonHP": (70,), **slower}), 20)
+        self.assertEqual(self.smart_score("RECOVER", {"wEnemyMonHP": (150,), **slower}), 22)
+
+    # E6.2 heal race (AI backlog B21.2, measured 2026-11-18): faster and the heal (half of
+    # max HP, 100 here) exceeds the player's best possible hit -> encouraged at any HP.
+    def heal_race(self, player_move, hp, speed=100, max_hp=200):
+        self.h.reveal_player_moves(0, [0], clear=True)
+        # wAIPlayerKOCache must be cleared by hand: call_routine's fresh-decision reset
+        # clears wAIPlayerKOMaxDamage but not the cache (see test_ai_switching's
+        # call_ai_should_switch), so a stale cached answer skipped the scan and left the
+        # max invalid (measured). In play the two are cleared and filled together.
+        board = {"wEnemyMonHP": (hp,), "wEnemyMonMaxHP": (max_hp,), "wEnemyMonSpeed": (speed,),
+                 "wAIPlayerKOCache": 0,
+                 ("wBattleMonMoves", 0): self.moves[player_move]}
+        for slot in (1, 2, 3):
+            board[("wBattleMonMoves", slot)] = 0
+        return self.smart_score("RECOVER", board)
+
+    def test_heal_that_outpaces_the_player_is_encouraged_even_healthy(self):
+        self.assertEqual(self.heal_race("TACKLE", 150), 18)  # the bands alone: 22
+        self.assertEqual(self.heal_race("TACKLE", 70), 18)   # the bands alone: 20
+
+    def test_heal_race_needs_both_speed_and_outpacing(self):
+        self.assertEqual(self.heal_race("TACKLE", 150, speed=80), 22, "slower: bands")
+        # Measured: Snorlax's Hyper Beam peaks at 97 here, under a 100 heal, so out-damaging
+        # needs a smaller heal: max HP 150 (heal 75), HP 120 (above half, and no KO).
+        self.assertEqual(self.heal_race("HYPER_BEAM", 120, max_hp=150), 22, "out-damaged: bands")
+        self.assertEqual(self.heal_race("TACKLE", 120, max_hp=150), 18, "same board, out-paced")
+
+    def test_rest_is_not_in_the_heal_race(self):
+        # Same board as the Tackle case that encourages Recover (18), cache cleared the same way.
+        self.h.reveal_player_moves(0, [0], clear=True)
+        board = {"wEnemyMonHP": (150,), "wAIPlayerKOCache": 0,
+                 ("wBattleMonMoves", 0): self.moves["TACKLE"]}
+        for slot in (1, 2, 3):
+            board[("wBattleMonMoves", slot)] = 0
+        self.assertEqual(self.smart_score("REST", board), 22)
 
     def test_hyper_beam_without_a_ko_is_discouraged_at_any_hp(self):
         # Measured 2026-11-18 (AI backlog B21.1): a non-KO Beam is ~0.02 worse than

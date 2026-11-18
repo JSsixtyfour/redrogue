@@ -98,6 +98,16 @@ class BenchmarkPolicyTest(unittest.TestCase):
         behind_sub = self.mon(["NORMAL"], ["TACKLE"], substitute=True)
         self.assertEqual(self.slot(player, behind_sub, "residual_first"), 0)
 
+    # --- haze_responder (2026-11-18) ------------------------------------------
+    def test_haze_responder_hazes_a_boosted_foe_and_attacks_otherwise(self):
+        player = self.mon(["POISON"], ["SLUDGE", "HAZE"])
+        boosted = self.mon(["NORMAL"], ["TACKLE"], stat_mods=(9, 7, 7, 7, 7, 7, 7, 7))
+        self.assertEqual(self.slot(player, boosted, "haze_responder"), 1)
+        neutral = self.mon(["NORMAL"], ["TACKLE"])
+        self.assertEqual(self.slot(player, neutral, "haze_responder"), 0, "nothing to clear")
+        lowered = self.mon(["NORMAL"], ["TACKLE"], stat_mods=(5, 7, 7, 7, 7, 7, 7, 7))
+        self.assertEqual(self.slot(player, lowered, "haze_responder"), 0, "a drop is ours to keep")
+
     # --- status_first -------------------------------------------------------
     def test_status_first_paralyses_a_healthy_target(self):
         player = self.mon(["ELECTRIC"], ["THUNDERBOLT", "THUNDER_WAVE"])

@@ -963,18 +963,21 @@
    }
   },
   "AISmart_Heal": {
-   "summary": "AI_SMART handler: Recover/Softboiled is good when low, wasteful when healthy.",
+   "summary": "AI_SMART handler: Recover/Softboiled is encouraged at any HP when we act first and the heal out-paces the player's best possible hit (AIHealOutpaces); otherwise good when low, wasteful when healthy.",
    "positive": {
-    "requirement": "low HP: heal encouraged",
+    "requirement": "low HP, or a heal race we win: heal encouraged",
     "tests": [
      "test_ai_heuristic_gaps.AISmartGapsTest.test_heal_hp_bands",
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_heal_that_outpaces_the_player_is_encouraged_even_healthy",
      "test_ai_s5_small.S5SmallTest.test_rest_with_a_status_to_cure"
     ]
    },
    "negative": {
-    "requirement": "healthy: discouraged",
+    "requirement": "healthy and no heal race (slower, out-damaged, or Rest): discouraged",
     "tests": [
-     "test_ai_heuristic_gaps.AISmartGapsTest.test_heal_hp_bands"
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_heal_hp_bands",
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_heal_race_needs_both_speed_and_outpacing",
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_rest_is_not_in_the_heal_race"
     ]
    },
    "boundary": {

@@ -35,7 +35,7 @@ import re
 from source_constants import parse_rgbds_constants
 
 POLICIES = ("best_power", "first_slot", "type_aware", "status_first",
-            "setup_first", "type_switcher", "early_switcher", "residual_first")
+            "setup_first", "type_switcher", "early_switcher", "residual_first", "haze_responder")
 SWITCHING_POLICIES = ("type_switcher", "early_switcher")
 
 STAT_NEUTRAL = 7  # stat-mod bytes run 1..13
@@ -304,6 +304,20 @@ def residual_slot(rules: Rules, state: State) -> int | None:
     return min(candidates)[2] if candidates else None
 
 
+def haze_slot(rules: Rules, state: State) -> int | None:
+    """haze_responder (2026-11-18, AI_BACKLOG B21.3): Haze the moment the AI's mon holds any
+    raised stage, so "a boost is worth nothing once the player has revealed Haze" can be
+    measured; best_power never uses a 0-power move."""
+    if not any(m > STAT_NEUTRAL for m in state.enemy.stat_mods[:6]):
+        return None
+    haze = rules.effect("HAZE_EFFECT")
+    for s in legal_slots(state.player):
+        move = rules.moves.get(state.player.moves[s])
+        if move is not None and move.effect == haze:
+            return s
+    return None
+
+
 SETUP_STAT = {"ATTACK_UP1_EFFECT": 0, "ATTACK_UP2_EFFECT": 0, "SPEED_UP1_EFFECT": 2,
               "SPEED_UP2_EFFECT": 2, "SPECIAL_UP1_EFFECT": 3, "SPECIAL_UP2_EFFECT": 3}
 
@@ -341,8 +355,12 @@ def choose_slot(rules: Rules, state: State, policy: str) -> int:
         slot = residual_slot(rules, state)
         if slot is not None:
             return slot
+    if policy == "haze_responder":
+        slot = haze_slot(rules, state)
+        if slot is not None:
+            return slot
     if policy in ("type_aware", "status_first", "setup_first", "residual_first",
-                  "type_switcher", "early_switcher"):
+                  "type_switcher", "early_switcher", "haze_responder"):
         return best_attack(rules, player, state.enemy, legal)[0]
     raise ValueError(f"unknown policy {policy}")
 

@@ -521,6 +521,46 @@ AIRankStalemateTarget::
 	and a
 	ret
 
+; E6.2 heal race (Pokemon Stadium 2's "heal worth double", fragment79_3BC290.c).
+; Carry SET if the loaded heal move (Recover / Softboiled; never Rest, whose two
+; sleep turns are a different trade) out-paces the player: we act first and half
+; our max HP (the heal, an engine fact) exceeds the player's best POSSIBLE hit
+; (AIPlayerWouldKO's believed-moveset scan, max roll). Measured 2026-11-18 (AI
+; backlog B21.2, 200 forced states, Recover in slot 0): faster + out-paces beat
+; the best other move by +0.075 / +0.045 / +0.072 at 30 / 45 / 60% HP, all
+; significant; faster without out-pacing and slower were ~0 or negative.
+; Farcalled from AISmart_Heal ($0E, which has no room for it).
+; No register inputs; clobbers af, bc, de, hl.
+AIHealOutpaces::
+	ld a, [wEnemyMoveNum]
+	cp REST
+	jr z, .no
+	farcall AIEnemyIsFaster ; carry = faster; survives the return
+	jr nc, .no
+	farcall AIPlayerWouldKO ; carry = KOs us this turn; fills wAIPlayerKOMaxDamage
+	jr c, .no
+	ld hl, wAIPlayerKOMaxDamage
+	ld a, [hli]
+	bit 7, a ; valid
+	jr z, .no
+	and %00111111 ; drop the valid / lower-bound flags
+	ld d, a
+	ld e, [hl] ; de = the player's best possible hit
+	ld hl, wEnemyMonMaxHP
+	ld a, [hli]
+	ld b, a
+	ld c, [hl]
+	srl b
+	rr c ; bc = the heal
+	ld a, e
+	sub c
+	ld a, d
+	sbc b ; carry iff the hit < the heal
+	ret
+.no
+	and a
+	ret
+
 ; AIShouldSwitch's generic T3 case (moved here from "Trainer AI Switching", $2C,
 ; on 2026-11-18 to free that bank; behaviour and the Random call order unchanged).
 ; Carry SET if the player's primary type hits the active mon for more than neutral

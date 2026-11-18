@@ -347,6 +347,11 @@ AISmart_Heal:
 	jr c, .encourage
 	jr .noChange
 .byHP
+; Ahead of the HP bands: a heal that out-paces the player (we act first, it
+; restores more than their best hit) is worth it at ANY HP (AIHealOutpaces, $10;
+; measured +0.045 to +0.075, where these bands said neutral or STRONG discourage).
+	farcall AIHealOutpaces
+	jr c, .encourage
 	call AIEnemyHPBelowQuarter
 	jr c, .encourage
 	call AIEnemyHPBelowHalf
@@ -356,13 +361,13 @@ AISmart_Heal:
 	                ; `ret`, off a predicate/bit-test result; land on an
 	                ; explicit `xor a` before returning. Same rule applies to
 	                ; every handler below.
-	ld a, AI_STRONG
-	and a
+	                ; Falling through, carry is clear: that IS the discourage.
+.strong
+	ld a, AI_STRONG ; ld keeps the carry
 	ret
 .encourage
-	ld a, AI_STRONG
 	scf
-	ret
+	jr .strong ; shares the tail: 2 B for $0E (debug), which the heal race's farcall needed
 .noChange
 	xor a
 	ret
