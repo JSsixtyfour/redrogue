@@ -628,10 +628,144 @@ class AIShouldSwitchTest(unittest.TestCase):
         self.assertEqual(self.harness.read8("wEnemySelectedMove"), self.moves["THUNDER_WAVE"])
         self.assertFalse(plan >> 6 & 1, f"plan {plan:#04x}")
 
+    def toxic_staller(self, player_status: int) -> bool:
+        def board(h) -> None:
+            h.write8("wEnemySelectedMove", self.moves["DOUBLE_TEAM"])
+            h.write8("wBattleMonStatus", player_status)
+        return self.call_should_switch(
+            dict(self.mon("RATTATA", ["TACKLE"]), level=10),
+            [dict(self.mon("WEEZING", ["DOUBLE_TEAM", "REST", "TOXIC", "REFLECT"]), level=60),
+             dict(self.mon("CLEFABLE", ["BODY_SLAM"]), level=58)],
+            ai_tier=3, reveal=[0], post_boot=board,
+        )
+
+    def test_toxic_staller_keeps_stalling_while_the_player_is_poisoned(self) -> None:
+        # Once Toxic lands, Double Team / Rest / Reflect turns are the plan, not a
+        # stalemate: the poison does the damage. PSN (bit 3) is set for Toxic too.
+        self.assertFalse(self.toxic_staller(1 << 3))
+
+    def test_toxic_staller_with_nothing_ticking_is_a_stalemate(self) -> None:
+        # Control on the same board: no residual on the player, no damage of ours.
+        self.assertTrue(self.toxic_staller(0))
+
     def test_a_usable_attack_is_not_a_stalemate(self) -> None:
         # Negative control: Sludge deals damage, so Weezing stays and attacks.
         plan = self.stalemate_plan(["AMNESIA", "SELFDESTRUCT", "SLUDGE", "EXPLOSION"])
         self.assertFalse(plan >> 6 & 1, f"plan {plan:#04x}")
+
+    # --- B17 Toxic pressure (Pokemon Stadium 1's term, 2026-11-17) ------------------
+    # Stadium adds toxicCounter * 77 to its switch score against a -127 baseline and
+    # doubles it when seeded: counter >= 2, or >= 1 while seeded, switches.
+    def toxic_case(self, counter: int, *, seeded: bool = False, ai_tier: int = 3,
+                   player_hp: int | None = None) -> tuple[bool, int]:
+        hit = {}
+
+        def board(h) -> None:
+            h.write8("wEnemySelectedMove", self.moves["WATER_GUN"])
+            h.write8("wEnemyMoveListIndex", 0)
+            h.write8("wEnemyMonStatus", 1 << 3)  # PSN
+            h.write8("wEnemyBattleStatus3", h.read8("wEnemyBattleStatus3") | 1)  # BADLY_POISONED
+            h.write8("wEnemyToxicCounter", counter)
+            if seeded:
+                h.write8("wEnemyBattleStatus2", h.read8("wEnemyBattleStatus2") | 0x80)  # SEEDED
+            if player_hp is not None:
+                h.write8("wBattleMonHP", player_hp >> 8)
+                h.write8("wBattleMonHP", player_hp & 0xFF, offset=1)
+            hit["toxic"] = h.hook_flag("AIToxicPushesOut")
+
+        switched = self.call_should_switch(
+            self.mon("SNORLAX", ["SPLASH"]),
+            [self.mon("SLOWBRO", ["WATER_GUN"]), self.mon("CLEFABLE", ["BODY_SLAM"])],
+            ai_tier=ai_tier, reveal=[0], post_boot=board,
+        )
+        self.assertEqual(hit["toxic"]["count"], 1, "the Toxic check must be reached")
+        return switched, self.harness.read8("wBuffer", offset=19)
+
+    def test_toxic_counter_two_switches_out(self) -> None:
+        self.assertEqual(self.toxic_case(2), (True, 1))
+
+    def test_toxic_counter_one_stays(self) -> None:
+        self.assertFalse(self.toxic_case(1)[0])
+
+    def test_toxic_counter_one_while_seeded_switches_out(self) -> None:
+        self.assertEqual(self.toxic_case(1, seeded=True), (True, 1))
+
+    def test_toxic_pressure_applies_at_t2(self) -> None:
+        self.assertTrue(self.toxic_case(2, ai_tier=2)[0])
+
+    def test_toxic_pressure_yields_to_a_reliable_first_ko(self) -> None:
+        # The player cannot hurt Slowbro, so landing Water Gun on a 1-HP Snorlax is
+        # reliable whoever moves first: stay and take the KO (Stadium's -255).
+        self.assertFalse(self.toxic_case(4, player_hp=1)[0])
+
+    # --- B17 free switch-in target (AI_T4_REGRET_PLAN, 2026-11-17) -------------------
+    # 600 seeds: where a reserve was immune to every damaging player move, the best switch
+    # beat the best stay by +0.071 of party HP. AIFreeSwitchInTarget finds such a reserve:
+    # immune by type to every believed threat (cheap), then the real B4 scan must keep
+    # half its HP (prices fixed-damage moves, which ignore immunity in this engine).
+    def free_in(self, player_moves: list[str], enemy: list[str]) -> tuple[bool, int, int]:
+        """(found, AI_BUF_BESTPARTYSLOT, B4 scans run = reserves that passed the type stage)."""
+        assert self.harness is not None
+        self.harness.inject_fight2_spec(
+            [self.mon("PIKACHU", player_moves)], [self.mon(name, ["TACKLE"]) for name in enemy],
+            trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=3,
+        )
+        self.harness.boot_fight2(seed=1)
+        self.harness.write8("wEnemyMonPartyPos", 0)
+        self.harness.reveal_player_moves(0, list(range(len(player_moves))), clear=True)
+        types = self.harness.read_bytes("wEnemyMonType1", 2)
+        found = self.harness.hook_flag("AIFreeSwitchInTarget.found")
+        none = self.harness.hook_flag("AIFreeSwitchInTarget.noneRestore")
+        scans = self.harness.hook_flag("AIBestReserveSurvivesThreat")
+        self.harness.call_routine("AIFreeSwitchInTarget")
+        self.assertEqual(found["count"] + none["count"], 1, "exactly one exit must fire")
+        self.assertEqual(self.harness.read_bytes("wEnemyMonType1", 2), types,
+                         "the active mon's live types must be restored")
+        return (bool(found["count"]), self.harness.read8("wBuffer", offset=19),  # AI_BUF_BESTPARTYSLOT
+                scans["count"])
+
+    def test_free_switch_in_finds_the_immune_reserve(self) -> None:
+        # Thunderbolt only: Geodude (Ground) takes nothing, Starmie takes it super effective.
+        self.assertEqual(self.free_in(["THUNDERBOLT"], ["STARMIE", "GEODUDE"]), (True, 1, 1))
+
+    def test_free_switch_in_skips_to_a_later_immune_slot(self) -> None:
+        # Slowbro fails the type stage, so only Sandslash costs a B4 scan.
+        self.assertEqual(self.free_in(["THUNDERBOLT"], ["STARMIE", "SLOWBRO", "SANDSLASH"]),
+                         (True, 2, 1))
+
+    def test_free_switch_in_rejects_a_reserve_one_threat_reaches(self) -> None:
+        found, _, scans = self.free_in(["THUNDERBOLT", "SURF"], ["STARMIE", "GEODUDE"])
+        self.assertEqual((found, scans), (False, 0), "rejected by the type stage, no B4 scan")
+
+    def test_free_switch_in_prices_fixed_damage_that_ignores_immunity(self) -> None:
+        # The type stage passes (Seismic Toss is left out of the threat types), but the
+        # toss deals the user's level to a Ground type too; the faster Pikachu then hits
+        # Geodude twice before it acts, so B4 says it does not keep half.
+        found, _, scans = self.free_in(["THUNDERBOLT", "SEISMIC_TOSS"], ["STARMIE", "GEODUDE"])
+        self.assertEqual((found, scans), (False, 1), "passed the type stage, rejected by B4")
+
+    def test_free_switch_in_ignores_an_active_mon_that_is_already_immune(self) -> None:
+        found, _, scans = self.free_in(["THUNDERBOLT"], ["RHYHORN", "GEODUDE"])
+        self.assertEqual((found, scans), (False, 0))
+
+    def free_in_decision(self, ai_tier: int) -> tuple[bool, int, int]:
+        # Clefairy takes Thunderbolt neutrally and survives it, so neither the KO
+        # trigger nor the bad-matchup case can be what switches; Pound keeps the
+        # stalemate breaker (no damaging move) out of it too.
+        hit = {}
+        switched = self.call_should_switch(
+            self.mon("PIKACHU", ["THUNDERBOLT"]),
+            [self.mon("CLEFAIRY", ["POUND"]), self.mon("GEODUDE", ["TACKLE"])],
+            ai_tier=ai_tier, reveal=[0],
+            post_boot=lambda h: hit.update(found=h.hook_flag("AIFreeSwitchInTarget.found")),
+        )
+        return switched, self.harness.read8("wBuffer", offset=19), hit["found"]["count"]
+
+    def test_t3_switches_into_a_free_switch_in(self) -> None:
+        self.assertEqual(self.free_in_decision(3), (True, 1, 1))
+
+    def test_t2_has_no_free_switch_in_term(self) -> None:
+        self.assertFalse(self.free_in_decision(2)[0])
 
     def test_reserve_that_keeps_half_is_switched_in(self) -> None:
         # Control for the case above: at 2 x hit + 2 HP it keeps more than half.

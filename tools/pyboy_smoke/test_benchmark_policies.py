@@ -81,6 +81,23 @@ class BenchmarkPolicyTest(unittest.TestCase):
         enemy = self.mon(["FIRE"], ["EMBER"])
         self.assertEqual(self.slot(player, enemy, "type_aware"), 0)
 
+    # --- residual_first (2026-11-17) ------------------------------------------
+    def test_residual_first_prefers_toxic_then_leech_seed(self):
+        player = self.mon(["GRASS"], ["VINE_WHIP", "LEECH_SEED", "TOXIC"])
+        enemy = self.mon(["NORMAL"], ["TACKLE"])
+        self.assertEqual(self.slot(player, enemy, "residual_first"), 2)
+        poisoned = self.mon(["NORMAL"], ["TACKLE"], status=1 << 3)
+        self.assertEqual(self.slot(player, poisoned, "residual_first"), 1, "Toxic is spent: seed")
+        both = self.mon(["NORMAL"], ["TACKLE"], status=1 << 3, seeded=True)
+        self.assertEqual(self.slot(player, both, "residual_first"), 0, "both on: attack")
+
+    def test_residual_first_respects_immunities_and_a_substitute(self):
+        player = self.mon(["GRASS"], ["VINE_WHIP", "LEECH_SEED", "TOXIC"])
+        grass_poison = self.mon(["GRASS", "POISON"], ["TACKLE"])
+        self.assertEqual(self.slot(player, grass_poison, "residual_first"), 0)
+        behind_sub = self.mon(["NORMAL"], ["TACKLE"], substitute=True)
+        self.assertEqual(self.slot(player, behind_sub, "residual_first"), 0)
+
     # --- status_first -------------------------------------------------------
     def test_status_first_paralyses_a_healthy_target(self):
         player = self.mon(["ELECTRIC"], ["THUNDERBOLT", "THUNDER_WAVE"])

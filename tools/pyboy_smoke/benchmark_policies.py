@@ -35,7 +35,7 @@ import re
 from source_constants import parse_rgbds_constants
 
 POLICIES = ("best_power", "first_slot", "type_aware", "status_first",
-            "setup_first", "type_switcher", "early_switcher")
+            "setup_first", "type_switcher", "early_switcher", "residual_first")
 SWITCHING_POLICIES = ("type_switcher", "early_switcher")
 
 STAT_NEUTRAL = 7  # stat-mod bytes run 1..13
@@ -110,6 +110,7 @@ class Mon:
     substitute: bool = False
     reflect: bool = False
     light_screen: bool = False
+    seeded: bool = False
 
 
 @dataclass
@@ -142,6 +143,7 @@ def _battle_mon(h, side: str) -> Mon:
         pp=tuple(h.read_bytes(p + "PP", 4)),
         stat_mods=tuple(h.read_bytes(mods_label, 6)),
         substitute=bool(status2 & (1 << 4)),   # HAS_SUBSTITUTE_UP
+        seeded=bool(status2 & (1 << 7)),       # SEEDED
         light_screen=bool(status3 & (1 << 1)),  # HAS_LIGHT_SCREEN_UP
         reflect=bool(status3 & (1 << 2)),       # HAS_REFLECT_UP
     )
@@ -272,6 +274,36 @@ def status_slot(rules: Rules, state: State) -> int | None:
     return min(candidates)[2] if candidates else None
 
 
+def residual_slot(rules: Rules, state: State) -> int | None:
+    """residual_first (2026-11-17, AI_T4_REGRET_PLAN B17): put damage-over-time on the AI's
+    mon so the Toxic-counter and Leech Seed switch terms can be measured. Toxic first, then
+    Leech Seed, then any other poison; never into an immunity, a Substitute, or a target that
+    already carries it."""
+    enemy = state.enemy
+    if enemy.substitute:
+        return None
+    e, t = rules.effect, rules.types
+    toxic = rules.move_ids.get("TOXIC")
+    candidates = []
+    for s in legal_slots(state.player):
+        mid = state.player.moves[s]
+        move = rules.moves.get(mid)
+        if move is None:
+            continue
+        if move.effect == e("POISON_EFFECT"):
+            if enemy.status or t["POISON"] in enemy.types:
+                continue
+            rank = 0 if mid == toxic else 2
+        elif move.effect == e("LEECH_SEED_EFFECT"):
+            if enemy.seeded or t["GRASS"] in enemy.types:
+                continue
+            rank = 1
+        else:
+            continue
+        candidates.append((rank, -move.accuracy, s))
+    return min(candidates)[2] if candidates else None
+
+
 SETUP_STAT = {"ATTACK_UP1_EFFECT": 0, "ATTACK_UP2_EFFECT": 0, "SPEED_UP1_EFFECT": 2,
               "SPEED_UP2_EFFECT": 2, "SPECIAL_UP1_EFFECT": 3, "SPECIAL_UP2_EFFECT": 3}
 
@@ -305,7 +337,12 @@ def choose_slot(rules: Rules, state: State, policy: str) -> int:
         slot = setup_slot(rules, state)
         if slot is not None:
             return slot
-    if policy in ("type_aware", "status_first", "setup_first", "type_switcher", "early_switcher"):
+    if policy == "residual_first":
+        slot = residual_slot(rules, state)
+        if slot is not None:
+            return slot
+    if policy in ("type_aware", "status_first", "setup_first", "residual_first",
+                  "type_switcher", "early_switcher"):
         return best_attack(rules, player, state.enemy, legal)[0]
     raise ValueError(f"unknown policy {policy}")
 

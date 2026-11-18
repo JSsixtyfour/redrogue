@@ -677,6 +677,18 @@ AIShouldSwitch::
 	jp .switch
 .noTrap
 
+; B17 Toxic pressure (2026-11-17, Pokemon Stadium 1's term; see AIToxicPushesOut):
+; badly poisoned with the counter at 2+ (1+ if seeded) and no reliable first KO.
+; Ahead of the vetoes like Stadium's, where it outweighs kept boosts. With no
+; better reserve that survives, the rest of the chain decides as before.
+	farcall AIToxicPushesOut
+	jr nc, .noToxic
+	call AIReplacementIsBetterAndSurvives
+	jr nc, .noToxic
+	farcall AIRankVoluntaryTarget ; T3 re-picks the target; T2 keeps this one
+	jp .switch
+.noToxic
+
 ; B17 stalemate (2026-11-17): nothing we are willing to do deals damage. Ahead of
 ; the vetoes on purpose: boosts on a mon that cannot attack buy nothing, which is
 ; exactly what the "never abandon our setup" veto would otherwise protect.
@@ -719,6 +731,14 @@ AIShouldSwitch::
 	dec a
 	cp AI_TIER_EXPERT
 	jp c, .stay
+
+; B17 free switch-in (2026-11-17): a reserve takes nothing from anything the
+; player is believed to have. No roll: unlike a bad matchup, the switch costs no
+; free hit. Measured on 600 seeds, switching INTO that reserve beat the best stay
+; by +0.050 of party HP in states that reach this point (n = 53); after the
+; vetoes, since too few vetoed states were seen to judge them (AI_BACKLOG B17).
+	farcall AIFreeSwitchInTarget ; AI_BUF_BESTPARTYSLOT = the reserve
+	jp c, .switch
 
 ; Bad matchup = the player's primary type hits us for more than neutral. Same
 ; forge-and-restore of PreviewTypeMatchup's inputs as AISelectSendOut above;

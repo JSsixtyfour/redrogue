@@ -366,8 +366,19 @@ AIRankVoluntaryTarget::
 ; switch won; a plain "every estimate is 0" test misses it, Explosion's is 999.
 ; No register inputs; clobbers af, bc, de, hl.
 AIActiveCanDoNothing::
-; A status move the AI CHOSE is progress, not a stalemate (user, 2026-11-17: a
-; pure status user such as Thunder Wave / Sing / Softboiled must keep using it).
+; While the player takes residual damage every turn (poisoned, badly poisoned,
+; burned, or Leech Seeded), stalling IS progress: the poison or seed is doing the
+; damage, so any staller (Toxic then Double Team / Rest / Reflect, or any other
+; moveset) stays in while it ticks.
+	ld a, [wBattleMonStatus]
+	and (1 << PSN) | (1 << BRN)
+	jp nz, .canAct
+	ld a, [wPlayerBattleStatus2]
+	bit SEEDED, a
+	jp nz, .canAct
+; A status move the AI CHOSE is progress, not a stalemate: sleep, paralysis,
+; poison or confusion on the player changes the board even though it deals no
+; damage, so a status user keeps using it.
 ; Boosts, Haze and screens are not on the list: against a foe we cannot damage
 ; they buy nothing, which is exactly seed 288's Amnesia/Haze loop.
 	ld a, [wEnemySelectedMove]
@@ -508,6 +519,156 @@ AIRankStalemateTarget::
 	ret
 .none
 	and a
+	ret
+
+; B17 Toxic pressure, copied from Pokemon Stadium 1's switch score
+; (team-hippodrome/pokestadium, battle_engine_com_decision_logic.c lines 4801-4806):
+; it adds toxicCounter * 77 against a -127 baseline and doubles the running score
+; when the mon is also Leech Seeded, whose drain runs off the same counter. Read
+; literally, counter >= 2 crosses the baseline alone, and counter >= 1 while
+; seeded. Switching out turns Toxic back into regular poison and resets the
+; counter, so the ramp stops. Carry SET if the active mon is badly poisoned past
+; that threshold and has no reliable first KO to land instead (Stadium's own
+; -255 for "our move KOs"). The caller still needs a better reserve that survives.
+; No register inputs; clobbers af, bc, de, hl.
+AIToxicPushesOut::
+	ld a, [wEnemyBattleStatus3]
+	bit BADLY_POISONED, a
+	jr z, .no
+	ld a, [wEnemyMonStatus]
+	bit PSN, a
+	jr z, .no ; the flag outlived the poison (cured): nothing ticks
+	ld a, [wEnemyToxicCounter]
+	ld c, a
+	ld a, [wEnemyBattleStatus2]
+	bit SEEDED, a
+	ld a, c
+	jr z, .notSeeded
+	add a ; Stadium doubles the score when seeded: the same as halving the bar
+.notSeeded
+	cp 2
+	jr c, .no
+	farcall AIEnemyHasReliableFirstKO ; carry = we finish first; survives the return
+	ccf
+	ret
+.no
+	and a
+	ret
+
+; B17 free switch-in (AI_T4_REGRET_PLAN, measured 2026-11-17: in 67 states where a
+; reserve was immune to every damaging player move, the best switch beat the best
+; stay by +0.071 of party HP [+0.030, +0.111], 600 seeds). Carry SET with
+; wBuffer + AI_BUF_BESTPARTYSLOT = a living reserve that
+;   1. takes x0 from every believed player threat type (AIBuildPlayerThreatTypes)
+;      while the active mon does not, and
+;   2. keeps more than half its HP through every believed move by the real B4
+;      scan. Stage 1 cannot see fixed-damage moves (AIBuildPlayerThreatTypes drops
+;      them, and in this engine Seismic Toss / Night Shade ignore immunity, see
+;      AIEstimateDamage's .specialDamage), so stage 2 prices them exactly.
+; Stage 1 is the cheap filter: a reserve fails at its first non-immune threat
+; (one chart walk), so an ordinary turn costs about one walk per reserve, and
+; the ~40k-cycle B4 scan runs only on a reserve that passed it.
+; No register inputs; clobbers af, bc, de, hl.
+AIFreeSwitchInTarget::
+	farcall AIBuildPlayerThreatTypes
+	ld a, [wEnemyMonType1]
+	push af
+	ld a, [wEnemyMonType2]
+	push af
+	ld a, [wPlayerMoveType]
+	push af
+	call .immuneToEveryThreat ; the active mon on its live types
+	jr c, .noneRestore ; already immune: nothing to gain by switching
+	ld c, 0 ; c = party slot
+.slot
+	ld a, [wEnemyPartyCount]
+	cp c
+	jr z, .noneRestore
+	jr c, .noneRestore
+	ld a, [wEnemyMonPartyPos]
+	cp c
+	jr z, .next
+	ld a, c
+	ld hl, wEnemyMon1HP
+	push bc
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes
+	pop bc
+	ld a, [hli]
+	or [hl]
+	jr z, .next ; fainted
+	inc hl ; HP low -> BoxLevel
+	inc hl ; Status
+	inc hl ; Type1
+	ASSERT wEnemyMon1Type1 == wEnemyMon1HP + 4
+	ld a, [hli]
+	ld [wEnemyMonType1], a
+	ld a, [hl]
+	ld [wEnemyMonType2], a
+	push bc
+	call .immuneToEveryThreat
+	pop bc
+	jr nc, .next
+; Stage 2 on this candidate. The B4 scan reads the live wEnemyMonType1/2 as the
+; ACTIVE mon's and restores them itself, so put the real ones back first.
+	ld hl, sp + 5 ; the saved wEnemyMonType1: A of the af pushed first (push af
+	              ; puts A in the higher byte), above Type2's and MoveType's
+	ld a, [hl]
+	ld [wEnemyMonType1], a
+	ld hl, sp + 3
+	ld a, [hl]
+	ld [wEnemyMonType2], a
+	ld a, c
+	ld [wBuffer + AI_BUF_BESTPARTYSLOT], a
+	push bc
+	farcall AIBestReserveSurvivesThreat ; e = 1 survives; AI_BUF_RESERVEHALF set
+	pop bc
+	ld a, [wBuffer + AI_BUF_RESERVEHALF]
+	cp AI_RESERVE_HALF_KEEPS
+	jr z, .found
+.next
+	inc c
+	jr .slot
+.found
+	pop af
+	ld [wPlayerMoveType], a
+	pop af
+	ld [wEnemyMonType2], a
+	pop af
+	ld [wEnemyMonType1], a
+	scf
+	ret
+.noneRestore
+	pop af
+	ld [wPlayerMoveType], a
+	pop af
+	ld [wEnemyMonType2], a
+	pop af
+	ld [wEnemyMonType1], a
+	and a
+	ret
+; Carry SET if every believed threat type does x0 to the types staged in
+; wEnemyMonType1/2. Writes wPlayerMoveType. Clobbers af, bc, de, hl.
+.immuneToEveryThreat
+	ld hl, wBuffer + AI_BUF_THREATTYPES
+	ld b, NUM_MOVES
+.threat
+	ld a, [hli]
+	cp $ff
+	jr z, .nextThreat
+	ld [wPlayerMoveType], a
+	push hl
+	push bc
+	farcall PreviewTypeMatchup ; e = multiplier in twentieths; e survives
+	pop bc
+	pop hl
+	ld a, e
+	and a ; clears carry
+	ret nz ; this threat lands
+.nextThreat
+	dec b
+	jr nz, .threat
+	scf
 	ret
 
 ; Save byte blocks as stack words, including an odd trailing byte in AF. Used
