@@ -2978,11 +2978,10 @@ wGymChoice:: db
 ;bit 4 - When set, enhanced GBC overworld BG Map Attributes should not be done during RunDefaultPaletteCommand
 ;bit 5 - DMARoutine will not run in Vblank while this bit is set, was bit 0 in Shinred hFlagsFFFA
 ;bit 6 - BGmap update functions will not run in Vblank while this bit is set
-;   bit 7: RETIRED 2026-10-09 (was BIT_ROGUE_PREDICT_BADGES; reveals live in wGymChoice). Was: the trainer card reveals the face of each
-;          UNearned badge slot instead of CARD_BLOCK_UNKNOWN's "?" glyph. Read
-;          by RogueCardBlockForSlot (custom_functions/trainer_card_slots.asm).
-;          The saved enhanced-color option that used to be proposed for this bit
-;          lives in wOptions2 bit 6 instead, so bit 7 was genuinely free.
+;   bit 7: BIT_ROGUE_DEEP_FLOOR (2026-11-17): the player is on the cave's deep
+;          floor (custom_functions/cave_deep_floor.asm). Was BIT_ROGUE_PREDICT_BADGES
+;          until 2026-10-09 (the trainer card's badge-slot reveal, now in
+;          wGymChoice), then unused and never set.
 wRogueFlagsBitfield2:: db
 
 ; Key Item Effects (see KEY_ITEM_EFFECTS_PLAN_PC.md). Run-scoped state, above

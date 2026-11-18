@@ -287,6 +287,14 @@ OptionalEncounterIsCurrent:
 	ld hl, wOptionalEncounterMap
 	cp [hl]
 	jr nz, .no
+	; The cave's deep floor hosts the B1F's encounter (cave_deep_floor.asm),
+	; and both floors are this one map: only floor 2 has it.
+	cp PROCEDURAL_CAVE_1
+	jr nz, .assigned
+	ld a, [wRogueFlagsBitfield2]
+	bit BIT_ROGUE_DEEP_FLOOR, a
+	jr z, .no
+.assigned
 	call OptionalEncounterAssigned
 	and a
 	ret z
@@ -359,6 +367,9 @@ OptionalSpriteAddress:
 	ret z
 	ld hl, wSprite06StateData1
 	cp PROCEDURAL_CAVE_SUBROOM
+	ret z
+	ld hl, wSprite{02d:CAVE_OPTIONAL_MON}StateData1 ; the deep floor's (slot 1 is the boss)
+	cp PROCEDURAL_CAVE_1
 	ret z
 	ld hl, wSprite01StateData1
 	ret

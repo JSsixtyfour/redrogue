@@ -152,3 +152,56 @@ DEF CAVESUB_FALLBACK_ROW EQU $40
 	ASSERT CAVE_LADDER_CANDIDATE >= 128 && CAVE_LADDER_CANDIDATE != $FF
 DEF CAVE_GAMBLER         EQU 8  ; object slot (ProceduralCave1's 8th object_event)
 DEF CAVE_SUPER_NERD      EQU 9
+; The deep floor's optional encounter (the B1F's cold Onix/Snorlax): exists only
+; on floor 2; OptionalEncounterPatchSprite gives it picture 0 everywhere else.
+DEF CAVE_OPTIONAL_MON    EQU 10
+
+; THE DEEP FLOOR (FOLLOWUPS #73, PROCEDURAL_DEEP_FLOOR_PLAN.md,
+; custom_functions/cave_deep_floor.asm). Floor 2 is PROCEDURAL_CAVE_1 again with
+; the cave's SRAM state exchanged for a shadow copy kept in the Facility's bank-1
+; section, which nothing writes during a cave stage (measured, plan Phase 0).
+; The shadow: the 600 B map buffer (with its CAVESUB_* tail) at the Facility's
+; staging buffer, the 23 B state block sProcCaveStagingEntranceY..sProcCaveBaked
+; at the start of its generation scratch, then the control word: a byte and its
+; complement, so a stale Facility scratch pair cannot read as valid. Only the
+; cave's lobby preload writes it (the Facility's room records live there).
+DEF CAVE_DEEP_SHADOW_MAP   EQUS "sProcFacilityStagingBuffer"
+DEF CAVE_DEEP_SHADOW_STATE EQUS "sProcFacilityGenScratch"
+DEF CAVE_DEEP_STATE_SIZE   EQU 23
+DEF CAVE_DEEP_CTRL         EQUS "(sProcFacilityGenScratch + CAVE_DEEP_STATE_SIZE)"
+DEF CAVE_DEEP_MAGIC        EQU $A0 ; the control byte's bits 5-7 when valid (deep)
+DEF CAVE_DEEP_MAGIC_MASK   EQU $E0 ; bits 0-4 are the flags below
+; Written by the cave's lobby preload: not decided yet. Fails the magic check, so
+; nothing flips; the first floor-1 load decides (CaveDeepAfterFinalize) and
+; writes CAVE_DEEP_MAGIC (deep) or 0 (an ordinary cave).
+DEF CAVE_DEEP_UNDECIDED    EQU $50
+	ASSERT CAVE_DEEP_UNDECIDED & CAVE_DEEP_MAGIC_MASK != CAVE_DEEP_MAGIC
+DEF BIT_CAVE_DEEP_LIVE_2   EQU 0   ; the live (bank 0) buffer holds floor 2
+DEF BIT_CAVE_DEEP_MADE     EQU 1   ; floor 2 has been generated
+DEF CAVE_DEEP_RESIDENT_SHIFT EQU 2 ; bits 2-3: floor 2's resident, rolled with it
+DEF CAVE_DEEP_RESIDENT_MASK  EQU %00001100
+DEF CAVE_DEEP_GAMBLER      EQU 0
+DEF CAVE_DEEP_SUPER_NERD   EQU 1
+DEF CAVE_DEEP_MANIAC       EQU 2   ; uses the Super Nerd's object, as in the B1F
+DEF CAVE_DEEP_NO_RESIDENT  EQU 3
+DEF BIT_CAVE_DEEP_SETTLED  EQU 4   ; floor 2's one-time conversion has run
+	ASSERT (1 << BIT_CAVE_DEEP_SETTLED) & CAVE_DEEP_MAGIC_MASK == 0
+; The deep-floor roll, out of 256, made once per cave on its first load.
+DEF CAVE_DEEP_ODDS         EQU 64  ; 25%
+; 0 = every cave is decided ordinary (the roll and Debug 2's forcing are off):
+; the kill switch. The PyBoy harness decides caves ordinary on its own unless a
+; test sets allow_deep_cave_floor, so B1F fixtures are unaffected either way.
+DEF CAVE_DEEP_ENABLED      EQU 1
+; Floor 2 has exactly one item ball: only ball 1 has an off-floor toggle bit
+; (wStatusFlags2 bit 6). A second would need a second spare SAVED bit.
+DEF CAVE_DEEP_BALLS        EQU 1
+; While floor 2 generates (in the arrival seam), what its PCPreloadCave would
+; otherwise re-roll for floor 1 is saved here, in the same idle Facility
+; scratch: the CaveDeepSavedWram list, then the 10 SRAM bytes from
+; sProcCavePalette. wProcCaveWildBudget is last in the list and is put back
+; later than the rest (after floor 2's fresh finalize recomputes it).
+DEF CAVE_DEEP_SAVE         EQUS "(sProcFacilityGenScratch + CAVE_DEEP_STATE_SIZE + 2)"
+DEF CAVE_DEEP_NUM_SAVED_WRAM EQU 18
+DEF CAVE_DEEP_SAVED_BUDGET EQU CAVE_DEEP_NUM_SAVED_WRAM - 1 ; its offset in CAVE_DEEP_SAVE
+DEF CAVE_DEEP_SRAM_TAIL    EQU 10  ; sProcCavePalette..sStageEventHideoutFloor
+	ASSERT CAVE_DEEP_STATE_SIZE + 2 + CAVE_DEEP_NUM_SAVED_WRAM + CAVE_DEEP_SRAM_TAIL <= 81

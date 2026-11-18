@@ -1073,10 +1073,14 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         # resident's fallback (Gambler, Super Nerd), used only when no ladder
         # fits a cave (about 1 in 300). Otherwise they keep the declared tile
         # with picture 0 (no VRAM slot), so only the first 7 are placed.
+        #
+        # 10 since the deep floor (PROCEDURAL_DEEP_FLOOR_PLAN.md S8): object 10
+        # is the B1F's cold encounter standing on a deep cave's floor 2. It has
+        # picture 0 everywhere else (this is floor 1 of an ordinary cave).
         self.assert_generation_contract(
-            "Procedural Cave", "PROCEDURAL_CAVE_1", 40, 40, 9, True, placed=7
+            "Procedural Cave", "PROCEDURAL_CAVE_1", 40, 40, 10, True, placed=7
         )
-        for slot in (8, 9):
+        for slot in (8, 9, 10):
             self.assertEqual(self.harness.read8(f"wSprite{slot:02d}StateData1"), 0,
                              f"fallback slot {slot} has a picture in a cave with ladders")
 

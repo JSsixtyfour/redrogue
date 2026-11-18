@@ -177,6 +177,24 @@ class RedRogueHarness:
                     self.pyboy.register_file.PC = self.address(
                         f"StartupSensitivityChoice.{target}")
             self.register_hook("StartupSensitivityChoice.ready", choose_startup)
+        # The cave's deep floor (custom_functions/cave_deep_floor.asm) makes about
+        # a quarter of caves, and every Debug 2 cave, lead to a second floor
+        # instead of the premade B1F. Regression fixtures written for the B1F
+        # (its ladders, its resident, its cold encounter) get an ordinary cave:
+        # an UNDECIDED control pair is decided "not deep" just before the ROM's
+        # own decision reads it. Tests of the deep floor set
+        # allow_deep_cave_floor = True (they force the pair themselves).
+        self.allow_deep_cave_floor = False
+        if "CaveDeepAfterFinalize" in self.symbols._symbols:
+            def ordinary_cave(_context):
+                if self.allow_deep_cave_floor:
+                    return
+                ctrl = self.address("sProcFacilityGenScratch") + 23
+                memory = self.pyboy.memory
+                if (memory[1, ctrl], memory[1, ctrl + 1]) == (0x50, 0xAF):   # CAVE_DEEP_UNDECIDED
+                    memory[1, ctrl] = 0x00
+                    memory[1, ctrl + 1] = 0xFF
+            self.register_hook("CaveDeepAfterFinalize", ordinary_cave)
         # AI heuristic execution coverage (AI_BACKLOG L3): with
         # REDROGUE_AI_COVERAGE=<file>, hook every label in ai_heuristics'
         # source-derived inventory and, at close, append one JSON line naming

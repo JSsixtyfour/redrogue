@@ -30,6 +30,10 @@ OptionalEncounterMapScript::
 	cp PROCEDURAL_FACILITY
 	ld a, TEXT_PROCEDURALFACILITY_OPTIONAL_OFFER
 	jr z, .offerID
+	ld a, b
+	cp PROCEDURAL_CAVE_1                ; the cave's deep floor
+	ld a, TEXT_PROCEDURALCAVE1_OPTIONAL_OFFER
+	jr z, .offerID
 	ld a, TEXT_PROCEDURALFORESTGROTTO_OFFER
 .offerID
 	ldh [hTextID], a

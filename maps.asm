@@ -1483,3 +1483,8 @@ INCLUDE "scripts/ProceduralForestGrotto.asm"
 INCLUDE "data/maps/objects/ProceduralForestGrotto.asm"
 ProceduralForestGrotto_Blocks: INCBIN "maps/ProceduralForestGrotto.blk"
 INCLUDE "custom_functions/forest_grotto.asm"
+; Its own section, also pinned to $26: it shares the grotto's SRAM helpers and
+; calls CaveResolveArrival's bank directly.
+INCLUDE "custom_functions/cave_deep_floor.asm"
+; Its load-time half, farcall-only, in $15 (its own section).
+INCLUDE "custom_functions/cave_deep_floor_post.asm"

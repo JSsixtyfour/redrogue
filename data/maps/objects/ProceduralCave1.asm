@@ -88,4 +88,11 @@ ProceduralCave1_Object:
 	object_event 10, 10, SPRITE_SUPER_NERD, STAY, DOWN, TEXT_PROCEDURALCAVE1_SUPER_NERD
 	ASSERT CAVE_GAMBLER == 8 && CAVE_SUPER_NERD == 9
 
+	; The deep floor's optional encounter (custom_functions/cave_deep_floor*.asm):
+	; the premade B1F's cold Onix/Snorlax, standing on floor 2 of a deep cave.
+	; OptionalEncounterPatchSprite makes it picture 0 (no slot) everywhere else;
+	; species, level and position are set at load (the Facility's slot 13 pattern).
+	object_event 10, 10, SPRITE_MONSTER, STAY, DOWN, TEXT_PROCEDURALCAVE1_OPTIONAL, ONIX, 1 | OW_POKEMON
+	ASSERT CAVE_OPTIONAL_MON == 10
+
 	def_warps_to PROCEDURAL_CAVE_1

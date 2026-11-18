@@ -55,6 +55,10 @@ ProcBossPatchStageSprite::
 	farcall AILairPatchMirrorSprite
 	ret
 .cave
+	; The deep floor: first, before anything reads the cave's SRAM, put the
+	; floor the saved bit names into the live buffer (a reset can leave the
+	; other floor there). No-op unless the cave is deep.
+	farcall CaveDeepReconcile
 	farcall CaveFallbackPatchSprites ; Phase 4: objects 8-9, zero unless used
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
@@ -136,12 +140,17 @@ ProcBossPatchStageSprite::
 	; objects even before its own pair and would pass that test wrongly.
 	ldh a, [hCurMap]
 	cp PROCEDURAL_CAVE_1
-	jr z, .npcSlots67
+	jr z, .npcSlotsCave
 	cp PROCEDURAL_FOREST
 	jr z, .npcSlots67
 	cp PROCEDURAL_FACILITY
 	jr z, .npcSlots1011
 	ret
+.npcSlotsCave
+	call .npcSlots67
+	; Then the deep floor's pictures, last: its optional encounter's slot, and
+	; on floor 2 the floor-1 objects it does not use (cave_deep_floor_post.asm).
+	farjp CaveDeepPatchSprites
 .npcSlots67
 	; 0 here is not "hide it later" but "this slot does not exist":
 	; LoadMapSpriteTilePatterns skips a zero PICTUREID outright, so an unarmed
@@ -241,6 +250,7 @@ ProcStageLoadDispatch::
 	call ProcGenerationBeginDoubleSpeed
 	push af
 	farcall PCFinalizeCave
+	farcall CaveDeepAfterFinalize   ; the deep floor: decide, then per-floor fixups
 	pop af
 	call ProcGenerationEndDoubleSpeed
 	ret
@@ -358,6 +368,7 @@ ProcPreloadAssignedWildArea::
 	call ProcGenerationBeginDoubleSpeed
 	push af
 	farcall PCPreloadCave
+	farcall CaveDeepLobbyReset      ; a new cave: floor 1, not deep
 	pop af
 	call ProcGenerationEndDoubleSpeed
 	ret

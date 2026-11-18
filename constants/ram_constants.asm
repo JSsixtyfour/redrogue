@@ -138,6 +138,10 @@ DEF NUM_BADGES EQU const_value
 	; consumed within one DisplayTextID dispatch. Not wOutOfBattleBlackout: that
 	; byte IS wChosenMenuItem, so any NPC's NO answer read back as END RUN.
 	const BIT_END_RUN_REQUESTED       ; 5
+	; The cave's deep floor (custom_functions/cave_deep_floor.asm): ball 1's
+	; toggle for the floor the player is NOT on. Saved, so it stays with the
+	; save point a reset returns to. Floor 2 is entered with it clear (shown).
+	const BIT_DEEP_OFF_BALL           ; 6
 
 ; wStatusFlags3
 	const_def
@@ -236,10 +240,12 @@ DEF NUM_BADGES EQU const_value
 ; custom_functions/func_gamma.asm round-trips the whole byte through push/pop af,
 ; and slot_machine.asm's `inc b` cannot carry out of bits 0-1.
 ;
-; Set: the trainer card reveals the FACE of the leader behind the NEXT gym door
-; in the slot that beating them will fill. One slot only, and only while a gym
-; is actually queued; every other unearned slot stays CARD_BLOCK_UNKNOWN.
-DEF BIT_ROGUE_PREDICT_BADGES EQU 7 ; RETIRED 2026-10-09: reveals now live in wGymChoice; never set
+; Set: the player is on the cave's deep floor (floor 2, the same map with its
+; SRAM state exchanged, custom_functions/cave_deep_floor.asm). Inside
+; wGameProgressFlags, so the run reset clears it; the cave's lobby preload
+; clears it too. Was BIT_ROGUE_PREDICT_BADGES until 2026-10-09 (the trainer
+; card reveal, now in wGymChoice), then unused and never set.
+DEF BIT_ROGUE_DEEP_FLOOR EQU 7
 
 ; wGymChoice (ram/wram.asm): the gym-next lobby's two doors.
 DEF GYM_CHOICE_DOOR1_MASK  EQU %00000111 ; door 1's badge slot (0-7)

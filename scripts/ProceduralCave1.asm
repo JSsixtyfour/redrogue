@@ -206,6 +206,19 @@ ProceduralCave1_Script:
 	call DisplayTextID
 	call DisableWaitingAfterTextDisplay
 .runScripts
+	; The deep floor's optional encounter first (the Facility's pattern,
+	; scripts/ProceduralFacility.asm). While its battle runs it owns the frame:
+	; it has its own header and script index, and the dispatch below would
+	; replace wTrainerHeaderPtr. Its offer goes first too. On floor 1 and in an
+	; ordinary cave it is never current and returns at once.
+	farcall OptionalEncounterMapScript
+	ld a, [wOptionalEncounterScript]
+	and a
+	ret nz
+	ld a, [wOptionalEncounterState]
+	and OPTIONAL_ENCOUNTER_STATE_MASK
+	cp 1 << BIT_OPTIONAL_DEFEATED
+	ret z
 	call EnableAutoTextBoxDrawing
 	ld hl, ProceduralCave1TrainerHeaders
 	; PICK THE HEADER BLOCK THAT MATCHES THE ENGAGED TRAINER. Measured bug,
@@ -574,7 +587,8 @@ ProceduralCave1_TextPointers:
 	dw_const PCStageEventNpc2Text, TEXT_PROCEDURALCAVE1_STAGE_NPC_2
 	dw_const PCGamblerText, TEXT_PROCEDURALCAVE1_GAMBLER
 	dw_const PCSuperNerdText, TEXT_PROCEDURALCAVE1_SUPER_NERD
-	; --- end of the object block (9 objects); script-only ids follow ---
+	dw_const PCOptionalText, TEXT_PROCEDURALCAVE1_OPTIONAL
+	; --- end of the object block (10 objects); script-only ids follow ---
 	dw_const PCSuperNerdPrizeText, TEXT_PROCEDURALCAVE1_SUPER_NERD_PRIZE
 	dw_const ProceduralCave1BossOfferText, TEXT_PROCEDURALCAVE1_BOSS_OFFER
 	dw_const PCWildCalmedText, TEXT_PROCEDURALCAVE1_CALMED
@@ -582,6 +596,16 @@ ProceduralCave1_TextPointers:
 	dw_const PCSignText, TEXT_PROCEDURALCAVE1_SIGN
 	dw_const PCStageEventArrivalText, TEXT_PROCEDURALCAVE1_STAGE_EVENT
 	dw_const PCStageEventRecoverText, TEXT_PROCEDURALCAVE1_STAGE_RECOVER
+	dw_const PCOptionalOffer, TEXT_PROCEDURALCAVE1_OPTIONAL_OFFER
+
+; The deep floor's optional encounter (object CAVE_OPTIONAL_MON): the same texts
+; as the B1F's (scripts/ProceduralCaveSubroom.asm) and the Facility's.
+PCOptionalText:
+	text_far FGEncounterText
+	text_end
+PCOptionalOffer:
+	text_far FGEncounterOffer
+	text_end
     ;dw_const PCBossEncounterText, TEXT_PROCEDURALCAVE1_BOSS_ENCOUNTER
     ;dw_const ProceduralCave1BossRoarText, TEXT_PROCEDURALCAVE1_BOSS_ROAR
 

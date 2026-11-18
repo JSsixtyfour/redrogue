@@ -1001,7 +1001,13 @@ CaveStageFirstEntry::
 	push af
 	call CaveFallbackShowOne
 	pop af
-	scf
+	; The deep floor (cave_deep_floor.asm): floor 2's first entry must not show
+	; balls 1-4, the stage NPCs or the boss, whose toggle bits are floor 1's.
+	; Carry = on floor 1.
+	ld a, [wRogueFlagsBitfield2]
+	ASSERT BIT_ROGUE_DEEP_FLOOR == 7
+	rlca
+	ccf
 	ret
 
 ; In: a = CAVESUB_STATE. Shows the rolled resident's fallback object if this

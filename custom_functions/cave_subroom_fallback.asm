@@ -125,6 +125,36 @@ CaveDynFindLadder:
 ; Clobbers everything (the HOME seam saves the registers).
 ; ------------------------------------------------------------
 CaveResolveArrival::
+	; The deep floor first (cave_deep_floor.asm): a trip between the floors
+	; swaps them here, so everything below reads the floor being arrived on.
+	call CaveDeepSeam
+	; Floor 2's exit ladder, reached from floor 1's ladder B (cave warp 1): its
+	; ROM arrival is the old fixed exit, so land on the generated one, the tile
+	; PCFinalizeCave arms warp entry 1 at (2 * block + the ladder's offset).
+	call CaveDeepFloorBit
+	and a
+	jr z, .notDeepExit
+	ld a, [wDestinationWarpID]
+	cp 1
+	jr nz, .notDeepExit
+	call FGOpenParentSRAM
+	ld a, [sProcCaveStagingExitY]
+	ld e, a
+	ld a, [sProcCaveStagingExitX]
+	ld d, a
+	ld a, [sProcCaveStagingLadderOffset]
+	ld b, a
+	call FGCloseSRAM                    ; clobbers a only
+	ld a, e
+	add a
+	add b
+	ld [wYCoord], a
+	ld a, d
+	add a
+	add b
+	ld [wXCoord], a
+	jr .pointer
+.notDeepExit
 	ld a, [wDestinationWarpID]
 	sub CAVE_FIRST_LADDER_WARP
 	cp 2

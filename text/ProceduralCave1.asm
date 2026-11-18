@@ -1,11 +1,11 @@
 _PCSignItemsText::
-	text "Four items are"
-	line "scattered here.@"
+	text "Four ITEMS lie"
+	line "in this cave.@"
 	text_end
 
 _PCSignBossText::
 	text "A #MON guards"
-	line "the exit.@"
+	line "this cave's exit.@"
 	text_end
 
 _PFSignItemsText::

@@ -68,6 +68,7 @@ RNG_STATE_BYTES = 10
 # 7, not 5: the boss, four pokeballs, and the two Phase 7b stage-event NPC
 # slots. Slot 6 stands on the hideout, slot 7 one cell inward from it.
 SPRITE_SLOTS = 7
+NPC1_SLOT_INDEX = 5  # 0-based index of object slot 6 within sprite_positions
 NPC2_SLOT_INDEX = 6  # 0-based index of object slot 7 within sprite_positions
 # sStageEvent* lives in the "Sprite Buffers" SRAM section, which the map file
 # confirms is bank 0. Reading it with pyboy.memory directly returns $ff because
@@ -182,6 +183,7 @@ def main() -> int:
     npc2_on_floor = 0
     npc2_blocks = Counter()
     npc2_off_floor = []
+    npc1_off_floor = []
     out_of_range = 0
     disarmed = 0
     promoted = []
@@ -284,6 +286,12 @@ def main() -> int:
         else:
             npc2_off_floor.append(
                 (seed, (npc2_step_x, npc2_step_y), grid[npc2_cell[1]][npc2_cell[0]]))
+        # Slot 6 too (2026-11-18): it stood on the block's top-left quadrant
+        # unconditionally, and block 19 has rock exactly there.
+        npc1_step_y, npc1_step_x = sprites[NPC1_SLOT_INDEX]
+        if (npc1_step_x, npc1_step_y) not in seen:
+            npc1_off_floor.append(
+                (seed, (npc1_step_x, npc1_step_y), grid[npc1_step_y // 2][npc1_step_x // 2]))
 
     elapsed = time.time() - started
     n = max(1, args.layouts - errors)
@@ -298,6 +306,9 @@ def main() -> int:
     for seed_i, step, block_id in npc2_off_floor[:10]:
         print("  NPC-2 IN ROCK seed %d: step %s, block id %d"
               % (seed_i, step, block_id))
+    for seed_i, step, block_id in npc1_off_floor[:10]:
+        print("  NPC-1 IN ROCK seed %d: step %s, block id %d"
+              % (seed_i, step, block_id))
     print("NPC-2 cell block ids seen: %s" % dict(npc2_blocks))
     print("hideout edge distribution: %s" % dict(edges))
     print("distinct hideout cells: %d over %d caves" % (len(cells), n))
@@ -307,11 +318,11 @@ def main() -> int:
 
     # The partner standing in rock is a real defect, not a statistic: it is
     # the visible "Jessie and James are not side by side" symptom.
-    failures = unreachable + on_boss + out_of_range + len(npc2_off_floor)
+    failures = unreachable + on_boss + out_of_range + len(npc2_off_floor) + len(npc1_off_floor)
     if failures:
         print("FAIL: %d unreachable, %d on the boss's cell, %d out of range, "
-              "%d with NPC-2 standing on a non-walkable tile"
-              % (unreachable, on_boss, out_of_range, len(npc2_off_floor)))
+              "%d with NPC-2 / %d with NPC-1 standing on a non-walkable tile"
+              % (unreachable, on_boss, out_of_range, len(npc2_off_floor), len(npc1_off_floor)))
         return 1
     print("PASS: every hideout is in range, off the boss's cell, and reachable on foot")
     return 0

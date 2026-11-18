@@ -1325,10 +1325,16 @@ PCFinalizeCave::
 	; the real, final floor layout instead. See PCPlaceWildAreaItems.
 	call PCPlaceWildAreaItems
 	call PCPlaceBoss
-	call PCPlaceStageEventNpcs       ; Phase 7b: stage-event NPC slots 6-7
-	call PCApplyStageEventTrainers   ; Phase 7e: their OPP class and team
 	call PCSprinkleFloorDecor
 	call PCPlaceDropIn
+	; The stage-event NPCs AFTER the decor (2026-11-18): a decal (blocks 12-19,
+	; one rock corner each) can land on the hideout, which is still plain floor
+	; to the sprinkle, and PCPlaceStageEventNpcs picks its row from the block it
+	; reads. Placed before, it read floor and stood an NPC in the decal's rock
+	; (audit_cave_hideout.py, 4 of 200 caves). Neither call uses the RNG, so
+	; the layouts are unchanged; the fast path already reads the final map.
+	call PCPlaceStageEventNpcs       ; Phase 7b: stage-event NPC slots 6-7
+	call PCApplyStageEventTrainers   ; Phase 7e: their OPP class and team
 	; Phase 4: the subroom's ladders, after every block-changing pass so the
 	; bake keeps them.
 	farcall CaveSubroomPlaceLadders
@@ -2868,18 +2874,20 @@ PCStageHideoutCapture:
 ; same ordering rule PCPlaceWildAreaItems documents: "is this cell floor" must
 ; be a settled question by the time anything is placed on it.
 ;
-; Slot 6 stands on the hideout block's TOP-LEFT quadrant. Slot 7 exists only
-; for the two-NPC events (Jessie & James) and stands one STEP right, in the
-; same block's top-right quadrant.
+; Slot 6 stands on the left quadrant of one of the hideout block's rows, the
+; top row unless it holds rock (then the bottom one; see .atHideout). Slot 7
+; exists only for the two-NPC events (Jessie & James) and stands one STEP
+; right, on the same row.
 ;
 ; IT USED TO STEP A WHOLE CELL INWARD, which is a BLOCK, which is two steps -
 ; so the pair stood two tiles apart with floor between them, and on a top or
 ; bottom edge the step was vertical and they were not even on the same row.
 ; That is the reported "Jesse and James should stand side by side". A block
 ; is 2x2 steps, so +1 on the sprite's MapX is the entire "never stack"
-; requirement and it keeps the partner inside a block already known walkable.
-; MEASURED after the change (audit_stage_hideout_partner.py, 2026-09-17):
-; 40 of 40 caves put that exact tile inside the player's reachable set.
+; requirement. MEASURED after the change (audit_stage_hideout_partner.py,
+; 2026-09-17): 40 of 40 caves put that exact tile inside the player's reachable
+; set. "Inside a block already known walkable" was wrong for edge pieces,
+; though: 2 of 64 later failed (2026-11-18), fixed by the row choice.
 ;
 ; The old scheme's own measurement is kept because its LESSON still applies:
 ; by block id those 400 caves read only 96.2% PC_BLOCK_FLOOR, because the
@@ -2962,35 +2970,41 @@ PCPlaceStageEventNpcs:
 	jr .syncPixels
 .atHideout
 
-	; --- slot 6 on the hideout's TOP-LEFT quadrant ---
-	ld hl, wSprite06StateData2MapY
+	; --- which ROW of the hideout block the pair stands on ---
+	; Slot 6 takes the row's left quadrant, slot 7 one STEP right of it (a whole
+	; BLOCK used to put the pair two tiles apart, and on a top or bottom edge on
+	; different rows). A block is "walkable" only as a whole: the autotile pass
+	; turns dead-end cells into edge/corner pieces with rock in one quadrant.
+	; MEASURED 2026-11-18 (audit_cave_hideout.py): block 15 (TR rock) put slot 7
+	; in rock in 2 of 64 caves, and block 19 (TL rock) puts slot 6 there. So
+	; take the top row when both its quadrants are walkable, else the bottom.
+	; CavernQuadWalkMasks bits: 0 TL, 1 TR, 2 BL, 3 BR. The no-hideout parking
+	; block (the entrance, block 36) is walkable everywhere, so it stays on top.
+	ASSERT BANK(@) == BANK(CaveQuadMask) && BANK(@) == BANK(CaveLadderBlockAddr)
+	ld d, b
+	ld e, c
+	call CaveLadderBlockAddr        ; hl = the hideout block in wOverworldMap
+	ld a, [hl]
+	call CaveQuadMask
+	ld e, 0                         ; e = row: 0 top, 1 bottom
+	and %0011
+	cp %0011
+	jr z, .row
+	inc e
+.row
 	ld a, c
 	add a, a
 	add a, 4                        ; sprite position is block*2 + 4 everywhere
+	add a, e
+	ld hl, wSprite06StateData2MapY
 	ld [hli], a
+	ld [wSprite07StateData2MapY], a
 	ld a, b
 	add a, a
 	add a, 4
 	ld [hl], a
-
-	; --- slot 7 one STEP right, in the same block's top-right quadrant ---
-	; This used to step a whole BLOCK inward (inc/dec b or c depending on which
-	; edge the hideout sat on), which put the pair TWO tiles apart - and on a
-	; top or bottom edge it stepped vertically, so Jessie and James were not
-	; even on the same row. A block is two steps wide, so +1 on the sprite's
-	; MapX is all the "never stack" guarantee needs, and it keeps the partner
-	; inside the block we already know is walkable. Same shape the cemetery has
-	; always used. Safe on the right edge too: b = 19 gives MapX 43 = tile 39,
-	; the last legal column.
-	ld hl, wSprite07StateData2MapY
-	ld a, c
-	add a, a
-	add a, 4
-	ld [hli], a
-	ld a, b
-	add a, a
-	add a, 5
-	ld [hl], a
+	inc a                           ; slot 7: b = 19 gives 43 = tile 39, the last column
+	ld [wSprite07StateData2MapX], a
 
 .syncPixels
 	; Both slots moved in MAP space; their SCREEN PIXEL copies are now stale.
