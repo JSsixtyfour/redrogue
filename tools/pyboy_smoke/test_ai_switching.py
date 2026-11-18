@@ -621,6 +621,13 @@ class AIShouldSwitchTest(unittest.TestCase):
         plan = self.stalemate_plan(["AMNESIA", "SELFDESTRUCT", "HAZE", "EXPLOSION"], ai_tier=2)
         self.assertTrue(plan >> 6 & 1, f"plan {plan:#04x}")
 
+    def test_a_chosen_status_move_is_not_a_stalemate(self) -> None:
+        # A status user keeps its status move: Thunder Wave on a healthy Ekans is
+        # progress, unlike seed 288's Amnesia/Haze loop.
+        plan = self.stalemate_plan(["THUNDER_WAVE", "SELFDESTRUCT", "HAZE", "EXPLOSION"])
+        self.assertEqual(self.harness.read8("wEnemySelectedMove"), self.moves["THUNDER_WAVE"])
+        self.assertFalse(plan >> 6 & 1, f"plan {plan:#04x}")
+
     def test_a_usable_attack_is_not_a_stalemate(self) -> None:
         # Negative control: Sludge deals damage, so Weezing stays and attacks.
         plan = self.stalemate_plan(["AMNESIA", "SELFDESTRUCT", "SLUDGE", "EXPLOSION"])

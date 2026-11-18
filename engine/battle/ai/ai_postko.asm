@@ -366,6 +366,27 @@ AIRankVoluntaryTarget::
 ; switch won; a plain "every estimate is 0" test misses it, Explosion's is 999.
 ; No register inputs; clobbers af, bc, de, hl.
 AIActiveCanDoNothing::
+; A status move the AI CHOSE is progress, not a stalemate (user, 2026-11-17: a
+; pure status user such as Thunder Wave / Sing / Softboiled must keep using it).
+; Boosts, Haze and screens are not on the list: against a foe we cannot damage
+; they buy nothing, which is exactly seed 288's Amnesia/Haze loop.
+	ld a, [wEnemySelectedMove]
+	and a
+	jr z, .scan
+	ld b, a
+	ld e, MOVE_EFFECT
+	call .moveByte
+	ld hl, .progressEffects
+.progressLoop
+	cp [hl]
+	jr z, .canAct
+	inc hl
+	ld c, a
+	ld a, [hl]
+	inc a ; $ff ends the table
+	ld a, c
+	jr nz, .progressLoop
+.scan
 	ld c, 0 ; c = slot
 .slot
 	ld hl, wEnemyMonMoves
@@ -415,12 +436,22 @@ AIActiveCanDoNothing::
 ; move's power from ROM, and count a damaging move with no estimate as usable
 ; (never call a stalemate on missing data).
 .unestimated
+	ld e, MOVE_POWER
+	call .moveByte
+	and a
+	jr z, .next ; a status move: not a way to deal damage
+	jr .canAct
+; a = one byte of move b's ROM row: field offset e (MOVE_EFFECT, MOVE_POWER...).
+; Preserves bc; clobbers de, hl.
+.moveByte
 	push bc
 	ld a, b
 	dec a
-	ld hl, Moves + MOVE_POWER
+	ld hl, Moves
+	ld d, 0
+	add hl, de
 	ld bc, MOVE_LENGTH
-	call AddNTimes ; hl = this move's power byte, in BANK(Moves)
+	call AddNTimes ; hl = that byte, in BANK(Moves)
 	push af ; two bytes of stack scratch: the copy lands where a pops from
 	ld d, h
 	ld e, l
@@ -434,11 +465,12 @@ AIActiveCanDoNothing::
 	ld bc, 1
 	ld a, BANK(Moves)
 	call FarCopyData
-	pop af ; a = power
+	pop af
 	pop bc
-	and a
-	jr z, .next ; a status move: not a way to deal damage
-	jr .canAct
+	ret
+.progressEffects
+	db SLEEP_EFFECT, POISON_EFFECT, PARALYZE_EFFECT, CONFUSION_EFFECT
+	db LEECH_SEED_EFFECT, DISABLE_EFFECT, $ff
 .index ; hl += c
 	ld a, l
 	add c
