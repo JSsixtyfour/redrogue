@@ -677,6 +677,15 @@ AIShouldSwitch::
 	jp .switch
 .noTrap
 
+; B17 stalemate (2026-11-17): nothing we are willing to do deals damage. Ahead of
+; the vetoes on purpose: boosts on a mon that cannot attack buy nothing, which is
+; exactly what the "never abandon our setup" veto would otherwise protect.
+	farcall AIActiveCanDoNothing
+	jr nc, .canAct
+	farcall AIRankStalemateTarget
+	jp c, .switch
+.canAct
+
 ; --- Vetoes: reasons to stay put even though nothing above forced a switch ---
 ; A super-effective move is worth more than a better matchup we would have to
 ; spend a turn (and a free hit) to reach.

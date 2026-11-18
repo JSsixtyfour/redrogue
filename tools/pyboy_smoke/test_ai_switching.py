@@ -594,6 +594,38 @@ class AIShouldSwitchTest(unittest.TestCase):
         # Negative control on the same board: T2 is not re-ranked.
         self.assertEqual(self.voluntary_target(2), (True, 1))
 
+    # --- B17 stalemate breaker (AI_T4_REGRET_PLAN, 2026-11-17) ------------------------
+    # Seed 288: a Weezing whose only attacks are self-KO trades the Explosion veto
+    # refuses looped Amnesia/Haze ~30 turns at +0.22 of party HP per turn. Through
+    # the real turn plan (boot_fight2 makes turn 1's decision), because the trigger
+    # reads the damage estimates AI_DAMAGE leaves for that decision.
+    def stalemate_plan(self, weezing_moves: list[str], ai_tier: int = 3) -> int:
+        assert self.harness is not None
+        self.harness.inject_fight2_spec(
+            # Two Ekans: the veto lets a trade through against the LAST mon.
+            [dict(self.mon("EKANS", ["POISON_STING", "LEER"]), level=10),
+             dict(self.mon("EKANS", ["POISON_STING", "LEER"]), level=10)],
+            [dict(self.mon("WEEZING", weezing_moves), level=60),
+             dict(self.mon("CLEFABLE", ["BODY_SLAM"]), level=58)],
+            trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=ai_tier,
+        )
+        self.harness.boot_fight2(seed=1)
+        return self.harness.read8("wAITurnPlan")
+
+    def test_stalemate_switches_to_a_reserve_that_can_reply(self) -> None:
+        plan = self.stalemate_plan(["AMNESIA", "SELFDESTRUCT", "HAZE", "EXPLOSION"])
+        self.assertTrue(plan >> 6 & 1, f"switch bit, plan {plan:#04x}")
+        self.assertEqual(plan & 0b111, 2, "slot 1 (Clefable) + 1")
+
+    def test_stalemate_t2_switches_too(self) -> None:
+        plan = self.stalemate_plan(["AMNESIA", "SELFDESTRUCT", "HAZE", "EXPLOSION"], ai_tier=2)
+        self.assertTrue(plan >> 6 & 1, f"plan {plan:#04x}")
+
+    def test_a_usable_attack_is_not_a_stalemate(self) -> None:
+        # Negative control: Sludge deals damage, so Weezing stays and attacks.
+        plan = self.stalemate_plan(["AMNESIA", "SELFDESTRUCT", "SLUDGE", "EXPLOSION"])
+        self.assertFalse(plan >> 6 & 1, f"plan {plan:#04x}")
+
     def test_reserve_that_keeps_half_is_switched_in(self) -> None:
         # Control for the case above: at 2 x hit + 2 HP it keeps more than half.
         switched, gate, *_ = self.sacrifice_case("WIGGLYTUFF", lambda hit: 2 * hit + 2)

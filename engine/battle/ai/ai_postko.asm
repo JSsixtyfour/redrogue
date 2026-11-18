@@ -356,6 +356,128 @@ AIRankVoluntaryTarget::
 	farcall AIBestReserveSurvivesThreat ; B4 for the chosen slot, read by B5
 	ret
 
+; B17's first term, a stalemate breaker (AI_T4_REGRET_PLAN, 2026-11-17). Carry SET
+; if the active mon has NOTHING it is willing to do that deals damage this turn:
+; no move with PP, not disabled, whose estimate in wAIEnemyEstimateCache (filled
+; by AI_DAMAGE this decision, T2+) is above zero, except Self-Destruct/Explosion
+; that the AI did not choose (the Explosion veto refused the trade). Measured:
+; seed 288's Weezing (Amnesia / Self-Destruct / Haze / Explosion) against a 27-HP
+; Ekans looped Amnesia and Haze ~30 turns, each costing +0.22 of party HP, while a
+; switch won; a plain "every estimate is 0" test misses it, Explosion's is 999.
+; No register inputs; clobbers af, bc, de, hl.
+AIActiveCanDoNothing::
+	ld c, 0 ; c = slot
+.slot
+	ld hl, wEnemyMonMoves
+	call .index
+	ld a, [hl]
+	and a
+	jr z, .next
+	ld b, a ; b = move id
+	ld hl, wEnemyMonPP
+	call .index
+	ld a, [hl]
+	and PP_MASK
+	jr z, .next
+	ld a, [wEnemyDisabledMoveNumber]
+	cp b
+	jr z, .next
+	ld hl, wAIEnemyEstimateCache
+	call .index
+	call .index ; two bytes per slot
+	ld a, [hli]
+	bit AI_ESTIMATE_VALID_BIT, a
+	jr z, .unestimated
+	and ~(1 << AI_ESTIMATE_VALID_BIT)
+	or [hl]
+	jr z, .next ; estimated at zero (an immunity)
+	ld a, b
+	cp SELFDESTRUCT
+	jr z, .selfKO
+	cp EXPLOSION
+	jr nz, .canAct
+.selfKO
+	ld a, [wEnemyMoveListIndex]
+	cp c
+	jr z, .canAct ; it chose the trade: let it go through
+.next
+	inc c
+	ld a, c
+	cp NUM_MOVES
+	jr c, .slot
+	scf
+	ret
+.canAct
+	and a
+	ret
+; No estimate this decision. AI_DAMAGE (T2+) estimates every damaging move it
+; can use, so in play this is a status move; but do not depend on that: read the
+; move's power from ROM, and count a damaging move with no estimate as usable
+; (never call a stalemate on missing data).
+.unestimated
+	push bc
+	ld a, b
+	dec a
+	ld hl, Moves + MOVE_POWER
+	ld bc, MOVE_LENGTH
+	call AddNTimes ; hl = this move's power byte, in BANK(Moves)
+	push af ; two bytes of stack scratch: the copy lands where a pops from
+	ld d, h
+	ld e, l
+	ld hl, sp + 1
+	ld b, h
+	ld c, l
+	ld h, d
+	ld l, e
+	ld d, b
+	ld e, c
+	ld bc, 1
+	ld a, BANK(Moves)
+	call FarCopyData
+	pop af ; a = power
+	pop bc
+	and a
+	jr z, .next ; a status move: not a way to deal damage
+	jr .canAct
+.index ; hl += c
+	ld a, l
+	add c
+	ld l, a
+	ret nc
+	inc h
+	ret
+
+; Target for that stalemate switch. Carry SET with wBuffer + AI_BUF_BESTPARTYSLOT =
+; a reserve that, ranked in VOLUNTARY mode (after the entry hit), survives and
+; replies: PK_SURVIVE_REPLY or better. Unlike AIRankVoluntaryTarget there is no
+; "beats the active mon's legacy score" gate: a mon that can do nothing is not
+; worth keeping in for its typing. Carry clear = no such reserve, stay.
+; No register inputs; clobbers af, bc, de, hl.
+AIRankStalemateTarget::
+	farcall AIRankSendOutCandidates
+	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
+	cp $ff
+	jr z, .none
+	ld [wBuffer + PK_BEST_SLOT], a
+; The floor sits just under SURVIVE_REPLY with score 0 and maximal damage, so a
+; candidate only displaces it with a higher tier.
+	xor a
+	ld [wBuffer + PK_BEST_TYPE], a
+	ld a, PK_SURVIVE_REPLY - 1
+	ld [wBuffer + PK_BEST_QUALITY], a
+	ld a, $ff
+	ld [wBuffer + PK_BEST_DAMAGE], a
+	ld [wBuffer + PK_BEST_DAMAGE + 1], a
+	ld de, PK_MODE_VOLUNTARY << 8 | $ff
+	call AIRankPostKOSendOut.rankWithSpeed
+	ld a, [wBuffer + PK_BEST_QUALITY]
+	cp PK_SURVIVE_REPLY ; carry iff still the floor
+	ccf
+	ret
+.none
+	and a
+	ret
+
 ; Save byte blocks as stack words, including an odd trailing byte in AF. Used
 ; only inline: the snapshot remains below all helper return addresses.
 MACRO pk_push

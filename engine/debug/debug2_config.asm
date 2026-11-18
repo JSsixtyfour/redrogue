@@ -940,7 +940,7 @@ IF DEF(_BALL_COLORS)
 ENDC
 	cp 4 ; MUSIC?
 	ret nz
-	call DebugSoundTest
+	farcall DebugSoundTest
 	jr .menu
 
 DebugMenuOptions:
@@ -962,7 +962,12 @@ ENDC
 ; else is running at the debug menu). Songs added after the original 47 are
 ; named from DebugSongNames, starting at MUSIC_MEET_JESSIE_JAMES; ids past the
 ; end of that list show "NEW SONG", so importing more songs never breaks this.
+; Its own section, reached by farcall from DebugMenuRun: $3A has no room for
+; a name per import. It calls only HOME and keeps its strings with it.
+; PUSHS/POPS so the section does not carry into the next included file.
 ; ----------------------------------------------------------------------------
+	PUSHS
+SECTION "Debug Sound Test", ROMX
 DebugSoundTest:
 	ld a, 1
 	ld [wItemQuantity], a
@@ -1065,10 +1070,11 @@ ASSERT MUSIC_SUICUNE_BATTLE == MUSIC_MEET_JESSIE_JAMES + 8
 ASSERT MUSIC_ROCKET_THEME == MUSIC_MEET_JESSIE_JAMES + 10
 ASSERT MUSIC_MEWTWO_BATTLE == MUSIC_MEET_JESSIE_JAMES + 11
 ASSERT MUSIC_HO_OH_BATTLE == MUSIC_MEET_JESSIE_JAMES + 12
+ASSERT MUSIC_PIKA_CUP_BATTLE == MUSIC_MEET_JESSIE_JAMES + 15
 DebugSongNames:
 	dw .jessieJames, .pinballBlue, .johtoGym, .tcgClub, .tcg2Gr
 	dw .johtoTrainer, .champion, .rocket, .suicune, .lookRocket, .rocketTheme
-	dw .mewtwo, .hoOh
+	dw .mewtwo, .hoOh, .pokeCup, .petitCup, .pikaCup
 .end:
 .jessieJames:  db "MEET JESSIE JAMES@"
 .pinballBlue:  db "PINBALL BLUE FIELD@"
@@ -1083,5 +1089,9 @@ DebugSongNames:
 .rocketTheme:  db "ROCKET THEME@"
 .mewtwo:       db "BATTLE WITH MEWTWO@"
 .hoOh:         db "BATTLE! HO-OH@"
+.pokeCup:      db "POKE CUP 4-6@"
+.petitCup:     db "PETIT CUP 1-3@"
+.pikaCup:      db "PIKA CUP 1-3@"
+	POPS
 
 ENDC
