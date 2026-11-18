@@ -116,13 +116,9 @@ IF DEF(_DEBUG)
 	ld [hli], a
 	ld [hl], a
 
-	; Jolteon gets Thunderbolt.
-	ld hl, wPartyMon3Moves + 3
-	ld a, THUNDERBOLT
-	ld [hl], a
-	ld hl, wPartyMon3PP + 3
-	ld a, 15
-	ld [hl], a
+	; Jolteon needs no override: at level 56 its level-up fill already holds
+	; THUNDERBOLT (learned at 36). Forcing it into slot 4 again duplicated it
+	; once Pin Missile moved below Thunderbolt in the learnset.
 
 	; Articuno gets Fly.
 	ld hl, wPartyMon5Moves

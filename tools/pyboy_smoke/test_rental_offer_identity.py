@@ -4,6 +4,7 @@ import io
 from pathlib import Path
 
 from harness import RedRogueHarness
+from rental_prices import rental_price_bcd
 from source_constants import parse_rgbds_constants
 from test_move_tutor_prices import return_from_call
 from test_save_header import ColdBoot, dump_sram
@@ -133,7 +134,8 @@ class RentalOfferIdentityTest(unittest.TestCase):
         self.forced_roll(0)
         h.call_routine("RentalPrepareOfferIdentity")
         money = h.read_bytes("wPlayerMoney", 3)
-        for rarity, price in ((1, [0, 0x25, 0]), (2, [0, 0x60, 0]), (3, [1, 0, 0])):
+        for rarity in (1, 2, 3):
+            price = rental_price_bcd(rarity)
             h.write8("wRentalOfferClass", rarity)
             h.call_routine("RentalQuoteOffer")
             self.assertEqual(h.read_bytes("hMoney", 3), price)

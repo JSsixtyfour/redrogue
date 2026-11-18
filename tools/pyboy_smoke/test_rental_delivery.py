@@ -4,10 +4,16 @@ import io
 from pathlib import Path
 from harness import RedRogueHarness
 from source_constants import parse_rgbds_constants, parse_map_constants
-from test_move_tutor_prices import return_from_call
+from rental_prices import rental_price, rental_price_bcd
+from test_move_tutor_prices import bcd3, return_from_call
 from test_save_header import ColdBoot, dump_sram
 
 ROOT = Path(__file__).resolve().parents[2]
+# The fixture offers a Great Ball class (rarity 2) rental and funds the
+# player with START_MONEY; prices come from balance_constants.asm.
+START_MONEY = 7000
+FIXTURE_RARITY = 2
+LEFTOVER = bcd3(START_MONEY - rental_price(FIXTURE_RARITY))
 
 
 class RentalDeliveryTest(unittest.TestCase):
@@ -22,7 +28,7 @@ class RentalDeliveryTest(unittest.TestCase):
         h.write8("wPartyCount", 1)
         h.write8("wPartySpecies", 255, offset=1)
         fields = {"wRentalOfferFlags": 3, "wRentalOfferSpecies": self.species["PIKACHU"],
-                  "wRentalOfferForm": 0, "wRentalOfferClass": 2,
+                  "wRentalOfferForm": 0, "wRentalOfferClass": FIXTURE_RARITY,
                   "wRentalOfferLevel": 50, "wRentalOfferSource": 3,
                   "wSpawnForm": 0, "wSpawnDVSlot": 0}
         for label, value in fields.items():
@@ -30,7 +36,7 @@ class RentalDeliveryTest(unittest.TestCase):
         self.write("wRentalOfferDVs", [0x12, 0x34])
         self.write("wRentalOfferMoves", [self.moves["TACKLE"], self.moves["THUNDERBOLT"],
                                          self.moves["SURF"], 0])
-        self.write("wPlayerMoney", [0, 0x70, 0])
+        self.write("wPlayerMoney", bcd3(START_MONEY))
 
     def tearDown(self):
         self.h.close()
@@ -49,7 +55,7 @@ class RentalDeliveryTest(unittest.TestCase):
         self.assertEqual(h.last_call_registers["E"], 0)
         self.assertEqual(h.read8("wPartyCount"), count + 1)
         self.assertEqual(h.read_bytes("wPartyMons", count * 44), owned)
-        self.assertEqual(h.read_bytes("wPlayerMoney", 3), [0, 0x10, 0])
+        self.assertEqual(h.read_bytes("wPlayerMoney", 3), LEFTOVER)
         self.assertEqual(h.read_bytes("wRentalOfferSpecies", 12), offer)
         self.assertEqual(h.read8("wRentalOwner"), count + 1)
         self.assertEqual(h.read8("wRentalState"), 1)
@@ -73,7 +79,7 @@ class RentalDeliveryTest(unittest.TestCase):
         h.call_routine("RentalDeliverOffer")
         self.assertFalse(h.last_call_registers["F"] & 0x10)
         self.assertEqual(h.read_bytes("wPartyMons", 264), party)
-        self.assertEqual(h.read_bytes("wPlayerMoney", 3), [0, 0x10, 0])
+        self.assertEqual(h.read_bytes("wPlayerMoney", 3), LEFTOVER)
 
     def test_failed_preflights_never_mutate_party_money_contract_or_offer(self):
         h = self.h
@@ -86,7 +92,7 @@ class RentalDeliveryTest(unittest.TestCase):
             old = h.read8(label)
             money = h.read_bytes("wPlayerMoney", 3)
             if label == "wPlayerMoney":
-                self.write(label, [0, 0x59, 0x99])
+                self.write(label, bcd3(rental_price(FIXTURE_RARITY) - 1))  # one yen short
             else:
                 h.write8(label, value)
             before = {name: h.read_bytes(name, length) for name, length in
@@ -103,7 +109,7 @@ class RentalDeliveryTest(unittest.TestCase):
 
     def test_exact_funds_and_in_zone_delivery_bind_immediately(self):
         h = self.h
-        self.write("wPlayerMoney", [0, 0x60, 0])
+        self.write("wPlayerMoney", rental_price_bcd(FIXTURE_RARITY))
         maps = parse_map_constants(ROOT / "constants/map_constants.asm")
         h.write8("hCurMap", maps["PROCEDURAL_CEMETERY_2"])
         h.call_routine("RentalDeliverOffer")
@@ -133,7 +139,8 @@ class RentalDeliveryTest(unittest.TestCase):
             return_from_call(h)
         h.register_hook("GetKeyItemPowerInE", booster)
         h.save_state(baseline)
-        for rarity, price in ((1, [0, 0x25, 0]), (2, [0, 0x60, 0]), (3, [1, 0, 0])):
+        for rarity in (1, 2, 3):
+            price = rental_price_bcd(rarity)
             h.load_state(baseline)
             h.write8("wRentalOfferClass", rarity)
             self.write("wPlayerMoney", price)

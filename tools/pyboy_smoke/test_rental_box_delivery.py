@@ -2,7 +2,7 @@
 import io
 import unittest
 import test_rental_delivery as delivery
-from test_move_tutor_prices import return_from_call
+from test_move_tutor_prices import bcd3, return_from_call
 from test_save_header import ColdBoot, dump_sram
 
 
@@ -47,7 +47,7 @@ class RentalBoxDeliveryTest(unittest.TestCase):
             self.assertEqual(h.read_bytes("wBoxMon2Moves", 4), h.read_bytes("wRentalOfferMoves", 4))
             self.assertEqual(h.read_bytes("wBoxMon2PP", 4), [35, 15, 15, 0])
             self.assertEqual(h.read8("wBoxMon2BoxLevel"), 50)
-            self.assertEqual(h.read_bytes("wPlayerMoney", 3), [0, 0x10, 0])
+            self.assertEqual(h.read_bytes("wPlayerMoney", 3), delivery.LEFTOVER)
         self.assertTrue(stack)
         self.assertGreaterEqual(min(stack), 0xDF00)
 
@@ -62,7 +62,7 @@ class RentalBoxDeliveryTest(unittest.TestCase):
         self.assertEqual(h.last_call_registers["E"], 6)
         self.assertEqual(h.read_bytes("wRentalRecord", 16), record)
         self.assertEqual(h.read_bytes("wPartyMons", 264), party)
-        self.assertEqual(h.read_bytes("wPlayerMoney", 3), [0, 0x70, 0])
+        self.assertEqual(h.read_bytes("wPlayerMoney", 3), bcd3(delivery.START_MONEY))
 
     def test_rejected_creation_restores_borrowed_slot_without_payment(self):
         h = self.h
@@ -78,7 +78,7 @@ class RentalBoxDeliveryTest(unittest.TestCase):
         self.assertEqual(h.read_bytes("wPartyCount", len(party)), party)
         self.assertEqual(h.read8("wBoxCount"), 0)
         self.assertEqual(h.read8("wRentalOwner"), 0)
-        self.assertEqual(h.read_bytes("wPlayerMoney", 3), [0, 0x70, 0])
+        self.assertEqual(h.read_bytes("wPlayerMoney", 3), bcd3(delivery.START_MONEY))
 
     def test_boxed_form_and_owner_survive_cold_continue(self):
         h = self.h

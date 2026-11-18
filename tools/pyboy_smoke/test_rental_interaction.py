@@ -2,7 +2,10 @@
 import unittest
 
 import test_rental_delivery as delivery
-from test_move_tutor_prices import run_entry, return_from_call
+from rental_prices import rental_price_bcd
+from test_move_tutor_prices import bcd3, run_entry, return_from_call
+
+START = bcd3(delivery.START_MONEY)
 
 
 class RentalInteractionTest(unittest.TestCase):
@@ -61,17 +64,17 @@ class RentalInteractionTest(unittest.TestCase):
         self.assertEqual(result["texts"], ["RentalOfferText", "RentalDeclinedText"])
         self.assertEqual(result["record"], record)
         self.assertEqual(result["rng"], [])
-        self.assertEqual(result["money"], [0, 0x70, 0])
+        self.assertEqual(result["money"], START)
         self.assertEqual(result["count"], 1)
         name, level, price = result["previews"][0]
         self.assertEqual(name[:7], [0x8f, 0x88, 0x8a, 0x80, 0x82, 0x87, 0x94])
-        self.assertEqual((level, price), (50, [0, 0x60, 0]))
+        self.assertEqual((level, price), (50, rental_price_bcd(delivery.FIXTURE_RARITY)))
 
     def test_yes_delivers_displayed_offer_and_charges_real_quote(self):
         offer = self.h.read_bytes("wRentalOfferSpecies", 12)
         result = self.interact()
         self.assertEqual(result["texts"], ["RentalOfferText", "RentalDeliveredText"])
-        self.assertEqual(result["money"], [0, 0x10, 0])
+        self.assertEqual(result["money"], delivery.LEFTOVER)
         self.assertEqual(result["count"], 2)
         self.assertEqual(result["record"][4:], offer)
         self.assertEqual(result["record"][:4], [1, 2, 0, 1])
@@ -91,7 +94,7 @@ class RentalInteractionTest(unittest.TestCase):
             result = self.interact(setup=setup)
             self.assertEqual(result["texts"], ["RentalOfferText", message])
             self.assertEqual(result["record"], record)
-            self.assertEqual(result["money"], [0, 0, 0] if field == "wPlayerMoney" else [0, 0x70, 0])
+            self.assertEqual(result["money"], [0, 0, 0] if field == "wPlayerMoney" else START)
 
     def test_active_used_and_invalid_offer_skip_purchase_menu(self):
         for field, value, text in (("wRentalState", 1, "RentalUnavailableText"),
@@ -101,7 +104,7 @@ class RentalInteractionTest(unittest.TestCase):
             result = self.interact(setup=lambda h: h.write8(field, value))
             self.assertEqual(result["texts"], [text])
             self.assertEqual(result["menus"], [])
-            self.assertEqual(result["money"], [0, 0x70, 0])
+            self.assertEqual(result["money"], START)
             self.assertEqual(result["count"], 1)
 
     def test_first_cancel_generates_and_latches_real_offer(self):
@@ -112,4 +115,4 @@ class RentalInteractionTest(unittest.TestCase):
         self.assertEqual(result["record"][15], 3)
         self.assertNotEqual(result["record"][9], 0)
         self.assertEqual(result["count"], 1)
-        self.assertEqual(result["money"], [0, 0x70, 0])
+        self.assertEqual(result["money"], START)

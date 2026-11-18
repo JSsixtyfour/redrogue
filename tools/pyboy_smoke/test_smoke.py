@@ -613,12 +613,12 @@ class AIPhaseZeroSmokeTest(HarnessTestCase):
         # Real award/level-up/learn-move paths. Only slot 5 earns EXP;
         # earlier ineligible and fainted slots and a trailing fainted slot
         # also exercise the paths that must not pop the saved amount.
-        # Pikachu learns Slam at 20 and ThunderPunch at 22.
+        # Pikachu learns Slam at 20 and ThunderPunch at 21.
         for level, experience, final_level, learn_levels, learned_moves, name_prefix in (
             (19, 19 ** 3, 19, (), (), None),
             (18, 19 ** 3 - 1, 19, (19,), (), None),
-            (18, 21 ** 3 - 1, 21, (19, 20, 21), (0x15,), [0x92, 0x8B]),  # SL
-            (18, 22 ** 3 - 1, 22, (19, 20, 21, 22), (0x15, 0x09), [0x93, 0x87]),  # TH
+            (18, 20 ** 3 - 1, 20, (19, 20), (0x15,), [0x92, 0x8B]),  # SL
+            (18, 21 ** 3 - 1, 21, (19, 20, 21), (0x15, 0x09), [0x93, 0x87]),  # TH
         ):
             with self.subTest(level=level, experience=experience):
                 observed.clear()

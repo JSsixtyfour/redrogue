@@ -34,8 +34,11 @@ class LegacyDutyTest(HarnessTestCase):
             for _ in range(frames):
                 tick(1, render=render)
                 if start and len(rows) < 160:
+                    # Third field: the cry's SFX channel (5) is still on
+                    # (CHANNEL_FLAGS1 bit 0).
                     rows.append((h.pyboy.memory[0xFF11] >> 6,
-                                 h.pyboy.memory[0xFF16] >> 6))
+                                 h.pyboy.memory[0xFF16] >> 6,
+                                 h.read8('wChannel5', offset=3) & 1))
 
         def cry(_):
             if h.read8('wIsTrainerBattle') and not start:
@@ -104,11 +107,22 @@ class LegacyDutyTest(HarnessTestCase):
 
     def test_chikorita_retains_crystal_pattern(self):
         # Pre-fix Crystal ROM SHA256 4d209b5bd8376e87fe6d9097768b5493a3caa9009f3ca1f44a0b7cbd2cf6361b.
+        # Chikorita's cry sounds for 15 traced frames. After it releases the
+        # pulse channels, NR11/NR16 carry the battle music, whose phase at the
+        # cry depends on how long FIGHT2 setup ran (one extra music tick moved
+        # NR11's first music write a frame earlier with no audio change,
+        # 2026-11-16). Compare only the frames the cry owns; the expected
+        # strings are the leading frames of the original recordings
+        # '0201020102010200000333...' / '0201020102010200003000...'.
         rows = self._battle_trace(SPECIES['CHIKORITA'])
-        self.assertEqual(''.join(str(r[0]) for r in rows[:40]),
-                         '0201020102010200000333333333333333333333')
-        self.assertEqual(''.join(str(r[1]) for r in rows[:40]),
-                         '0201020102010200003000000000000000333333')
+        cry = []
+        for row in rows:
+            if not row[2]:
+                break
+            cry.append(row)
+        self.assertEqual(len(cry), 15)
+        self.assertEqual(''.join(str(r[0]) for r in cry), '020102010201020')
+        self.assertEqual(''.join(str(r[1]) for r in cry), '020102010201020')
 
     def test_legacy_flag_does_not_leak_into_native_cries(self):
         h = self.harness
