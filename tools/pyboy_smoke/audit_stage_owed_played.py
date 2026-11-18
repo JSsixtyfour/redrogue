@@ -203,8 +203,6 @@ class Play:
                  world.adjacent_facing(where, agent.counter_tiles(), grid).items()}
         spots = {step: face for step, face in spots.items() if step not in agent.obstacles()}
         self.require(spots, f"nowhere to stand beside the villain at {where}")
-        before = self.give_back["count"]
-        talks = self.after_line["count"]
         # The last step can start a wild battle that eats the presses. Only the villain's
         # own after-battle routine running proves the talk happened.
         for _ in range(6):
@@ -212,6 +210,13 @@ class Play:
             self.settle(12000)
             if agent.position() != at:
                 continue
+            # Counted from HERE, the deliberate press, not from before the walk: the agent's
+            # own text-dismissing A while settling can start a talk of its own when the
+            # player already faces the villain. Measured 2026-11-18 (forest, after Continue
+            # beside the villain): two talks 45 frames apart, each one after-line and one
+            # hand-over, which the old baseline read as one talk with 2 hand-overs.
+            before = self.give_back["count"]
+            talks = self.after_line["count"]
             agent.press(spots[at], 3, 6)
             agent.press("a", 2, 8)
             self.settle(12000)

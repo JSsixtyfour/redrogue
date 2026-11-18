@@ -22,9 +22,23 @@ GROUPS = ("healing", "stat", "tm", "money")
 
 
 def pool_items(label):
-    m = re.search(rf"^{label}:\s*\n((?:db [^\n]*(?:\n|$))+)", RARITY, re.M)
+    """The db list under label. A comment-only line does not end it: stat_ultraball_class
+    has one before SUN/DUSK/ICE STONE, which this used to drop, so the one-tier-per-item
+    check below never saw those three (2026-11-18)."""
+    m = re.search(rf"^{label}:\s*\n", RARITY, re.M)
     assert m, label
-    return [ln.split(";")[0].split()[1] for ln in m.group(1).splitlines()]
+    out = []
+    for line in RARITY[m.end():].splitlines():
+        code = line.split(";")[0].strip()
+        if not code:
+            if line.strip().startswith(";"):
+                continue
+            break
+        if not code.startswith("db "):
+            break
+        out.append(code.split()[1])
+    assert out, label
+    return out
 
 
 def pool_count(group, tier):
@@ -45,6 +59,8 @@ class BallRaritySources(unittest.TestCase):
         for ti, tier in enumerate(TIERS):
             for group in GROUPS:
                 items = pool_items(f"{group}_{tier}_class")[: max(1, pool_count(group, tier))]
+                self.assertEqual(len(items), max(1, pool_count(group, tier)),
+                                 f"{group}_{tier}_class is shorter than its NUM_ count")
                 for it in items:
                     self.assertNotIn(it, seen, f"{it} in tier {seen.get(it)} and {ti}")
                     seen[it] = ti

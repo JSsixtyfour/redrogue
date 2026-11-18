@@ -39,8 +39,21 @@ GROUPS = ("healing", "stat", "tm", "money")
 
 
 def pool(label):
-    m = re.search(rf"^{label}:\s*\n((?:db [^\n]*(?:\n|$))+)", RARITY, re.M)
-    return [ln.split(";")[0].split()[1] for ln in m.group(1).splitlines()]
+    """The db list under label. A comment-only line does not end it: stat_ultraball_class
+    has one between the Kanto stones and SUN/DUSK/ICE, and stopping there read DUSK_STONE
+    as untiered while the ROM (rightly) colours it ultraball (measured 2026-11-18)."""
+    m = re.search(rf"^{label}:\s*\n", RARITY, re.M)
+    out = []
+    for line in RARITY[m.end():].splitlines():
+        code = line.split(";")[0].strip()
+        if not code:
+            if line.strip().startswith(";"):
+                continue
+            break
+        if not code.startswith("db "):
+            break
+        out.append(code.split()[1])
+    return out
 
 
 def item_tier(item_id):
