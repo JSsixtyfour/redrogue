@@ -521,6 +521,35 @@ AIRankStalemateTarget::
 	and a
 	ret
 
+; AIShouldSwitch's generic T3 case (moved here from "Trainer AI Switching", $2C,
+; on 2026-11-18 to free that bank; behaviour and the Random call order unchanged).
+; Carry SET if the player's primary type hits the active mon for more than neutral
+; AND the 75% roll passes. Same forge-and-restore of PreviewTypeMatchup's inputs as
+; AISelectSendOut; see that routine's header for why the engine's own dual-type
+; walk is reused rather than reimplemented. No register inputs; clobbers af, bc, de, hl.
+AIBadMatchupRoll::
+	ld a, [wPlayerMoveType]
+	push af
+	ld a, [wBattleMonType1]
+	ld [wPlayerMoveType], a
+	farcall PreviewTypeMatchup ; -> e = multiplier in twentieths, so NEUTRAL IS
+	                           ; 20, not 10 (it starts at EFFECTIVE * 2). Reads
+	                           ; the LIVE wEnemyMonType, which is already the
+	                           ; active mon here - only the attacking type needs
+	                           ; forging, unlike the send-out scan.
+	pop bc
+	ld a, b
+	ld [wPlayerMoveType], a ; restored before branching, so every exit is clean
+	ld a, e
+	cp EFFECTIVE * 2 + 1
+	ccf
+	ret nc ; not strictly worse than neutral for us
+; The roll. 75% is a design choice, not an engine fact - worth retuning if a
+; full run feels too random or too predictable here.
+	call Random
+	cp 75 percent + 1 ; carry iff the roll passes
+	ret
+
 ; B17 Toxic pressure, copied from Pokemon Stadium 1's switch score
 ; (team-hippodrome/pokestadium, battle_engine_com_decision_logic.c lines 4801-4806):
 ; it adds toxicCounter * 77 against a -127 baseline and doubles the running score

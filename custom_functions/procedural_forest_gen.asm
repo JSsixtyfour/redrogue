@@ -3579,6 +3579,8 @@ DEF PF_HOUSE_SITE_MASK EQU %00011111
 ; balls and dead ends, 72-79 the clearing.
 DEF PF_HOUSE_LIST EQUS "sProcForestGenScratch + 32"
 	ASSERT NUM_FOREST_HOUSE_SITES <= 40
+	; The spot is kept as index + 1 in sProcForestItemGot bits 0-4.
+	ASSERT NUM_FOREST_HOUSE_SITES <= PF_HOUSE_SITE_MASK
 
 PFHouseSiteTable:
 FOR n, NUM_FOREST_HOUSE_SITES

@@ -15,6 +15,7 @@ RecoveryItemTable::
     db REVIVE, MAX_REVIVE
     db FRESH_WATER, SODA_POP, LEMONADE
     db ETHER, MAX_ETHER, ELIXER, MAX_ELIXER
+RecoveryItemTablePokeFlute:: ; battle_menu_extras.asm asserts this slot
     db POKE_FLUTE  ; infinite use — count never decremented on field use
     db $FF
 ASSERT @ - RecoveryItemTable == NUM_RECOVERY_ITEMS + 1, "RecoveryItemTable length != NUM_RECOVERY_ITEMS"

@@ -8232,6 +8232,10 @@ DEF wPFacSpinHits   EQU 29  ; fitting rooms passed
 
 INCLUDE "data/maps/facility_spinner_rooms.asm"
 DEF NUM_PFAC_SPINNER_DESCRIPTORS EQU (PFacSpinnerRoomsEnd - PFacSpinnerRooms) / PFAC_SPIN_STRIDE
+; The Type byte keeps index + 1 in bits 2-3 (PFAC_TYPE_SPIN_MASK). A 4th piece
+; would write 4 << 2 = bit 4, BIT_PFAC_FAKE_ROOM.
+ASSERT NUM_PFAC_SPINNER_DESCRIPTORS <= PFAC_TYPE_SPIN_MASK >> 2, \
+	"spinner piece index + 1 no longer fits Type bits 2-3"
 
 ; ------------------------------------------------------------
 ; PFacPlaceSpinnerDecor - generation, right before PFacPlaceLargeDecor (the

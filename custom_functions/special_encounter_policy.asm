@@ -43,6 +43,7 @@ SpecialEncounterPolicy::
 .miniDone
 	ld a, [wWildAreaState]
 	and WILD_AREA_COUNT_MASK
+	ASSERT WILD_AREA_COUNT_SHIFT == 3 ; the three shifts below
 	srl a
 	srl a
 	srl a

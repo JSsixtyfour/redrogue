@@ -740,32 +740,9 @@ AIShouldSwitch::
 	farcall AIFreeSwitchInTarget ; AI_BUF_BESTPARTYSLOT = the reserve
 	jp c, .switch
 
-; Bad matchup = the player's primary type hits us for more than neutral. Same
-; forge-and-restore of PreviewTypeMatchup's inputs as AISelectSendOut above;
-; see that routine's header for why the engine's own dual-type walk is reused
-; rather than reimplemented.
-	ld a, [wPlayerMoveType]
-	push af
-	ld a, [wBattleMonType1]
-	ld [wPlayerMoveType], a
-	farcall PreviewTypeMatchup ; -> e = multiplier in twentieths, so NEUTRAL IS
-	                           ; 20, not 10 (it starts at EFFECTIVE * 2). Reads
-	                           ; the LIVE wEnemyMonType, which is already the
-	                           ; active mon here - only the attacking type needs
-	                           ; forging, unlike the send-out scan.
-	ld a, e
-	pop bc
-	ld a, b
-	ld [wPlayerMoveType], a ; restore before branching, so every exit path below
-	                        ; is already clean
-	ld a, e
-	cp EFFECTIVE * 2 + 1
-	jp c, .stay ; not strictly worse than neutral for us
-
-; The roll. 75% is a design choice, not an engine fact - worth retuning if a
-; full run feels too random or too predictable here.
-	call Random
-	cp 75 percent + 1
+; Bad matchup, then the 75% roll (AIBadMatchupRoll, ai_postko.asm; moved out of
+; this bank 2026-11-18 to free space, behaviour unchanged).
+	farcall AIBadMatchupRoll
 	jp nc, .stay
 ; ...and only into a reserve that is actually better off, or the bad matchup
 ; just moves to the next mon and the free hit is wasted (review F5).

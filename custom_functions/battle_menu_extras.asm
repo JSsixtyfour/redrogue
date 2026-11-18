@@ -206,6 +206,7 @@ RogueStartMenuEndRun::
 ; its slot. Read directly rather than through GetPocketItemCount, whose result
 ; comes back in a, and a does not survive farcall's return trip through Bankswitch.
 DEF POKE_FLUTE_RECOVERY_SLOT EQU 20
+	ASSERT RecoveryItemTablePokeFlute - RecoveryItemTable == POKE_FLUTE_RECOVERY_SLOT
 
 BuildBattleItemList::
 	ld de, wBattleItemList

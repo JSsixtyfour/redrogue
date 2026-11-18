@@ -653,6 +653,43 @@ class AIShouldSwitchTest(unittest.TestCase):
         plan = self.stalemate_plan(["AMNESIA", "SELFDESTRUCT", "SLUDGE", "EXPLOSION"])
         self.assertFalse(plan >> 6 & 1, f"plan {plan:#04x}")
 
+    # --- T3 generic bad-matchup case (AIBadMatchupRoll, $10 since 2026-11-18) -----------
+    def bad_matchup_rolls(self, player: str, move: str, calls: int = 16) -> tuple[int, int]:
+        """(switches, roll reached) over repeated decisions on one board; the roll's Random
+        draws advance between calls."""
+        assert self.harness is not None
+        self.harness.inject_fight2_spec(
+            # One weak revealed move: no KO threat and no super-effective reply, so nothing
+            # above the generic case decides. It must carry the player's type: the reserve
+            # check ranks by the BELIEVED threat types (measured: with Tackle alone, Venusaur
+            # was no better off than Starmie and the roll's 14/16 passes all stayed).
+            # Venusaur resists Electric but is not immune, so free switch-in stays out of it.
+            [self.mon(player, [move])],
+            [self.mon("STARMIE", ["TACKLE"]), self.mon("VENUSAUR", ["VINE_WHIP"])],
+            trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=3,
+        )
+        self.harness.boot_fight2(seed=1)
+        self.harness.write8("wEnemyMonPartyPos", 0)
+        self.harness.reveal_player_moves(0, [0], clear=True)
+        switch = self.harness.hook_flag("AIShouldSwitch.switch")
+        stay = self.harness.hook_flag("AIShouldSwitch.stay")
+        roll = self.harness.hook_flag("AIBadMatchupRoll")
+        for _ in range(calls):
+            self.call_ai_should_switch()
+        self.assertEqual(switch["count"] + stay["count"], calls)
+        return switch["count"], roll["count"]
+
+    def test_t3_bad_matchup_switches_on_the_roll(self) -> None:
+        # Electric into Water/Psychic is x2: the 75% roll decides, so both outcomes occur.
+        switches, rolls = self.bad_matchup_rolls("PIKACHU", "THUNDERSHOCK")
+        self.assertEqual(rolls, 16)
+        self.assertTrue(0 < switches < 16, f"{switches}/16 switched")
+
+    def test_t3_neutral_matchup_never_switches(self) -> None:
+        # Control: Normal into Starmie is neutral, so the roll is never drawn as a pass.
+        switches, rolls = self.bad_matchup_rolls("RATTATA", "TACKLE")
+        self.assertEqual((switches, rolls), (0, 16))
+
     # --- B17 Toxic pressure (Pokemon Stadium 1's term, 2026-11-17) ------------------
     # Stadium adds toxicCounter * 77 to its switch score against a -127 baseline and
     # doubles it when seeded: counter >= 2, or >= 1 while seeded, switches.
