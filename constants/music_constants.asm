@@ -70,6 +70,9 @@
 	const MUSIC_ROCKET_THEME ; imported: rockettheme.asm
 	const MUSIC_MEWTWO_BATTLE ; imported: mewtwo.mid ("Battle with Mewtwo")
 	const MUSIC_HO_OH_BATTLE ; imported: hooh.mid ("Battle! Ho-Oh")
+	const MUSIC_POKE_CUP_BATTLE ; imported: poke_cup.mid ("Poke Cup Battles 4-6", Stadium; Kanto Rocket theme)
+	const MUSIC_PETIT_CUP_BATTLE ; imported: petit_cup_v2.mid ("Petit Cup Battles 1-3", Stadium; trainer band 3)
+	const MUSIC_PIKA_CUP_BATTLE ; imported: pika_cup.mid ("Pika Cup Battles 1-3", Stadium; trainer band 2)
 DEF NUM_MUSIC_SONGS EQU const_value
 
 	const_def

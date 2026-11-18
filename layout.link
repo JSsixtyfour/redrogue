@@ -156,6 +156,7 @@ ROMX $15
 	"Maps 12"
 	"Diploma"
 	"Trainer Sight"
+	"Song PetitCupBattle" ; imported song, pinned by tools/music_kit/song_placement.py
 ROMX $16
 	"Maps 13"
 	"Battle Engine 10"
@@ -175,12 +176,14 @@ ROMX $17
 	; shuffle can't displace it - only ~3 bytes remain free after it,
 	; re-measure before adding anything else here.
 	"Pics 11"
+	"Song PokeCupBattle" ; imported song, pinned by tools/music_kit/song_placement.py
 ROMX $18
 	"Maps 17"
 	"Cinnabar Lab Fossils"
 	"Maps 18"
 	"Hidden Events 4"
 	"Song MewtwoBattle" ; imported song, pinned by tools/music_kit/song_placement.py
+	"Song PikaCupBattle" ; imported song, pinned by tools/music_kit/song_placement.py
 ROMX $19
 	"Tilesets 1"
 ROMX $1A

@@ -16,8 +16,9 @@
 	const BMUSIC_JOHTO_BOSS     ; procedural stage boss, EVENT_JOHTO_ACTIVATED set
 	const BMUSIC_JOHTO_CHAMPION ; Lance as this run's Champion
 	const BMUSIC_MEWTWO         ; a wild Mewtwo, or a trainer whose party has one
-	const BMUSIC_ROCKET         ; ROCKET or GIOVANNI_MINIBOSS, EVENT_JOHTO_ACTIVATED set
+	const BMUSIC_ROCKET         ; ROCKET, EVENT_JOHTO_ACTIVATED set
 	const BMUSIC_HO_OH          ; a wild Ho-Oh, or a trainer whose party has one
+	const BMUSIC_KANTO_ROCKET   ; GIOVANNI_MINIBOSS always; ROCKET with Johto off
 DEF NUM_BMUSIC_CATEGORIES EQU const_value
 
 PlayBattleMusic::
@@ -206,11 +207,16 @@ GetBaseBattleMusicCategory:
 	ld a, BMUSIC_TRAINER
 	ret
 .rocket
-; Crystal's Rocket theme is a Johto-mode feature; without Johto, Rocket
-; battles route like any other trainer.
+; Giovanni's mini-boss always gets the Kanto Rocket theme. Crystal's Rocket
+; theme is a Johto-mode feature, so Rocket grunts get it only with Johto on.
+	cp OPP_GIOVANNI_MINIBOSS
+	jr z, .kantoRocket
 	CheckEvent EVENT_JOHTO_ACTIVATED
-	jr z, .johtoGymCheck
+	jr z, .kantoRocket
 	ld a, BMUSIC_ROCKET
+	ret
+.kantoRocket
+	ld a, BMUSIC_KANTO_ROCKET
 	ret
 .gymLeader
 	ld a, [wCurOpponent]
@@ -313,6 +319,7 @@ BattleMusicRamps:
 	dw BattleMusicRampMewtwo
 	dw BattleMusicRampRocket
 	dw BattleMusicRampHoOh
+	dw BattleMusicRampKantoRocket
 	assert_table_length NUM_BMUSIC_CATEGORIES
 
 ; Each ramp: `db first round, song` rows in ascending round order, then -1.
@@ -322,8 +329,14 @@ BattleMusicRamps:
 BattleMusicRampWild:
 	db 0, MUSIC_WILD_BATTLE
 	db -1
+; Bands 2 (gyms 3-4) and 3 (gyms 5-6, GYM_BAND_ROUNDS) have their own themes.
+; A band's battles are rounds (first gym - 1) to (last gym - 1): a gym's route
+; and gym trainers are fought in the round before its leader's win.
 BattleMusicRampTrainer:
 	db 0, MUSIC_TRAINER_BATTLE
+	db 2, MUSIC_PIKA_CUP_BATTLE
+	db 4, MUSIC_PETIT_CUP_BATTLE
+	db 6, MUSIC_TRAINER_BATTLE
 	db -1
 BattleMusicRampGymLeader:
 	db 0, MUSIC_GYM_LEADER_BATTLE
@@ -354,4 +367,7 @@ BattleMusicRampRocket:
 	db -1
 BattleMusicRampHoOh:
 	db 0, MUSIC_HO_OH_BATTLE
+	db -1
+BattleMusicRampKantoRocket:
+	db 0, MUSIC_POKE_CUP_BATTLE
 	db -1

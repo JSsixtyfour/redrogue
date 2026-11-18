@@ -62,4 +62,7 @@ Music:
 	dba Music_RocketTheme
 	dba Music_MewtwoBattle
 	dba Music_HoOhBattle
+	dba Music_PokeCupBattle
+	dba Music_PetitCupBattle
+	dba Music_PikaCupBattle
 	assert_table_length NUM_MUSIC_SONGS

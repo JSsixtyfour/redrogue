@@ -274,3 +274,15 @@ INCLUDE "crysaudio/music/imported/mewtwobattle.asm"
 SECTION "Song HoOhBattle", ROMX
 
 INCLUDE "crysaudio/music/imported/hoohbattle.asm"
+
+SECTION "Song PokeCupBattle", ROMX
+
+INCLUDE "crysaudio/music/imported/pokecupbattle.asm"
+
+SECTION "Song PetitCupBattle", ROMX
+
+INCLUDE "crysaudio/music/imported/petitcupbattle.asm"
+
+SECTION "Song PikaCupBattle", ROMX
+
+INCLUDE "crysaudio/music/imported/pikacupbattle.asm"

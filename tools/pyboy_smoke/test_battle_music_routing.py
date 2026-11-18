@@ -3,7 +3,7 @@
 Drives GetBattleMusicSong directly from a FIGHT 2 park with each battle's
 deciding state written in, and reads the song at its single exit. The ramp
 walk and the Endless roll are exercised by swapping in a fake multi-row ramp
-at .gotRamp, since every shipped ramp is one row (today's music, unchanged)."""
+at .gotRamp, so they don't depend on which shipped ramps have several rows."""
 import io
 import unittest
 
@@ -200,13 +200,19 @@ class BattleMusicRoutingTest(HarnessTestCase):
         self.assertEqual(self.song(opponent=OPP["YOUNGSTER"], party=[PIDGEY, HO_OH],
                                    party_count=1), MUSIC["MUSIC_TRAINER_BATTLE"])
 
-    def test_rocket_theme_is_johto_only(self) -> None:
+    def test_rocket_themes(self) -> None:
         rocket = MUSIC["MUSIC_ROCKET_BATTLE"]
+        kanto_rocket = MUSIC["MUSIC_POKE_CUP_BATTLE"]
         trainer = MUSIC["MUSIC_TRAINER_BATTLE"]
-        for name in ("ROCKET", "GIOVANNI_MINIBOSS"):
-            with self.subTest(trainer=name):
-                self.assertEqual(self.song(opponent=OPP[name], johto=True), rocket)
-                self.assertEqual(self.song(opponent=OPP[name]), trainer)
+        # grunts: Crystal's theme with Johto on, the Kanto Rocket theme without
+        self.assertEqual(self.song(opponent=OPP["ROCKET"], johto=True), rocket)
+        self.assertEqual(self.song(opponent=OPP["ROCKET"]), kanto_rocket)
+        # Giovanni's mini-boss: the Kanto Rocket theme either way, in any round
+        for johto in (False, True):
+            for count in (1, 4 * ROUND_BATTLES + 1):
+                with self.subTest(johto=johto, battle_count=count):
+                    self.assertEqual(self.song(opponent=OPP["GIOVANNI_MINIBOSS"], johto=johto,
+                                               battle_count=count), kanto_rocket)
         # plain Giovanni and Jessie & James are not in the Rocket set
         for name in ("GIOVANNI", "JESSIE_JAMES"):
             with self.subTest(trainer=name):
@@ -214,6 +220,26 @@ class BattleMusicRoutingTest(HarnessTestCase):
         # Mewtwo still outranks the Rocket theme
         self.assertEqual(self.song(opponent=OPP["GIOVANNI_MINIBOSS"], johto=True,
                                    party=[SPECIES["MEWTWO"]]), MUSIC["MUSIC_MEWTWO_BATTLE"])
+
+    def test_trainer_bands_2_and_3_play_their_themes(self) -> None:
+        # A band's routes and gym trainers are the rounds before its leaders'
+        # wins: gyms 3-4 are rounds 2-3, gyms 5-6 rounds 4-5 (leader battles
+        # land on multiples of ROUND_BATTLES and have their own category).
+        trainer = MUSIC["MUSIC_TRAINER_BATTLE"]
+        pika = MUSIC["MUSIC_PIKA_CUP_BATTLE"]
+        petit = MUSIC["MUSIC_PETIT_CUP_BATTLE"]
+        cases = {1: trainer, 2 * ROUND_BATTLES - 1: trainer,
+                 2 * ROUND_BATTLES + 1: pika, 4 * ROUND_BATTLES - 1: pika,
+                 4 * ROUND_BATTLES + 1: petit, 6 * ROUND_BATTLES - 1: petit,
+                 6 * ROUND_BATTLES + 1: trainer, 255: trainer}
+        for count, expected in cases.items():
+            with self.subTest(battle_count=count):
+                self.assertEqual(self.song(opponent=OPP["YOUNGSTER"], battle_count=count),
+                                 expected)
+        # a leader in band 3 keeps the leader theme
+        self.assertEqual(self.song(opponent=OPP["BROCK"], gym_leader=1, map_name="PEWTER_GYM",
+                                   battle_count=5 * ROUND_BATTLES),
+                         MUSIC["MUSIC_GYM_LEADER_BATTLE"])
 
     def test_ramp_walk_takes_the_last_reached_row(self) -> None:
         ramp = [0, 0x11, 2, 0x22, 5, 0x33]
@@ -248,8 +274,8 @@ class BattleMusicRoutingTest(HarnessTestCase):
 
         h.register_hook("GetBattleMusicSong.endless", lambda _: calls.append("endless"))
         h.register_hook("Random", at_random)
-        self.assertEqual(self.song(opponent=OPP["YOUNGSTER"], depth=3),
-                         MUSIC["MUSIC_TRAINER_BATTLE"])
+        self.assertEqual(self.song(trainer=False, opponent=1, depth=3),
+                         MUSIC["MUSIC_WILD_BATTLE"])
         self.assertEqual(calls, ["endless"])
         # control: the caller filter does see a real draw
         calls.clear()
