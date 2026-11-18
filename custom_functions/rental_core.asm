@@ -206,6 +206,8 @@ RentalApplyDVFloor:
 	ret
 RentalDVFloorTable:
 	db 6, 10, 13
+	db 13 ; power 4: a stale tier from an old save (see DVFloorTable)
+	ASSERT @ - RentalDVFloorTable == 4
 
 ; Complete a stable offer without creating a player mon or charging money.
 ; Enemy mon and the trainer/menu union are backed up on the 256-byte stack.

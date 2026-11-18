@@ -489,6 +489,10 @@ ApplyDVFloor::
 ; 13, the highest DV_BOOSTER tier) is M.GENE's fixed "above average" floor.
 DVFloorTable::
 	db 6, 10, 13
+	; GetKeyItemPower can return 4 from a stale 2-bit tier in an old save (live
+	; play caps at 3). Without this row that read the next code byte as a floor.
+	db 13
+	ASSERT @ - DVFloorTable == 4
 
 LoadMovePPs:
 	call GetPredefRegisters

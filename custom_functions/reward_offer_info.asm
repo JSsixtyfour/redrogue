@@ -141,6 +141,8 @@ OfferApplyDVFloor:
 
 OfferDVFloorTable:
 	db 6, 10, 13
+	db 13 ; power 4: a stale tier from an old save (see DVFloorTable)
+	ASSERT @ - OfferDVFloorTable == 4
 
 ; ============================================================================
 ; RogueOfferDVsClear - new game. SRAM powers up $FF, and stale tags from an old
