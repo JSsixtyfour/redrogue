@@ -89,7 +89,12 @@ def call_a_preserving(harness: RedRogueHarness, label: str, a_value: int) -> int
 
 
 class AIGetPlayerMoveNTest(unittest.TestCase):
+    """E1 (2026-11-18): a guessed slot holds the strongest move of its type the species can
+    carry by its level and the run's TM ceiling (data/battle/ai_guess_learnset_*.asm). With no
+    badges the ceiling is 1 (Poke/Great Ball TMs). L50 Snorlax: Double-Edge (Hyper Beam is
+    learned at 56); L50 Persian: Hyper Beam (learned at 50)."""
     harness: RedRogueHarness | None = None
+    SNORLAX_GUESS = "DOUBLE_EDGE"
 
     def setUp(self) -> None:
         self.harness = RedRogueHarness(REPO_ROOT, ARTIFACTS)
@@ -133,14 +138,14 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
     def test_fair_play_tier_reads_only_revealed_moves(self) -> None:
         # The revealed set is sparse - slot 1 revealed (GROWL), slot 0 not.
         # Unseen slot 0 returns the visible-type guess (Snorlax is Normal ->
-        # BODY_SLAM), never the real unrevealed TACKLE; unseen slot 2 has no
-        # guess at all.
+        # its learnset's best, SNORLAX_GUESS), never the real unrevealed TACKLE;
+        # unseen slot 2 has no guess at all.
         assert self.harness is not None
         self.boot(ai_tier=1, player_moves=["TACKLE", "GROWL", "SPLASH"])
         growl = self.moves["GROWL"]
         self.prime_seen_moves([1])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0),
-                         self.moves["BODY_SLAM"])
+                         self.moves[self.SNORLAX_GUESS])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1), growl)
 
     def test_top_tier_is_fair_play_too(self) -> None:
@@ -151,7 +156,7 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
         self.boot(ai_tier=3, player_moves=["TACKLE", "GROWL", "SPLASH"])
         self.prime_seen_moves([1])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0),
-                         self.moves["BODY_SLAM"])
+                         self.moves[self.SNORLAX_GUESS])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1),
                          self.moves["GROWL"])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 2), 0)
@@ -163,7 +168,7 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
         self.boot(ai_tier=0, player_moves=["TACKLE", "GROWL", "SPLASH"])
         self.prime_seen_moves([])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0),
-                         self.moves["BODY_SLAM"])
+                         self.moves[self.SNORLAX_GUESS])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1), 0)
 
     def menu_swap(self, first: int, second: int) -> None:
@@ -209,21 +214,36 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
         self.assertEqual(self.harness.revealed_player_moves(0), [2])
 
     def test_dual_type_guesses_one_move_per_visible_type(self) -> None:
-        # Gyarados is Water/Flying: slot 0 guesses SURF, slot 1 DRILL_PECK.
+        # Charizard (Fire/Flying) at 50: Flamethrower (38) for Fire, Wing Attack (36)
+        # for Flying. Fire Blast is a Master Ball TM, above the no-badge ceiling.
         assert self.harness is not None
-        self.harness.inject_fight2_spec(
-            [{"species": self.species["GYARADOS"], "level": 50,
-              "moves": [self.moves[m] for m in ("SPLASH", "GROWL", "LEER")]}],
-            [self.mon("RATTATA", ["TACKLE"])],
-            trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=3,
-        )
-        self.harness.boot_fight2(seed=1)
-        self.prime_seen_moves([])
-        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0),
-                         self.moves["SURF"])
-        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1),
-                         self.moves["DRILL_PECK"])
-        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 2), 0)
+        self.boot_player("CHARIZARD", 50, ["SPLASH", "GROWL"], [])
+        self.assertEqual(self.believed(), self.ids("FLAMETHROWER", "WING_ATTACK", "", ""))
+
+    def test_a_type_the_species_cannot_attack_with_gets_no_guess(self) -> None:
+        # E1: Gyarados (Water/Flying) learns no damaging Flying move here (Fly is two-turn,
+        # excluded), so only the Water slot is guessed. The old type table feared Drill Peck.
+        self.boot_player("GYARADOS", 50, ["SPLASH", "GROWL", "LEER"], [])
+        self.assertEqual(self.believed(), self.ids("HYDRO_PUMP", "", "", ""))
+
+    def badges(self, count: int) -> None:
+        assert self.harness is not None
+        self.harness.write8("wObtainedBadges", (1 << count) - 1)
+
+    def test_tm_ceiling_rises_with_badges(self) -> None:
+        # Starmie at 45 (Hydro Pump comes at 47): with no badges only Great Ball TMs count,
+        # so Waterfall; at AI_GUESS_MASTER_BADGES (5) the Master Ball TM Surf is presumed.
+        self.boot_player("STARMIE", 45, ["SPLASH", "GROWL"], [])
+        self.badges(4)
+        self.assertEqual(self.believed()[0], self.moves["WATERFALL"])
+        self.badges(5)
+        self.assertEqual(self.believed()[0], self.moves["SURF"])
+
+    def test_level_up_moves_need_no_ceiling(self) -> None:
+        # Past its learn level Hydro Pump is presumed with no badges at all.
+        self.boot_player("STARMIE", 47, ["SPLASH", "GROWL"], [])
+        self.badges(0)
+        self.assertEqual(self.believed()[0], self.moves["HYDRO_PUMP"])
 
     def test_empty_slot_gets_no_guess(self) -> None:
         # A one-move Gyarados must not carry a phantom slot-1 attack forever.
@@ -284,24 +304,26 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
         self.assertEqual(self.believed(), self.ids(*moves))
 
     def test_dual_type_keeps_both_guesses_past_an_off_type_reveal(self) -> None:
-        self.boot_player("GYARADOS", 50, ["BITE", "GROWL", "LEER", "SPLASH"], [0])
-        self.assertEqual(self.believed(), self.ids("BITE", "SURF", "DRILL_PECK", ""))
+        self.boot_player("CHARIZARD", 50, ["MEGA_PUNCH", "GROWL", "LEER"], [0])
+        self.assertEqual(self.believed(), self.ids("MEGA_PUNCH", "FLAMETHROWER", "WING_ATTACK", ""))
 
     def test_dual_type_strikes_only_the_revealed_type(self) -> None:
-        # Slot 0 shows Water, so the first unrevealed slot holds the Flying guess.
-        self.boot_player("GYARADOS", 50, ["HYDRO_PUMP", "GROWL", "LEER", "SPLASH"], [0])
-        self.assertEqual(self.believed(), self.ids("HYDRO_PUMP", "DRILL_PECK", "", ""))
+        # Slot 0 shows Fire, so the first unrevealed slot holds the Flying guess.
+        self.boot_player("CHARIZARD", 50, ["EMBER", "GROWL"], [0])
+        self.assertEqual(self.believed(), self.ids("EMBER", "WING_ATTACK", "", ""))
 
-    def test_low_level_assumes_the_weaker_move(self) -> None:
+    def test_low_level_assumes_its_learnset_move(self) -> None:
+        # Squirtle at 10 has Bubble (9); Water Gun comes at 14.
         self.boot_player("SQUIRTLE", 10, ["TACKLE", "TAIL_WHIP"], [])
-        self.assertEqual(self.believed(), self.ids("WATER_GUN", "", "", ""))
+        self.assertEqual(self.believed(), self.ids("BUBBLE", "", "", ""))
 
     def test_level_gate_boundary(self) -> None:
-        self.boot_player("MR_MIME", 29, ["BARRIER"], [])
-        self.assertEqual(self.believed(), self.ids("CONFUSION", "", "", ""))
+        # Mr. Mime learns Psychic at 39: at 38 its best Psychic move is Psybeam (28).
+        self.boot_player("MR_MIME", 38, ["BARRIER"], [])
+        self.assertEqual(self.believed(), self.ids("PSYBEAM", "", "", ""))
 
-    def test_level_gate_opens_at_30(self) -> None:
-        self.boot_player("MR_MIME", 30, ["BARRIER"], [])
+    def test_level_gate_opens_at_the_learn_level(self) -> None:
+        self.boot_player("MR_MIME", 39, ["BARRIER"], [])
         self.assertEqual(self.believed(), self.ids("PSYCHIC_M", "", "", ""))
 
     # --- CP3 (2026-11-12): the high-crit move a species learns by level-up ----
@@ -309,7 +331,7 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
         # Persian (mono Normal, Slash at 34): slot 0 holds the STAB guess, slot 1
         # the crit move. Nothing beyond that.
         self.boot_player("PERSIAN", 50, ["TACKLE", "GROWL", "LEER", "SPLASH"], [])
-        self.assertEqual(self.believed(), self.ids("BODY_SLAM", "SLASH", "", ""))
+        self.assertEqual(self.believed(), self.ids("HYPER_BEAM", "SLASH", "", ""))
 
     def test_crit_guess_waits_for_the_learn_level(self) -> None:
         self.boot_player("PERSIAN", 33, ["TACKLE", "GROWL", "LEER", "SPLASH"], [])
@@ -333,11 +355,11 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
 
     def test_a_species_without_a_high_crit_move_gets_no_crit_guess(self) -> None:
         self.boot_player("SNORLAX", 50, ["TACKLE", "GROWL", "LEER", "SPLASH"], [])
-        self.assertEqual(self.believed(), self.ids("BODY_SLAM", "", "", ""))
+        self.assertEqual(self.believed(), self.ids(self.SNORLAX_GUESS, "", "", ""))
 
     def test_empty_slots_get_no_crit_guess(self) -> None:
         self.boot_player("PERSIAN", 50, ["TACKLE"], [])
-        self.assertEqual(self.believed(), self.ids("BODY_SLAM", "", "", ""))
+        self.assertEqual(self.believed(), self.ids("HYPER_BEAM", "", "", ""))
 
     def test_revealed_moves_do_not_follow_a_player_switch(self) -> None:
         # Review F6 (2026-09-29): moves revealed by party member 0 must not be
@@ -351,7 +373,7 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
         # Member 1 revealed nothing: slot 0 is back to the type guess, and
         # member 0's GROWL does not carry over into slot 1.
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0),
-                         self.moves["BODY_SLAM"])
+                         self.moves[self.SNORLAX_GUESS])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1), 0)
         self.harness.reveal_player_moves(1, [0])
         self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 0),

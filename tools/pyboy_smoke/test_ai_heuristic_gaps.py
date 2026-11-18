@@ -1258,6 +1258,10 @@ class AIPlanGapsTest(_AIGapsBase):
         # Plans whose class mask holds a boost AND another class: the other
         # class's slot is steered whether the gate is open or shut (measured:
         # AmnesiaRest at 60 HP steers Rest, AgilityWrap steers Wrap).
+        # Both player moves revealed: these plans want no believed KO threat, and the
+        # unrevealed Tackle's guess became Double-Edge with E1's learnset guess (L50
+        # Snorlax; the old type table said Body Slam), which flipped the plan choice.
+        self.h.reveal_player_moves(0, [0, 1], clear=True)
         for moves, writes, slot, plan_name in (
                 (["AMNESIA", "REST", "PSYCHIC_M"], {"wEnemyMonHP": (60,)}, 1, "AI_PLAN_AMNESIA_REST"),
                 (["AGILITY", "WRAP", "TACKLE"], {}, 1, "AI_PLAN_AGILITY_WRAP")):

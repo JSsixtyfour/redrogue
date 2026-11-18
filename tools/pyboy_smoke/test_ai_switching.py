@@ -1063,8 +1063,10 @@ class AIShouldSwitchTest(unittest.TestCase):
         return hit
 
     def fallback_case(self, second: str, a_dies: bool = True):
-        """FOLLOWUPS #88 board: player Snorlax L60 (Splash unrevealed, so the AI
-        guesses a Normal STAB move), enemy Pikachu at 2/5 HP (lethal), reserves
+        """FOLLOWUPS #88 board: player Snorlax L60 with Body Slam REVEALED (it used
+        to be Splash unrevealed with the old type table guessing Body Slam; E1's
+        learnset guess says Hyper Beam at 60, and reserve_slot_hit prices Body
+        Slam, so the threat is now explicit), enemy Pikachu at 2/5 HP (lethal), reserves
         Aerodactyl (resists Normal: ranked best) at a lethal HP when a_dies, and
         `second`. Returns (switched, chosen slot, info)."""
         info = {}
@@ -1085,10 +1087,10 @@ class AIShouldSwitchTest(unittest.TestCase):
                 info[2]["hp"] = a_hp
             info["checks"] = h.hook_flag("AIBestReserveSurvivesThreat")
 
-        player = dict(self.mon("SNORLAX", ["SPLASH"]), level=60)
+        player = dict(self.mon("SNORLAX", ["BODY_SLAM"]), level=60)
         switched = self.call_should_switch(
             player, [self.mon("PIKACHU"), self.mon("AERODACTYL"), self.mon(second)],
-            ai_tier=2, post_boot=post_boot)
+            ai_tier=2, reveal=[0], post_boot=post_boot)
         return switched, self.harness.read8("wBuffer", 19), info
 
     def test_fallback_switches_to_the_next_reserve_that_survives(self) -> None:

@@ -275,6 +275,13 @@ DEF AI_BUF_SETUPMASK EQU AI_BUF_BESTPARTYSLOT
 ; battle. AI_PLAN reads the whole byte, so it withholds its push for this too.
 DEF AI_KO_ENDS_BATTLE_BIT EQU 7
 DEF AI_SCARCE_PP EQU 2 ; at or below this, the best-damage nudge looks elsewhere
+
+; E1 move guess (ai_guess_learnset.asm): the TM rarity ceiling the guess may presume
+; rises with badges, since gym leaders give a TM each. TUNING KNOBS (2026-11-18,
+; proposed; the guess swarm tunes them): below ULTRA, Poke/Great Ball TMs; from it,
+; + Ultra; from MASTER, + Master Ball TMs (Earthquake, Psychic, Thunderbolt, ...).
+DEF AI_GUESS_ULTRA_BADGES EQU 2
+DEF AI_GUESS_MASTER_BADGES EQU 5
 DEF AI_SCARCE_MAX_HITS EQU 8 ; a best move needing more hits than this keeps its nudge
 ; Phase 5: the four per-slot MOVE CLASS masks, two bytes each, little-endian.
 ; This region was reserved through Phase 4 as AI_BUF_PARTY (six party scores)

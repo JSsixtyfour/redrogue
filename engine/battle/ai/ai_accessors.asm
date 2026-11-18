@@ -40,6 +40,10 @@
 ; scenario gave an enemy a Dream Eater move, which is the same
 ; "the covered path was the no-op path" gap that hid the Phase 2a bugs.
 
+; AI_GUESS_SPLIT_SPECIES and the other E1 table bounds (generated). Included here,
+; the first user in the assembly; ai_guess_learnset.asm, assembled later, reuses them.
+INCLUDE "data/battle/ai_guess_learnset_split.asm"
+
 ; OUTPUT: a = the player mon's first type.
 AIGetTargetType1::
 	ld a, [wBattleMonType1]
@@ -185,17 +189,20 @@ AIGetPlayerMoveN::
 	ld a, d
 	cp NUM_TYPES
 	jr nc, .noTypeGuess
+; Which move of that type: the strongest this species/form can carry by its level
+; and the run's TM ceiling (E1, ai_guess_learnset.asm; 0 = it can carry none).
+; The table is split in two banks by species id; choosing the half here keeps it
+; to one farcall (measured: ~300 cycles a guess, when the low half forwarded).
 	ld e, a
-	ld d, 0
-	ld hl, AIStabGuessByType
-	add hl, de
-	ld a, [wBattleMonLevel]
-	cp AI_GUESS_STRONG_LEVEL
-	jr nc, .gotGuessRow
-	ld e, NUM_TYPES ; d is still 0: the weaker row follows the strong one
-	add hl, de
-.gotGuessRow
-	ld a, [hl]
+	ld a, [wBattleMonSpecies]
+	cp AI_GUESS_SPLIT_SPECIES
+	jr nc, .guessHigh
+	farcall AIGuessLearnset ; e = the move
+	jr .gotGuess
+.guessHigh
+	farcall AIGuessLearnsetHi
+.gotGuess
+	ld a, e
 	jr .exit ; every return goes through .exit, the hookable result point
 ; No type is pending for this slot. The FIRST such slot (d still AI_GUESS_NO_TYPE,
 ; not AI_GUESS_CRIT_TAKEN) is believed to hold the high-crit move its species
@@ -333,56 +340,8 @@ AIOmniscientClasses:
 
 DEF AI_GUESS_NO_TYPE EQU $ff ; above every real type id
 DEF AI_GUESS_CRIT_TAKEN EQU $fe ; walk marker: an earlier slot already took the crit guess
-
-; Below this level an unseen slot assumes the weaker row: a level 10 Squirtle has
-; Water Gun, not Surf. The level curated sets may first carry a grade A TM move.
-DEF AI_GUESS_STRONG_LEVEL EQU TM_GATE_LEVEL_A
-
-; TUNING KNOB: the move an unseen slot is assumed to hold, per player type.
-; Typical Gen 1 threats of each type; 0 = no guess. Indexed by type id, then
-; by level: AIGetPlayerMoveN adds NUM_TYPES to reach the weaker row, so the two
-; rows must stay adjacent. Bug, Ghost and Dragon repeat: Leech Life is already
-; weak here, and Night Shade and Dragon Rage are fixed damage.
-AIStabGuessByType:
-	db BODY_SLAM    ; NORMAL
-	db SUBMISSION   ; FIGHTING
-	db DRILL_PECK   ; FLYING
-	db SLUDGE       ; POISON
-	db EARTHQUAKE   ; GROUND
-	db ROCK_SLIDE   ; ROCK
-	db 0            ; BIRD (unused type)
-	db LEECH_LIFE   ; BUG
-	db NIGHT_SHADE  ; GHOST (its real Gen 1 threat; fixed damage)
-	assert @ - AIStabGuessByType == UNUSED_TYPES, "AIStabGuessByType: physical rows"
-	ds UNUSED_TYPES_END - UNUSED_TYPES, 0
-	db FLAMETHROWER ; FIRE
-	db SURF         ; WATER
-	db RAZOR_LEAF   ; GRASS
-	db THUNDERBOLT  ; ELECTRIC
-	db PSYCHIC_M    ; PSYCHIC_TYPE
-	db ICE_BEAM     ; ICE
-	db DRAGON_RAGE  ; DRAGON (its only Gen 1 move; fixed damage)
-	assert @ - AIStabGuessByType == NUM_TYPES, "AIStabGuessByType must cover every type"
-; The weaker row, below AI_GUESS_STRONG_LEVEL.
-	db POUND        ; NORMAL
-	db LOW_KICK     ; FIGHTING
-	db PECK         ; FLYING
-	db ACID         ; POISON
-	db BONE_CLUB    ; GROUND
-	db ROCK_THROW   ; ROCK
-	db 0            ; BIRD (unused type)
-	db LEECH_LIFE   ; BUG
-	db NIGHT_SHADE  ; GHOST
-	assert @ - AIStabGuessByType == NUM_TYPES + UNUSED_TYPES, "weaker row: physical rows"
-	ds UNUSED_TYPES_END - UNUSED_TYPES, 0
-	db EMBER        ; FIRE
-	db WATER_GUN    ; WATER
-	db VINE_WHIP    ; GRASS
-	db THUNDERSHOCK ; ELECTRIC
-	db CONFUSION    ; PSYCHIC_TYPE
-	db AURORA_BEAM  ; ICE
-	db DRAGON_RAGE  ; DRAGON
-	assert @ - AIStabGuessByType == NUM_TYPES * 2, "weaker row must cover every type"
+; (The per-type guess table AIStabGuessByType and its AI_GUESS_STRONG_LEVEL row split
+; were replaced 2026-11-18 by the per-species learnset guess, ai_guess_learnset.asm.)
 
 ; Fills wBuffer + AI_BUF_THREATTYPES (one byte per move slot, $ff = none) with
 ; the types of the player's DAMAGING moves as the AI believes them - revealed,

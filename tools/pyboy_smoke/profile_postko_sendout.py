@@ -195,6 +195,7 @@ def report(t, slot, key1, tier):
     print("labels not in .sym:", ", ".join(missing) or "none")
 
 
-for tier in (1, 3):
-    t, slot, key1 = run(tier, 5)
-    report(t, slot, key1, tier)
+if __name__ == "__main__":  # profile_ai_decision.py imports Timings from here
+    for tier in (1, 3):
+        t, slot, key1 = run(tier, 5)
+        report(t, slot, key1, tier)

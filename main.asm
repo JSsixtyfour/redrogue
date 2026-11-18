@@ -676,6 +676,9 @@ INCLUDE "engine/battle/ai/ai_crit.asm"
 
 ; AI review CP3 (2026-11-12): the high-crit move a species learns by level-up.
 ; Bank-free: its caller in $0E farcalls it, so it stays out of that full bank.
+; E1 learnset move guess: its own two floating sections (declared inside the file).
+INCLUDE "engine/battle/ai/ai_guess_learnset.asm"
+
 SECTION "AI Crit Species", ROMX
 
 INCLUDE "engine/battle/ai/ai_crit_species.asm"
