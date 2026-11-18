@@ -97,22 +97,30 @@ FinalTeamArchiveCapture::
 	push de
 	call FinalTeamArchiveWriteHeaderChecksum
 	pop de
+	; The party-count byte (the record's first) goes in LAST, after a zero.
+	; RecordIsValid rejects a zero count, so a reset mid-copy can never leave a
+	; half-written record that happens to checksum to $FF (the slot-invalid
+	; marker above, which is also a legal checksum) reading as valid. A reset
+	; after the count lands leaves a complete record, which is safe to accept.
 	ld a, d
 	call FinalTeamArchiveRecordAddress
-	push hl
+	push hl                     ; record start
+	xor a
+	ld [hli], a                 ; count 0 while the body is written
 	ld d, h
 	ld e, l
-	ld hl, wPartyDataStart
-	ld bc, FINAL_TEAM_PARTY_SIZE
-	call CopyData
-	pop hl
-	ld bc, FINAL_TEAM_PARTY_SIZE
-	add hl, bc
-	pop de
-	ld a, d
-	ld [hli], a
-	ld a, e
-	ld [hl], a
+	ld hl, wPartyDataStart + 1
+	ld bc, FINAL_TEAM_PARTY_SIZE - 1
+	call CopyData               ; de = the sidecar
+	pop hl                      ; hl = record start
+	pop bc                      ; b/c = the sidecar species/form pushed above as d/e
+	ld a, b
+	ld [de], a
+	inc de
+	ld a, c
+	ld [de], a
+	ld a, [wPartyDataStart]
+	ld [hl], a                  ; the count, last
 	; Calculate and publish the completed record checksum.
 	ld a, [sFinalTeamArchiveNextIndex]
 	and FINAL_TEAM_ARCHIVE_CAPACITY - 1

@@ -333,9 +333,12 @@ AILayerDamage:
 ; in the same tier score identically no matter how far apart their expected
 ; damage is - which is exactly the Thunderbolt-vs-Thunder case.
 .applyBest
-; Drop the KO bits of Explosion slots the trade policy forbids before anything
-; reads the mask: the scarce-PP rule below and AI_PLAN after this layer. The
-; scores are still set after the last layer (AIExplosionTradeVeto).
+; Drop the reliable-KO bits (wAIReliableKOFound) of Explosion slots the trade
+; policy forbids before AI_PLAN reads them after this layer. The possible-KO
+; mask (AI_BUF_POSSKO) is NOT masked back: AIPossibleKOEndsBattle only tests it.
+; The scarce-PP rule below is protected instead by .trackBest storing 0 slot
+; damage for every EXPLODE_EFFECT (codebase scan 3.3), so no self-KO move can
+; stand in. The scores are still set after the last layer (AIExplosionTradeVeto).
 	call AIExplosionVetoMask
 	call AIPossibleKOEndsBattle
 	call AISetupGate ; ai_setup_gate.asm: tempo bits for AI_PLAN, AI_SETUP's encourage

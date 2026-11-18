@@ -49,6 +49,30 @@ class FinalTeamArchiveTest(HarnessTestCase):
         h.call_routine("FinalTeamArchiveCapture")
         self.assertEqual(h.read8("wActionResultOrTookBattleTurn"), 1)
 
+    def test_count_byte_is_zero_while_the_record_body_is_written(self) -> None:
+        """Codebase scan 2026-11-18: the slot-invalid marker $FF is also a legal
+        checksum, so a reset mid-copy could leave a half-written record that
+        reads valid (~1/256). The count byte now goes in last, after a zero, and
+        RecordIsValid rejects a zero count. Plant a stale count in slot 0, then
+        read it at the instant the body copy starts."""
+        self._empty_archive()
+        h = self.harness
+        assert h is not None
+        record = h.address("sFinalTeamArchiveRecords")
+        h.write_sram_bytes("sFinalTeamArchiveRecords", [3], bank=ARCHIVE_BANK)  # stale team
+        self._party(species=0x99)
+        seen: list[int] = []
+
+        def at_copy(_context) -> None:
+            regs = h.pyboy.register_file
+            if (regs.D << 8 | regs.E) == record + 1:
+                seen.append(h.pyboy.memory[record])
+
+        h.register_hook("CopyData", at_copy)
+        self._capture()
+        self.assertEqual(seen, [0], "the body copy starts with the count byte already zero")
+        self.assertEqual(h.read_sram_bytes("sFinalTeamArchiveRecords", 1, bank=ARCHIVE_BANK), [1])
+
     def test_fresh_ff_sram_is_explicitly_initialized(self) -> None:
         self._empty_archive()
         h = self.harness
