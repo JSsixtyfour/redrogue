@@ -694,21 +694,24 @@ class AIShouldSwitchTest(unittest.TestCase):
     # Stadium adds toxicCounter * 77 to its switch score against a -127 baseline and
     # doubles it when seeded: counter >= 2, or >= 1 while seeded, switches.
     def toxic_case(self, counter: int, *, seeded: bool = False, ai_tier: int = 3,
-                   player_hp: int | None = None) -> tuple[bool, int]:
+                   player_hp: int | None = None, accuracy: int = 7) -> tuple[bool, int]:
+        """counter 0 = not poisoned at all; accuracy = the AI's accuracy stage (7 neutral)."""
         hit = {}
 
         def board(h) -> None:
             h.write8("wEnemySelectedMove", self.moves["WATER_GUN"])
             h.write8("wEnemyMoveListIndex", 0)
-            h.write8("wEnemyMonStatus", 1 << 3)  # PSN
-            h.write8("wEnemyBattleStatus3", h.read8("wEnemyBattleStatus3") | 1)  # BADLY_POISONED
+            h.write8("wEnemyMonAccuracyMod", accuracy)
+            if counter:
+                h.write8("wEnemyMonStatus", 1 << 3)  # PSN
+                h.write8("wEnemyBattleStatus3", h.read8("wEnemyBattleStatus3") | 1)  # BADLY_POISONED
             h.write8("wEnemyToxicCounter", counter)
             if seeded:
                 h.write8("wEnemyBattleStatus2", h.read8("wEnemyBattleStatus2") | 0x80)  # SEEDED
             if player_hp is not None:
                 h.write8("wBattleMonHP", player_hp >> 8)
                 h.write8("wBattleMonHP", player_hp & 0xFF, offset=1)
-            hit["toxic"] = h.hook_flag("AIToxicPushesOut")
+            hit["toxic"] = h.hook_flag("AIPushOutTerms")
 
         switched = self.call_should_switch(
             self.mon("SNORLAX", ["SPLASH"]),
@@ -734,6 +737,17 @@ class AIShouldSwitchTest(unittest.TestCase):
         # The player cannot hurt Slowbro, so landing Water Gun on a 1-HP Snorlax is
         # reliable whoever moves first: stay and take the KO (Stadium's -255).
         self.assertFalse(self.toxic_case(4, player_hp=1)[0])
+
+    # Stadium's other push-out term: a lowered accuracy stage (measured 2026-11-18 on 200
+    # forced states: -1 +0.052, -2 +0.095 of party HP for switching, over the undropped state).
+    def test_lowered_accuracy_switches_out(self) -> None:
+        self.assertEqual(self.toxic_case(0, accuracy=6), (True, 1))
+
+    def test_neutral_accuracy_and_no_poison_stays(self) -> None:
+        self.assertFalse(self.toxic_case(0)[0])
+
+    def test_lowered_accuracy_yields_to_a_reliable_first_ko(self) -> None:
+        self.assertFalse(self.toxic_case(0, accuracy=6, player_hp=1)[0])
 
     # --- B17 free switch-in target (AI_T4_REGRET_PLAN, 2026-11-17) -------------------
     # 600 seeds: where a reserve was immune to every damaging player move, the best switch

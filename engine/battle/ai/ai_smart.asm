@@ -379,18 +379,20 @@ AISmart_Substitute:
 	xor a
 	ret
 
-; Hyper Beam's recharge cost is worth it when healthy, riskier when low (the
-; enemy may not survive to use the follow-up turn it owes). Source: pokecrystal
-; AI_Smart_HyperBeam.
+; Hyper Beam that cannot KO: a small discourage, at ANY HP of ours. One that can
+; (even only on a max roll) is left to AI_DAMAGE's kill tiers: in Gen 1 a Beam
+; that KOs skips its recharge. Replaces pokecrystal's HP bands (2026-11-18, AI
+; backlog B21.1), which measured backwards. 300 forced states each, Beam in slot
+; 0 against the best other move: a non-KO Beam lost ~0.02 of party HP whether
+; healthy (the old bands ENCOURAGED it there) or at 20% HP and doomed this turn
+; (so "dying anyway" does not rescue it); a possible-KO Beam while doomed won
+; +0.12 (the old bands DISCOURAGED it below a quarter). Danger (the recharge
+; turn's free hit kills us) did not separate the cases, so it is not a term.
+; AIEstimateEnemyDamage is the per-decision cache AI_DAMAGE reuses.
 AISmart_HyperBeam:
-	call AIEnemyHPBelowQuarter
-	jr c, .discourage
-	call AIEnemyHPBelowHalf
-	jr c, .noChange ; between quarter and half: no change
-	ld a, AI_NUDGE
-	scf
-	ret
-.discourage
+	call AIEstimateEnemyDamage
+	call AIMoveWouldKO ; max roll reaches the player's HP
+	jr c, .noChange
 	ld a, AI_NUDGE
 	and a
 	ret

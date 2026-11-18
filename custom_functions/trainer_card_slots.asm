@@ -358,7 +358,7 @@ RogueGymDoorInfoFar::
 
 ; ============================================================
 ; RogueCardRevealedSlotForDraw
-; OUTPUT: e = the revealed slot index, or $FF when nothing is revealed.
+; OUTPUT: e = door 1's revealed slot index, or $FF when nothing is revealed.
 ;
 ; Exists only so DrawBadges can ask the question across a farcall: it returns in
 ; e because Bankswitch destroys a/b/c/h/l on both sides.
@@ -368,11 +368,62 @@ RogueGymDoorInfoFar::
 ; is the obvious place to pass it and is a TRAP: it shares a UNION with
 ; wTrainerInfoTextBoxWidth, which DrawTrainerInfo writes AFTER the blit runs, so
 ; anything left there would be overwritten before DrawBadges ever read it.
+;
+; Door 2's name (a revealed pair) is written into wTileMap here, before DrawBadges
+; draws its rows: DrawBadges only ever writes ONE cell's name column (the one its
+; countdown names), so this cell's survives, and DrawBadges itself (a floating
+; section in a nearly full bank) needs no second countdown byte.
 RogueCardRevealedSlotForDraw::
+	call RogueCardSecondNameSlot
+	jr nc, .doorOneOnly
+	ld b, a                    ; b = slot 0-7
+	and %11
+	add a
+	add a
+	ld e, a
+	ld d, 0                    ; de = 4 * column
+	hlcoord 3, 11              ; slot 0's name column (DrawBadges' cell geometry)
+	add hl, de
+	bit 2, b
+	jr z, .rowReady
+	ld de, 3 * SCREEN_WIDTH    ; slots 4-7: the second badge row
+	add hl, de
+.rowReady
+	ld a, CARD_NAME2_VRAM_TILE
+	ld [hli], a
+	inc a
+	ld [hli], a
+	inc a
+	ld [hl], a
+.doorOneOnly
 	call RogueCardRevealedSlot
 	ld e, $FF
 	ret nc
 	ld e, a
+	ret
+
+; ============================================================
+; RogueCardSecondNameSlot
+; OUTPUT: carry set and a = the slot that names door 2's leader (the slot after
+;         door 1's); carry clear unless two gyms are offered and the Psychic has
+;         revealed door 2. The same test RogueCardRevealedLeaderForSlot uses for
+;         that slot's face, so face and name always agree.
+; Clobbers bc, hl. Preserves de.
+RogueCardSecondNameSlot:
+	ld a, 2
+	call RogueGymDoorSlot      ; preserves de; carry = door 2 exists (a pair)
+	jr nc, .no
+	dec b
+	jr nz, .no                 ; b was 0: door 2 is still hidden
+	push de
+	call RogueCardFirstEmptySlot
+	pop de
+	ret nc
+	inc a                      ; a pair means >= 2 unbeaten gyms, so this is <= 7
+	cp NUM_BADGES
+	ret
+.no
+	and a
 	ret
 
 ; ============================================================
@@ -534,16 +585,26 @@ RogueBlitCardBadges::
 	cp NUM_BADGES
 	jr c, .loop
 
-	; The revealed leader's name, into vChars2 tile CARD_NAME_VRAM_TILE. Only
-	; one name is ever on the card, so this is three tiles rather than a strip
-	; per slot - see CARD_NAME_TILES for why an earned badge gets none.
+	; The revealed leaders' names: door 1's into vChars2 tile CARD_NAME_VRAM_TILE,
+	; and door 2's (a pair the Psychic revealed) into CARD_NAME2_VRAM_TILE. Two
+	; 3-tile strips rather than one per slot - see CARD_NAME_TILES for why an
+	; earned badge gets none.
 	call RogueCardRevealedSlot
 	ret nc
-	call RogueCardBlockForSlot
+	ld de, vChars2 tile CARD_NAME_VRAM_TILE
+	call .BlitName
+	call RogueCardSecondNameSlot
+	ret nc
+	ld de, vChars2 tile CARD_NAME2_VRAM_TILE
+	; fallthrough
+; a = card slot, de = the strip's VRAM destination.
+.BlitName
+	push de
+	call RogueCardBlockForSlot ; the face's block, so name and face always agree
 	call .NameOffset
 	ld de, LeaderNameTileGraphics
 	add hl, de
-	ld de, vChars2 tile CARD_NAME_VRAM_TILE
+	pop de
 	ld bc, CARD_NAME_TILES tiles
 	ld a, BANK(LeaderNameTileGraphics)
 	jp FarCopyData2

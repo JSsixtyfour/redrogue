@@ -12,6 +12,13 @@ DEF FINAL_TEAM_ARCHIVE_CAPACITY EQU 4
 DEF FINAL_TEAM_PARTY_SIZE EQU 404
 DEF FINAL_TEAM_RECORD_SIZE EQU FINAL_TEAM_PARTY_SIZE + 2
 DEF FINAL_TEAM_ARCHIVE_HEADER_SIZE EQU 11
+; ram/sram.asm defines these sizes again (a separate object), and the enemy-side
+; load copies the same 404 bytes into wEnemyPartyCount: tie all three to the
+; real layouts so neither copy can drift.
+ASSERT sFinalTeamArchiveRecords - sFinalTeamArchiveMagic == FINAL_TEAM_ARCHIVE_HEADER_SIZE
+ASSERT sFinalTeamArchiveEnd - sFinalTeamArchiveRecords \
+	== FINAL_TEAM_ARCHIVE_CAPACITY * FINAL_TEAM_RECORD_SIZE
+ASSERT wEnemyMonNicks + PARTY_LENGTH * NAME_LENGTH - wEnemyPartyCount == FINAL_TEAM_PARTY_SIZE
 
 FinalTeamArchiveInit::
 	call FinalTeamArchiveOpen

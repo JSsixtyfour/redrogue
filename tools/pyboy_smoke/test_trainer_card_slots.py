@@ -446,10 +446,56 @@ class TrainerCardBlockChoiceSmokeTest(HarnessTestCase):
         )
         h.park_before_hijack()
         h.call_routine("RogueBlitCardBadges")
-        # A ninth hit is the name strip's own resolve; it must agree with the
-        # face it names.
-        self.name_block = chosen[NUM_BADGES] if len(chosen) > NUM_BADGES else None
+        # A ninth hit is door 1's name strip resolve, a tenth door 2's; each must
+        # agree with the face it names.
+        names = chosen[NUM_BADGES:]
+        self.name_block = names[0] if names else None
+        self.name_blocks = names
         return chosen[:NUM_BADGES]
+
+    def _strip(self, block: int) -> bytes:
+        """The ROM bytes of one leader's name strip (LeaderNameTileGraphics)."""
+        h = self.harness
+        assert h is not None
+        bank, address = h.symbols.get("LeaderNameTileGraphics")
+        size = self.constants["CARD_NAME_TILES"] * 16
+        start = bank * 0x4000 + (address - 0x4000) + block * size
+        return h.rom_path.read_bytes()[start : start + size]
+
+    def _vram_strip(self, tile: int) -> bytes:
+        h = self.harness
+        assert h is not None
+        start = 0x9000 + tile * 16
+        return bytes(h.pyboy.memory[start : start + self.constants["CARD_NAME_TILES"] * 16])
+
+    def _drawn_name_cells(self) -> dict[int, list[int]]:
+        """Run RogueCardRevealedSlotForDraw against a blank badge area and return,
+        per slot, the three name-column tiles it left in wTileMap (non-blank only)."""
+        h = self.harness
+        assert h is not None
+        width = 20
+        cells = {}
+        for slot in range(NUM_BADGES):
+            row = 11 if slot < 4 else 14
+            cells[slot] = row * width + 3 + 4 * (slot & 3)
+        for offset in cells.values():
+            for i in range(3):
+                h.write8("wTileMap", 0x7F, offset=offset + i)
+        # call_routine does not hand back the routine's registers, so door 1's
+        # slot (returned in e) is read where it is found: the LAST first-empty
+        # resolve is RogueCardRevealedSlot's, after the door-2 test's own.
+        found: list[int] = []
+        h.hook_flag("RogueCardFirstEmptySlot.found",
+                    lambda: found.append(h.pyboy.register_file.C))
+        h.park_before_hijack()
+        h.call_routine("RogueCardRevealedSlotForDraw")
+        self.door1_slot = found[-1] if found else None
+        drawn = {}
+        for slot, offset in cells.items():
+            tiles = [h.read8("wTileMap", offset=offset + i) for i in range(3)]
+            if tiles != [0x7F] * 3:
+                drawn[slot] = tiles
+        return drawn
 
     def block(self, name: str) -> int:
         return EXPECTED_BLOCKS.index(name)
@@ -494,8 +540,54 @@ class TrainerCardBlockChoiceSmokeTest(HarnessTestCase):
             self._blocks(badges=0, choice=(3, 5, True)),
             [self.block("ERIKA"), self.block("SABRINA")] + [unknown] * (NUM_BADGES - 2),
         )
-        # One name strip only (the card has room for one): door 1's leader.
-        self.assertEqual(self.name_block, self.block("ERIKA"))
+        # Both doors named (2026-11-18): door 1's strip, then door 2's.
+        self.assertEqual(self.name_blocks, [self.block("ERIKA"), self.block("SABRINA")])
+
+    def test_both_revealed_names_reach_vram_and_the_screen(self) -> None:
+        """Door 2 revealed: Sabrina's strip lands at CARD_NAME2_VRAM_TILE beside
+        Erika's at CARD_NAME_VRAM_TILE, and the draw step points slot 1's name
+        cell at it while DrawBadges' own countdown still names slot 0."""
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        first = self.constants["CARD_NAME_VRAM_TILE"]
+        second = self.constants["CARD_NAME_VRAM_TILE"] + self.constants["CARD_NAME_TILES"]
+        self._blocks(badges=0, choice=(3, 5, True))
+        self.assertEqual(self._vram_strip(first), self._strip(self.block("ERIKA")))
+        self.assertEqual(self._vram_strip(second), self._strip(self.block("SABRINA")))
+        self.assertEqual(self._drawn_name_cells(), {1: [second, second + 1, second + 2]})
+        self.assertEqual(self.door1_slot, 0, "door 1's slot for DrawBadges")
+
+    def test_an_unrevealed_door_2_draws_and_blits_no_second_name(self) -> None:
+        """Door 2 still hidden: one strip blitted, and no extra name cell written,
+        so the second strip's tiles are never left showing a stale leader."""
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        self._blocks(badges=0, choice=(3, 5, False))
+        self.assertEqual(self.name_blocks, [self.block("ERIKA")])
+        self.assertEqual(self._drawn_name_cells(), {})
+
+    def test_the_single_last_door_gets_exactly_one_name(self) -> None:
+        """One gym left (Koga): revealed, it is named once, never as a door 2."""
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        badges = 0xFF & ~(1 << 4)
+        self._blocks(badges=badges, choice=(4, 4, True))
+        self.assertEqual(self.name_blocks, [self.block("KOGA")])
+        self.assertEqual(self._drawn_name_cells(), {})
+
+    def test_door_2_name_follows_earned_badges_onto_the_second_row(self) -> None:
+        """Three badges earned: door 1 names slot 3, door 2 slot 4, which is the
+        first cell of the second badge row."""
+        h = self.harness
+        assert h is not None
+        h.boot_fight2(seed=1)
+        second = self.constants["CARD_NAME_VRAM_TILE"] + self.constants["CARD_NAME_TILES"]
+        self._blocks(badges=(1 << 0) | (1 << 1) | (1 << 2), choice=(3, 5, True))
+        self.assertEqual(self._drawn_name_cells(), {4: [second, second + 1, second + 2]})
+        self.assertEqual(self.door1_slot, 3)
 
     def test_the_single_last_door_stays_hidden_until_revealed(self) -> None:
         """One unbeaten gym left (Koga, slot 4): a mystery until the Psychic."""

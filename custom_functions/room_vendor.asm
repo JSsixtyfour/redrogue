@@ -370,6 +370,7 @@ RoomVendorTopPrices:
 RoomVendorTopIds:
 	db 9
 	db 0, 1, 2, 3, 4, 5, 6, 7, 25
+	ASSERT @ - RoomVendorTopIds == 1 + 9 ; the count byte must match the list (RoomPickVisibleCount)
 
 RoomVendorMiddleNames:
 	dw .NoteTable, .FlowerTable, .PlainTable, .TvGame, .Spaceship
@@ -387,6 +388,7 @@ RoomVendorMiddlePrices:
 RoomVendorMiddleIds:
 	db 5
 	db 9, 10, 11, 12, 26
+	ASSERT @ - RoomVendorMiddleIds == 1 + 5 ; the count byte must match the list (RoomPickVisibleCount)
 
 RoomVendorDeskNames:
 	dw .LongDesk
@@ -396,6 +398,7 @@ RoomVendorDeskPrices:
 RoomVendorDeskIds:
 	db 1
 	db 8
+	ASSERT @ - RoomVendorDeskIds == 1 + 1 ; the count byte must match the list (RoomPickVisibleCount)
 
 RoomVendorPlantNames:
 	dw .PottedPlant, .Statue
@@ -407,6 +410,7 @@ RoomVendorPlantPrices:
 RoomVendorPlantIds:
 	db 2
 	db 13, 61
+	ASSERT @ - RoomVendorPlantIds == 1 + 2 ; the count byte must match the list (RoomPickVisibleCount)
 
 RoomVendorPalsNames:
 	dw .Charmeleon, .Pidgey, .Omanyte, .Voltorb, .Clefairy, .Chansey, \
@@ -516,3 +520,4 @@ RoomVendorPalsIds:
 	db 37, 38, 39, 40, 41, 42, 43, 44
 	db 45, 46, 47, 48, 49, 50, 51, 52, 53, 54
 	db 55, 56, 57, 58, 59, 60
+	ASSERT @ - RoomVendorPalsIds == 1 + 45 ; the count byte must match the list (RoomPickVisibleCount)

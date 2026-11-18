@@ -354,14 +354,19 @@ AILayerDamage:
 ; it. Called with wAIDamageEstimate already scaled to expected damage.
 ; Clobbers af, bc, de. Preserves hl and the flags the caller saved on the stack.
 .trackBest
-	ld a, [wAIDamageEstimate]
-	ld d, a
-	ld a, [wAIDamageEstimate + 1]
-	ld e, a ; de = this move's expected damage
-; Keep it per slot for the scarce-PP test (AIDamageScarceAlternative). A two-turn
-; move delivers nothing this turn, so it stores 0 and can never stand in for the
-; best move. wEnemyMoveEffect is still this slot's, as at .kill.
 	push hl
+	ld hl, wAIDamageEstimate
+	ld d, [hl]
+	inc hl
+	ld e, [hl] ; de = this move's expected damage
+; Keep it per slot for the scarce-PP test (AIDamageScarceAlternative), its only
+; reader. A two-turn move delivers nothing this turn, so it stores 0 and can never
+; stand in for the best move. Self-Destruct/Explosion store 0 too (codebase scan
+; finding 3.3, 2026-11-18): the vetoed ones kept their damage and a stale
+; possible-KO bit, so a vetoed Explosion took the best move's nudge (measured on
+; Electrode vs Gyarados and vs Pidgeot), and an allowed one saving the best move's
+; PP would trade the whole mon for it, which is never "the same job".
+; wEnemyMoveEffect is still this slot's, as at .kill.
 	ld a, [wBuffer + AI_BUF_CURSLOT]
 	add a
 	assert HIGH(wBuffer + AI_BUF_SLOTDMG) == HIGH(wBuffer + AI_BUF_SLOTDMG + NUM_MOVES * 2), \
@@ -374,6 +379,8 @@ AILayerDamage:
 	jr z, .storeZero
 	cp FLY_EFFECT
 	jr z, .storeZero
+	cp EXPLODE_EFFECT
+	jr z, .storeZero
 	ld [hl], d
 	inc hl
 	ld [hl], e
@@ -383,15 +390,12 @@ AILayerDamage:
 	ld [hli], a
 	ld [hl], a
 .stored
-	pop hl
-	ld a, [wBuffer + AI_BUF_BESTDMG]
-	ld b, a
-	ld a, [wBuffer + AI_BUF_BESTDMG + 1]
-	ld c, a ; bc = best seen so far
-	ld a, c
+	ld hl, wBuffer + AI_BUF_BESTDMG + 1
+	ld a, [hld]
 	sub e
-	ld a, b
-	sbc d
+	ld a, [hl]
+	sbc d ; carry iff the best seen so far < this one
+	pop hl ; pop keeps the flags
 	ret nc ; best >= this one, so nothing to record
 	ld a, d
 	ld [wBuffer + AI_BUF_BESTDMG], a

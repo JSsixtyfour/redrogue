@@ -559,8 +559,19 @@ AIBadMatchupRoll::
 ; counter, so the ramp stops. Carry SET if the active mon is badly poisoned past
 ; that threshold and has no reliable first KO to land instead (Stadium's own
 ; -255 for "our move KOs"). The caller still needs a better reserve that survives.
+; Measured 2026-11-18 (200 forced states, rule off, over an unpoisoned control):
+; switching out beat sitting in Toxic by +0.038 to +0.055 of party HP per
+; counter level, +0.088 when also seeded.
+;
+; Second term, also Stadium's: a LOWERED ACCURACY stage (26 points per stage
+; there, against 4 for Attack/Defense/Speed/Special). Switching resets it.
+; Measured the same way: accuracy -1 +0.052, -2 +0.095; Defense -2 +0.024 and
+; Attack -2 +0.017, neither significant, so only accuracy is a term here.
 ; No register inputs; clobbers af, bc, de, hl.
-AIToxicPushesOut::
+AIPushOutTerms::
+	ld a, [wEnemyMonAccuracyMod]
+	cp BASE_STAT_LEVEL
+	jr c, .pushed ; any stage below neutral
 	ld a, [wEnemyBattleStatus3]
 	bit BADLY_POISONED, a
 	jr z, .no
@@ -577,6 +588,7 @@ AIToxicPushesOut::
 .notSeeded
 	cp 2
 	jr c, .no
+.pushed
 	farcall AIEnemyHasReliableFirstKO ; carry = we finish first; survives the return
 	ccf
 	ret

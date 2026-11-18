@@ -332,9 +332,18 @@ class AISmartGapsTest(_MoveLayerGapsBase):
         self.assertEqual(self.smart_score("RECOVER", {"wEnemyMonHP": (70,)}), 20)
         self.assertEqual(self.smart_score("RECOVER", {"wEnemyMonHP": (150,)}), 22)
 
-    def test_hyper_beam_healthy_encouraged_low_hp_discouraged(self):
-        self.assertEqual(self.smart_score("HYPER_BEAM", {"wEnemyMonHP": (150,)}), 19)
+    def test_hyper_beam_without_a_ko_is_discouraged_at_any_hp(self):
+        # Measured 2026-11-18 (AI backlog B21.1): a non-KO Beam is ~0.02 worse than
+        # the best other move whether we are healthy or doomed; the old HP bands
+        # encouraged it when healthy.
+        self.assertEqual(self.smart_score("HYPER_BEAM", {"wEnemyMonHP": (150,)}), 21)
         self.assertEqual(self.smart_score("HYPER_BEAM", {"wEnemyMonHP": (40,)}), 21)
+
+    def test_hyper_beam_that_can_ko_is_left_alone_even_at_low_hp(self):
+        # A possible-KO Beam while doomed won +0.12; the old bands discouraged it
+        # below a quarter HP. AI_DAMAGE's kill tiers do the encouraging.
+        self.assertEqual(self.smart_score(
+            "HYPER_BEAM", {"wEnemyMonHP": (40,), "wBattleMonHP": (10,)}), 20)
 
     def test_ohko_level_gate(self):
         # AISmart_OHKO: our level must STRICTLY exceed the target's; equal

@@ -192,5 +192,74 @@ class ScarcePPPossibleKOTest(ScarcePPBase):
         self.assertEqual(scarce, full)  # shipped: the nudge moved to Body Slam
 
 
+class ScarcePPVetoedExplosionTest(ScarcePPBase):
+    """Codebase scan finding 3.3: a vetoed Explosion must never take the scarce-PP nudge.
+
+    Explosion competes for the best-damage slot like any move, so the best here is a move that
+    out-damages it: Electrode's Thunderbolt (STAB, x4) into Gyarados. Electrode is at full HP
+    and the player has a second mon, so AIExplosionWorthIt refuses the trade (the veto)."""
+    PLAYER = ("GYARADOS", 50)
+    ENEMY = ("ELECTRODE", 50)
+    MOVES = ("THUNDERBOLT", "EXPLOSION", "TACKLE")
+    PP = (2, 5, 30, 0)
+
+    def setUp(self) -> None:
+        super().setUp()
+        species = parse_rgbds_constants(ROOT / "constants/pokemon_constants.asm")
+        trainers = parse_trainer_constants(ROOT / "constants/trainer_constants.asm")
+        player = {"species": species[self.PLAYER[0]], "level": self.PLAYER[1],
+                  "moves": [self.moves["SPLASH"]]}
+        self.h.close()
+        self.h = RedRogueHarness(ROOT, ROOT / "tools/pyboy_smoke/artifacts")
+        self.h.inject_fight2_spec(
+            [player, dict(player)],  # not the last mon: the explosion is vetoed
+            [{"species": species["ELECTRODE"], "level": 50,
+              "moves": [self.moves[m] for m in self.MOVES]}],
+            trainer_class=trainers["COOLTRAINER_M"], ai_tier=3)
+        self.h.boot_fight2(seed=1)
+
+    def premise(self, hp: int):
+        full = self.damage(pp=(FULL, 5, 30, 0), player_hp=hp)
+        _, dmg, _ = full
+        self.assertEqual(max(range(3), key=lambda s: dmg[s]), 0, f"Thunderbolt must be best: {dmg}")
+        self.assertFalse(self.h.read8("wAIReliableKOFound") & 1, "Thunderbolt must not be a reliable KO")
+        return full
+
+    def test_variant_a_vetoed_explosion_never_takes_the_nudge(self) -> None:
+        _, dmg, _ = self.damage(pp=(FULL, 5, 30, 0))
+        hp = 2 * dmg[0] - 1  # Thunderbolt needs 2 hits; Explosion reaches in 2, Tackle does not
+        full, d, _ = self.premise(hp)
+        self.assertEqual((hits(d[0], hp), hits(d[2], hp) > 2 or hits(d[2], hp) == 0), (2, True))
+        scarce, *_ = self.damage(pp=self.PP, player_hp=hp)
+        self.assertEqual(scarce, full, "the nudge must stay on Thunderbolt")
+
+
+
+class ScarcePPVetoedExplosionPossibleKOTest(ScarcePPVetoedExplosionTest):
+    """3.3 variant B: the best IS a possible KO, so the stand-in must be one too, and the vetoed
+    Explosion's stale POSSKO bit used to qualify it. Needs the best's average roll to reach the
+    HP while its minimum does not (not reliable) and Explosion's top roll to reach it too, so the
+    two moves must do similar damage: measured, Thunderbolt x2 into Pidgeot at HP 143 (both store
+    142, the HP - 1 cap, and the earlier slot keeps the tie). Against Gyarados (x4) Explosion's bit
+    only appears where Thunderbolt is already a reliable KO, so the rule never ran there."""
+    PLAYER = ("PIDGEOT", 50)
+
+    def test_variant_a_vetoed_explosion_never_takes_the_nudge(self) -> None:
+        self.skipTest("variant A is covered on the Gyarados board")
+
+    def test_variant_b_stale_possible_ko_bit_does_not_qualify_explosion(self) -> None:
+        found = None
+        for hp in range(300, 0, -1):
+            _, d, mask = self.damage(pp=(FULL, 5, 30, 0), player_hp=hp)
+            if (mask & 3 == 3 and d[0] >= d[1] and d[0] > d[2]
+                    and not self.h.read8("wAIReliableKOFound") & 1):
+                found = hp
+                break
+        self.assertIsNotNone(found, "no HP gives a possible-KO, non-reliable best and an Explosion KO bit")
+        full = self.premise(found)[0]
+        scarce, *_ = self.damage(pp=self.PP, player_hp=found)
+        self.assertEqual(scarce, full, "the nudge must stay on Thunderbolt")
+
+
 if __name__ == "__main__":
     unittest.main()

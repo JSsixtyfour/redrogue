@@ -985,17 +985,17 @@
    }
   },
   "AISmart_HyperBeam": {
-   "summary": "AI_SMART handler: Hyper Beam's recharge is worth it healthy, risky when low.",
+   "summary": "AI_SMART handler: a Hyper Beam that cannot KO (max roll) is discouraged at any HP; one that can is left to AI_DAMAGE.",
    "positive": {
-    "requirement": "healthy: allowed/encouraged",
+    "requirement": "can KO: no change, even at low HP",
     "tests": [
-     "test_ai_heuristic_gaps.AISmartGapsTest.test_hyper_beam_healthy_encouraged_low_hp_discouraged"
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_hyper_beam_that_can_ko_is_left_alone_even_at_low_hp"
     ]
    },
    "negative": {
-    "requirement": "low HP: discouraged",
+    "requirement": "cannot KO: discouraged, healthy or low",
     "tests": [
-     "test_ai_heuristic_gaps.AISmartGapsTest.test_hyper_beam_healthy_encouraged_low_hp_discouraged"
+     "test_ai_heuristic_gaps.AISmartGapsTest.test_hyper_beam_without_a_ko_is_discouraged_at_any_hp"
     ]
    }
   },

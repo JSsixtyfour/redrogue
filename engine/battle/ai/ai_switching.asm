@@ -677,17 +677,18 @@ AIShouldSwitch::
 	jp .switch
 .noTrap
 
-; B17 Toxic pressure (2026-11-17, Pokemon Stadium 1's term; see AIToxicPushesOut):
-; badly poisoned with the counter at 2+ (1+ if seeded) and no reliable first KO.
-; Ahead of the vetoes like Stadium's, where it outweighs kept boosts. With no
-; better reserve that survives, the rest of the chain decides as before.
-	farcall AIToxicPushesOut
-	jr nc, .noToxic
-	call AIReplacementIsBetterAndSurvives
-	jr nc, .noToxic
-	farcall AIRankVoluntaryTarget ; T3 re-picks the target; T2 keeps this one
-	jp .switch
-.noToxic
+; B17 push-out terms (Pokemon Stadium 1's; see AIPushOutTerms): badly poisoned
+; with the counter at 2+ (1+ if seeded), or accuracy lowered, and no reliable
+; first KO. Ahead of the vetoes like Stadium's, where they outweigh kept boosts.
+; Target: the stalemate breaker's, any reserve that survives the entry hit and
+; replies, NOT one that must beat the active mon's matchup score: that score cannot
+; see an accuracy drop, so with neutral typings no reserve ever counted as better
+; (measured 2026-11-18). With no such reserve, the chain decides as before.
+	farcall AIPushOutTerms
+	jr nc, .noPushOut
+	farcall AIRankStalemateTarget
+	jp c, .switch
+.noPushOut
 
 ; B17 stalemate (2026-11-17): nothing we are willing to do deals damage. Ahead of
 ; the vetoes on purpose: boosts on a mon that cannot attack buy nothing, which is

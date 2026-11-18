@@ -172,10 +172,12 @@ DEF CARD_BLOCK_UNKNOWN EQU NUM_CARD_LEADERS
 ; Leader names (gfx/trainer_card/leader_names.png, one strip per card block in
 ; the same order, block 17's being deliberately blank).
 ;
-; Only ONE name is ever on the card: the leader the foresight reveal is naming.
-; An earned badge gets none, because the gym that awarded it already said the
-; badge's name out loud, and an unrevealed slot must not leak one beside its "?".
-; So this costs three VRAM tiles, not eight strips' worth.
+; At most TWO names are ever on the card: the revealed gym doors' leaders. Door 1
+; names the next empty slot; when a pair is offered and the Psychic has revealed
+; door 2, its leader is named in the slot after (CARD_NAME2_VRAM_TILE). An earned
+; badge gets none, because the gym that awarded it already said the badge's name
+; out loud, and an unrevealed slot must not leak one beside its "?". So this
+; costs two 3-tile strips, not eight strips' worth.
 ;
 ; Three tiles because the badge cell is four columns wide and column 0 is the
 ; badge number. Two names do not fit 24px at the font's natural spacing and are
@@ -184,3 +186,7 @@ DEF CARD_NAME_TILES EQU 3
 ; vChars2 tile the name is blitted to. $60 is the first tile past the badge
 ; blocks ($20-$5F) and well clear of CircleTile ($76) and the text box ($77).
 DEF CARD_NAME_VRAM_TILE EQU $60
+; Door 2's strip, right after door 1's. $63-$75 are otherwise unused on the card
+; screen (vanilla's leader-name row there was removed).
+DEF CARD_NAME2_VRAM_TILE EQU CARD_NAME_VRAM_TILE + CARD_NAME_TILES
+ASSERT CARD_NAME2_VRAM_TILE + CARD_NAME_TILES <= $76 ; below CircleTile
