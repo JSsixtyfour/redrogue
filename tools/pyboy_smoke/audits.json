@@ -57,6 +57,8 @@
      "guards": "script-fired text id <= wNumSprites rerouted by DisplayTextID"},
     {"script": "audit_procedural_run.py", "args": [], "kind": "guard",
      "guards": "procedural wild RUN path (no escape, no turn cost), release END confirm/decline, debug quick-win"},
+    {"script": "audit_runtime_stack_sram.py", "args": ["--dmg-seeds", "3", "--cgb-seeds", "5", "--frames", "150000"], "kind": "guard",
+     "guards": "over real autoplay (one DMG, one CGB run): the stack writing into the unused WRAM0 gap below it (exit 2) or leaving under 48 B spare (exit 1), SRAM left enabled at overworld idle, or the SRAM detector failing its per-run self-test"},
     {"script": "audit_psychic_stolen_mon.py", "args": [], "kind": "guard",
      "guards": "the Psychic not fielding the mon it stole"},
     {"script": "audit_stage_defeat_text.py", "args": [], "kind": "guard",
