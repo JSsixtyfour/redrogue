@@ -130,9 +130,11 @@ AIEnemyTrainerChooseMoves:
 ; Near-tie mixing (AI_T4_REGRET_PLAN E4): the random pick below also takes
 ; moves scored up to AI_NEAR_TIE worse than the best, so the same board does
 ; not always get the same answer. Measured free on two seed pools (gate
-; regret +0.0014 and +0.0007 per decision, both CIs include 0), while a move
-; 2 points off already costs. Never on a reliable-KO turn, and never past
-; AI_SCORE_BASE, so a move any layer discouraged is never mixed in.
+; regret +0.0013 and +0.0008 per decision, both CIs include 0), while a move
+; 2 points off already costs. Never on a reliable-KO turn, and a near-tie must
+; be ENCOURAGED (below AI_SCORE_BASE): a move a layer pushed back to neutral,
+; such as setup the setup gate withheld, looks exactly like an untouched one,
+; and must not be mixed back in. Exact ties at any score still all count.
 	ld a, [wAIReliableKOFound]
 	and a
 	jr nz, .thresholdSet           ; a KO turn: exact ties only
@@ -140,8 +142,8 @@ AIEnemyTrainerChooseMoves:
 	add AI_NEAR_TIE
 	jr c, .thresholdSet            ; a saturated best ($FF) must not wrap to 0,
 	                               ; which would exclude every legal move
-	cp AI_SCORE_BASE + 1
-	jr nc, .thresholdSet           ; would reach past neutral: exact ties only
+	cp AI_SCORE_BASE
+	jr nc, .thresholdSet           ; would reach neutral or worse: exact ties only
 	ld c, a                        ; c = highest score still a candidate
 .thresholdSet
 	ld hl, wBuffer

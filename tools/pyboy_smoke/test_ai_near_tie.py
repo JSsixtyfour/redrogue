@@ -2,10 +2,12 @@
 
 AIEnemyTrainerChooseMoves' random pick now takes every legal move scored up to
 AI_NEAR_TIE worse than the best, not only exact ties, so the same board does not
-always get the same answer. The counterfactual gate priced it at +0.0014 and
-+0.0007 of party HP per decision on two seed pools (both CIs include 0), while a
-move 2 points off already costs. Bounds: never on a reliable-KO turn, never past
-AI_SCORE_BASE (a discouraged move is never mixed in), legality unchanged.
+always get the same answer. The counterfactual gate priced it at +0.0013 and
++0.0008 of party HP per decision on two seed pools (both CIs include 0), while a
+move 2 points off already costs. Bounds: never on a reliable-KO turn, and a
+near-tie must be encouraged (below AI_SCORE_BASE), because a move a layer pushed
+back to neutral (setup the setup gate withheld) looks like an untouched one;
+legality unchanged.
 
 These enter at .loopFindMinimumEntries with forced final scores on a booted
 FIGHT 2 battle, so the Explosion veto, AIReliableKOWins and the filter all run;
@@ -62,13 +64,15 @@ class NearTieTest(unittest.TestCase):
         self.assertEqual(self.candidates([14, 16, 16, 17]), [0])
 
     def test_exact_ties_still_all_count(self) -> None:
-        self.assertEqual(self.candidates([19, 20, 21, 19]), [0, 1, 3])
+        self.assertEqual(self.candidates([17, 18, 21, 17]), [0, 1, 3])
 
-    def test_never_past_neutral(self) -> None:
-        # Best at neutral: widening would reach 21, a discouraged score. Exact ties only.
-        self.assertEqual(self.candidates([20, 21, 20, 25]), [0, 2])
-        # Best 1 under neutral: the neutral move joins, the discouraged one does not.
-        self.assertEqual(self.candidates([19, 20, 21, 30]), [0, 1])
+    def test_a_near_tie_must_be_encouraged(self) -> None:
+        # A move a layer pushed back to neutral (the setup gate withholding Swords Dance) looks
+        # exactly like an untouched one, so a near-tie at neutral never joins.
+        self.assertEqual(self.candidates([19, 20, 21, 30]), [0])
+        self.assertEqual(self.candidates([20, 21, 20, 25]), [0, 2])  # exact ties at neutral still count
+        # Best 2 under neutral: the encouraged 19 joins; the neutral 20 does not.
+        self.assertEqual(self.candidates([18, 19, 20, 30]), [0, 1])
 
     def test_a_reliable_ko_turn_stays_exact(self) -> None:
         # Slot 1 reliably kills: AIReliableKOWins lifts the rest above it, and no near-tie joins.

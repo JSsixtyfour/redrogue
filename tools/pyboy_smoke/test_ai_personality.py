@@ -378,8 +378,13 @@ class AIPersonalityTest(unittest.TestCase):
             tier=1,
         )
         self.assertEqual(neutral["candidates"], [self.moves["SWORDS_DANCE"]])
-        self.assertEqual(blackbelt["candidates"], [self.moves["SWORDS_DANCE"]])
+        # The lean never overturns the stronger setup score...
         self.assertLess(blackbelt["scores"][1], blackbelt["scores"][0])
+        # ...but since near-tie mixing (AI_NEAR_TIE, 2026-11-19) it can make Tackle an encouraged
+        # near-tie, so the random pick takes either; Swords Dance is always among them.
+        self.assertIn(self.moves["SWORDS_DANCE"], blackbelt["candidates"])
+        self.assertEqual(blackbelt["scores"][0] - blackbelt["scores"][1], self.ai["AI_NEAR_TIE"])
+        self.assertEqual(sorted(blackbelt["candidates"]), sorted([self.moves["TACKLE"], self.moves["SWORDS_DANCE"]]))
 
 
     def test_control_profile_nudges_only_status_moves(self):
