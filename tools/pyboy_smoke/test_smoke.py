@@ -1380,6 +1380,23 @@ class ProceduralStageSmokeTest(HarnessTestCase):
                             continue
                         if playable[row * 20 + near_col] == 0x0E:
                             stranded_jambs.append((seed, block, col, row))
+                # A wall END cap with floor at both ends of its run is a
+                # one-block island: the reported stub under a doorway
+                # (FACILITY_STRANDED_WALL_END), a premade's authored cap whose
+                # wall a socket carve took. PFacRemoveStrandedJambs deletes them;
+                # measured 42 of 300 layouts held one before, 0 after.
+                for row in range(20):
+                    for col in range(20):
+                        block = playable[row * 20 + col]
+                        if block in (0x55, 0x56, 0x59, 0x5A):
+                            ends = ((col, row - 1), (col, row + 1))
+                        elif block in (0x63, 0x67):
+                            ends = ((col - 1, row), (col + 1, row))
+                        else:
+                            continue
+                        if all(0 <= c < 20 and 0 <= r < 20 and playable[r * 20 + c] == 0x0E
+                               for c, r in ends):
+                            stranded_jambs.append((seed, block, col, row))
                 # And the mirror invariant: a straight wall must never END
                 # against floor along its own run axis, which is what
                 # PFacApplyWallEndCaps converts into the matching jamb cap.

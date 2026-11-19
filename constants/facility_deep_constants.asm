@@ -24,6 +24,9 @@ DEF FACILITY_DEEP_SAVE        EQUS "(sProcForestStagingBuffer + 2)"
 DEF FACILITY_DEEP_MAGIC       EQU $E0 ; bits 5-7 when valid (deep)
 DEF BIT_FACILITY_DEEP_LIVE_2  EQU 0   ; the live copy holds floor 2
 DEF BIT_FACILITY_DEEP_MADE    EQU 1   ; floor 2 has been generated
+DEF BIT_FACILITY_DEEP_FAST_FADE EQU 2 ; transient: this warp is the first descent, so
+                                      ; its fades run fast (set by the leave fade,
+                                      ; cleared by the arrival fade)
 DEF BIT_FACILITY_DEEP_BALLS_2 EQU 3   ; floor 2 keeps ball 2 too (slot 3)
 DEF BIT_FACILITY_DEEP_ENC_2   EQU 4   ; the subroom's encounter moved to floor 2
 	ASSERT (1 << BIT_FACILITY_DEEP_ENC_2) & FACILITY_DEEP_MAGIC == 0

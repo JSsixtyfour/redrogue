@@ -32,7 +32,7 @@ NUM_PAD_SITES = sum(1 for line in (ROOT / "constants/facility_pad_site_constants
 assert NUM_PAD_SITES > 0
 MAP_SIZE, STATE_SIZE, BLOCK_SIZE = 600, 102, 21
 MAGIC, MAGIC_MASK = 0xE0, 0xE0
-LIVE_2, MADE, BALLS_2, ENC_2 = 0x01, 0x02, 0x08, 0x10
+LIVE_2, MADE, FAST_FADE, BALLS_2, ENC_2 = 0x01, 0x02, 0x04, 0x08, 0x10
 FLOOR_BIT = 0x80
 RAM = parse_rgbds_constants(ROOT / "constants/ram_constants.asm")
 PSYCHIC_PACKAGE = RAM["OPTIONAL_PACKAGE_PSYCHIC"]
@@ -138,6 +138,48 @@ class FacilityDeepFloorTest(unittest.TestCase):
         h.tick(120)
         if zero_budget:
             h.write8("wProcFacilityWildBudget", 0)
+
+    def pad_hop(self, description: str) -> None:
+        """An ordinary pad warp (to another pad, not the subroom's): leaves the
+        player standing on a pad, as every real trip starts."""
+        h = self.h
+        pad = self.subroom_pad()
+        entries = h.warp_entries()
+        pick = next(i for i in range(FIRST_PAD, FIRST_PAD + NUM_PAD_SITES)
+                    if i != FIRST_PAD + pad and entries[i][3] == FAC and entries[i][0] != 0xFF)
+        script = h.hook_flag("ProceduralFacility_Script")
+        h.wait_until(lambda: script["count"] > 0, f"{description}: the map script runs", 300)
+        h.write8("hWarpDestinationMap", FAC)
+        h.write8("wDestinationWarpID", entries[pick][2])
+        h.write8("wStatusFlags3", h.read8("wStatusFlags3") | 1 << 3)   # BIT_WARP_FROM_CUR_SCRIPT
+        seen = h.hook_flag("WarpFound2")
+        h.wait_until(lambda: seen["count"] > 0, f"{description}: the warp", 300)
+        ran = script["count"]
+        h.wait_until(lambda: script["count"] > ran and h.read8("hJoyIgnore") == 0,
+                     f"{description}: arrived", 1500)
+        h.tick(60)
+        h.write8("wProcFacilityWildBudget", 0)
+
+    def test_only_the_first_descent_fades_fast(self) -> None:
+        """FACILITY_WARP_TIME_2026-11-19.md: the first descent's fades run fast
+        to hide floor 2's generation; no other warp, and the transient control
+        bit never outlives the warp."""
+        h = self.h
+        self.deep_facility()
+        self.pad_hop("onto a pad")
+        out = h.hook_flag("FastWarpFadeOutToWhite")
+        back = h.hook_flag("FastWarpFadeInFromWhite")
+        ordinary = h.hook_flag("GBCFadeOutToWhite")
+        self.trip("down, first")
+        self.assertEqual((out["count"], back["count"]), (1, 1), "the first descent did not fade fast")
+        self.assertEqual(self.ctrl()[0] & FAST_FADE, 0, "the fast-fade bit outlived the warp")
+        for description in ("up", "down again"):
+            self.trip(description)
+        self.pad_hop("an ordinary pad on floor 2")
+        self.assertEqual((out["count"], back["count"]), (1, 1), "a later warp faded fast")
+        self.assertEqual(self.ctrl()[0] & FAST_FADE, 0)
+        if h.hardware_mode == "CGB":
+            self.assertGreaterEqual(ordinary["count"], 3, "the later warps skipped the ordinary fade")
 
     def on_own_pad(self, description: str) -> None:
         h = self.h

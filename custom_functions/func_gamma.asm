@@ -487,6 +487,163 @@ GBCFadeInFromWhite::
 	
 	
 	
+; ------------------------------------------------------------
+; Fast warp fades: the deep Facility's first descent only
+; (FACILITY_WARP_TIME_2026-11-19.md). That one warp generates floor 2 while
+; the screen is white, about 33 frames on CGB and 48 on DMG, so its two fades
+; run at double speed to give that time back. Copies of GBFadeOutToWhite_ /
+; GBFadeInFromWhite_ and their smooth CGB fades with a larger step, so the
+; ordinary fades are untouched. Reached only from FacilityDeepFastFadeOut/In
+; (facility_deep_floor.asm), which decide that this warp is that descent.
+; ------------------------------------------------------------
+DEF FAST_FADE_GBC_STEP  EQU 4 ; the smooth fade's step (2 in the ordinary fade)
+DEF FAST_FADE_DMG_DELAY EQU 4 ; frames per DMG palette step (8 in the ordinary fade)
+
+FastWarpFadeOutToWhite::
+	call GBCFadeOutToWhiteFast
+	ld hl, FadePal8
+	ld b, 1
+	ld e, 1
+	jr z, FastWarpFadeInc
+	ld hl, FadePal6
+	ld b, 3
+	ld e, FAST_FADE_DMG_DELAY
+FastWarpFadeInc:
+	ld a, [hli]
+	ldh [rBGP], a
+	ld a, [hli]
+	ldh [rOBP0], a
+	ld a, [hli]
+	ldh [rOBP1], a
+	push de
+	call UpdateGBCPal_BGP
+	call UpdateGBCPal_OBP0
+	call UpdateGBCPal_OBP1
+	pop de
+	ld c, e
+	call DelayFrames
+	dec b
+	jr nz, FastWarpFadeInc
+	ret
+
+FastWarpFadeInFromWhite::
+	call GBCFadeInFromWhiteFast
+	ld hl, FadePal5 + 2
+	ld b, 1
+	ld e, 1
+	jr z, FastWarpFadeDec
+	ld hl, FadePal7 + 2
+	ld b, 3
+	ld e, FAST_FADE_DMG_DELAY
+FastWarpFadeDec:
+	ld a, [hld]
+	ldh [rOBP1], a
+	ld a, [hld]
+	ldh [rOBP0], a
+	ld a, [hld]
+	ldh [rBGP], a
+	push de
+	call UpdateGBCPal_BGP
+	call UpdateGBCPal_OBP0
+	call UpdateGBCPal_OBP1
+	pop de
+	ld c, e
+	call DelayFrames
+	dec b
+	jr nz, FastWarpFadeDec
+	ret
+
+; GBCFadeOutToWhite with FAST_FADE_GBC_STEP. Same contract: z = done smoothly.
+GBCFadeOutToWhiteFast:
+	ld a, [hGBC]
+	and a
+	jr z, .notGBC
+	ld a, [rKEY1]
+	bit 7, a
+	ld a, $ff
+	jr nz, .doublespeed
+	predef SetCPUSpeed
+	xor a
+.doublespeed
+	push af
+	push de
+	ld de, FadePal4
+	call BufferAllPokeyellowColorsGBC_helper
+	ld a, [wRogueFlagsBitfield2]	; skip the $FF80 OAM call in VBlank
+	push af
+	set 5, a
+	ld [wRogueFlagsBitfield2], a
+	ld c, FAST_FADE_GBC_STEP
+	ld b, c
+.loop
+	push bc
+	ld d, c
+	callfar IncrementAllColorsGBC_improved
+	pop bc
+	ld a, c
+	add b
+	ld c, a
+	cp 32
+	jr c, .loop
+	pop af
+	ld [wRogueFlagsBitfield2], a
+	pop de
+	pop af
+	inc a
+	ret z
+	predef SingleCPUSpeed
+	xor a
+	ret
+.notGBC
+	ld a, 1
+	and a
+	ret
+
+; GBCFadeInFromWhite with FAST_FADE_GBC_STEP. Same contract: z = done smoothly.
+GBCFadeInFromWhiteFast:
+	ld a, [hGBC]
+	and a
+	jr z, .notGBC
+	ld a, [rKEY1]
+	bit 7, a
+	ld a, $ff
+	jr nz, .doublespeed
+	predef SetCPUSpeed
+	xor a
+.doublespeed
+	push af
+	push de
+	ld de, FadePal4
+	call BufferAllPokeyellowColorsGBC_helper
+	ld a, [wRogueFlagsBitfield2]	; skip the $FF80 OAM call in VBlank
+	push af
+	set 5, a
+	ld [wRogueFlagsBitfield2], a
+	ld c, 28
+	ld b, FAST_FADE_GBC_STEP
+.loop
+	push bc
+	ld d, c
+	callfar IncrementAllColorsGBC_improved
+	pop bc
+	ld a, c
+	sub b
+	ld c, a
+	jr nc, .loop
+	pop af
+	ld [wRogueFlagsBitfield2], a
+	pop de
+	pop af
+	inc a
+	ret z
+	predef SingleCPUSpeed
+	xor a
+	ret
+.notGBC
+	ld a, 1
+	and a
+	ret
+
 GBCFadeInFromBlack::
 	;Check if playing on a GBC and return if not so
 	ld a, [hGBC]

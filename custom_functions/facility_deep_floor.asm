@@ -133,6 +133,74 @@ FacilityDeepSeam::
 	ret
 
 ; ------------------------------------------------------------
+; The first descent's fast fades (FACILITY_WARP_TIME_2026-11-19.md). Floor 2
+; generates while the screen is white, about 33 frames on CGB and 48 on DMG,
+; so that one warp's fade out and fade in run at double speed to give the time
+; back. GBFadeOutToWhite_ / GBFadeInFromWhite_ farcall these on the Facility
+; map only. Each does the whole fast fade itself and returns carry; no carry =
+; not this warp, and the caller runs the ordinary fade.
+;
+; Out: the leave anim's own fade (the player on a pad, wDestinationWarpID
+; already the warp's), on floor 1 of a deep Facility whose floor 2 is not made,
+; to this floor's subroom pad: the seam's own test for a first descent. Sets
+; the control byte's transient FAST_FADE bit for the arrival.
+; In: on floor 2 with that bit set; clears it. WRAM tests first, so an
+; ordinary fade on the Facility never opens SRAM.
+; Clobbers everything; SRAM closed.
+; ------------------------------------------------------------
+FacilityDeepFastFadeOut::
+	ld a, [wStandingOnWarpPadOrHole]
+	cp 1                                ; a warp pad (2 = a hole)
+	jr nz, .no
+	call FDFFloorBit
+	and a
+	jr nz, .no                          ; already on floor 2
+	call FDFOpenSRAM
+	call FDFReadCtrl
+	jr nc, .close                       ; not deep
+	bit BIT_FACILITY_DEEP_MADE, a
+	jr nz, .closeNo                     ; a later descent: ordinary speed
+	ld b, a
+	call FDFLiveSubroomPad
+	cp NUM_FACILITY_PAD_SITES
+	jr nc, .closeNo                     ; no way between floors
+	ld c, a
+	ld a, [wDestinationWarpID]
+	sub FACILITY_FIRST_PAD_WARP
+	cp c
+	jr nz, .closeNo                     ; an ordinary pad
+	ld a, b
+	set BIT_FACILITY_DEEP_FAST_FADE, a
+	call FDFWriteCtrl
+	call FDFCloseSRAM
+	farcall FastWarpFadeOutToWhite
+	scf
+	ret
+.closeNo
+	and a
+.close
+	jp FDFCloseSRAM                     ; keeps the flags
+.no
+	and a
+	ret
+
+FacilityDeepFastFadeIn::
+	call FDFFloorBit
+	and a
+	ret z                               ; carry clear: and a
+	call FDFOpenSRAM
+	call FDFReadCtrl
+	jr nc, FacilityDeepFastFadeOut.close
+	bit BIT_FACILITY_DEEP_FAST_FADE, a
+	jr z, FacilityDeepFastFadeOut.closeNo
+	res BIT_FACILITY_DEEP_FAST_FADE, a
+	call FDFWriteCtrl
+	call FDFCloseSRAM
+	farcall FastWarpFadeInFromWhite
+	scf
+	ret
+
+; ------------------------------------------------------------
 ; X3. The first descent, from the seam, LCD off:
 ;   1. flip (floor 1 to the shadow), then save what floor 2's generation will
 ;      rewrite for the Facility as a whole;

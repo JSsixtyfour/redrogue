@@ -4867,31 +4867,117 @@ DEF PFAC_CORNER_CAP_COUNT EQU 4
 ; two-block wall segment between two doorways and is deliberately left alone.
 ; PFacReadBlock reads out of range as solid wall, so the map edges need no
 ; guard of their own.
+;
+; The wall END caps (PFacApplyWallEndCaps) strand the same way, measured
+; 2026-11-19 (FACILITY_STRANDED_WALL_END/HANDOFF.md, probe_facility_cap_islands.py):
+; 42 of 300 layouts held a cap whose arm side was floor, 14 N-S and 30 E-W. The
+; cause is a premade socket carve, not the cap pass: the cap is AUTHORED inside
+; the premade, hanging from a wall block the corridor then carves to floor.
+; ProceduralFacility_8x5_combinedtable_rock_room.blk's divider ($40 over $55,
+; column 4 of its top wall) is the reported one: its north socket at that column
+; leaves the $55 alone under the doorway. Same repair, same safety argument; an
+; arm is the side the cap does not cap: $55/$56 north, $59/$5A south, $63 west,
+; $67 east.
 ; ============================================================
+DEF PFAC_STRANDED_ARM_STRIDE EQU 4   ; PFacStrandedArmTable
+DEF PFAC_STRANDED_KEEPER_COUNT EQU 8 ; PFacStrandedKeepers
 PFacRemoveStrandedJambs:
-    pfac_scan_cells .cell, PFAC_J_BOTTOM_W, PFAC_J_AUTHORED_W, PFAC_J_BOTTOM_E, PFAC_J_AUTHORED_E
+    pfac_scan_cells .cell, PFAC_J_BOTTOM_W, PFAC_J_AUTHORED_W, PFAC_J_BOTTOM_E, PFAC_J_AUTHORED_E, \
+        PFAC_J_LEFT_N, PFAC_J_RIGHT_N, PFAC_J_LEFT_S, PFAC_J_RIGHT_S, PFAC_J_TOP_W, PFAC_J_TOP_E
     ret
 .cell
-    ld c, $FF                     ; arm lies to the WEST
-    cp PFAC_J_BOTTOM_W
+    ld hl, PFacStrandedArmTable
+.find
+    cp [hl]
+    inc hl
     jr z, .probe
-    cp PFAC_J_AUTHORED_W
-    jr z, .probe
-    ld c, 1                       ; arm lies to the EAST
+    ld de, PFAC_STRANDED_ARM_STRIDE - 1
+    add hl, de
+    jr .find                      ; the scan only calls with a listed id
 .probe
     ld a, [wBuffer + wPFacCurX]
-    ld b, a                       ; column to come back to
-    add a, c
-    ld [wBuffer + wPFacCurX], a
-    call PFacReadBlock            ; preserves bc
-    ld c, a
-    ld a, b
-    ld [wBuffer + wPFacCurX], a
-    ld a, c
+    ld [wBuffer + wPFacLoopX], a
+    ld a, [wBuffer + wPFacCurY]
+    ld [wBuffer + wPFacLoopY], a
+    call PFacStrandedProbe        ; + arm dx, dy
     cp PFAC_FLOOR
     ret nz
+    ld a, [hl]                    ; the guard
+    and a
+    jr z, .delete
+    ; A cap may also be the only thing a plain wall or ring corner ends on (a
+    ; cap whose art is the wrong way round for its spot: measured, a $67 with
+    ; its real wall to the west). Deleting it would leave that wall's end flat
+    ; against floor, so a cap with any such neighbour stays.
+    ld hl, PFacStrandedNeighbours
+    ld b, 4
+.neighbour
+    push bc
+    call PFacStrandedProbe
+    pop bc
+    push hl
+    ld hl, PFacStrandedKeepers
+    ld c, PFAC_STRANDED_KEEPER_COUNT
+.keeper
+    cp [hl]
+    jr z, .keep
+    inc hl
+    dec c
+    jr nz, .keeper
+    pop hl
+    dec b
+    jr nz, .neighbour
+.delete
     ld a, PFAC_FLOOR
     jp PFacWriteBlock
+.keep
+    pop hl
+    ret
+
+; hl -> dx, dy from LoopX/LoopY. Out: a = that block (out of range reads as
+; solid wall), hl past the pair, CurX/CurY back on LoopX/LoopY. Keeps b.
+PFacStrandedProbe:
+    ld a, [wBuffer + wPFacLoopX]
+    add a, [hl]                   ; $FF reads as -1
+    ld [wBuffer + wPFacCurX], a
+    inc hl
+    ld a, [wBuffer + wPFacLoopY]
+    add a, [hl]
+    ld [wBuffer + wPFacCurY], a
+    inc hl
+    push hl
+    push bc
+    call PFacReadBlock
+    pop bc
+    pop hl
+    ld c, a
+    ld a, [wBuffer + wPFacLoopX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacLoopY]
+    ld [wBuffer + wPFacCurY], a
+    ld a, c
+    ret
+
+; jamb or cap id, the arm's dx, dy (the side its wall must continue to), then
+; 1 when the cap must also have no plain wall or corner beside it. The four
+; doorway jambs keep their measured 2026-09-16 rule unchanged.
+PFacStrandedArmTable:
+    db PFAC_J_BOTTOM_W,   -1,  0, 0
+    db PFAC_J_AUTHORED_W, -1,  0, 0
+    db PFAC_J_BOTTOM_E,    1,  0, 0
+    db PFAC_J_AUTHORED_E,  1,  0, 0
+    db PFAC_J_LEFT_N,      0, -1, 1  ; capped at the bottom, hangs from the north
+    db PFAC_J_RIGHT_N,     0, -1, 1
+    db PFAC_J_LEFT_S,      0,  1, 1  ; capped at the top, stands on the south
+    db PFAC_J_RIGHT_S,     0,  1, 1
+    db PFAC_J_TOP_W,      -1,  0, 1  ; capped at the east, continues west
+    db PFAC_J_TOP_E,       1,  0, 1  ; capped at the west, continues east
+
+PFacStrandedNeighbours:
+    db 0, -1,  0, 1,  -1, 0,  1, 0
+
+PFacStrandedKeepers:
+    db PFAC_C_TL, PFAC_W_TOP, PFAC_C_TR, PFAC_W_LEFT, PFAC_W_RIGHT, PFAC_C_BL, PFAC_W_BOTTOM, PFAC_C_BR
 
 ; ============================================================
 ; PFacRoomCenter

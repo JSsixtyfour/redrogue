@@ -165,6 +165,14 @@ GBFadeInFromBlack_::
 	jr GBFadeIncCommon_
 
 GBFadeOutToWhite_::
+	; The deep Facility's first descent fades fast (FacilityDeepFastFadeOut);
+	; carry = it did the whole fade. Every other map pays one compare.
+	ldh a, [hCurMap]
+	cp PROCEDURAL_FACILITY
+	jr nz, .ordinary
+	farcall FacilityDeepFastFadeOut
+	ret c
+.ordinary
 	farcall GBCFadeOutToWhite
 	ld hl, FadePal8
 	ld b, 1
@@ -201,6 +209,13 @@ GBFadeOutToBlack_::
 	jr GBFadeDecCommon_
 
 GBFadeInFromWhite_::
+	; The arrival half of the first descent's fast fades (FacilityDeepFastFadeIn).
+	ldh a, [hCurMap]
+	cp PROCEDURAL_FACILITY
+	jr nz, .ordinary
+	farcall FacilityDeepFastFadeIn
+	ret c
+.ordinary
 	farcall GBCFadeInFromWhite
 	ld hl, FadePal5 + 2
 	ld b, 1
