@@ -5,6 +5,7 @@ wGymLeaderName on every map-script tick. GymStatues now calls
 LoadGymStatueNames when the statue is read. This checks every gym's row, the
 Fuchsia leader choice, and that a non-gym map leaves the buffers alone.
 """
+import io
 from pathlib import Path
 import unittest
 
@@ -47,9 +48,21 @@ class GymStatueNamesTest(unittest.TestCase):
         try:
             h.boot_to_lobby()
             home_map = h.read8("hCurMap")
-            lineup = h.read_bytes("wRunGymLineup", 8)
+            for i in range(8):
+                h.write8("wRunGymLineup", 0, offset=i)
+            # call_routine lets the parked game finish a real frame after each call, here with
+            # hCurMap faked to a gym while the lobby is loaded: the map-script dispatch then runs
+            # the lobby's script pointer in the gym's bank, and what that hits moves with layout
+            # (measured 2026-11-19: CrashScreen from the Viridian and Fuchsia rows after the Deep
+            # Forest commit). Every call starts from this clean lobby state instead.
+            baseline = io.BytesIO()
+            h.save_state(baseline)
 
-            def load(map_id):
+            def load(map_id, janine_slot=None):
+                baseline.seek(0)
+                h.load_state(baseline)
+                if janine_slot is not None:
+                    h.write8("wRunGymLineup", janine, offset=janine_slot)
                 for i in range(17):
                     h.write8("wGymCityName", 0xAA, offset=i)
                 for i in range(11):
@@ -60,8 +73,6 @@ class GymStatueNamesTest(unittest.TestCase):
                 h.write8("hCurMap", home_map)
                 return result
 
-            for i in range(8):
-                h.write8("wRunGymLineup", 0, offset=i)
             for name, (city, leader) in NAMES.items():
                 with self.subTest(gym=name):
                     got_city, got_leader = load(maps[name])
@@ -70,8 +81,7 @@ class GymStatueNamesTest(unittest.TestCase):
                     self.assertEqual(list(got_leader[:len(want_leader)]), want_leader)
 
             with self.subTest(gym="FUCHSIA_GYM with Janine"):
-                h.write8("wRunGymLineup", janine, offset=5)
-                got_city, got_leader = load(maps["FUCHSIA_GYM"])
+                got_city, got_leader = load(maps["FUCHSIA_GYM"], janine_slot=5)
                 self.assertEqual(list(got_city[:13]), encoded("FUCHSIA CITY"))
                 self.assertEqual(list(got_leader[:7]), encoded("JANINE"))
 
@@ -79,9 +89,6 @@ class GymStatueNamesTest(unittest.TestCase):
                 got_city, got_leader = load(home_map)
                 self.assertEqual(list(got_city), [0xAA] * 17, "a non-gym map writes nothing")
                 self.assertEqual(list(got_leader), [0xAA] * 11)
-
-            for i, value in enumerate(lineup):
-                h.write8("wRunGymLineup", value, offset=i)
         finally:
             h.close()
 
