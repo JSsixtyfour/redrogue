@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 import campaign_limits as limits
 import run_campaign as campaign
+import run_autoplay  # noqa: F401  pre-import: execute_case imports it inside the campaign budget
 
 
 def sleeper(args, notify):
