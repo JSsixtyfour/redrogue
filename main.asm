@@ -950,6 +950,10 @@ INCLUDE "custom_functions/money_match.asm"
 INCLUDE "custom_functions/facility_subroom.asm"
 INCLUDE "custom_functions/cave_subroom.asm"
 INCLUDE "custom_functions/cemetery_channeler.asm"
+; The Cemetery's two extra floors late in a run (PROCEDURAL_DEEP_FLOOR_PLAN.md,
+; Cemetery SPEC). After the generator, whose CEMAP_* constants it uses;
+; pinned to $28 by its SECTION; farcall-only.
+INCLUDE "custom_functions/cemetery_deep_floor.asm"
 
 ; Route boss after-battle decision (reward menu vs. normal line vs. mini-boss
 ; line). Reached only by farcall from the route scripts, whose map

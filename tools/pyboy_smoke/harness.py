@@ -214,6 +214,15 @@ class RedRogueHarness:
                 if not self.allow_deep_facility_floor:
                     self.pyboy.register_file.B = 0
             self.register_hook("FacilityDeepLobbyDecide.decided", ordinary_facility)
+        # The Cemetery's two extra floors, from round 5 (CemDeepLobbyDecide). Cemetery
+        # fixtures at battle count 41+ keep their four floors unless a test sets
+        # allow_deep_cemetery_floor = True.
+        self.allow_deep_cemetery_floor = False
+        if "CemDeepLobbyDecide.decided" in self.symbols._symbols:
+            def ordinary_cemetery(_context):
+                if not self.allow_deep_cemetery_floor:
+                    self.pyboy.register_file.B = 0
+            self.register_hook("CemDeepLobbyDecide.decided", ordinary_cemetery)
         # AI heuristic execution coverage (AI_BACKLOG L3): with
         # REDROGUE_AI_COVERAGE=<file>, hook every label in ai_heuristics'
         # source-derived inventory and, at close, append one JSON line naming

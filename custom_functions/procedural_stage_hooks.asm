@@ -190,7 +190,9 @@ ProcBossPatchStageSprite::
 	;
 	; The answer comes back in e, not in a or the flags: this is a farcall,
 	; and Bankswitch destroys a/b/c/h/l on the return leg.
-	farcall CemChannelerPatchSprite     ; Phase 4: his picture on his floor only
+	; Phase 4: his picture on his floor only, after the extra floors project his
+	; floor and the hideout's onto this one (CemDeepPatchSprite, $28; $3C is full).
+	farcall CemDeepPatchSprite
 	farcall PCemStageEventNpcsHereFar   ; -> e = 1 here, 0 not here
 	ld a, e
 	and a
@@ -319,7 +321,11 @@ ProcStageLoadDispatch::
 .cemetery
 	call ProcGenerationBeginDoubleSpeed
 	push af
-	farcall PCemFinalizeMap
+	; PCemFinalizeMap, wrapped by the extra floors (cemetery_deep_floor.asm):
+	; maps 2 and 3 follow the leg the player is on before the generator reads
+	; them, and the two retargeted stairs are armed after it. In $28, as $3C
+	; has no room for more calls.
+	farcall CemDeepFinalizeMap
 	pop af
 	call ProcGenerationEndDoubleSpeed
 	ret
@@ -371,7 +377,7 @@ ProcPreloadAssignedWildArea::
 .cemetery
 	call ProcGenerationBeginDoubleSpeed
 	push af
-	farcall PCemGenerateMaps
+	farcall CemDeepGenerateMaps     ; PCemGenerateMaps, then the extra floors' decision (cemetery_deep_floor.asm)
 	pop af
 	call ProcGenerationEndDoubleSpeed
 	ret

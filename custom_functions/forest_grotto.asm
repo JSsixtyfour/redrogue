@@ -681,7 +681,11 @@ FGResolveArrival::
 	ret
 .notFacility
 	cp PROCEDURAL_FOREST
-	ret nz
+	jr z, .forest
+	; Any other map: the Cemetery's extra floors read which leg a stair lands on
+	; (custom_functions/cemetery_deep_floor.asm; nothing off a Cemetery floor).
+	farjp CemDeepSeam
+.forest
 	; The deep floor first: a trip between the floors swaps them before anything
 	; below reads the live Forest (custom_functions/forest_deep_floor.asm).
 	farcall ForestDeepSeam

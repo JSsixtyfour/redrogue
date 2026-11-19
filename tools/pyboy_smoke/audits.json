@@ -25,6 +25,8 @@
      "guards": "the Facility deep floor: rate 40-60%, the subroom pad armed as the trip marker, descents land on floor 2's pad, the encounter and the resident on floor 2"},
     {"script": "audit_forest_deep_floor.py", "args": ["--forests", "300"], "kind": "guard",
      "guards": "the Forest deep floor: control word, the opening aimed at itself, the house coin, the grotto encounter moved, rate 40-60%"},
+    {"script": "audit_cemetery_deep_floor.py", "args": ["--cemeteries", "200"], "kind": "guard",
+     "guards": "the Cemetery deep chain: six distinct floors in order, the Channeler and the hideout each on exactly one, prefabs never reused, every Channeler ordinal rolled (cemetery_deep_floor.asm)"},
     {"script": "audit_cave_hideout.py", "args": [], "kind": "guard",
      "guards": "cave stage-event hideout on an unreachable or boss cell"},
     {"script": "audit_cave_passc_locality.py", "args": [], "kind": "guard",
