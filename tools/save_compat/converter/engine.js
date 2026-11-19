@@ -629,6 +629,20 @@
       return null;
     },
 
+    // Schema 21 -> 22: wRogueFlagsBitfield2 bit 7 was BIT_ROGUE_PREDICT_BADGES (the trainer card's
+    // badge-slot reveal). Nothing has set it since 2026-10-09, but nothing cleared it either, so a
+    // save from a run started before then may still hold it. It is now BIT_ROGUE_DEEP_FLOOR (the
+    // player is on the procedural cave's floor 2); left set, a save made inside the cave would load
+    // as floor 2 over floor 1's map state. Bits 0-6 (slot pulls, Shin Red VRAM/DMA flags) survive.
+    deepFloorBitCleared: function (bytes, from, to) {
+      var at = wramOffset(to, "wRogueFlagsBitfield2");
+      if (at < 0 || wramOffset(from, "wRogueFlagsBitfield2") !== at)
+        return "rogue flags layout not recognised";
+      bytes[at] &= 0x7f;
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
     // Schema 19 -> 20: wStatusFlags4 bit 1 was vanilla's write-only BIT_UNKNOWN_4_1, set by every
     // trainer battle and never cleared, so nearly every old save holds it. It is now
     // BIT_LOBBY_HEAL_HANDLED, the lobby's once-per-visit heal-warning latch (cleared on each fresh

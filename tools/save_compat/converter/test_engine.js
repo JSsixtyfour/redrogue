@@ -330,6 +330,29 @@ test("schema 20 to 21: run challenge padding initializes, broken badges marked, 
   assert.equal(api.checksumStatus(out.bytes, to).main, true);
 });
 
+test("schema 21 to 22: only the old predict-badges bit (deep floor now) is cleared", () => {
+  const from = PKG.schemas["21"], to = PKG.schemas["22"];
+  const save = syntheticSave("21"), pkg = packageTargeting("22");
+  const at = wramOffset(from, "wRogueFlagsBitfield2");
+  assert.equal(wramOffset(to, "wRogueFlagsBitfield2"), at);
+  save[at] = 0xff;
+  save[at + 1] = 0x5a; // the byte after it must not change
+  recomputeChecksums(save, from);
+  const out = api.convert(save, pkg, { mode: "continue" });
+  assert.equal(out.ok, true, out.reason);
+  assert.equal(out.bytes[at], 0x7f, "only BIT_ROGUE_DEEP_FLOOR (bit 7) is cleared");
+  assert.equal(out.bytes[at + 1], 0x5a);
+  for (const f of from.saved_wram)
+    assert.equal(wramOffset(to, f.label), wramOffset(from, f.label), f.label);
+  const changed = new Set([at]);
+  const sum = to.checksums.find((c) => c.name === "main");
+  changed.add(offsetOf(sum.at_bank, sum.at));
+  for (let i = 0; i < 8; i++) changed.add(0x2040 + i);
+  for (let i = 0; i < save.length; i++)
+    if (!changed.has(i)) assert.equal(out.bytes[i], save[i], `unrelated byte ${i}`);
+  assert.equal(api.checksumStatus(out.bytes, to).main, true);
+});
+
 // Full schema (with constants), for checks the trimmed package cannot make.
 const fullSchema = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
 

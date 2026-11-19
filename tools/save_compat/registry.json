@@ -157,6 +157,12 @@
    "to": "21",
    "steps": ["runChallengesAdded"],
    "verified": "2026-11-14 (Claude): run challenges. Seven saved pads carved (wBestHeat, wChallengeBadges/Hi/2, wRunChallengeBroken, wRunChallenges), nothing moves; all zero except wRunChallengeBroken = 3 (a run whose start was never seen earns no IRONMAN or SET STYLE badge); loss record cleared. Real-save gate passed: six saves (lobby, route, cave, forest, cemetery, facility) made on the archived schema-20 release ROM e0803e25 convert (all six new fields as above) and pass saves.py continue on the schema-21 build; the unconverted lobby save is refused. Evidence builds/gate20_e0803e25/. BGB/hardware acceptance pending."
+  },
+  {
+   "from": "21",
+   "to": "22",
+   "steps": ["deepFloorBitCleared"],
+   "verified": "2026-11-18 (Claude): NOT verified with real saves. No field moves. wRogueFlagsBitfield2 bit 7 (BIT_ROGUE_PREDICT_BADGES, never set since 2026-10-09 -> BIT_ROGUE_DEEP_FLOOR) cleared, bits 0-6 kept. Synthetic test 'schema 21 to 22' checks the byte and that nothing else changes."
   }
  ]
 }

@@ -35,11 +35,12 @@ class CemeteryStagePairTest(unittest.TestCase):
     def test_premade_entrance_cell_is_floor_for_every_prefab(self) -> None:
         # Floor 1's arrival pair is hardcoded onto block (2,4). Four prefabs
         # (DropE, Tower4F/5F/6F) had a grave there, so the ambush stood on a
-        # tombstone; PCemClearPremadeEntrance now opens each floor's inner
-        # entrance cell, with the prefab's own floor block (54 for the Towers).
+        # tombstone; PCemClearPremadeEntrance now opens that cell on floor 1,
+        # the only floor with a hardcoded placement, using the prefab's own
+        # floor block (54 for the Towers).
         maps = parse_map_constants(ROOT / "constants/map_constants.asm")
-        floors = [maps[f"PROCEDURAL_CEMETERY_{n}"] for n in (1, 2, 3, 4)]
-        entrance = [(2, 4), (8, 4), (2, 4), (8, 4)]  # PCemFloorGeometry entX/entY
+        floors = [maps["PROCEDURAL_CEMETERY_1"]]
+        entrance = [(2, 4)]
         h = RedRogueHarness(ROOT, ARTIFACTS)
         self.addCleanup(h.close)
         h.boot_to_lobby()

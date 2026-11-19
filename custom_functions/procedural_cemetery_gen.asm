@@ -524,29 +524,29 @@ PCemGenerateOneMap:
 
 ; ============================================================
 ; PCemClearPremadeEntrance  (2026-11-18)
-; Forces the floor's inner entrance cell (PCemFloorGeometry entX/entY) to
-; floor on a premade layout, the cell PCemMarchPath carves first on a
-; procedural one.
+; Floor 1 only: forces block (2,4) to floor on a premade layout, the cell
+; PCemMarchPath carves first on a procedural one.
 ;
-; WHY. Floor 1's arrival pair is hardcoded onto block (2,4) - see
+; WHY. Floor 1's arrival pair (the ambush) is hardcoded onto block (2,4) - see
 ; PCemPlaceStageEventNpcs - and a prefab is only patched at col 1, col 9 and
 ; (4,8). Four of the eleven prefabs have a grave at (2,4) (DropE 80, Tower4F
-; 79, Tower5F 80, Tower6F 82), so the ambush stood on a tombstone. Doing it on
-; every floor is safe: it only ever opens a cell, never closes one.
+; 79, Tower5F 80, Tower6F 82), so the ambush stood on a tombstone. Floors 2-4
+; need nothing: every NPC there is placed by PCemStageHideoutCellOk's search,
+; which only accepts plain floor blocks.
 ;
 ; The Tower prefabs floor with block 54, the Drop prefabs with 14; the patch
 ; uses the prefab's own so the cell does not stand out.
-; SRAM must be enabled. Clobbers a/b/de/hl.
+; SRAM must be enabled. Clobbers a/hl.
 ; ============================================================
 DEF PCEM_FIRST_TOWER_PREFAB EQU 7  ; PCemPrefabTable rows 7-10 are the Tower floors
+DEF PCEM_ARRIVAL_BLOCK_X    EQU 2  ; PCemPlaceStageEventNpcs' arrival steps (4,8)/(4,9)
+DEF PCEM_ARRIVAL_BLOCK_Y    EQU 4
 
 PCemClearPremadeEntrance:
-	call PCemLoadGeometry
-	ld a, [wBuffer + wCemEntX]
-	ld [wBuffer + wCemTryX], a
-	ld a, [wBuffer + wCemEntY]
-	ld [wBuffer + wCemTryY], a
-	call PCemGetCellHL
+	ld a, [wBuffer + wCemMapIndex]
+	and a
+	ret nz                         ; the ambush is on floor 1 only
+	ld hl, sProcCemeteryMaps + PCEM_ARRIVAL_BLOCK_Y * CEMAP_WIDTH + PCEM_ARRIVAL_BLOCK_X
 	ld a, [wBuffer + wCemPrefabIndex]
 	cp PCEM_FIRST_TOWER_PREFAB
 	ld a, CEMAP_FLOOR_1
@@ -2251,13 +2251,13 @@ PCemPlaceStageEventNpcs:
 	; way - they are blocking your path - and both cells sit inside block
 	; (2,4), the cell the generator's own march carves away from the entrance
 	; (and that PCemClearPremadeEntrance opens on a premade floor).
-	ld a, 9 + 4
+	ld a, PCEM_ARRIVAL_BLOCK_Y * 2 + 1 + 4
 	ld [wSprite02StateData2MapY], a
-	ld a, 4 + 4
+	ld a, PCEM_ARRIVAL_BLOCK_X * 2 + 4
 	ld [wSprite02StateData2MapX], a
-	ld a, 8 + 4
+	ld a, PCEM_ARRIVAL_BLOCK_Y * 2 + 4
 	ld [wSprite03StateData2MapY], a
-	ld a, 4 + 4
+	ld a, PCEM_ARRIVAL_BLOCK_X * 2 + 4
 	ld [wSprite03StateData2MapX], a
 	; Both stand EAST of the player's entrance cell (3,9), so they face LEFT,
 	; not the object list's DOWN. Same two writes the forest boss needs: the

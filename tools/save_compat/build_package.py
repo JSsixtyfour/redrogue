@@ -74,7 +74,9 @@ ENGINE_WRAM = {"wPlayerName", "wPartyCount", "wPartySpecies", "wBoxCount", "wCur
                # migration runChallengesAdded (schema 20 -> 21)
                "wPlayerStarterForm", "wBestHeat", "wStatusFlags1", "wChallengeBadges", "wChallengeBadgesHi",
                "wStatusFlags5", "wChallengeBadges2", "wElite4Flags", "wRunChallengeBroken", "wCardKeyDoorX",
-               "wRunChallenges"}
+               "wRunChallenges",
+               # migration deepFloorBitCleared (schema 21 -> 22)
+               "wRogueFlagsBitfield2"}
 
 # Steps whose per-migration table flag_translation() computes and attaches to the target schema.
 FLAG_STEP = "flagsRenumbered"

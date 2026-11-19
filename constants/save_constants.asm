@@ -98,7 +98,12 @@
 ; wCardKeyDoorX). Nothing moves. Migration runChallengesAdded zeroes them,
 ; marks the run in progress as having broken every badge condition (its start
 ; was never seen), and clears the loss-recovery record.
-DEF SAVE_SCHEMA_ID EQU 21
+; Schema 22 (2026-11-18, cave deep floor): no field moves. wRogueFlagsBitfield2
+; bit 7, BIT_ROGUE_PREDICT_BADGES (never set since 2026-10-09 but never cleared
+; either, so a save from a run before then can still hold it), is now
+; BIT_ROGUE_DEEP_FLOOR. Migration deepFloorBitCleared clears it, so an old save
+; made inside the procedural cave loads on floor 1 rather than floor 2.
+DEF SAVE_SCHEMA_ID EQU 22
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; Transient invalid magic while a writer owns the save. Completed headers and
