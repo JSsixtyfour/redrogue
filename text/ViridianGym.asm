@@ -19,19 +19,8 @@ _ViridianGymGiovanniReceivedEarthBadgeText::
 	text_end
 
 _ViridianGymGiovanniPostBattleAdviceText::
-	text "Having lost, I"
-	line "cannot face my"
-	cont "underlings!"
-	cont "TEAM ROCKET is"
-	cont "finished forever!"
-
-	para "I will dedicate my"
-	line "life to the study"
-	cont "of #MON!"
-
-	para "Let us meet again"
-	line "some day!"
-	cont "Farewell!@"
+	text "Be seeing you"
+	line "Fwahahaha!"
 	text_end
 
 _ViridianGymGiovanniEarthBadgeInfoText::

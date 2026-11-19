@@ -55,11 +55,15 @@ class ProceduralTrainerReturnTest(HarnessTestCase):
                 h.call_routine(placement)
                 self.assertEqual(movement_state(), before)
 
-    def test_sight_limit_only_applies_to_stationary_event_sprites(self):
+    def test_sight_limit_applies_to_every_event_sprite(self):
+        # Every stage-event trainer is adjacency-only since 2026-11-18: the
+        # Burglar and Psychic used to keep range 4 and walked through graves
+        # and wall corners, since trainer approach never checks collision.
         h = self.harness
         sprites = {name: self.sprites[constant] for name, constant in (
             ('Nurse', 'SPRITE_NURSE'), ('Jessie', 'SPRITE_JESSIE'),
             ('James', 'SPRITE_JAMES'), ('Psychic', 'SPRITE_MIDDLE_AGED_MAN'),
+            ('PsychicTable', 'SPRITE_YOUNGSTER'),
             ('Burglar', 'SPRITE_SUPER_NERD'), ('Jenny', 'SPRITE_OFFICER_JENNY'))}
         for map_name, _, slot in AREAS:
             for sprite, picture in sprites.items():
@@ -72,9 +76,18 @@ class ProceduralTrainerReturnTest(HarnessTestCase):
                         h.write8(f'wSprite{index:02d}StateData1', picture)
                         h.write8('wTrainerEngageDistance', 4 * 16)
                         h.call_routine('StageEventLimitTrainerSight')
-                        # Jenny joined the stationary pictures with RR-0038 (2026-10-29).
-                        expected = 16 if sprite in ('Nurse', 'Jessie', 'James', 'Jenny') else 64
-                        self.assertEqual(h.read8('wTrainerEngageDistance'), expected)
+                        self.assertEqual(h.read8('wTrainerEngageDistance'), 16)
+            # The limit is a clamp: a talk-only header (the slot-1 boss's 0)
+            # must not gain sight, and an already-adjacent one is untouched.
+            for start in (0, 16):
+                with self.subTest(map=map_name, clamp_start=start):
+                    self.restore()
+                    h.write8('hCurMap', self.maps[map_name])
+                    h.write8('hActiveSpriteIndex', slot)
+                    h.write8('wTrainerSpriteOffset', slot * 16)
+                    h.write8('wTrainerEngageDistance', start)
+                    h.call_routine('StageEventLimitTrainerSight')
+                    self.assertEqual(h.read8('wTrainerEngageDistance'), start)
         # A stale procedural event must not affect an ordinary-map trainer.
         h.write8('hCurMap', self.maps['OAKS_LAB'])
         h.write8('wTrainerEngageDistance', 64)
@@ -84,7 +97,7 @@ class ProceduralTrainerReturnTest(HarnessTestCase):
         h.call_routine('StageEventLimitTrainerSight')
         self.assertEqual(h.read8('wTrainerEngageDistance'), 64)
 
-    def test_live_sight_scan_engages_adjacent_but_keeps_other_approaches(self):
+    def test_live_sight_scan_engages_only_adjacent(self):
         h = self.harness
         for map_name, _, slot in AREAS:
             for picture in ('SPRITE_NURSE', 'SPRITE_JESSIE', 'SPRITE_JAMES',
@@ -102,10 +115,8 @@ class ProceduralTrainerReturnTest(HarnessTestCase):
                         h.write8(f'wSprite{slot:02d}StateData1', 0, offset=9)
                         h.write8('wTrainerEngageDistance', 64)
                         h.call_routine('TrainerEngage')
-                        stationary = picture in ('SPRITE_NURSE', 'SPRITE_JESSIE', 'SPRITE_JAMES',
-                                                 'SPRITE_OFFICER_JENNY')
                         self.assertEqual(h.read8('wTrainerSpriteOffset'),
-                                         0 if stationary and distance == 2 else 0xff)
+                                         0 if distance == 2 else 0xff)
 
     def test_joy_returns_to_standing_without_moving(self):
         h = self.harness

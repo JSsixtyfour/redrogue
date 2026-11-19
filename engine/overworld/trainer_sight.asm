@@ -185,7 +185,7 @@ GetSpriteDataPointer:
 TrainerEngage:
 	push hl
 	push de
-	; Shared procedural headers retain range 4 for the walking event trainers.
+	; Procedural stage-event headers declare range 4; this clamps them to one step.
 	farcall StageEventLimitTrainerSight
 	ld a, [wTrainerSpriteOffset]
 	add SPRITESTATEDATA1_IMAGEINDEX

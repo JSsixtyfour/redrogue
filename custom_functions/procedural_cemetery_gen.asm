@@ -508,6 +508,7 @@ PCemGenerateOneMap:
 	; 9/200 layouts sealed, all premade, all at a decorated cell (Tower6F's
 	; block-6 top corridor, block 29 before floor 4's exit). The procedural
 	; branch keeps it because PCemMarchPath runs after and carves through.
+	call PCemClearPremadeEntrance
 	call PCemPlaceAuthoredBall
 	call PCemRollItem
 	ret
@@ -519,6 +520,40 @@ PCemGenerateOneMap:
 	call PCemDecorateWalls        ; decorate wall/edge tiles
 	call PCemRollItem             ; roll item now (needs wCemMapIndex, no floor needed)
 	call PCemMarchPath            ; carve guaranteed path, save ball X/Y to SRAM
+	ret
+
+; ============================================================
+; PCemClearPremadeEntrance  (2026-11-18)
+; Forces the floor's inner entrance cell (PCemFloorGeometry entX/entY) to
+; floor on a premade layout, the cell PCemMarchPath carves first on a
+; procedural one.
+;
+; WHY. Floor 1's arrival pair is hardcoded onto block (2,4) - see
+; PCemPlaceStageEventNpcs - and a prefab is only patched at col 1, col 9 and
+; (4,8). Four of the eleven prefabs have a grave at (2,4) (DropE 80, Tower4F
+; 79, Tower5F 80, Tower6F 82), so the ambush stood on a tombstone. Doing it on
+; every floor is safe: it only ever opens a cell, never closes one.
+;
+; The Tower prefabs floor with block 54, the Drop prefabs with 14; the patch
+; uses the prefab's own so the cell does not stand out.
+; SRAM must be enabled. Clobbers a/b/de/hl.
+; ============================================================
+DEF PCEM_FIRST_TOWER_PREFAB EQU 7  ; PCemPrefabTable rows 7-10 are the Tower floors
+
+PCemClearPremadeEntrance:
+	call PCemLoadGeometry
+	ld a, [wBuffer + wCemEntX]
+	ld [wBuffer + wCemTryX], a
+	ld a, [wBuffer + wCemEntY]
+	ld [wBuffer + wCemTryY], a
+	call PCemGetCellHL
+	ld a, [wBuffer + wCemPrefabIndex]
+	cp PCEM_FIRST_TOWER_PREFAB
+	ld a, CEMAP_FLOOR_1
+	jr c, .store
+	ld a, CEMAP_FLOOR_2
+.store
+	ld [hl], a
 	ret
 
 ; PCemPrefabTable row layout: 5 bytes per entry (bank, lo, hi, ballX,
@@ -2214,7 +2249,8 @@ PCemPlaceStageEventNpcs:
 	; WEST wall, so "above" here is inside that wall. They stand in the
 	; corridor the player is about to walk down instead. That reads the same
 	; way - they are blocking your path - and both cells sit inside block
-	; (2,4), the cell the generator's own march carves away from the entrance.
+	; (2,4), the cell the generator's own march carves away from the entrance
+	; (and that PCemClearPremadeEntrance opens on a premade floor).
 	ld a, 9 + 4
 	ld [wSprite02StateData2MapY], a
 	ld a, 4 + 4

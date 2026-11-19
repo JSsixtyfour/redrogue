@@ -6,6 +6,8 @@ holds the player's goods: it used to be parked off the map by the next load, los
 """
 from __future__ import annotations
 
+import io
+import random
 import unittest
 from pathlib import Path
 
@@ -29,6 +31,43 @@ class CemeteryStagePairTest(unittest.TestCase):
                     rolled += 1
                     self.assertFalse(row["rolled_seals"], row)
         self.assertGreater(rolled, 0, "no hideout was rolled, so this proved nothing")
+
+    def test_premade_entrance_cell_is_floor_for_every_prefab(self) -> None:
+        # Floor 1's arrival pair is hardcoded onto block (2,4). Four prefabs
+        # (DropE, Tower4F/5F/6F) had a grave there, so the ambush stood on a
+        # tombstone; PCemClearPremadeEntrance now opens each floor's inner
+        # entrance cell, with the prefab's own floor block (54 for the Towers).
+        maps = parse_map_constants(ROOT / "constants/map_constants.asm")
+        floors = [maps[f"PROCEDURAL_CEMETERY_{n}"] for n in (1, 2, 3, 4)]
+        entrance = [(2, 4), (8, 4), (2, 4), (8, 4)]  # PCemFloorGeometry entX/entY
+        h = RedRogueHarness(ROOT, ARTIFACTS)
+        self.addCleanup(h.close)
+        h.boot_to_lobby()
+        h.park_before_hijack()
+        baseline = io.BytesIO()
+        h.pyboy.save_state(baseline)
+        rng = random.Random(0)
+        for floor, (x, y) in enumerate(entrance):
+            seen: set[int] = set()
+            for _ in range(120):
+                if len(seen) == 11:
+                    break
+                baseline.seek(0)
+                h.pyboy.load_state(baseline)
+                for offset in range(10):
+                    h.write8("wRandomTable", rng.randrange(1, 256), offset=offset)
+                h.write_sram_bytes("sProcCemeteryReady", [0], bank=0)
+                h.write_sram_bytes("sProcCemeteryUsedPrefabs", [0, 0], bank=0)
+                h.write8("wProcCemDebugMode", 3)  # force the premade branch
+                h.write8("hCurMap", floors[floor])
+                h.call_routine("PCemFinalizeMap", limit=200000)
+                prefab = h.read8("wBuffer", 19)  # wCemPrefabIndex
+                seen.add(prefab)
+                cell = h.read_sram_bytes("sProcCemeteryMaps", 90 * (floor + 1), bank=0)[
+                    90 * floor + y * 10 + x]
+                with self.subTest(floor=floor + 1, prefab=prefab):
+                    self.assertEqual(cell, 14 if prefab < 7 else 54)
+            self.assertEqual(len(seen), 11, f"floor {floor + 1} only rolled prefabs {sorted(seen)}")
 
     def test_phase_decides_whether_the_pair_stays(self) -> None:
         maps = parse_map_constants(ROOT / "constants/map_constants.asm")

@@ -248,8 +248,18 @@ StageEventApplyTrainers::
 	ld [hl], DOWN
 	ret
 
-; Only stationary event sprites on procedural maps get adjacency-only sight.
+; Every stage-event trainer on a procedural map gets adjacency-only sight.
 ; The engine measures sight in pixels: one movement tile is 16 pixels.
+;
+; ALL OF THEM, NOT A SPRITE LIST (2026-11-18). This used to clamp only the
+; Nurse, Jessie, James and Jenny pictures, so the Burglar (SUPER_NERD) and
+; Psychic (YOUNGSTER) kept the header's range 4. Trainer approach never checks
+; collision, so on these generated layouts they walked straight through graves
+; and wall corners to reach the player.
+;
+; A CLAMP, NOT A STORE: the keep-table rows also hold each map's slot-1 boss,
+; whose header range is 0 (talk-only). min(range, 16) leaves that 0 alone, so
+; no picture test is needed to protect it.
 ; Clobbers a/bc/hl; preserves de. TrainerEngage saves its incoming hl/de.
 StageEventLimitTrainerSight::
 	ldh a, [hCurMap]
@@ -257,19 +267,9 @@ StageEventLimitTrainerSight::
 	ret z
 	call StageEventKeepSpriteOnDefeat
 	ret nc
-	ld a, [wTrainerSpriteOffset]
-	ld l, a
-	ld h, HIGH(wSpriteStateData1)
-	ld a, [hl]                     ; current picture, not stale event state
-	cp SPRITE_NURSE
-	jr z, .adjacent
-	cp SPRITE_JESSIE
-	jr z, .adjacent
-	cp SPRITE_JAMES
-	jr z, .adjacent
-	cp SPRITE_OFFICER_JENNY
-	ret nz
-.adjacent
+	ld a, [wTrainerEngageDistance]
+	cp 16 + 1
+	ret c                          ; already adjacent-only or talk-only
 	ld a, 16
 	ld [wTrainerEngageDistance], a
 	ret
