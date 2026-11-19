@@ -3033,12 +3033,14 @@ SnorlaxEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
+	db 16, BITE
+	db 20, REST
 	db 29, HEADBUTT
 	db 33, HARDEN
-	db 36, REST
-	db 43, BODY_SLAM
-	db 48, DOUBLE_EDGE
-	db 56, HYPER_BEAM
+	db 36, AMNESIA
+	db 40, BODY_SLAM
+	db 46, DOUBLE_EDGE
+	db 50, HYPER_BEAM
 	db 0
 ; Tutoring Learnset   
     db 2, TACKLE
