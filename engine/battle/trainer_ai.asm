@@ -127,6 +127,23 @@ AIEnemyTrainerChooseMoves:
 	ld a, b
 	cp NUM_MOVES + 1
 	jr nz, .findMinimum
+; Near-tie mixing (AI_T4_REGRET_PLAN E4): the random pick below also takes
+; moves scored up to AI_NEAR_TIE worse than the best, so the same board does
+; not always get the same answer. Measured free on two seed pools (gate
+; regret +0.0014 and +0.0007 per decision, both CIs include 0), while a move
+; 2 points off already costs. Never on a reliable-KO turn, and never past
+; AI_SCORE_BASE, so a move any layer discouraged is never mixed in.
+	ld a, [wAIReliableKOFound]
+	and a
+	jr nz, .thresholdSet           ; a KO turn: exact ties only
+	ld a, c
+	add AI_NEAR_TIE
+	jr c, .thresholdSet            ; a saturated best ($FF) must not wrap to 0,
+	                               ; which would exclude every legal move
+	cp AI_SCORE_BASE + 1
+	jr nc, .thresholdSet           ; would reach past neutral: exact ties only
+	ld c, a                        ; c = highest score still a candidate
+.thresholdSet
 	ld hl, wBuffer
 	ld de, wEnemyMonMoves
 	ld b, 1
@@ -140,7 +157,9 @@ AIEnemyTrainerChooseMoves:
 	jr z, .exclude ; no PP left
 	ld a, [hl]
 	cp c
-	jr nz, .exclude
+	jr z, .candidate
+	jr nc, .exclude                ; above the threshold
+.candidate
 	ld a, [de]
 	jr .storeCandidate
 .exclude

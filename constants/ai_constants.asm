@@ -65,6 +65,12 @@ DEF AI_SCORE_BASE     EQU 20  ; widened from 10 in Phase 2b (was ExtremeYellow's
 DEF AI_SCORE_MIN      EQU 1
 DEF AI_SCORE_MAX      EQU 79
 DEF AI_SCORE_DISABLED EQU $50 ; 80: reserved sentinel for a disabled move
+; Near-tie mixing (AI_T4_REGRET_PLAN E4): the move chooser's random pick also
+; takes moves up to this many points worse than the best (never past
+; AI_SCORE_BASE, never on a reliable-KO turn). Gate-measured 2026-11-19: 1
+; costs nothing within noise on two seed pools; 2 starts to cost. 0 = exact
+; ties only (the behaviour before E4).
+DEF AI_NEAR_TIE       EQU 1
 
 ; --- Scoring vocabulary (Phase 2b) ---
 ; Why the baseline widened from 10 to 20: with base 10 there are only 9 points
