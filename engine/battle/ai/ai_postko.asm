@@ -561,6 +561,57 @@ AIHealOutpaces::
 	and a
 	ret
 
+; AISmart_Haze's verdict (moved from $0E, which has no room for the KO test).
+; INPUT d = what Haze gains us, e = what it costs (that handler's tallies).
+; OUTPUT e = the magnitude and carry = encourage, the AI_SMART handler contract
+; carried in e because a farcall returns nothing in a. Net +2 or more encourages
+; strongly, +1 mildly, 0 not at all, negative discourages strongly.
+; A net gain is DECISIVE when Haze takes a boosted KO away: the player holds an
+; Attack or Special stage of +AI_HAZE_KO_STAGES or more, we act first (Haze
+; lands before the hit), and its best believed hit KOs us (AIPlayerWouldKO, max
+; roll). Measured 2026-11-18 (AI backlog B21, 400 forced states, Haze in slot 0,
+; the player boosted in the stat its best move uses): faster with the boost
+; turning a 2-3 hit KO into a 1-hit KO, Haze beat the best other move by +0.119
+; at +4 (significant; mean decision regret is +0.022) and +0.038 at +2, while
+; the old scoring picked it 16-19% of the time. Faster without that threat it
+; lost by 0.02-0.03. A KO of our own still outranks it (AI_KILL, AI_DAMAGE).
+; Clobbers af, bc, d, hl.
+AIHazeVerdict::
+	ld a, d
+	sub e
+	ld e, 0
+	ret z ; nothing net: carry clear, magnitude 0
+	ld e, AI_STRONG
+	jr c, .harmful
+	ld d, a ; d = the net gain
+	ld a, [wPlayerMonAttackMod]
+	cp BASE_STAT_LEVEL + AI_HAZE_KO_STAGES
+	jr nc, .boosted
+	ld a, [wPlayerMonSpecialMod]
+	cp BASE_STAT_LEVEL + AI_HAZE_KO_STAGES
+	jr c, .ordinary
+.boosted
+	push de
+	farcall AIEnemyIsFaster ; carry = we act first; survives the return
+	jr nc, .popOrdinary
+	farcall AIPlayerWouldKO ; carry = its boosted hit KOs us this turn
+.popOrdinary
+	pop de ; flags survive
+	ld e, AI_VERY_STRONG
+	jr c, .encourage
+.ordinary
+	ld a, d
+	cp 2
+	ld e, AI_STRONG ; ld keeps the cp flags
+	jr nc, .encourage
+	ld e, AI_NUDGE
+.encourage
+	scf
+	ret
+.harmful
+	and a ; carry clear = discourage
+	ret
+
 IF DEF(STADIUM_SWITCH)
 ; E2b TEST BUILD ONLY (AI_T4_REGRET_PLAN E2b, 2026-11-18): Pokemon Stadium 1's
 ; voluntary switch decision, ported term for term from team-hippodrome/pokestadium

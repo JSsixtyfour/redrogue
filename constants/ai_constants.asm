@@ -282,6 +282,10 @@ DEF AI_SCARCE_PP EQU 2 ; at or below this, the best-damage nudge looks elsewhere
 ; + Ultra; from MASTER, + Master Ball TMs (Earthquake, Psychic, Thunderbolt, ...).
 DEF AI_GUESS_ULTRA_BADGES EQU 2
 DEF AI_GUESS_MASTER_BADGES EQU 5
+; AIHazeVerdict (ai_postko.asm): the player's Attack or Special stage at which a Haze
+; that takes its KO away turns decisive. Measured +0.119 at +4, +0.038 (not
+; significant) at +2; 2 also covers one Swords Dance / Amnesia that already KOs.
+DEF AI_HAZE_KO_STAGES EQU 2
 DEF AI_SCARCE_MAX_HITS EQU 8 ; a best move needing more hits than this keeps its nudge
 ; Phase 5: the four per-slot MOVE CLASS masks, two bytes each, little-endian.
 ; This region was reserved through Phase 4 as AI_BUF_PARTY (six party scores)

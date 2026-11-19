@@ -363,12 +363,8 @@ class ForestDeepFloorTest(unittest.TestCase):
         self.assertIn("REST HOUSE" if variant == 0 else "guards", text)
 
 
-class ForestDeepFloorCGBTest(ForestDeepFloorTest):
-    """The same trips on a Game Boy Color (the second floor's palette and VRAM)."""
-
-    def setUp(self) -> None:
-        self.h = RedRogueHarness(ROOT, ARTIFACTS, cgb_mode=True)
-        self.h.allow_deep_forest_floor = True
+# The CGB run of these tests is test_cgb_forest_deep_floor.py: the smoke runner
+# picks a worker's hardware from the module name.
 
 
 if __name__ == "__main__":

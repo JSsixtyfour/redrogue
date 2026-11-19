@@ -146,6 +146,38 @@ class AICheckpointATest(unittest.TestCase):
         self.assertEqual(scores, [expected for _l, _w, expected in cases],
                          [label for label, _w, _e in cases])
 
+    def test_smart_haze_is_decisive_when_it_takes_a_boosted_ko_away(self):
+        # AIHazeVerdict (B21, 2026-11-18): a player at +2 or more in Attack or
+        # Special whose hit KOs us, and we act first: Haze lands before the hit.
+        # The KO answer is forced through the decision cache (1 = no, 2 = yes).
+        # SMART score from 20: 17 = decisive, 19 = mild, 22 = discouraged.
+        scores = []
+        self.h.hook_flag("AISmartCrossCutting", action=lambda:
+                         scores.append(self.h.read8("wBuffer")))
+        fast, slow = (200, 100), (100, 200)  # (our Speed, the player's)
+        cases = [
+            ("+2 Attack, KOs us, we are faster", {"wPlayerMonAttackMod": 9}, 2, fast, 17),
+            ("+4 Special, KOs us, we are faster", {"wPlayerMonSpecialMod": 11}, 2, fast, 17),
+            ("+2 Attack, no KO", {"wPlayerMonAttackMod": 9}, 1, fast, 19),
+            ("+2 Attack, KOs us, we are slower", {"wPlayerMonAttackMod": 9}, 2, slow, 19),
+            ("+1 Attack, KOs us, we are faster", {"wPlayerMonAttackMod": 8}, 2, fast, 19),
+            ("+2 Speed only, KOs us, we are faster", {"wPlayerMonSpeedMod": 9}, 2, fast, 19),
+            ("+2 Attack, KOs us, faster, but paralyzed", {"wPlayerMonAttackMod": 9,
+                                                         "wBattleMonStatus": 1 << 6}, 2, fast, 22),
+        ]
+        for _label, writes, cache, (ours, theirs), _expected in cases:
+            self.prime_haze()
+            self.h.write8("wAILastMoveNum", 0)
+            self.h.write8("wAISameMoveCount", 0)
+            for label, value in writes.items():
+                self.h.write8(label, value)
+            self.word("wEnemyMonSpeed", ours)
+            self.word("wBattleMonSpeed", theirs)
+            self.h.write8("wAIPlayerKOCache", cache)
+            self.h.call_routine("AILayerSmart", limit=120)
+        self.assertEqual(scores, [expected for *_r, expected in cases],
+                         [label for label, *_r in cases])
+
     def read_word(self, label):
         return int.from_bytes(bytes(self.h.read_bytes(label, 2)), "big")
 

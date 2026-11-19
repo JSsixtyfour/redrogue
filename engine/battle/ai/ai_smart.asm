@@ -652,7 +652,8 @@ AISmart_Evasion:
 ; Net +2 or more encourages strongly, +1 mildly, 0 leaves it alone, negative
 ; discourages (including "cure the paralysis we inflicted and nothing else",
 ; which the old handler let through unpenalized). AIRedundant_Haze still owns
-; the exact nothing-to-clear test.
+; the exact nothing-to-clear test. A net gain becomes decisive when Haze takes a
+; boosted KO away (AIHazeVerdict, bank $10, which owns the verdict).
 AISmart_Haze:
 	ld de, 0 ; d = gain, e = loss
 	ld hl, wPlayerMonAttackMod
@@ -757,24 +758,8 @@ AISmart_Haze:
 	jr z, .enemyNoScreens
 	inc e
 .enemyNoScreens
-
-	ld a, d
-	sub e
-	jr z, .noChange
-	jr c, .harmful
-	cp 2
-	ld a, AI_NUDGE ; ld keeps the cp flags
-	jr c, .encourage
-	ld a, AI_STRONG
-.encourage
-	scf
-	ret
-.harmful
-	ld a, AI_STRONG
-	and a ; carry clear = discourage
-	ret
-.noChange
-	xor a
+	farcall AIHazeVerdict ; e = magnitude, carry = encourage (a farcall returns no a)
+	ld a, e ; ld keeps the carry
 	ret
 
 ; Confuse Ray becomes a worse choice than a direct hit as the target gets
