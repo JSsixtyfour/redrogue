@@ -91,10 +91,11 @@ def call_a_preserving(harness: RedRogueHarness, label: str, a_value: int) -> int
 class AIGetPlayerMoveNTest(unittest.TestCase):
     """E1 (2026-11-18): a guessed slot holds the strongest move of its type the species can
     carry by its level and the run's TM ceiling (data/battle/ai_guess_learnset_*.asm). With no
-    badges the ceiling is 1 (Poke/Great Ball TMs). L50 Snorlax: Double-Edge (Hyper Beam is
-    learned at 56); L50 Persian: Hyper Beam (learned at 50)."""
+    badges the ceiling is 1 (Poke/Great Ball TMs). L50 Snorlax: Hyper Beam (learned at 50
+    since the 2026-11-19 learnset revision; Double-Edge at 46); L50 Persian: Hyper Beam
+    (learned at 50)."""
     harness: RedRogueHarness | None = None
-    SNORLAX_GUESS = "DOUBLE_EDGE"
+    SNORLAX_GUESS = "HYPER_BEAM"
 
     def setUp(self) -> None:
         self.harness = RedRogueHarness(REPO_ROOT, ARTIFACTS)

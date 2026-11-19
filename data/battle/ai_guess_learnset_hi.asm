@@ -180,12 +180,14 @@ AIGuessHi_83: ; MEWTWO
 	db PSYCHIC_M, 1
 	db $ff
 AIGuessHi_84: ; SNORLAX
-	db (0 << 6) | (5 << 3) | 0
-	db HYPER_BEAM, 56
-	db DOUBLE_EDGE, 48
+	db (0 << 6) | (7 << 3) | 0
+	db HYPER_BEAM, 50
+	db DOUBLE_EDGE, 46
 	db MEGA_KICK, $80 | 1
-	db BODY_SLAM, 43
-	db HEADBUTT, 1
+	db BODY_SLAM, 40
+	db HEADBUTT, 29
+	db BITE, 16
+	db TACKLE, 1
 	db $ff
 AIGuessHi_85: ; MAGIKARP
 	db (0 << 6) | (1 << 3) | 0
