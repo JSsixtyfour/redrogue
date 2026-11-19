@@ -53,4 +53,11 @@ ProceduralForest_Object:
 	object_event 10, 10, SPRITE_JESSIE, STAY, DOWN, TEXT_PROCEDURALFOREST_STAGE_NPC_1, OPP_JESSIE_JAMES, 1
 	object_event 10, 10, SPRITE_JAMES, STAY, DOWN, TEXT_PROCEDURALFOREST_STAGE_NPC_2, OPP_JESSIE_JAMES, 1
 
+	; Slot 8: the deep floor's optional encounter (custom_functions/
+	; forest_deep_floor.asm, optional_encounter.asm), as the cave's slot 10.
+	; OptionalEncounterPatchSprite makes it picture 0 (no VRAM slot) everywhere
+	; else; species, level and position are set at load.
+	object_event 10, 10, SPRITE_MONSTER, STAY, DOWN, TEXT_PROCEDURALFOREST_OPTIONAL, ONIX, 1 | OW_POKEMON
+	ASSERT FOREST_OPTIONAL_MON == 8
+
 	def_warps_to PROCEDURAL_FOREST

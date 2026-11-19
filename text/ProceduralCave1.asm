@@ -9,13 +9,13 @@ _PCSignBossText::
 	text_end
 
 _PFSignItemsText::
-	text "A REST HOUSE can"
-	line "be found here.@"
+	text "A REST HOUSE is"
+	line "in this forest.@"
 	text_end
 
 _PFSignBossText::
 	text "A #MON guards"
-	line "the exit.@"
+	line "this forest's exit.@"
 	text_end
 
 _PFacSignItemsText::

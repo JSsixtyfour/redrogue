@@ -71,6 +71,9 @@ ProcBossPatchStageSprite::
 	ld b, a                          ; save sprite constant before closing SRAM
 	jr .close
 .forest
+	; The Forest's deep floor, as the cave's: the saved floor's state into the
+	; live copy before anything reads it. No-op unless the Forest is deep.
+	farcall ForestDeepReconcile
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	ld a, BMODE_ADVANCED
@@ -142,10 +145,14 @@ ProcBossPatchStageSprite::
 	cp PROCEDURAL_CAVE_1
 	jr z, .npcSlotsCave
 	cp PROCEDURAL_FOREST
-	jr z, .npcSlots67
+	jr z, .npcSlotsForest
 	cp PROCEDURAL_FACILITY
 	jr z, .npcSlots1011
 	ret
+.npcSlotsForest
+	call .npcSlots67
+	; The deep Forest's floor 2 pictures (forest_deep_floor.asm), last.
+	farjp ForestDeepPatchSprites
 .npcSlotsCave
 	call .npcSlots67
 	; Then the deep floor's pictures, last: its optional encounter's slot, and
@@ -261,6 +268,7 @@ ProcStageLoadDispatch::
 	push af
 	farcall PFinalizeForest
 	farcall FGArmForestWarp
+	farcall ForestDeepAfterFinalize ; the deep floor's per-floor fixups
 	pop af
 	call ProcGenerationEndDoubleSpeed
 	ret

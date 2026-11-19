@@ -33,7 +33,15 @@ FGHasAssignedEncounter::
 ; the two eligible walls, then try its nine sites and the other wall once.
 ; Normal maze invariants leave a legal site for each assigned outcome.
 FGCarveOpening::
-	call FGHasAssignedEncounter
+	call FGDeepFloor2Wall
+	jr nc, .notFloor2
+	; A deep Forest's floor 2: one opening, on the wall facing floor 1's (the
+	; seam stored it), as the grotto does. FGTryWall rejects its own exit wall,
+	; which the seam rolled to differ. No free site: no opening (floor 2's exit
+	; then stays the way up, ForestDeepAfterFinalize).
+	jp FGTryWall
+.notFloor2
+	call FGWantsOpening
 	and a
 	ret z
 	ld a, [sProcForestRiverSide]
@@ -101,6 +109,8 @@ FGTryWall:
 	jr z, .north
 	cp 1
 	jr z, .west
+	cp 3
+	jr z, .south
 	inc hl
 	ld [hl], 27
 	inc hl
@@ -114,6 +124,15 @@ FGTryWall:
 	ld de, -FG_PARENT_STRIDE
 	add hl, de
 	ld [hl], 88
+	jr .done
+.south
+	; As the east's: a floor connector, then the opening on the map edge (the
+	; grotto's own south-opening block, same FOREST tileset).
+	ld de, FG_PARENT_STRIDE
+	add hl, de
+	ld [hl], 27
+	add hl, de
+	ld [hl], 89
 .done
 	scf
 	ret
@@ -144,12 +163,16 @@ FGWalkSites:
 	ld a, c
 	ret
 
-; D=wall, E=odd block site. B/C=adjacent inner cell X/Y.
+; D=wall (0N/1W/2E, 3S: a deep Forest's floor 2 only), E=odd block site.
+; B/C=adjacent inner cell X/Y.
 FGCellXY:
 	ld b, e
 	ld c, 1
 	ld a, d
 	and a
+	ret z
+	ld c, 17
+	cp 3
 	ret z
 	ld c, e
 	ld b, 1
@@ -291,6 +314,8 @@ FGBoundaryFree:
 	jr z, .north
 	cp 1
 	jr z, .west
+	cp 3
+	jr z, .south
 	inc hl
 	ld a, [hli]
 	cp 2
@@ -301,6 +326,14 @@ FGBoundaryFree:
 	jr .check
 .north
 	ld de, -FG_PARENT_STRIDE
+	add hl, de
+	jr .check
+.south
+	ld de, FG_PARENT_STRIDE
+	add hl, de
+	ld a, [hl]
+	cp 2
+	jr nz, .no
 	add hl, de
 .check
 	ld a, [hl]
@@ -353,6 +386,9 @@ FGFindOpening:
 	ld a, d
 	and a
 	jr z, .site
+	ld hl, sProcForestStagingBuffer + FG_BAKED_STRIDE * (PROCEDURAL_FOREST_HEIGHT - 1) + FG_FIRST_ROW
+	cp 3
+	jr z, .site                         ; south: a deep Forest's floor 2 only
 	ld hl, sProcForestStagingBuffer + FG_BAKED_STRIDE * FG_FIRST_ROW
 	cp 1
 	jr z, .site
@@ -382,6 +418,8 @@ FGFindOpening:
 	ld a, d
 	and a
 	jr z, .advance
+	cp 3
+	jr z, .advance                      ; south runs along a row, as north
 	ld bc, 2 * FG_BAKED_STRIDE
 .advance
 	add hl, bc
@@ -390,7 +428,7 @@ FGFindOpening:
 .nextWall
 	inc d
 	ld a, d
-	cp 3
+	cp 4                                ; N, W, E, and S for a floor 2
 	jr c, .wall
 	ld a, b
 	cp $ff
@@ -410,6 +448,8 @@ FGMarkerAtBoundary:
 	jr z, .north
 	cp 1
 	jr z, .west
+	cp 3
+	jr z, .south
 	ld a, [hl]
 	cp 87
 	jr nz, .no
@@ -430,6 +470,17 @@ FGMarkerAtBoundary:
 	jr nz, .no
 	ld bc, FG_BAKED_STRIDE
 	add hl, bc
+	jr .cell
+.south
+	ld a, [hl]
+	cp 89
+	jr nz, .no
+	ld bc, -FG_BAKED_STRIDE
+	add hl, bc
+	ld a, [hl]
+	cp 27                               ; the connector
+	jr nz, .no
+	add hl, bc
 .cell
 	ld a, [hl]
 	call FGIsFloor
@@ -449,7 +500,13 @@ FGParentEventCoords:
 	ld b, 0
 	ld a, d
 	and a
+	jr z, .horizontal
+	cp 3
 	jr nz, .vertical
+	ld b, c
+	ld c, 2 * PROCEDURAL_FOREST_HEIGHT - 1 ; south: the bottom row
+	ret
+.horizontal
 	ld b, c
 	ld c, 0
 	ret
@@ -460,10 +517,10 @@ FGParentEventCoords:
 	ret
 
 FGArmForestWarp::
-	call FGHasAssignedEncounter
-	and a
-	jr z, .none
 	call FGOpenParentSRAM
+	call FGWantsOpening
+	and a
+	jr z, .noneClose
 	call FGFindOpening
 	push af
 	push de
@@ -500,10 +557,110 @@ FGArmForestWarp::
 	ld [hli], a
 	ld [hl], PROCEDURAL_FOREST_GROTTO
 	ret
+.noneClose
+	call FGCloseSRAM
 .none
 	ld a, $ff
 	ld [wWarpEntries + FG_WARP * 4], a
 	ret ; legacy saved house0 retains its normal door at the second slot
+
+; SRAM0 open. Out: a != 0 = this Forest wants an opening: the grotto's
+; encounter is assigned, or it is a deep Forest with floor 1 live (its way down,
+; ForestDeepAfterFinalize aims the warps). Floor 2 never has one. Keeps bc/de.
+FGWantsOpening:
+	call FGHasAssignedEncounter
+	and a
+	ret nz
+	ld hl, FOREST_DEEP_CTRL + 1
+	ld a, [hld]
+	cpl
+	cp [hl]
+	jr nz, .no
+	and FOREST_DEEP_MAGIC_MASK
+	cp FOREST_DEEP_MAGIC
+	jr nz, .no
+	ld a, [wRogueFlagsBitfield2]
+	cpl
+	and 1 << BIT_ROGUE_DEEP_FLOOR       ; nz on floor 1
+	ret
+.no
+	xor a
+	ret
+
+; SRAM0 open. Carry = a deep Forest with floor 2 live; then a = the wall its
+; opening must use (0N/1W/2E/3S). Keeps de.
+FGDeepFloor2Wall:
+	ld hl, FOREST_DEEP_CTRL + 1
+	ld a, [hld]
+	cpl
+	cp [hl]
+	jr nz, .no
+	and FOREST_DEEP_MAGIC_MASK
+	cp FOREST_DEEP_MAGIC
+	jr nz, .no
+	ld a, [wRogueFlagsBitfield2]
+	bit BIT_ROGUE_DEEP_FLOOR, a
+	jr z, .no
+	ld a, [FOREST_DEEP_UP_WALL]
+	scf
+	ret
+.no
+	and a
+	ret
+
+; ForestDeepAfterFinalize, every load of a deep Forest: aim the live floor's
+; opening (both tiles) at the other floor's (warps FG_WARP and the second warp
+; of this map; the seam swaps the floors and FGResolveArrival then places the
+; player on the opening there). Carry = there is an opening. SRAM closed.
+FGDeepArmOpening::
+	call FGOpenParentSRAM
+	call FGFindOpening
+	push af
+	push de
+	call FGCloseSRAM
+	pop de
+	pop af
+	ret nc
+	call FGParentEventCoords
+	ld hl, wWarpEntries + FG_WARP * 4
+	ld a, FG_WARP
+	call .arm
+	ld a, d
+	and a
+	jr z, .horizontal
+	cp 3
+	jr z, .horizontal
+	inc c
+	jr .second
+.horizontal
+	inc b
+.second
+	ld hl, wWarpEntries + FOREST_GROTTO_SECOND_WARP * 4
+	ld a, FOREST_GROTTO_SECOND_WARP
+	call .arm
+	scf
+	ret
+; hl = the entry, a = the destination warp, c/b = Y/X.
+.arm
+	push af
+	ld a, c
+	ld [hli], a
+	ld a, b
+	ld [hli], a
+	pop af
+	ld [hli], a
+	ld [hl], PROCEDURAL_FOREST
+	ret
+
+; For ForestDeepAfterFinalize: carry = the live (baked) Forest has a valid
+; opening. SRAM closed on return. Clobbers everything but the carry.
+FGDeepFindOpening::
+	call FGOpenParentSRAM
+	call FGFindOpening
+	push af
+	call FGCloseSRAM
+	pop af
+	ret
 
 ; Normal arrival copy has run. Resolve all four bytes before parity. No
 ; assignment gate here: a legacy or resolved room must always have a way out.
@@ -522,9 +679,15 @@ FGResolveArrival::
 .notFacility
 	cp PROCEDURAL_FOREST
 	ret nz
+	; The deep floor first: a trip between the floors swaps them before anything
+	; below reads the live Forest (custom_functions/forest_deep_floor.asm).
+	farcall ForestDeepSeam
 	ld a, [wWarpedFromWhichMap]
 	cp PROCEDURAL_FOREST_GROTTO
+	jr z, .fromGrotto
+	cp PROCEDURAL_FOREST                ; floor 2's exit, up to floor 1's opening
 	ret nz
+.fromGrotto
 	ld a, [wDestinationWarpID]
 	cp FG_WARP
 	jr z, .validWarp
@@ -546,6 +709,8 @@ FGResolveArrival::
 	ld a, d
 	and a
 	jr z, .horizontal
+	cp 3
+	jr z, .horizontal                   ; south runs along a row, as north
 	inc c
 	jr .position
 .horizontal

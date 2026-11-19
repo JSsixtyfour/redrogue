@@ -1488,3 +1488,5 @@ INCLUDE "custom_functions/forest_grotto.asm"
 INCLUDE "custom_functions/cave_deep_floor.asm"
 ; Its load-time half, farcall-only, in $15 (its own section).
 INCLUDE "custom_functions/cave_deep_floor_post.asm"
+; The Forest's deep floor (PROCEDURAL_DEEP_FLOOR_PLAN.md, Forest SPEC).
+INCLUDE "custom_functions/forest_deep_floor.asm"

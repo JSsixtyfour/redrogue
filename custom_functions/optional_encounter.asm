@@ -17,7 +17,12 @@ ENDC
 	ret
 
 ; SRAM0 is already open; use after the stage's season/theme has been latched.
+; Every Forest preload comes through here, so the deep floor's decision follows
+; the roll (it may move a grotto encounter onto floor 2). SRAM0 open on return.
 OptionalForestAssignEncounter::
+	call .assign
+	farjp ForestDeepLobbyDecide
+.assign
 IF DEF(_DEBUG)
 	ld a, [wStatusFlags6]
 	bit BIT_DEBUG2_MODE, a
@@ -288,9 +293,13 @@ OptionalEncounterIsCurrent:
 	cp [hl]
 	jr nz, .no
 	; The cave's deep floor hosts the B1F's encounter (cave_deep_floor.asm),
-	; and both floors are this one map: only floor 2 has it.
+	; and both floors are this one map: only floor 2 has it. The deep Forest's
+	; floor 2 is the same (forest_deep_floor.asm).
 	cp PROCEDURAL_CAVE_1
+	jr z, .deepFloor
+	cp PROCEDURAL_FOREST
 	jr nz, .assigned
+.deepFloor
 	ld a, [wRogueFlagsBitfield2]
 	bit BIT_ROGUE_DEEP_FLOOR, a
 	jr z, .no
@@ -370,6 +379,9 @@ OptionalSpriteAddress:
 	ret z
 	ld hl, wSprite{02d:CAVE_OPTIONAL_MON}StateData1 ; the deep floor's (slot 1 is the boss)
 	cp PROCEDURAL_CAVE_1
+	ret z
+	ld hl, wSprite{02d:FOREST_OPTIONAL_MON}StateData1 ; the deep Forest's floor 2
+	cp PROCEDURAL_FOREST
 	ret z
 	ld hl, wSprite01StateData1
 	ret

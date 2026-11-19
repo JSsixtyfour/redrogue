@@ -195,6 +195,18 @@ class RedRogueHarness:
                     memory[1, ctrl] = 0x00
                     memory[1, ctrl + 1] = 0xFF
             self.register_hook("CaveDeepAfterFinalize", ordinary_cave)
+        # The Forest's deep floor is decided in the lobby preload, 50% (and every
+        # Forest under Debug 2, which this harness boots through). Existing Forest
+        # fixtures (grotto, rest house, stage events) get an ordinary Forest: the
+        # decision's b (1 = deep) is forced to 0 at the label where the ROM reads
+        # it, before it moves a grotto encounter or writes the control word. Tests
+        # of the Forest's deep floor set allow_deep_forest_floor = True.
+        self.allow_deep_forest_floor = False
+        if "ForestDeepLobbyDecide.decided" in self.symbols._symbols:
+            def ordinary_forest(_context):
+                if not self.allow_deep_forest_floor:
+                    self.pyboy.register_file.B = 0
+            self.register_hook("ForestDeepLobbyDecide.decided", ordinary_forest)
         # AI heuristic execution coverage (AI_BACKLOG L3): with
         # REDROGUE_AI_COVERAGE=<file>, hook every label in ai_heuristics'
         # source-derived inventory and, at close, append one JSON line naming

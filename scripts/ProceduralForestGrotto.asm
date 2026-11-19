@@ -34,6 +34,10 @@ OptionalEncounterMapScript::
 	cp PROCEDURAL_CAVE_1                ; the cave's deep floor
 	ld a, TEXT_PROCEDURALCAVE1_OPTIONAL_OFFER
 	jr z, .offerID
+	ld a, b
+	cp PROCEDURAL_FOREST                ; the deep Forest's floor 2
+	ld a, TEXT_PROCEDURALFOREST_OPTIONAL_OFFER
+	jr z, .offerID
 	ld a, TEXT_PROCEDURALFORESTGROTTO_OFFER
 .offerID
 	ldh [hTextID], a

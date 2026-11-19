@@ -3575,6 +3575,9 @@ PFCellInClearing:
 ; scripts/ProceduralForest.asm owns bit 7. No new SRAM.
 
 DEF PF_HOUSE_SITE_MASK EQU %00011111
+	; The deep floor removes a house from the floor the coin did not pick
+	; (custom_functions/forest_deep_floor.asm) with its own copies of these.
+	ASSERT PF_HOUSE_SITE_MASK == FOREST_DEEP_HOUSE_MASK && PF_TREE == FOREST_DEEP_TREE
 ; Valid spots while PFPlaceHouse runs. Generation-only: bytes 0-31 hold the
 ; balls and dead ends, 72-79 the clearing.
 DEF PF_HOUSE_LIST EQUS "sProcForestGenScratch + 32"

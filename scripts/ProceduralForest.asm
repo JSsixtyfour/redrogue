@@ -44,6 +44,11 @@ ENDC
 	ld [rRAMG], a
 	bit BIT_PF_OBJECTS_SHOWN, b
 	jp nz, .afterSetup
+	; The deep floor 2 shows nothing here: floor 1's boss, balls 2-4 and stage
+	; NPCs are parked, and its one ball's toggle came across with the flip.
+	ld a, [wRogueFlagsBitfield2]
+	bit BIT_ROGUE_DEEP_FLOOR, a
+	jp nz, .afterSetup
 ; Fresh entry: show the four item pokeballs.
 	ld a, TOGGLE_WILD_AREA_POKEBALL_1
 	ld [wToggleableObjectIndex], a
@@ -190,6 +195,17 @@ ENDC
 	call DisplayTextID
 	call DisableWaitingAfterTextDisplay
 .runScripts
+	; The deep floor's optional encounter first, as the cave's (and the
+	; Facility's) script does: while its battle runs it owns the frame. On
+	; floor 1 and in an ordinary forest it is never current and returns at once.
+	farcall OptionalEncounterMapScript
+	ld a, [wOptionalEncounterScript]
+	and a
+	ret nz
+	ld a, [wOptionalEncounterState]
+	and OPTIONAL_ENCOUNTER_STATE_MASK
+	cp 1 << BIT_OPTIONAL_DEFEATED
+	ret z
 	call EnableAutoTextBoxDrawing
 	ld hl, ProceduralForestTrainerHeaders
 	; PICK THE HEADER BLOCK THAT MATCHES THE ENGAGED TRAINER. Measured bug,
@@ -739,6 +755,15 @@ PFStageDefeatJenny:
 	text_far _StageEventDefeatJennyText
 	text_end
 
+; The deep floor's optional encounter (object FOREST_OPTIONAL_MON): the same
+; texts as the grotto's and the cave's.
+PFOptionalText:
+	text_far FGEncounterText
+	text_end
+PFOptionalOffer:
+	text_far FGEncounterOffer
+	text_end
+
 ProceduralForest_TextPointers:
 	def_text_pointers
 	; ORDER IS LOAD-BEARING: see scripts/ProceduralCave1.asm's copy of this
@@ -753,7 +778,8 @@ ProceduralForest_TextPointers:
 	dw_const RandomPickUpItemText, TEXT_PROCEDURALFOREST_POKEBALL_4
 	dw_const PFStageEventNpc1Text, TEXT_PROCEDURALFOREST_STAGE_NPC_1
 	dw_const PFStageEventNpc2Text, TEXT_PROCEDURALFOREST_STAGE_NPC_2
-	; --- end of the object block (7 objects); script-only ids follow ---
+	dw_const PFOptionalText, TEXT_PROCEDURALFOREST_OPTIONAL
+	; --- end of the object block (8 objects); script-only ids follow ---
 	dw_const ProceduralForestBossOfferText, TEXT_PROCEDURALFOREST_BOSS_OFFER
 	dw_const ProceduralForestCalmedText, TEXT_PROCEDURALFOREST_CALMED
 	ASSERT BANK(ProceduralForestCalmedText) == BANK(ProceduralForest_TextPointers)
@@ -761,6 +787,7 @@ ProceduralForest_TextPointers:
 	dw_const PFSignText, TEXT_PROCEDURALFOREST_SIGN
 	dw_const PFStageEventArrivalText, TEXT_PROCEDURALFOREST_STAGE_EVENT
 	dw_const PFStageEventRecoverText, TEXT_PROCEDURALFOREST_STAGE_RECOVER
+	dw_const PFOptionalOffer, TEXT_PROCEDURALFOREST_OPTIONAL_OFFER
 
 IF DEF(FOREST_X7_PROBE)
 	dw_const PFX7ProbeText, TEXT_PROCEDURALFOREST_X7_PROBE
