@@ -103,7 +103,12 @@
 ; either, so a save from a run before then can still hold it), is now
 ; BIT_ROGUE_DEEP_FLOOR. Migration deepFloorBitCleared clears it, so an old save
 ; made inside the procedural cave loads on floor 1 rather than floor 2.
-DEF SAVE_SCHEMA_ID EQU 22
+; Schema 23 (2026-11-19, Bridge records): wBridgeSelectedEffects grew from two
+; [owner, effect] records to four (Owner3/Effect3/Owner4/Effect4 inserted after
+; Effect2, so the array stays contiguous). Every later saved field moved up 4.
+; Migration bridgeRecordsAdded copies the fields by label and zeroes the two new
+; records (empty, as a new game has them).
+DEF SAVE_SCHEMA_ID EQU 23
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; Transient invalid magic while a writer owns the save. Completed headers and

@@ -531,6 +531,19 @@ test("schema 14 to 15: the follower pad hole is gone, everything else moves unch
     for (let i = 0; i < f.size; i++) assert.equal(b[offsetOf(f.bank, f.address) + i], 0, `${f.label}+${i}`);
 });
 
+test("schema 22 to 23: Bridge records 3-4 inserted empty, everything after moves up 4 unchanged", () => {
+  const loss = PKG.schemas["23"].sram.filter((f) => /^sLossRecovery/.test(f.label));
+  const { save, b, from, to } = checkMigration(22, 23, [], loss.map((f) => f.label));
+  for (const label of ["wBridgeSelectedEffectOwner1", "wBridgeSelectedEffect1",
+                       "wBridgeSelectedEffectOwner2", "wBridgeSelectedEffect2"])
+    assert.equal(b[wramOffset(to, label)], save[wramOffset(from, label)], `${label} kept`);
+  for (const label of ["wBridgeSelectedEffectOwner3", "wBridgeSelectedEffect3",
+                       "wBridgeSelectedEffectOwner4", "wBridgeSelectedEffect4"])
+    assert.equal(b[wramOffset(to, label)], 0, `${label} starts empty`);
+  for (const f of to.sram.filter((f) => /^sLossRecovery/.test(f.label)))
+    for (let i = 0; i < f.size; i++) assert.equal(b[offsetOf(f.bank, f.address) + i], 0, `${f.label}+${i}`);
+});
+
 test("schema 1 to 2: item counts keep their indices, spare slots are 0, the rest moves unchanged", () => {
   // The only fields allowed to differ are the arrays (checked below) and two labels in the
   // bag-display union member: it grew (wStatPocketBuf 32 -> 38), so they moved further than

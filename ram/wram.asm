@@ -2891,6 +2891,13 @@ wBridgeSelectedEffectOwner1:: db
 wBridgeSelectedEffect1::      db
 wBridgeSelectedEffectOwner2:: db
 wBridgeSelectedEffect2::      db
+; Records 3-4 (schema 23, 2026-11-19): Endless and the resurrection NPC need
+; more than BRIDGE_PER_RUN. Inserted here so the array stays contiguous; every
+; later saved field moved up 4 (migration bridgeRecordsAdded).
+wBridgeSelectedEffectOwner3:: db
+wBridgeSelectedEffect3::      db
+wBridgeSelectedEffectOwner4:: db
+wBridgeSelectedEffect4::      db
 wBridgeSelectedEffectsEnd::
 ASSERT wBridgeSelectedEffectsEnd - wBridgeSelectedEffects == BRIDGE_SELECTED_RECORD_SIZE * BRIDGE_SELECTED_RECORD_COUNT
 

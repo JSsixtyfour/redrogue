@@ -232,9 +232,19 @@ BridgeGiftIsEligible:
 	jr z, .globalEffect
 	cp GIFT_SPECIAL
 	jr z, .special
+	cp GIFT_SELECTED_EFFECT
+	jr z, .selectedEffect
 .eligible
 	scf
 	ret
+.selectedEffect
+	; Only while a record is free: the grant refuses a full registry, and the
+	; menu's failure path is silent, so offering it lost the pick (Endless keeps
+	; the records across circuits). DETOX costs no record.
+	ld a, [hl]                  ; effect (param low)
+	cp BRIDGE_GIFT_STRIP_POISON
+	jr z, .eligible
+	farjp BridgeSelectedRegistryHasRoom
 .item
 	ld a, [hli]                 ; item id (param low)
 	ld e, a

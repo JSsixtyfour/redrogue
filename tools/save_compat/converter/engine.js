@@ -711,6 +711,46 @@
       return null;
     },
 
+    // Schema 22 -> 23 (2026-11-19, Bridge records): wBridgeSelectedEffects grew from two
+    // [owner, effect] records to four. Records 3-4 were inserted after record 2, so the array
+    // stays contiguous; every byte after them, to the end of the bank-1 save sections (rest of the
+    // main block, sprite/party/box data, the main checksum, the Final Team Archive and the
+    // Procedural Facility state), moves UP 4 unchanged: followerPadTrimmed in the other direction.
+    // The new records start empty (owner 0), as a new game has them. The loss-recovery record
+    // names its schema, so it is cleared.
+    bridgeRecordsAdded: function (bytes, from, to) {
+      var GROW = 4;
+      var end = wramOffset(from, "wBridgeSelectedEffectsEnd");
+      var two = wramOffset(from, "wBridgeSelectedEffect2");
+      if (end < 0 || two < 0 || end !== two + 1 || wramField(from, "wBridgeSelectedEffectOwner3") ||
+          wramOffset(to, "wBridgeSelectedEffectOwner3") !== end ||
+          wramOffset(to, "wBridgeSelectedEffectsEnd") !== end + GROW)
+        return "bridge record layout not recognised";
+      var mainFrom = sramField(from, "sMainData"), mainTo = sramField(to, "sMainData");
+      if (mainTo.size - mainFrom.size !== GROW) return "main save block grew by an unexpected amount";
+      // Labels after the insertion either moved up 4 (the floating bank-1 sections) or kept their
+      // address (fixed-org sections such as the loss-recovery spans), which must lie past the
+      // shifted run AND its 4-byte growth.
+      var src = new Uint8Array(bytes), last = end, fixed = [];
+      for (var j = 0; j < from.sram.length; j++) {
+        var f = from.sram[j], o = offsetOf(f.bank, f.address);
+        if (f.bank !== 1 || o < end) continue;
+        var t = sramField(to, f.label), d = t ? offsetOf(t.bank, t.address) - o : -1;
+        if (!t || (d !== GROW && d !== 0) || t.size !== f.size)
+          return "save field " + f.label + " did not move as expected";
+        if (d === GROW) last = Math.max(last, o + f.size);
+        else fixed.push([f.label, o]);
+      }
+      for (var q = 0; q < fixed.length; q++)
+        if (fixed[q][1] < last + GROW) return "save field " + fixed[q][0] + " sits inside the shifted data";
+      for (var n = end; n < last; n++) bytes[n + GROW] = src[n];
+      for (var z = end; z < end + GROW; z++) bytes[z] = 0; // records 3-4: empty
+      var error = STEPS.lossRecoveryAdded(bytes, from, to);
+      if (error) return error;
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
     lossRecoveryAdded: function (bytes, from, to) {
       var names = ["sLossRecovery1", "sLossRecovery2", "sLossRecovery3", "sLossRecoveryCRC", "sLossRecoveryValid"];
       for (var i = 0; i < names.length; i++) {

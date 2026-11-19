@@ -295,6 +295,13 @@ BridgeFindSelectedRecordByOwner:
 	scf
 	ret
 
+; Farcall entry for BridgeGiftIsEligible: a selected-effect gift is offered
+; only while a record is free, so a full registry (Endless keeps the records
+; across circuits) never offers a gift the grant would refuse.
+; Out: carry set when a record is free. Clobbers a/b/hl.
+BridgeSelectedRegistryHasRoom::
+	; fall through
+
 ; Out: carry set and hl -> owner byte of an empty record; clear when full.
 BridgeFindEmptySelectedRecord:
 	ld hl, wBridgeSelectedEffects

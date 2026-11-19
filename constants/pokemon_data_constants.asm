@@ -107,7 +107,12 @@ const BRIDGE_SELECTED_EFFECT_LIFE_ORB
 const BRIDGE_SELECTED_EFFECT_STATUS_IMMUNITY
 DEF NUM_BRIDGE_SELECTED_EFFECTS EQU const_value - 1
 DEF BRIDGE_SELECTED_RECORD_SIZE  EQU 2 ; owner byte + effect byte
-DEF BRIDGE_SELECTED_RECORD_COUNT EQU BRIDGE_PER_RUN
+; Four records, not BRIDGE_PER_RUN (two): Endless offers two more bridges every
+; circuit while the records persist for the whole run, and the Cemetery's
+; resurrection NPC can give a fallen Pokémon its effect back only into a free
+; record. Even with four, a full registry stops offering selected-effect gifts
+; (BridgeGiftIsEligible), so a gift that cannot be received is never shown.
+DEF BRIDGE_SELECTED_RECORD_COUNT EQU 4
 ASSERT NUM_BRIDGE_SELECTED_EFFECTS == 8
 ; The Warden's DETOX takes the selected-effect gift path for its party picker but
 ; is no registry effect: it rewrites the mon's stored types and costs no record.
@@ -116,7 +121,7 @@ ASSERT BRIDGE_GIFT_STRIP_POISON > NUM_BRIDGE_SELECTED_EFFECTS
 ; wBridgeCalcEffectFlags uses effect ids as bit numbers. Effect 0 is the empty
 ; marker, so bit 0 is free for the Mystic (SF2_SWAP_ATK_SPC) special form.
 DEF BRIDGE_CALC_SWAP_ATK_SPC EQU 0
-ASSERT BRIDGE_SELECTED_RECORD_COUNT == 2
+ASSERT BRIDGE_SELECTED_RECORD_COUNT == 4
 
 DEF HOF_MON           EQU $10
 ; Hall of Fame record: species, level, 11-byte name (offsets 0-12), then 3 pad

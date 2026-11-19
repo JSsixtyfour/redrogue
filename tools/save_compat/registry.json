@@ -163,6 +163,12 @@
    "to": "22",
    "steps": ["deepFloorBitCleared"],
    "verified": "2026-11-18 (Claude): NOT verified with real saves. No field moves. wRogueFlagsBitfield2 bit 7 (BIT_ROGUE_PREDICT_BADGES, never set since 2026-10-09 -> BIT_ROGUE_DEEP_FLOOR) cleared, bits 0-6 kept. Synthetic test 'schema 21 to 22' checks the byte and that nothing else changes."
+  },
+  {
+   "from": "22",
+   "to": "23",
+   "steps": ["bridgeRecordsAdded"],
+   "verified": "2026-11-19 (Claude): Bridge records 2 -> 4. Records 3-4 inserted after record 2 (empty); everything after them in the bank-1 save sections moves up 4; loss record cleared. Synthetic test 'schema 22 to 23' checks every field by label, the kept records 1-2 and the empty 3-4, and fails with the shift removed. Real-save gate passed: six saves (lobby, route, cave, forest, cemetery, facility) made on the schema-22 build 7379e004 convert and pass saves.py continue on the schema-23 build; the unconverted control is refused. Evidence builds/gate22_7379e004/. BGB/hardware acceptance pending."
   }
  ]
 }
