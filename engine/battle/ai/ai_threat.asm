@@ -440,6 +440,15 @@ _AIBestReserveThreatScan:
 .fullHP
 
 	call _AIScanPlayerMovesForKO ; carry = some believed move KOs the reserve
+IF DEF(STADIUM_SWITCH)
+; E2b test build only: AIStadiumSwitch needs the reserve's T (the hit it takes).
+; The scan has restored the move block it saved at AI_BUF_MOVESAVE, so those
+; bytes are dead until the next scan. `ld` keeps the scan's carry.
+	ld a, d
+	ld [wBuffer + AI_BUF_MOVESAVE], a
+	ld a, e
+	ld [wBuffer + AI_BUF_MOVESAVE + 1], a
+ENDC
 ; B5's half question from the same scan (Codex review 2026-10-22: it used to
 ; rescan, ~43k cycles): a full scan that found no KO leaves de = the largest
 ; delivery, so the reserve keeps more than half iff de < HP / 2, the comparison

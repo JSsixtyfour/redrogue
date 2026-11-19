@@ -561,6 +561,481 @@ AIHealOutpaces::
 	and a
 	ret
 
+IF DEF(STADIUM_SWITCH)
+; E2b TEST BUILD ONLY (AI_T4_REGRET_PLAN E2b, 2026-11-18): Pokemon Stadium 1's
+; voluntary switch decision, ported term for term from team-hippodrome/pokestadium
+; battle_engine_com_decision_logic.c (BattleAI_ScoreAttackOption 4632-4678,
+; BattleAI_ScoreAttackVsSwitch 4720-4865, SelectBestAttackTargetIndex 4488-4581),
+; to compare against our trigger chain. The gate worktree defines STADIUM_SWITCH;
+; normal ROMs never assemble this. Our TARGET choice is kept (the post-KO ranking
+; in VOLUNTARY mode), so the comparison isolates the decision rule.
+; Ratios are Stadium's: damage x 255 / HP, capped at 255. Stadium's per-difficulty
+; constants live in a ROM blob, not the source: STADIUM_BASELINE (unk_05),
+; STADIUM_MARGIN (unk_07) and STADIUM_LOWHP (unk_08) are the swept knobs.
+; Carry SET = switch, wBuffer + AI_BUF_BESTPARTYSLOT = the target. Clobbers all.
+; Scratch: wBuffer +4/+5 (the B4 scan's largest hit, flag build), +6 Dealt,
+; +7 Taken, +8 target D, +9 target T, +10 we are faster; nothing else runs here.
+IF !DEF(STADIUM_BASELINE)
+DEF STADIUM_BASELINE EQU 64
+ENDC
+IF !DEF(STADIUM_MARGIN)
+DEF STADIUM_MARGIN EQU 0
+ENDC
+IF !DEF(STADIUM_LOWHP)
+DEF STADIUM_LOWHP EQU 64 ; a quarter of 255
+ENDC
+DEF SS_DEALT EQU 6
+DEF SS_TAKEN EQU 7
+DEF SS_TD EQU 8
+DEF SS_TT EQU 9
+DEF SS_FASTER EQU 10
+
+MACRO ss_add ; bc += signed constant \1
+	ld hl, (\1) & $ffff
+	add hl, bc
+	ld b, h
+	ld c, l
+ENDM
+
+AIStadiumSwitch::
+; --- the target: our ranking, then its B4 scan (which leaves its largest hit at +4)
+	farcall AIRankSendOutCandidates
+	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
+	cp $ff
+	jp z, .stay ; one usable mon: Stadium scores 0
+	ld [wBuffer + PK_BEST_SLOT], a
+	xor a
+	ld [wBuffer + PK_BEST_TYPE], a
+	ld [wBuffer + PK_BEST_QUALITY], a
+	ld [wBuffer + PK_BEST_DAMAGE], a
+	ld [wBuffer + PK_BEST_DAMAGE + 1], a
+	ld de, PK_MODE_VOLUNTARY << 8 | $ff
+	call AIRankPostKOSendOut.rankWithSpeed
+	farcall AIBestReserveSurvivesThreat
+; --- target D: its best expected hit vs the player's current HP; 0 if it sleeps
+	ld a, [wBuffer + PK_BEST_DAMAGE]
+	ld d, a
+	ld a, [wBuffer + PK_BEST_DAMAGE + 1]
+	ld e, a
+	ld hl, wBattleMonHP
+	call .ratioOfHL
+	ld [wBuffer + SS_TD], a
+	call .targetStruct
+	ld bc, wEnemyMon1Status - wEnemyMon1
+	add hl, bc
+	ld a, [hl]
+	and SLP_MASK
+	jr z, .targetAwake
+	xor a
+	ld [wBuffer + SS_TD], a
+.targetAwake
+; --- target T: Stadium counts the entry hit and one more, except that a SLOWER
+; reserve whose reply KOs takes only the entry hit (4532-4547)
+	ld a, [wBuffer + AI_BUF_MOVESAVE]
+	ld d, a
+	ld a, [wBuffer + AI_BUF_MOVESAVE + 1]
+	ld e, a ; de = one hit
+	call .targetFaster
+	jr c, .twoHits
+	ld a, [wBuffer + SS_TD]
+	inc a
+	jr z, .gotT ; slower, and its reply KOs: one hit
+.twoHits
+	sla e
+	rl d
+.gotT
+	call .targetStruct
+	inc hl ; HP
+	call .ratioOfHL
+	ld [wBuffer + SS_TT], a
+	inc a
+	jr nz, .tDone
+	ld [wBuffer + SS_TD], a ; T = 255 (it dies in the exchange): D = 0 (a is 0 here)
+.tDone
+; --- active: Dealt = our best one-hit estimate (AI_DAMAGE's cache) vs their HP,
+; Taken = their best possible hit vs our MAX HP
+	farcall AIPlayerWouldKO
+	ld hl, wAIPlayerKOMaxDamage
+	ld a, [hli]
+	ld e, [hl]
+	bit AI_KO_MAX_VALID_BIT, a
+	jr nz, .takenValid
+	xor a
+	ld e, a
+.takenValid
+	and %00111111
+	ld d, a
+	ld hl, wEnemyMonMaxHP
+	call .ratioOfHL
+	ld [wBuffer + SS_TAKEN], a
+	ld de, 0
+	ld hl, wAIEnemyEstimateCache
+	ld b, NUM_MOVES
+.cache
+	ld a, [hli]
+	bit AI_ESTIMATE_VALID_BIT, a
+	jr z, .cacheSkip
+	and $7f
+	cp d
+	jr c, .cacheSkip
+	jr nz, .cacheBest
+	ld a, [hl]
+	cp e
+	jr c, .cacheSkip
+.cacheBest
+	dec hl
+	ld a, [hli]
+	and $7f
+	ld d, a
+	ld e, [hl]
+.cacheSkip
+	inc hl
+	dec b
+	jr nz, .cache
+	ld hl, wBattleMonHP
+	call .ratioOfHL
+	ld [wBuffer + SS_DEALT], a
+	farcall AIEnemyIsFaster ; carry = faster
+	ld a, 0
+	rla
+	ld [wBuffer + SS_FASTER], a
+	and a
+	jr z, .slower
+	ld a, [wBuffer + SS_DEALT]
+	inc a
+	jr nz, .speedDone
+	ld [wBuffer + SS_TAKEN], a ; we KO first: nothing taken (a = 0)
+	jr .speedDone
+.slower
+	ld a, [wBuffer + SS_TAKEN]
+	inc a
+	jr nz, .speedDone
+	ld [wBuffer + SS_DEALT], a ; they KO first: nothing dealt
+.speedDone
+; --- the sum (bc, signed 16-bit), BattleAI_ScoreAttackOption first
+	ld bc, 0
+	ld a, [wBuffer + SS_TAKEN] ; free entry with an answer: +52
+	and a
+	jr z, .noFreeEntry
+	ld a, [wBuffer + SS_TT]
+	and a
+	jr nz, .noFreeEntry
+	ld a, [wBuffer + SS_TD]
+	and a
+	jr z, .noFreeEntry
+	ss_add 52
+.noFreeEntry
+	ld a, [wBuffer + SS_DEALT] ; we deal nothing, the reserve would: +128
+	and a
+	jr nz, .weDeal
+	ld a, [wBuffer + SS_TD]
+	and a
+	jr z, .weDeal
+	ld a, [wBattleMonStatus]
+	and SLP_MASK | (1 << FRZ)
+	jr nz, .weDeal
+	ss_add 128
+.weDeal
+; (Dealt - Taken) < (D - T) - margin: +153
+	ld a, [wBuffer + SS_DEALT]
+	ld l, a
+	ld h, 0
+	ld a, [wBuffer + SS_TAKEN]
+	ld e, a
+	ld d, 0
+	ld a, l
+	sub e
+	ld l, a
+	ld a, h
+	sbc d
+	ld h, a ; hl = ours
+	push hl
+	ld a, [wBuffer + SS_TD]
+	ld l, a
+	ld h, 0
+	ld a, [wBuffer + SS_TT]
+	ld e, a
+	ld a, l
+	sub e
+	ld l, a
+	ld a, h
+	sbc 0
+	ld h, a
+	ld de, (-STADIUM_MARGIN) & $ffff
+	add hl, de ; hl = theirs - margin
+	pop de ; de = ours
+	ld a, e
+	sub l
+	ld a, d
+	sbc h ; ours - theirs: negative (signed) iff ours < theirs
+	bit 7, a
+	jr z, .noMarginTerm
+	ss_add 153
+.noMarginTerm
+; --- BattleAI_ScoreAttackVsSwitch's terms
+; low HP while the target is healthier: +100
+	ld a, [wEnemyMonHP]
+	ld d, a
+	ld a, [wEnemyMonHP + 1]
+	ld e, a
+	push bc
+	ld hl, wEnemyMonMaxHP
+	call .ratioOfHL
+	pop bc
+	cp STADIUM_LOWHP
+	jr nc, .notLow
+	push bc
+	call .targetStruct
+	inc hl
+	ld d, [hl]
+	inc hl
+	ld e, [hl]
+	call .targetStruct
+	ld bc, wEnemyMon1MaxHP - wEnemyMon1
+	add hl, bc
+	call .ratioOfHL
+	pop bc
+	cp STADIUM_LOWHP + 1
+	jr c, .notLow
+	ss_add 100
+.notLow
+; trapped by the player and slower: +128; otherwise our KO -255 and sleep
+	ld a, [wPlayerBattleStatus1]
+	bit USING_TRAPPING_MOVE, a
+	jr z, .notTrapped
+	ld a, [wBuffer + SS_FASTER]
+	and a
+	jr nz, .notTrapped
+	ss_add 128
+	jr .trapDone
+.notTrapped
+	ld a, [wBuffer + SS_DEALT]
+	cp $fa
+	jr c, .noOwnKO
+	ss_add -255
+.noOwnKO
+	ld a, [wEnemyMonStatus]
+	and SLP_MASK ; turns left
+	jr z, .trapDone
+	ld e, a
+	ld a, 4
+	sub e ; 4 - turns (signed)
+	sra a ; / 2, toward minus infinity: C truncates toward zero, so fix odd negatives
+	jr nc, .halfDone
+	bit 7, a
+	jr z, .halfDone
+	inc a
+.halfDone
+	ss_add -77
+	and a
+	jr z, .trapDone
+.sleepLoop ; subtract 77 per unit of (4 - turns) / 2 (adds when it is negative)
+	bit 7, a
+	jr nz, .sleepNeg
+	ss_add -77
+	dec a
+	jr nz, .sleepLoop
+	jr .trapDone
+.sleepNeg
+	ss_add 77
+	inc a
+	jr nz, .sleepLoop
+.trapDone
+; Toxic counter x77, the running score x2 if also seeded
+	ld a, [wEnemyBattleStatus3]
+	bit BADLY_POISONED, a
+	jr z, .noToxic
+	ld a, [wEnemyToxicCounter]
+	and a
+	jr z, .seedCheck
+.toxicLoop
+	push af
+	ss_add 77
+	pop af
+	dec a
+	jr nz, .toxicLoop
+.seedCheck
+	ld a, [wEnemyBattleStatus2]
+	bit SEEDED, a
+	jr z, .noToxic
+	sla c
+	rl b
+.noToxic
+; stat stages: 4 per Atk/Def/Spd/Spc stage, 26 per accuracy/evasion stage,
+; positive below neutral (push out), negative above (keep the boost)
+	ld hl, wEnemyMonAttackMod
+	ld e, 0
+.stage
+	ld a, [hli]
+	push hl
+	push de
+	ld d, a ; d = stage (1-13, 7 neutral)
+	ld a, e
+	cp 4
+	ld e, 4
+	jr c, .gotWeight
+	ld e, 26
+.gotWeight
+.stageLoop
+	ld a, d
+	cp 7
+	jr z, .stageDone
+	jr nc, .above
+	ld a, e
+	ld l, a
+	ld h, 0
+	add hl, bc
+	ld b, h
+	ld c, l
+	inc d
+	jr .stageLoop
+.above
+	ld a, c
+	sub e
+	ld c, a
+	ld a, b
+	sbc 0
+	ld b, a
+	dec d
+	jr .stageLoop
+.stageDone
+	pop de
+	pop hl
+	inc e
+	ld a, e
+	cp 6
+	jr c, .stage
+; screens and a Substitute are worth keeping
+	ld a, [wEnemyBattleStatus3]
+	bit HAS_REFLECT_UP, a
+	jr z, .noReflect
+	ss_add -52
+.noReflect
+	ld a, [wEnemyBattleStatus3]
+	bit HAS_LIGHT_SCREEN_UP, a
+	jr z, .noScreen
+	ss_add -52
+.noScreen
+	ld a, [wEnemyBattleStatus2]
+	bit HAS_SUBSTITUTE_UP, a
+	jr z, .noSub
+	ss_add -77
+.noSub
+; the threat-move urgency (4833): if we would take less than the target would,
+; and we are faster while their best hit twice reaches our HP, -153
+	ld a, [wBuffer + SS_TAKEN]
+	ld e, a
+	ld a, [wBuffer + SS_TT]
+	cp e
+	jr c, .noUrgency
+	jr z, .noUrgency
+	ld a, [wBuffer + SS_FASTER]
+	and a
+	jr z, .noUrgency
+	ld a, [wBuffer + SS_TAKEN]
+	cp 128
+	jr c, .noUrgency
+	ss_add -153
+.noUrgency
+; the difficulty constant and Stadium's baseline, then clamp to 0..255
+	ss_add STADIUM_BASELINE - 127
+	bit 7, b
+	jr nz, .stay
+	ld a, b
+	and a
+	ld a, $ff
+	jr nz, .roll
+	ld a, c
+.roll
+	ld c, a
+	push bc
+	call Random ; a = 0..255 (keep the score out of its way)
+	pop bc
+	cp $ff
+	jr z, .stay ; Random(0..254), as BattleAI_RandomBelowInclusive(0xFE)
+	cp c ; carry iff the roll is below the score: switch
+	ret
+.stay
+	and a
+	ret
+; hl -> the target's party struct (wBuffer + AI_BUF_BESTPARTYSLOT). Clobbers af, bc.
+.targetStruct
+	ld a, [wBuffer + AI_BUF_BESTPARTYSLOT]
+	ld hl, wEnemyMon1
+	ld bc, PARTYMON_STRUCT_LENGTH
+	jp AddNTimes
+; Carry SET if the target outspeeds the player (party Speed, quartered if
+; paralysed, against wBattleMonSpeed). Preserves de.
+.targetFaster
+	push de
+	call .targetStruct
+	push hl
+	ld bc, wEnemyMon1Status - wEnemyMon1
+	add hl, bc
+	ld a, [hl]
+	pop hl
+	ld bc, wEnemyMon1Speed - wEnemyMon1
+	add hl, bc
+	ld d, [hl]
+	inc hl
+	ld e, [hl]
+	and 1 << PAR
+	jr z, .speedReady
+	srl d
+	rr e
+	srl d
+	rr e
+.speedReady
+	ld hl, wBattleMonSpeed
+	ld a, [hli]
+	ld b, a
+	ld c, [hl]
+	ld a, c
+	sub e
+	ld a, b
+	sbc d ; carry iff player < target
+	pop de
+	ret
+; a = min(255, de x 255 / [hl]) where hl -> a big-endian HP word. Normalizes both
+; until the HP fits a byte (as the Gen 1 HP bar does), then divides de x 256 by it.
+; Clobbers af, b, de, hl.
+.ratioOfHL
+	ld a, [hli]
+	ld l, [hl]
+	ld h, a
+.norm
+	ld a, h
+	and a
+	jr z, .normDone
+	srl h
+	rr l
+	srl d
+	rr e
+	jr .norm
+.normDone
+	ld a, l
+	and a
+	jr z, .full
+	ld a, d
+	and a
+	jr nz, .full
+	ld a, e
+	cp l
+	jr nc, .full
+	ldh [hDividend], a
+	xor a
+	ldh [hDividend + 1], a
+	ld a, l
+	ldh [hDivisor], a
+	ld b, 2
+	call Divide
+	ldh a, [hQuotient + 3]
+	ret
+.full
+	ld a, $ff
+	ret
+ENDC
+
 ; AIShouldSwitch's generic T3 case (moved here from "Trainer AI Switching", $2C,
 ; on 2026-11-18 to free that bank; behaviour and the Random call order unchanged).
 ; Carry SET if the player's primary type hits the active mon for more than neutral

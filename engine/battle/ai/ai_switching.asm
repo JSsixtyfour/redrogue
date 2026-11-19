@@ -676,6 +676,19 @@ AIShouldSwitch::
 	jp c, .stay
 	jp .switch
 .noTrap
+IF DEF(STADIUM_SWITCH)
+; E2b test build only: at T3, Pokemon Stadium 1's summed, probabilistic decision
+; replaces every voluntary trigger below (AIStadiumSwitch, ai_postko.asm). The
+; emergency triggers above are identical in both builds. T2 keeps the chain.
+	ld a, [wAITier]
+	dec a
+	cp AI_TIER_EXPERT
+	jr c, .ourChain
+	farcall AIStadiumSwitch
+	jp c, .switch
+	jp .stay
+.ourChain
+ENDC
 
 ; B17 push-out terms (Pokemon Stadium 1's; see AIPushOutTerms): badly poisoned
 ; with the counter at 2+ (1+ if seeded), or accuracy lowered, and no reliable
