@@ -25,7 +25,7 @@ TOGGLES = parse_rgbds_constants(ROOT / "constants/toggle_constants.asm")
 MAP_SIZE, STATE_SIZE = 400, 102
 CTRL = MAP_SIZE + STATE_SIZE              # offset of the control word in region A
 MAGIC, MAGIC_MASK = 0xC0, 0xE0
-LIVE_2, MADE, HOUSE_2, OPENING_2 = 0x01, 0x02, 0x04, 0x10
+LIVE_2, MADE, HOUSE_2, BALLS_2, OPENING_2 = 0x01, 0x02, 0x04, 0x08, 0x10
 FACING = {"N": "S", "W": "E", "E": "W"}   # floor 1's opening wall -> floor 2's
 FLOOR_BIT = 0x80
 FG_WARP, SECOND_WARP, FIRST_HOUSE_WARP = 31, 3, 3
@@ -61,6 +61,9 @@ class ForestDeepFloorTest(unittest.TestCase):
         raw = bytes(self.h.read_sram_bytes("sProcCaveStagingBuffer", MAP_SIZE + STATE_SIZE, bank=0))
         return raw[:MAP_SIZE], raw[MAP_SIZE:]
 
+    def balls2(self) -> bool:
+        return bool(self.ctrl()[0] & BALLS_2)
+
     def floor(self) -> int:
         return 2 if self.h.read8("wRogueFlagsBitfield2") & FLOOR_BIT else 1
 
@@ -68,15 +71,19 @@ class ForestDeepFloorTest(unittest.TestCase):
         return self.h.read_sram_bytes("sProcForestItemGot", 1, bank=0)[0] & HOUSE_MASK
 
     # --- fixtures --------------------------------------------------------
-    def deep_forest(self, house_on_2: bool | None = None) -> None:
-        """A fresh deep Forest, player on its entrance. house_on_2 forces the coin."""
+    def deep_forest(self, house_on_2: bool | None = None, balls_2: bool | None = None) -> None:
+        """A fresh deep Forest, player on its entrance. house_on_2 and balls_2
+        force the coin's bits (the house's floor, floor 2's second ball)."""
         h = self.h
         h.boot_to_lobby(battle_count=11, encounter_kind=4)
         h.write8("wStageEvent", 0)
-        if house_on_2 is not None:
+        if house_on_2 is not None or balls_2 is not None:
             def coin(_context) -> None:
                 b = h.pyboy.register_file.B
-                h.pyboy.register_file.B = (b | HOUSE_2) if house_on_2 else (b & ~HOUSE_2 & 0xFF)
+                for want, bit in ((house_on_2, HOUSE_2), (balls_2, BALLS_2)):
+                    if want is not None:
+                        b = (b | bit) if want else (b & ~bit & 0xFF)
+                h.pyboy.register_file.B = b
             h.register_hook("ForestDeepLobbyDecide.haveCtrl", coin)
         h.preload_and_enter_wild_area(FOREST, "forest")
         h.write8("wProcForestWildBudget", 0)
@@ -182,7 +189,7 @@ class ForestDeepFloorTest(unittest.TestCase):
         self.assertEqual((warps[1][0], warps[2][0]), (0xFF, 0xFF), "floor 2's exit is still open")
         self.assertEqual(warps[FG_WARP][2:], [FG_WARP, FOREST], "floor 2's opening does not lead up")
         self.assertEqual(warps[SECOND_WARP][2:], [SECOND_WARP, FOREST])
-        for slot in (1, 3, 4, 5, 6, 7):
+        for slot in (1, 4, 5, 6, 7) if self.balls2() else (1, 3, 4, 5, 6, 7):
             self.assertEqual((h.read8(f"wSprite{slot:02d}StateData2MapY"),
                               h.read8(f"wSprite{slot:02d}StateData2MapX")), (0, 0), f"slot {slot} not parked")
 
@@ -262,21 +269,53 @@ class ForestDeepFloorTest(unittest.TestCase):
         ball = h.read_sram_bytes("sProcForestBallXY", 8, bank=0)
         self.assertEqual((h.read8("wSprite08StateData2MapY"), h.read8("wSprite08StateData2MapX")),
                          (ball[6], ball[7]), "the encounter is not on ball 4's dead end")
-        for slot in (1, 3, 4, 5, 6, 7):
+        for slot in (1, 4, 5, 6, 7) if self.balls2() else (1, 3, 4, 5, 6, 7):
             self.assertEqual(h.read8(f"wSprite{slot:02d}StateData1"), 0, f"slot {slot} still has a picture")
         self.assertNotEqual(h.read8("wSprite02StateData1"), 0, "floor 2's ball has no picture")
         self.assertEqual(self.toggle_bit("TOGGLE_WILD_AREA_POKEBALL_1"), 0, "floor 2's ball is hidden")
+        # Ball 2 is per floor: floor 1's was taken, floor 2's is its own and shown.
+        self.assertEqual(self.toggle_bit("TOGGLE_WILD_AREA_POKEBALL_2"), 0, "floor 2 took floor 1's ball 2")
         after = h.read_bytes("wToggleableObjectFlags", 32)
-        ball1 = TOGGLES["TOGGLE_WILD_AREA_POKEBALL_1"]
+        per_floor = {TOGGLES["TOGGLE_WILD_AREA_POKEBALL_1"], TOGGLES["TOGGLE_WILD_AREA_POKEBALL_2"]}
         for i in range(32 * 8):
-            if i != ball1:
+            if i not in per_floor:
                 self.assertEqual(after[i // 8] >> i % 8 & 1, toggles[i // 8] >> i % 8 & 1,
                                  f"floor 2's first entry changed toggle ${i:02x}")
         self.assertEqual(h.read8("wOptionalEncounterState") & 4, 0, "the encounter reads as resolved")
 
         self.scripted_warp(FG_WARP, "up")
+        self.assertEqual(self.toggle_bit("TOGGLE_WILD_AREA_POKEBALL_2"), 1, "floor 1's taken ball 2 came back")
         self.assertEqual(h.read8("wSprite08StateData1"), 0, "the encounter followed the player up")
         self.assertNotEqual(h.read8("wSprite01StateData1"), 0, "floor 1's boss is gone after the trip")
+
+    def test_second_ball_is_per_floor(self) -> None:
+        """D1: a two-ball floor 2 shows ball 2 on its own dead end; taking it
+        there leaves floor 1's ball 2 as it was, and it stays taken."""
+        h = self.h
+        self.deep_forest(house_on_2=False, balls_2=True)
+        self.scripted_warp(FG_WARP, "down")
+        self.assertTrue(self.balls2())
+        pos = lambda s: (h.read8(f"wSprite{s:02d}StateData2MapY"), h.read8(f"wSprite{s:02d}StateData2MapX"))
+        self.assertNotEqual(h.read8("wSprite03StateData1"), 0, "floor 2's second ball has no picture")
+        self.assertNotEqual(pos(3), (0, 0), "floor 2's second ball is parked")
+        self.assertNotIn(pos(3), {pos(2), pos(8)}, "floor 2's second ball shares a cell")
+        self.assertEqual(self.toggle_bit("TOGGLE_WILD_AREA_POKEBALL_2"), 0, "floor 2's ball 2 starts taken")
+        n = TOGGLES["TOGGLE_WILD_AREA_POKEBALL_2"]
+        h.write8("wToggleableObjectFlags", h.read8("wToggleableObjectFlags", offset=n // 8) | 1 << n % 8,
+                 offset=n // 8)                                    # taken on floor 2
+        self.scripted_warp(FG_WARP, "up")
+        self.assertEqual(self.toggle_bit("TOGGLE_WILD_AREA_POKEBALL_2"), 0, "floor 1's ball 2 took floor 2's")
+        self.assertTrue(h.read8("wStatusFlags2") & 0x80, "floor 2's taken ball 2 was not kept")
+        self.scripted_warp(FG_WARP, "down")
+        self.assertEqual(self.toggle_bit("TOGGLE_WILD_AREA_POKEBALL_2"), 1, "floor 2's ball 2 came back")
+
+    def test_one_ball_floor_removes_ball_2(self) -> None:
+        h = self.h
+        self.deep_forest(house_on_2=False, balls_2=False)
+        self.scripted_warp(FG_WARP, "down")
+        self.assertFalse(self.balls2())
+        self.assertEqual(h.read8("wSprite03StateData1"), 0, "a one-ball floor 2 shows ball 2")
+        self.assertEqual((h.read8("wSprite03StateData2MapY"), h.read8("wSprite03StateData2MapX")), (0, 0))
 
     def test_no_encounter_leaves_floor_2_empty(self) -> None:
         h = self.h

@@ -207,6 +207,13 @@ class RedRogueHarness:
                 if not self.allow_deep_forest_floor:
                     self.pyboy.register_file.B = 0
             self.register_hook("ForestDeepLobbyDecide.decided", ordinary_forest)
+        # The Facility's deep floor, the same way (FacilityDeepLobbyDecide).
+        self.allow_deep_facility_floor = False
+        if "FacilityDeepLobbyDecide.decided" in self.symbols._symbols:
+            def ordinary_facility(_context):
+                if not self.allow_deep_facility_floor:
+                    self.pyboy.register_file.B = 0
+            self.register_hook("FacilityDeepLobbyDecide.decided", ordinary_facility)
         # AI heuristic execution coverage (AI_BACKLOG L3): with
         # REDROGUE_AI_COVERAGE=<file>, hook every label in ai_heuristics'
         # source-derived inventory and, at close, append one JSON line naming

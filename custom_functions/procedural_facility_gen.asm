@@ -52,6 +52,11 @@ DEF PFAC_WALL    EQU 46   ; solid interior wall AND the map border/void block.
 DEF PFAC_EXIT_N  EQU $08
 DEF PFAC_EXIT_E  EQU $04
 DEF PFAC_EXIT_W  EQU $05
+	; The deep floor mirrors these (constants/facility_deep_constants.asm).
+	ASSERT PFAC_WALL == FACILITY_DEEP_WALL && PFAC_EXIT_N == FACILITY_DEEP_EXIT_N
+	ASSERT PFAC_EXIT_E == FACILITY_DEEP_EXIT_E && PFAC_EXIT_W == FACILITY_DEEP_EXIT_W
+	ASSERT PFAC_SIZE == FACILITY_DEEP_SIZE && PFAC_STRIDE == FACILITY_DEEP_STRIDE
+	ASSERT PFAC_BASE == FACILITY_DEEP_BASE
 
 ; --- Generation-time pseudo values (never written to the final map) ---
 DEF PFAC_UNTOUCHED EQU $FF   ; PFacFillUntouched's seed value: "nothing has
@@ -6286,6 +6291,7 @@ PFacPreload::
     ld [sProcFacilitySignVariant], a
 
     farcall OptionalFacilityAssignEncounter ; bank 1 stays open
+    farcall FacilityDeepLobbyDecide         ; the deep floor (facility_deep_floor.asm); SRAM closed
 
     ; Reset reused run events (shared cave events; facility never concurrent).
     ResetEvent EVENT_BEAT_PC_BOSS

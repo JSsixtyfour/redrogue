@@ -673,6 +673,9 @@ FGResolveArrival::
 .notCave
 	cp PROCEDURAL_FACILITY
 	jr nz, .notFacility
+	; The deep floor first: a trip between the floors swaps them and re-aims the
+	; arrival (custom_functions/facility_deep_floor.asm).
+	farcall FacilityDeepSeam
 	; So do the Facility's dynamic warp pads (FOLLOWUPS #71).
 	farcall PFacResolveArrival
 	ret

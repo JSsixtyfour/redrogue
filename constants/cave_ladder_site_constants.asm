@@ -192,9 +192,8 @@ DEF CAVE_DEEP_ODDS         EQU 64  ; 25%
 ; the kill switch. The PyBoy harness decides caves ordinary on its own unless a
 ; test sets allow_deep_cave_floor, so B1F fixtures are unaffected either way.
 DEF CAVE_DEEP_ENABLED      EQU 1
-; Floor 2 has exactly one item ball: only ball 1 has an off-floor toggle bit
-; (wStatusFlags2 bit 6). A second would need a second spare SAVED bit.
-DEF CAVE_DEEP_BALLS        EQU 1
+; Floor 2 keeps ball 1, and ball 2 when CAVE_DEEP_FLAGS says so (D1): their
+; off-floor toggle bits are wStatusFlags2 bits 6 and 7.
 ; While floor 2 generates (in the arrival seam), what its PCPreloadCave would
 ; otherwise re-roll for floor 1 is saved here, in the same idle Facility
 ; scratch: the CaveDeepSavedWram list, then the 10 SRAM bytes from
@@ -204,4 +203,9 @@ DEF CAVE_DEEP_SAVE         EQUS "(sProcFacilityGenScratch + CAVE_DEEP_STATE_SIZE
 DEF CAVE_DEEP_NUM_SAVED_WRAM EQU 18
 DEF CAVE_DEEP_SAVED_BUDGET EQU CAVE_DEEP_NUM_SAVED_WRAM - 1 ; its offset in CAVE_DEEP_SAVE
 DEF CAVE_DEEP_SRAM_TAIL    EQU 10  ; sProcCavePalette..sStageEventHideoutFloor
+; The control byte has no spare bit (LIVE_2, MADE, the resident, SETTLED), so
+; the deep cave's other choices are a byte after the save, written with the
+; decision and meaningful only while the control word is valid.
+DEF CAVE_DEEP_FLAGS        EQUS "(CAVE_DEEP_SAVE + CAVE_DEEP_NUM_SAVED_WRAM + CAVE_DEEP_SRAM_TAIL)"
+DEF BIT_CAVE_DEEP_BALLS_2  EQU 0   ; floor 2 keeps ball 2 too (slot 3)
 	ASSERT CAVE_DEEP_STATE_SIZE + 2 + CAVE_DEEP_NUM_SAVED_WRAM + CAVE_DEEP_SRAM_TAIL <= 81

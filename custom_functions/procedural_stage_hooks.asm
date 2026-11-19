@@ -85,7 +85,9 @@ ProcBossPatchStageSprite::
 	ld b, a
 	jr .close
 .facility
-	farcall OptionalEncounterPatchSprite ; slot 13, picture 0 unless it stands here
+	; The deep floor's reconcile first, then slot 13's picture (0 unless the
+	; encounter stands here): custom_functions/facility_deep_floor.asm.
+	farcall FacilityDeepReconcile
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	ld a, BMODE_ADVANCED
@@ -172,7 +174,8 @@ ProcBossPatchStageSprite::
 	ld [wSprite10StateData1 + SPRITESTATEDATA1_PICTUREID], a
 	ld a, e
 	ld [wSprite11StateData1 + SPRITESTATEDATA1_PICTUREID], a
-	ret
+	; The deep Facility's floor 2 pictures, last.
+	farjp FacilityDeepPatchSprites
 
 .cemetery
 	; The cemetery has NO overworld boss sprite - its boss is a coordinate
@@ -302,7 +305,7 @@ ProcStageLoadDispatch::
 	farcall PFacFinalize
 	pop af
 	call ProcGenerationEndDoubleSpeed
-	farcall OptionalEncounterPlaceFacility
+	farcall FacilityDeepAfterFinalize ; OptionalEncounterPlaceFacility, then the deep floor
 	ret
 .notFacility
 	cp PROCEDURAL_CEMETERY_1

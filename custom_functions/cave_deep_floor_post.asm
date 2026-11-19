@@ -7,7 +7,8 @@ SECTION "Cave Deep Floor 2", ROMX, BANK[$15]
 
 	ASSERT BANK(sProcCaveStagingBuffer) == 0
 	ASSERT BANK(sProcFacilityGenScratch) == 1
-	ASSERT CAVE_DEEP_BALLS == 1 ; only slot 2's ball stays on floor 2
+	; Slot 2's ball stays on floor 2, and slot 3's when BIT_CAVE_DEEP_BALLS_2.
+	ASSERT CAVE_DEEP_FLAGS + 1 <= sProcFacilityGenScratch + 72 ; below the fake-ball pairs
 
 ; Temporaries for the one-time conversion: wBuffer is free after PCFinalizeCave.
 DEF wDeepExitX EQUS "(wBuffer + 0)"
@@ -39,7 +40,10 @@ CaveDeepPatchSprites::
 	ret z                               ; floor 1: CaveFallbackPatchSprites zeroed 8/9
 	xor a
 	ld [wSprite01StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	bit BIT_CAVE_DEEP_BALLS_2, e
+	jr nz, .ball2Stays
 	ld [wSprite03StateData1 + SPRITESTATEDATA1_PICTUREID], a
+.ball2Stays
 	ld [wSprite04StateData1 + SPRITESTATEDATA1_PICTUREID], a
 	ld [wSprite05StateData1 + SPRITESTATEDATA1_PICTUREID], a
 	ld [wSprite06StateData1 + SPRITESTATEDATA1_PICTUREID], a
@@ -124,11 +128,18 @@ CaveDeepPostPass::
 	inc hl
 	ld [hl], PROCEDURAL_CAVE_1
 	; The removed objects stand nowhere (their pictures are 0 already).
+	call CaveDeepPostCtrl               ; e = the flags (the settle clobbered them)
 	xor a
 	ld hl, wSprite01StateData2MapY
 	ld [hli], a
 	ld [hl], a
-FOR n, 3, 8
+	bit BIT_CAVE_DEEP_BALLS_2, e
+	jr nz, .ball2Stays
+	ld hl, wSprite03StateData2MapY
+	ld [hli], a
+	ld [hl], a
+.ball2Stays
+FOR n, 4, 8
 	ld hl, wSprite{02d:n}StateData2MapY
 	ld [hli], a
 	ld [hl], a
@@ -342,7 +353,8 @@ CaveDeepSettleFloor2:
 	ld [hl], CAVESUB_FLOOR
 	ret
 
-; Out: carry = a deep cave, a = the control byte. Leaves SRAM closed.
+; Out: carry = a deep cave, a = the control byte, e = CAVE_DEEP_FLAGS (when
+; deep). Leaves SRAM closed. Clobbers b.
 CaveDeepPostCtrl:
 	call CaveDeepPostOpen0
 	ld a, BANK(sProcFacilityGenScratch)
@@ -356,6 +368,8 @@ CaveDeepPostCtrl:
 	and CAVE_DEEP_MAGIC_MASK
 	cp CAVE_DEEP_MAGIC
 	jr nz, .no
+	ld a, [CAVE_DEEP_FLAGS]
+	ld e, a
 	call CaveDeepPostClose
 	ld a, b
 	scf

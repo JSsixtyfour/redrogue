@@ -58,6 +58,7 @@ ForestDeepLobbyDecide::
 	res BIT_ROGUE_DEEP_FLOOR, [hl]
 	ld hl, wStatusFlags2
 	res BIT_DEEP_OFF_BALL, [hl]
+	res BIT_DEEP_OFF_BALL_2, [hl]
 	call Random
 	ld d, a                             ; the deep roll
 	call Random
@@ -81,8 +82,8 @@ ENDC
 	xor a
 	dec b
 	jr nz, .write                       ; ordinary: the control word 0/$FF
-	ld a, e
-	and 1 << BIT_FOREST_DEEP_HOUSE_2
+	ld a, e                             ; the coin: bit 2 the house, bit 3 the second ball
+	and (1 << BIT_FOREST_DEEP_HOUSE_2) | (1 << BIT_FOREST_DEEP_BALLS_2)
 	or FOREST_DEEP_MAGIC
 	ld b, a
 	; Floor 2 replaces the grotto: an encounter rolled for it stands on floor 2.
@@ -168,7 +169,8 @@ ForestDeepFirstDescent:
 	call FDCloseSRAM
 	ld a, 1
 	call ForestDeepFlipTo
-	call ForestDeepSaveExternals
+	ld d, DEEP_AREA_FOREST
+	farcall DeepSaveExternals       ; deep_floor_core.asm
 	call FDOpenSRAM
 	ld hl, FOREST_DEEP_SHADOW_STATE
 	ld de, sProcForestExitI
@@ -232,7 +234,12 @@ ForestDeepFirstDescent:
 	ld b, a
 	call FDCloseSRAM
 	push bc
-	call ForestDeepRestoreExternals
+	ld de, DEEP_AREA_FOREST << 8 | 1 ; group B too: the house is on floor 1
+	bit BIT_FOREST_DEEP_HOUSE_2, b
+	jr z, .restore
+	dec e                               ; on floor 2: its offers are its own
+.restore
+	farcall DeepRestoreExternals
 	pop bc
 	call FDOpenSRAM
 	bit BIT_FOREST_DEEP_HOUSE_2, b
@@ -247,92 +254,8 @@ ForestDeepFirstDescent:
 	call FDWriteCtrl
 	jp FDCloseSRAM
 
-; What floor 2's PFinalizeForest rewrites for the Forest as a whole (Forest
-; Phase 0, item 6). The "always" part, then the rest house's lobby offers and
-; residents, which come back only when the house is on floor 1 (on floor 2 its
-; own generation rolls the house's offers, once). Whole bytes: between the save
-; and the restore nothing but floor 2's generation runs.
-ForestDeepSavedWram:
-	dw wRoguePokemon1, wRoguePokemonForm1, wStageEvent, wProcForestWildBudget
-	DEF FOREST_DEEP_NUM_ALWAYS EQU (@ - ForestDeepSavedWram) / 2
-FOR n, 17                              ; wroguenpctradegive..wroguenpcclass
-	dw wroguenpctradegive + n
-ENDR
-	ASSERT wroguenpcclass + 1 - wroguenpctradegive == 17
-	dw wroguenpctradeform
-	dw wCompletedInGameTradeFlags + TRADE_FOR_RANDOM / 8
-	dw wEventFlags + EVENT_BOUGHT_POKEMON / 8
-	dw wToggleableObjectFlags + TOGGLE_PFRESTHOUSE_RENTAL_OFFICIAL / 8
-	dw wToggleableObjectFlags + TOGGLE_PFRESTHOUSE_GAMBLER / 8
-	ASSERT TOGGLE_PFRESTHOUSE_GAMBLER - TOGGLE_PFRESTHOUSE_RENTAL_OFFICIAL == 6
-	ASSERT (@ - ForestDeepSavedWram) / 2 == FOREST_DEEP_NUM_SAVED_WRAM
-
-; The WRAM list, then FOREST_DEEP_SRAM_TAIL bytes from sProcCavePalette (the
-; palettes and the stage-event hideout). Clobbers everything; SRAM closed.
-ForestDeepSaveExternals:
-	call FDOpenSRAM
-	ld hl, ForestDeepSavedWram
-	ld de, FOREST_DEEP_SAVE
-	ld c, FOREST_DEEP_NUM_SAVED_WRAM
-.wram
-	ld a, [hli]
-	push hl
-	ld h, [hl]
-	ld l, a
-	ld a, [hl]
-	ld [de], a
-	pop hl
-	inc hl
-	inc de
-	dec c
-	jr nz, .wram
-	ld hl, sProcCavePalette
-	ld c, FOREST_DEEP_SRAM_TAIL
-.sram
-	ld a, [hli]
-	ld [de], a
-	inc de
-	dec c
-	jr nz, .sram
-	jp FDCloseSRAM
-
-; In: b = the control byte. Puts back the "always" part and the SRAM tail, and
-; the house part when the house is on floor 1. Clobbers everything; SRAM closed.
-ForestDeepRestoreExternals:
-	push bc
-	call FDOpenSRAM
-	ld hl, ForestDeepSavedWram
-	ld de, FOREST_DEEP_SAVE
-	ld c, FOREST_DEEP_NUM_ALWAYS
-	call .wram
-	pop bc
-	bit BIT_FOREST_DEEP_HOUSE_2, b
-	ld c, FOREST_DEEP_NUM_SAVED_WRAM - FOREST_DEEP_NUM_ALWAYS
-	call z, .wram                       ; the house is on floor 1: its offers stand
-	ld hl, FOREST_DEEP_SAVE + FOREST_DEEP_NUM_SAVED_WRAM
-	ld de, sProcCavePalette
-	ld c, FOREST_DEEP_SRAM_TAIL
-.sram
-	ld a, [hli]
-	ld [de], a
-	inc de
-	dec c
-	jr nz, .sram
-	jp FDCloseSRAM
-; hl = the list, de = the save area, c = how many. Out: hl/de past them.
-.wram
-	ld a, [hli]
-	push hl
-	ld h, [hl]
-	ld l, a
-	ld a, [de]
-	ld [hl], a
-	pop hl
-	inc hl
-	inc de
-	dec c
-	jr nz, .wram
-	ret
+; What floor 2's PFinalizeForest rewrites for the Forest as a whole is saved
+; and restored by the shared core (DeepForestSavedWram, deep_floor_core.asm).
 
 ; ProcGenerationBegin/EndDoubleSpeed ($3C) are local to their section, and a
 ; farcall would lose their a result, so the pair is repeated here (as the cave).
@@ -423,11 +346,16 @@ ForestDeepAfterFinalize::
 ; SRAM open. Keeps b.
 .park
 	xor a
-FOR n, 1, FOREST_OPTIONAL_MON
-	IF n != 2                           ; slot 2 is ball 1, floor 2's ball
-		ld [wSprite{02d:n}StateData2MapY], a
-		ld [wSprite{02d:n}StateData2MapX], a
-	ENDC
+	ld [wSprite01StateData2MapY], a     ; the boss
+	ld [wSprite01StateData2MapX], a
+	bit BIT_FOREST_DEEP_BALLS_2, b
+	jr nz, .ball2Stays                  ; slot 2 is ball 1, floor 2's ball; slot 3 ball 2
+	ld [wSprite03StateData2MapY], a
+	ld [wSprite03StateData2MapX], a
+.ball2Stays
+FOR n, 4, FOREST_OPTIONAL_MON
+	ld [wSprite{02d:n}StateData2MapY], a
+	ld [wSprite{02d:n}StateData2MapX], a
 ENDR
 	ld a, [sProcForestBallXY + 6]       ; ball 4's dead end (sprite coordinates)
 	ld [wSprite{02d:FOREST_OPTIONAL_MON}StateData2MapY], a
@@ -541,101 +469,18 @@ FDBlockAt:
 ; ------------------------------------------------------------
 
 ; In: a = the floor being arrived on (0 = floor 1, 1 = floor 2), for a real warp
-; between the floors. Records the floor, swaps ball 1's toggle with its
-; off-floor copy, then makes the live copy that floor's. No-op on a Forest that
-; is not deep or when already on that floor. Clobbers everything.
+; between the floors. The flip, the reconcile and the exchange are the shared
+; core's (deep_floor_core.asm, DeepForestArea). Clobbers everything.
 ForestDeepFlipTo:
-	ld c, a
-	push bc
-	call FDOpenSRAM
-	call FDReadCtrl
-	push af
-	call FDCloseSRAM
-	pop af
-	pop bc
-	ret nc
-	call FDFloorBit
-	cp c
-	ret z
-	ld hl, wRogueFlagsBitfield2
-	ld a, [hl]
-	xor 1 << BIT_ROGUE_DEEP_FLOOR
-	ld [hl], a
-	DEF FOREST_DEEP_BALL_MASK EQU 1 << (TOGGLE_WILD_AREA_POKEBALL_1 % 8)
-	ld a, [wToggleableObjectFlags + TOGGLE_WILD_AREA_POKEBALL_1 / 8]
-	and FOREST_DEEP_BALL_MASK
-	ld b, a                             ; nz = this floor's ball 1 is hidden
-	ld a, [wStatusFlags2]
-	and 1 << BIT_DEEP_OFF_BALL
-	jr z, .offShown
-	ld a, b
-	and a
-	jr nz, .live                        ; both hidden
-	jr .exchangeBall
-.offShown
-	ld a, b
-	and a
-	jr z, .live                         ; both shown
-.exchangeBall
-	ld hl, wToggleableObjectFlags + TOGGLE_WILD_AREA_POKEBALL_1 / 8
-	ld a, [hl]
-	xor FOREST_DEEP_BALL_MASK
-	ld [hl], a
-	ld hl, wStatusFlags2
-	ld a, [hl]
-	xor 1 << BIT_DEEP_OFF_BALL
-	ld [hl], a
-.live
-	; fall through: the live copy follows the new floor bit
+	ld e, a
+	ld d, DEEP_AREA_FOREST
+	farjp DeepFlipTo
 
 ; Every PROCEDURAL_FOREST load, before anything reads the Forest's SRAM
-; (ProcBossPatchStageSprite's Forest branch), and the end of every flip. A deep
-; Forest whose live copy holds the other floor than the saved bit says (a reset
-; without saving) is exchanged back. Never touches WRAM. Clobbers everything.
+; (ProcBossPatchStageSprite's Forest branch). Clobbers everything.
 ForestDeepReconcile::
-	call FDOpenSRAM
-	call FDReadCtrl
-	jp nc, FDCloseSRAM
-	and 1 << BIT_FOREST_DEEP_LIVE_2
-	ASSERT BIT_FOREST_DEEP_LIVE_2 == 0
-	ld c, a
-	call FDFloorBit
-	cp c
-	jp z, FDCloseSRAM
-	; fall through, SRAM open
-
-; Exchanges the live Forest with the shadow floor: the 400 B map and the 102 B
-; state block, then the control word's LIVE bit. About 25,000 cycles. Touches no
-; WRAM. Leaves SRAM closed. Clobbers everything.
-ForestDeepExchange:
-	ld hl, sProcForestStagingBuffer
-	ld de, FOREST_DEEP_SHADOW_MAP
-	ld c, FOREST_DEEP_MAP_SIZE / 2
-	call FDSwapSpan
-	ld c, FOREST_DEEP_MAP_SIZE / 2
-	call FDSwapSpan
-	ASSERT FOREST_DEEP_MAP_SIZE % 2 == 0 && FOREST_DEEP_MAP_SIZE / 2 < 256
-	ld hl, sProcForestExitI
-	ld c, FOREST_DEEP_STATE_SIZE        ; de = FOREST_DEEP_SHADOW_STATE already
-	ASSERT FOREST_DEEP_SHADOW_STATE == FOREST_DEEP_SHADOW_MAP + FOREST_DEEP_MAP_SIZE
-	call FDSwapSpan
-	call FDReadCtrl                     ; valid: checked by every caller
-	xor 1 << BIT_FOREST_DEEP_LIVE_2
-	call FDWriteCtrl
-	jp FDCloseSRAM
-
-; hl, de = two bank-0 spans, c = the count (1-255). Out: hl/de past them.
-; Clobbers a/b/c.
-FDSwapSpan:
-	ld a, [de]
-	ld b, [hl]
-	ld [hli], a
-	ld a, b
-	ld [de], a
-	inc de
-	dec c
-	jr nz, FDSwapSpan
-	ret
+	ld d, DEEP_AREA_FOREST
+	farjp DeepReconcile
 
 ; ------------------------------------------------------------
 ; Helpers. FDReadCtrl/FDWriteCtrl expect SRAM open on bank 0.
@@ -705,9 +550,16 @@ ForestDeepPatchSprites::
 	ld a, [wRogueFlagsBitfield2]
 	bit BIT_ROGUE_DEEP_FLOOR, a
 	ret z                               ; floor 1, or an ordinary forest
+	call FDOpenSRAM
+	call FDReadCtrl                     ; valid: floor 2 exists only on a deep Forest
+	ld b, a
+	call FDCloseSRAM
 	xor a
 	ld [wSprite01StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	bit BIT_FOREST_DEEP_BALLS_2, b
+	jr nz, .ball2Stays
 	ld [wSprite03StateData1 + SPRITESTATEDATA1_PICTUREID], a
+.ball2Stays
 	ld [wSprite04StateData1 + SPRITESTATEDATA1_PICTUREID], a
 	ld [wSprite05StateData1 + SPRITESTATEDATA1_PICTUREID], a
 	ld [wSprite06StateData1 + SPRITESTATEDATA1_PICTUREID], a

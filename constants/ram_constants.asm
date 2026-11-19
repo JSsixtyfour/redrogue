@@ -142,6 +142,9 @@ DEF NUM_BADGES EQU const_value
 	; toggle for the floor the player is NOT on. Saved, so it stays with the
 	; save point a reset returns to. Floor 2 is entered with it clear (shown).
 	const BIT_DEEP_OFF_BALL           ; 6
+	; The same for ball 2, which a deep floor 2 may also keep (the shared core,
+	; custom_functions/deep_floor_core.asm).
+	const BIT_DEEP_OFF_BALL_2         ; 7
 
 ; wStatusFlags3
 	const_def
@@ -688,6 +691,9 @@ DEF KEY_ITEM_MAX_ACTIVE EQU 3   ; max items in bag at once
 DEF BIT_OPTIONAL_OFFER_SHOWN EQU 0
 DEF BIT_OPTIONAL_DEFEATED    EQU 1
 DEF BIT_OPTIONAL_RESOLVED    EQU 2
+; Bit 3 (outside the mask): a deep Facility's encounter stands on floor 2, not floor 1
+; (mirrors FACILITY_DEEP_CTRL bit ENC_2 so OptionalEncounterIsCurrent needs no SRAM).
+DEF BIT_OPTIONAL_ON_FLOOR_2  EQU 3
 DEF OPTIONAL_ENCOUNTER_STATE_MASK EQU (1 << BIT_OPTIONAL_OFFER_SHOWN) | (1 << BIT_OPTIONAL_DEFEATED) | (1 << BIT_OPTIONAL_RESOLVED)
 ASSERT OPTIONAL_ENCOUNTER_STATE_MASK == %111
 

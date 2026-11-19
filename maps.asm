@@ -1490,3 +1490,7 @@ INCLUDE "custom_functions/cave_deep_floor.asm"
 INCLUDE "custom_functions/cave_deep_floor_post.asm"
 ; The Forest's deep floor (PROCEDURAL_DEEP_FLOOR_PLAN.md, Forest SPEC).
 INCLUDE "custom_functions/forest_deep_floor.asm"
+; The deep floors' shared core (Facility SPEC D0), $34.
+INCLUDE "custom_functions/deep_floor_core.asm"
+; The Facility's deep floor (Facility SPEC X1-X5), $14.
+INCLUDE "custom_functions/facility_deep_floor.asm"

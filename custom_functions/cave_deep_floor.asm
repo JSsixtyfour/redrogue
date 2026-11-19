@@ -84,13 +84,15 @@ CaveDeepSeam::
 ; Clobbers everything; leaves SRAM closed.
 ; ------------------------------------------------------------
 CaveDeepGenerateFloor2:
-	call CaveDeepSaveExternals
+	ld d, DEEP_AREA_CAVE
+	farcall DeepSaveExternals       ; deep_floor_core.asm
 	call CaveDeepBeginDoubleSpeed
 	push af
 	farcall PCPreloadCave
 	pop af
 	call CaveDeepEndDoubleSpeed
-	call CaveDeepRestoreExternals
+	ld de, DEEP_AREA_CAVE << 8 | 0   ; group A: all but the wild budget
+	farcall DeepRestoreExternals
 	call Random                         ; the B1F resident's odds (CaveSubroomPlaceLadders)
 	ld b, CAVE_DEEP_GAMBLER << CAVE_DEEP_RESIDENT_SHIFT
 	cp CAVESUB_GAMBLER_ODDS
@@ -108,103 +110,8 @@ CaveDeepGenerateFloor2:
 	call CaveDeepWriteCtrl
 	jp FGCloseSRAM
 
-; What PCPreloadCave writes for the whole cave rather than for one floor (plan
-; Phase 0, item 6, and the ResetEvents at the end of PCRollBoss): floor 1's boss,
-; the optional encounter, eight events, the wild budget (last: S4 puts it back
-; after the fresh finalize), then CAVE_DEEP_SRAM_TAIL bytes of bank 0 from
-; sProcCavePalette (the palette, the stage-event hideout and NPC sprites).
-CaveDeepSavedWram:
-	dw wRoguePokemon1, wRoguePokemonForm1
-FOR n, 7
-	dw wOptionalEncounterSpecies + n
-ENDR
-	dw wEventFlags + EVENT_BEAT_PC_BOSS / 8
-	dw wEventFlags + EVENT_BEAT_STAGE_EVENT_NPC_1 / 8
-	dw wEventFlags + EVENT_BEAT_STAGE_EVENT_NPC_2 / 8
-	dw wEventFlags + EVENT_BEAT_FACILITY_STAGE_NPC_1 / 8
-	dw wEventFlags + EVENT_BEAT_FACILITY_STAGE_NPC_2 / 8
-	dw wEventFlags + EVENT_PC_BOSS_OFFERED / 8
-	dw wEventFlags + EVENT_PC_BUDGET_ENDED / 8
-	dw wEventFlags + EVENT_PC_CALMED_SHOWN / 8
-	dw wProcCaveWildBudget
-	ASSERT (@ - CaveDeepSavedWram) / 2 == CAVE_DEEP_NUM_SAVED_WRAM
-
-CaveDeepSaveExternals:
-	call FGOpenParentSRAM
-	ld a, BANK(sProcFacilityGenScratch)
-	ld [rRAMB], a
-	ld hl, CaveDeepSavedWram
-	ld de, CAVE_DEEP_SAVE
-	ld c, CAVE_DEEP_NUM_SAVED_WRAM
-.wram
-	ld a, [hli]
-	push hl
-	ld h, [hl]
-	ld l, a
-	ld a, [hl]
-	ld [de], a
-	pop hl
-	inc hl
-	inc de
-	dec c
-	jr nz, .wram
-	xor a                               ; bank 0 before taking a bank-0 address
-	ld [rRAMB], a
-	ld hl, sProcCavePalette             ; de = right after the WRAM bytes
-	ld c, CAVE_DEEP_SRAM_TAIL
-.sram
-	xor a
-	ld [rRAMB], a
-	ld b, [hl]
-	inc a
-	ld [rRAMB], a
-	ld a, b
-	ld [de], a
-	inc hl
-	inc de
-	dec c
-	jr nz, .sram
-	jp FGCloseSRAM
-
-; Puts back all but the wild budget. Clobbers everything; leaves SRAM closed.
-CaveDeepRestoreExternals:
-	call FGOpenParentSRAM
-	ld a, BANK(sProcFacilityGenScratch)
-	ld [rRAMB], a
-	ld hl, CaveDeepSavedWram
-	ld de, CAVE_DEEP_SAVE
-	ld c, CAVE_DEEP_NUM_SAVED_WRAM - 1
-	ASSERT CAVE_DEEP_SAVED_BUDGET == CAVE_DEEP_NUM_SAVED_WRAM - 1
-.wram
-	ld a, [hli]
-	push hl
-	ld h, [hl]
-	ld l, a
-	ld a, [de]
-	ld [hl], a
-	pop hl
-	inc hl
-	inc de
-	dec c
-	jr nz, .wram
-	inc de                              ; past the budget
-	xor a                               ; bank 0 before taking a bank-0 address
-	ld [rRAMB], a
-	ld hl, sProcCavePalette
-	ld c, CAVE_DEEP_SRAM_TAIL
-.sram
-	ld a, 1
-	ld [rRAMB], a
-	ld a, [de]
-	ld b, a
-	xor a
-	ld [rRAMB], a
-	ld a, b
-	ld [hli], a
-	inc de
-	dec c
-	jr nz, .sram
-	jp FGCloseSRAM
+; What PCPreloadCave writes for the whole cave rather than for one floor is
+; saved and restored by the shared core (DeepCaveSavedWram, deep_floor_core.asm).
 
 ; ProcGenerationBegin/EndDoubleSpeed ($3C) are local to their section, and a
 ; farcall would lose their a result, so the pair is repeated here.
@@ -279,6 +186,9 @@ ENDC
 .decide
 	ld a, BANK(sProcFacilityGenScratch)
 	ld [rRAMB], a
+	ld a, d                             ; the deep roll's bit 0: a second ball
+	and 1 << BIT_CAVE_DEEP_BALLS_2
+	ld [CAVE_DEEP_FLAGS], a
 	ld a, b
 	call CaveDeepWriteCtrl
 .done
@@ -289,126 +199,21 @@ ENDC
 ; The flip and its parts (Phase 1).
 ; ------------------------------------------------------------
 
+; The flip, the reconcile and the exchange are the shared core's
+; (deep_floor_core.asm, DeepCaveArea). These keep their names and contracts.
+
 ; In: a = the floor being arrived on (0 = floor 1, 1 = floor 2), for a real warp
-; between the floors (the arrival seam). Records the floor, swaps ball 1's
-; toggle with its off-floor copy, then makes the live buffer that floor's.
-; No-op on a cave that is not deep or when already on that floor.
-; Clobbers everything.
+; between the floors (the arrival seam). Clobbers everything.
 CaveDeepFlipTo::
-	ld c, a
-	push bc
-	call FGOpenParentSRAM
-	call CaveDeepReadCtrl
-	push af
-	call FGCloseSRAM
-	pop af
-	pop bc
-	ret nc                              ; not a deep cave
-	call CaveDeepFloorBit
-	cp c
-	ret z
-	ld hl, wRogueFlagsBitfield2
-	ld a, [hl]
-	xor 1 << BIT_ROGUE_DEEP_FLOOR
-	ld [hl], a
-	; Ball 1: exchange this floor's toggle bit with the off-floor copy, i.e.
-	; flip both when they differ.
-	DEF CAVE_DEEP_BALL_MASK EQU 1 << (TOGGLE_WILD_AREA_POKEBALL_1 % 8)
-	ld a, [wToggleableObjectFlags + TOGGLE_WILD_AREA_POKEBALL_1 / 8]
-	and CAVE_DEEP_BALL_MASK
-	ld b, a                             ; nz = this floor's ball 1 is hidden
-	ld a, [wStatusFlags2]
-	and 1 << BIT_DEEP_OFF_BALL
-	jr z, .offShown
-	ld a, b
-	and a
-	jr nz, .live                        ; both hidden
-	jr .exchangeBall
-.offShown
-	ld a, b
-	and a
-	jr z, .live                         ; both shown
-.exchangeBall
-	ld hl, wToggleableObjectFlags + TOGGLE_WILD_AREA_POKEBALL_1 / 8
-	ld a, [hl]
-	xor CAVE_DEEP_BALL_MASK
-	ld [hl], a
-	ld hl, wStatusFlags2
-	ld a, [hl]
-	xor 1 << BIT_DEEP_OFF_BALL
-	ld [hl], a
-.live
-	; fall through: the live buffer follows the new floor bit
+	ld e, a
+	ld d, DEEP_AREA_CAVE
+	farjp DeepFlipTo
 
 ; Every PROCEDURAL_CAVE_1 load, before anything reads the cave's SRAM
-; (ProcBossPatchStageSprite's first step), and the end of every flip. A deep
-; cave whose live buffer holds the other floor than the saved floor bit says
-; (a reset without saving) is exchanged back. Never touches WRAM: WRAM is the
-; save, and the save is right. Clobbers everything.
+; (ProcBossPatchStageSprite's first step). Clobbers everything.
 CaveDeepReconcile::
-	call FGOpenParentSRAM
-	call CaveDeepReadCtrl
-	push af
-	call FGCloseSRAM
-	pop af
-	ret nc                              ; not a deep cave
-	and 1 << BIT_CAVE_DEEP_LIVE_2
-	ASSERT BIT_CAVE_DEEP_LIVE_2 == 0
-	ld c, a                             ; the floor the live buffer holds
-	call CaveDeepFloorBit
-	cp c
-	ret z
-	; fall through
-
-; Exchanges the live cave (SRAM bank 0) with the shadow floor (bank 1): the
-; 600 B map buffer with its CAVESUB_* tail, the 23 B state block, and the
-; control word's LIVE bit. About 50,000 cycles (under a frame); runs only
-; inside a map load. Touches no WRAM. Leaves SRAM closed. Clobbers everything.
-CaveDeepExchange:
-	call FGOpenParentSRAM
-	ld hl, sProcCaveStagingBuffer
-	ld de, CAVE_DEEP_SHADOW_MAP
-	ld b, 3
-.chunk
-	push bc
-	ld c, 200
-	call CaveDeepSwapSpan
-	pop bc
-	dec b
-	jr nz, .chunk
-	ld hl, sProcCaveStagingEntranceY
-	ld de, CAVE_DEEP_SHADOW_STATE
-	ld c, CAVE_DEEP_STATE_SIZE
-	call CaveDeepSwapSpan
-	ld a, BANK(sProcFacilityGenScratch)
-	ld [rRAMB], a
-	ld a, [CAVE_DEEP_CTRL]
-	xor 1 << BIT_CAVE_DEEP_LIVE_2
-	call CaveDeepWriteCtrl
-	jp FGCloseSRAM
-
-; hl = a bank-0 address, de = a bank-1 address, c = the byte count (1-255).
-; SRAM open in advanced mode. Out: hl/de past the span, bank 0 selected.
-; Clobbers a/b/c.
-CaveDeepSwapSpan:
-.loop
-	xor a
-	ld [rRAMB], a
-	ld b, [hl]                          ; live
-	inc a                               ; the shadow's bank, 1
-	ld [rRAMB], a
-	ld a, [de]                          ; shadow
-	push af
-	ld a, b
-	ld [de], a                          ; shadow <- live
-	xor a
-	ld [rRAMB], a
-	pop af
-	ld [hli], a                         ; live <- shadow
-	inc de
-	dec c
-	jr nz, .loop
-	ret
+	ld d, DEEP_AREA_CAVE
+	farjp DeepReconcile
 
 ; Out: carry = the control word is valid (a deep cave), a = the control byte,
 ; hl = CAVE_DEEP_CTRL. SRAM open (advanced mode); leaves bank 1 selected.
@@ -456,6 +261,7 @@ CaveDeepLobbyReset::
 	res BIT_ROGUE_DEEP_FLOOR, [hl]
 	ld hl, wStatusFlags2
 	res BIT_DEEP_OFF_BALL, [hl]
+	res BIT_DEEP_OFF_BALL_2, [hl]
 	call FGOpenParentSRAM
 	ld a, BANK(sProcFacilityGenScratch)
 	ld [rRAMB], a

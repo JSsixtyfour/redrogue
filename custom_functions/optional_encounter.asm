@@ -298,7 +298,20 @@ OptionalEncounterIsCurrent:
 	cp PROCEDURAL_CAVE_1
 	jr z, .deepFloor
 	cp PROCEDURAL_FOREST
+	jr z, .deepFloor
+	cp PROCEDURAL_FACILITY
 	jr nz, .assigned
+	; The deep Facility: an encounter moved to floor 2 (state bit 3) is current
+	; only there; any other is current only off floor 2. The floor bit and the
+	; state bit must agree. No SRAM, no register but a/hl.
+	ld hl, wOptionalEncounterState
+	ld a, [hl]
+	swap a                          ; bit 3 -> bit 7
+	ld hl, wRogueFlagsBitfield2
+	xor [hl]
+	rla
+	jr c, .no
+	jr .assigned
 .deepFloor
 	ld a, [wRogueFlagsBitfield2]
 	bit BIT_ROGUE_DEEP_FLOOR, a

@@ -39,6 +39,13 @@ ProceduralFacility_Script:
 	ld [rRAMG], a
 	bit BIT_PFAC_OBJECTS_SHOWN, b
 	jp nz, .afterSetup
+	; A deep Facility's floor 2 shows nothing: the objects it does not use are
+	; floor 1's (picture 0 there), and its balls' toggles came across with the
+	; flip (custom_functions/facility_deep_floor.asm), so a taken ball or a beaten
+	; boss on floor 1 stays so.
+	ld a, [wRogueFlagsBitfield2]
+	bit BIT_ROGUE_DEEP_FLOOR, a
+	jp nz, .afterSetup
 	; Fresh entry: show the four item pokeballs.
 	ld a, TOGGLE_WILD_AREA_POKEBALL_1
 	ld [wToggleableObjectIndex], a

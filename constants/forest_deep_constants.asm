@@ -27,7 +27,7 @@ DEF FOREST_DEEP_MAGIC_MASK   EQU $E0
 DEF BIT_FOREST_DEEP_LIVE_2   EQU 0   ; the live buffer holds floor 2
 DEF BIT_FOREST_DEEP_MADE     EQU 1   ; floor 2 has been generated
 DEF BIT_FOREST_DEEP_HOUSE_2  EQU 2   ; the coin put the rest house on floor 2
-DEF BIT_FOREST_DEEP_BALLS_2  EQU 3   ; reserved: floor 2 has a second ball (next step)
+DEF BIT_FOREST_DEEP_BALLS_2  EQU 3   ; floor 2 keeps ball 2 too (slot 3), from the coin's bit 3
 DEF BIT_FOREST_DEEP_OPENING_2 EQU 4  ; floor 2 has its own opening (its exit is closed)
 	ASSERT (1 << BIT_FOREST_DEEP_OPENING_2) & FOREST_DEEP_MAGIC_MASK == 0
 ; The deep-floor roll, out of 256, made once per Forest in the lobby.
@@ -52,6 +52,7 @@ DEF FOREST_DEEP_SRAM_TAIL    EQU 10
 ; part: 17 offer bytes, the trade form, the trade flag byte, the bought-Pokemon
 ; event byte, the two residents' toggle bytes.
 DEF FOREST_DEEP_NUM_SAVED_WRAM EQU 4 + 17 + 1 + 1 + 1 + 2
+DEF FOREST_DEEP_NUM_ALWAYS     EQU 4 ; restored on every first descent
 ; Like the grotto, the floors meet opening to opening: floor 1 leaves by its
 ; opening on wall N/W/E and floor 2's faces it (S/E/W). The wall floor 2's must
 ; use (0N/1W/2E/3S), stored by the first descent for FGCarveOpening.

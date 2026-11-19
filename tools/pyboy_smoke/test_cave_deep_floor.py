@@ -33,6 +33,7 @@ CAVE = MAPS["PROCEDURAL_CAVE_1"]
 assert MAPS.get("PROCEDURAL_CAVE_SUBROOM")
 TOGGLES = parse_rgbds_constants(ROOT / "constants/toggle_constants.asm")
 BALL1 = TOGGLES["TOGGLE_WILD_AREA_POKEBALL_1"]
+BALL2 = TOGGLES["TOGGLE_WILD_AREA_POKEBALL_2"]
 EVENTS = parse_rgbds_constants(ROOT / "constants/event_constants.asm")
 SAVED_EVENTS = ("EVENT_BEAT_PC_BOSS", "EVENT_BEAT_STAGE_EVENT_NPC_1", "EVENT_BEAT_STAGE_EVENT_NPC_2",
                 "EVENT_BEAT_FACILITY_STAGE_NPC_1", "EVENT_BEAT_FACILITY_STAGE_NPC_2",
@@ -51,6 +52,8 @@ BIT_MADE = 0x02
 RESIDENT_MASK = 0x0C
 FLOOR_BIT = 0x80      # wRogueFlagsBitfield2 bit 7
 OFF_BALL_BIT = 0x40   # wStatusFlags2 bit 6
+OFF_BALL2_BIT = 0x80  # wStatusFlags2 bit 7: ball 2's (D1)
+FLAGS_OFFSET = STATE_SIZE + 2 + 18 + 10  # CAVE_DEEP_FLAGS in sProcFacilityGenScratch
 
 
 def blocks(raw) -> list[int]:
@@ -88,6 +91,20 @@ class CaveDeepFloorTest(unittest.TestCase):
         raw = h.read_sram_bytes("sProcFacilityGenScratch", STATE_SIZE + 2, bank=1)
         raw[STATE_SIZE:] = [value, value ^ 0xFF]
         h.write_sram_bytes("sProcFacilityGenScratch", raw, bank=1)
+
+    def balls2(self) -> bool:
+        """Floor 2 keeps ball 2 too (CAVE_DEEP_FLAGS bit 0, D1)."""
+        raw = self.h.read_sram_bytes("sProcFacilityGenScratch", FLAGS_OFFSET + 1, bank=1)
+        return bool(raw[FLAGS_OFFSET] & 1)
+
+    def force_balls2(self, on: bool) -> None:
+        """The decision rolls the second ball from the deep roll's bit 0 (d)."""
+        h = self.h
+
+        def at_decide(_context) -> None:
+            d = h.pyboy.register_file.D
+            h.pyboy.register_file.D = (d | 1) if on else (d & 0xFE)
+        h.register_hook("CaveDeepAfterFinalize.decide", at_decide)
 
     def ball1_byte(self) -> int:
         return self.h.read8("wToggleableObjectFlags", offset=BALL1 // 8)
@@ -447,7 +464,9 @@ class CaveDeepFloorTest(unittest.TestCase):
         toggles = h.read_bytes("wToggleableObjectFlags", 32)
         self.set_bit("wToggleableObjectFlags", 1 << BALL1 % 8, True, offset=BALL1 // 8)
         self.set_bit("wStatusFlags2", OFF_BALL_BIT, False)
-        # Floor 1's balls 2-4 taken: floor 2's first entry must not show them again.
+        self.set_bit("wStatusFlags2", OFF_BALL2_BIT, False)
+        # Floor 1's balls 2-4 taken: floor 2's first entry must not show them again
+        # (ball 2 is exchanged with floor 2's own, which starts shown).
         for n in (2, 3, 4):
             t = TOGGLES[f"TOGGLE_WILD_AREA_POKEBALL_{n}"]
             self.set_bit("wToggleableObjectFlags", 1 << t % 8, True, offset=t // 8)
@@ -473,8 +492,9 @@ class CaveDeepFloorTest(unittest.TestCase):
         self.assertEqual(h.read_sram_bytes("sProcCaveBaked", 1, bank=0), [1], "floor 2 was not baked")
         self.assertEqual(self.externals(), before, "floor 2's generation changed the cave's own state")
         after = h.read_bytes("wToggleableObjectFlags", 32)
-        flip = 1 << BALL1 % 8
-        self.assertEqual(after[BALL1 // 8] ^ toggles[BALL1 // 8], flip, "ball 1 was not exchanged")
+        flip = 1 << BALL1 % 8 | 1 << BALL2 % 8
+        assert BALL1 // 8 == BALL2 // 8
+        self.assertEqual(after[BALL1 // 8] ^ toggles[BALL1 // 8], flip, "balls 1 and 2 were not exchanged")
         after[BALL1 // 8] ^= flip
         ignore = {TOGGLES["TOGGLE_CAVESUB_GAMBLER"], TOGGLES["TOGGLE_CAVESUB_SUPER_NERD"],
                   TOGGLES["TOGGLE_CAVESUB_BALL"], TOGGLES["TOGGLE_CAVE_GAMBLER"],
@@ -529,10 +549,47 @@ class CaveDeepFloorTest(unittest.TestCase):
         ladders = [(x, y) for y in range(1, 19) for x in range(1, 19)
                    if layout[81 + y * 26 + x] == 40 and (x, y) != (exit_x, exit_y)]
         self.assertEqual(ladders, [], "floor 2 still has ladders down")
-        for slot in (1, 3, 4, 5, 6, 7):
+        removed = (1, 4, 5, 6, 7) if self.balls2() else (1, 3, 4, 5, 6, 7)
+        for slot in removed:
             self.assertEqual(h.read8(f"wSprite{slot:02d}StateData1"), 0, f"slot {slot} still has a picture")
             self.assertEqual((h.read8(f"wSprite{slot:02d}StateData2MapY"),
                               h.read8(f"wSprite{slot:02d}StateData2MapX")), (0, 0), f"slot {slot} not parked")
+        if self.balls2():
+            pos = lambda s: (h.read8(f"wSprite{s:02d}StateData2MapY"), h.read8(f"wSprite{s:02d}StateData2MapX"))
+            self.assertNotEqual(h.read8("wSprite03StateData1"), 0, "floor 2's second ball has no picture")
+            self.assertNotEqual(pos(3), (0, 0), "floor 2's second ball is parked")
+            others = {pos(s) for s in (2, 8, 9, 10) if h.read8(f"wSprite{s:02d}StateData1")}
+            self.assertNotIn(pos(3), others, "floor 2's second ball shares a cell")
+
+    def test_second_ball_is_per_floor(self) -> None:
+        """D1: a two-ball floor 2 shows ball 2 on its own cell; taking it there
+        leaves floor 1's ball 2 as it was, and it stays taken on the next visit."""
+        h = self.h
+        self.force_balls2(True)
+        self.deep_cave()
+        self.set_bit("wToggleableObjectFlags", 1 << BALL2 % 8, False, offset=BALL2 // 8)  # floor 1's: there
+        h.write8("wProcCaveWildBudget", 0)
+        self.ladder_warp(2, 0)
+        self.assertTrue(self.balls2(), "the forced second ball was not recorded")
+        self.assert_floor2_layout()
+        hidden = lambda: bool(h.read8("wToggleableObjectFlags", offset=BALL2 // 8) & 1 << BALL2 % 8)
+        self.assertFalse(hidden(), "floor 2's second ball starts taken")
+        self.set_bit("wToggleableObjectFlags", 1 << BALL2 % 8, True, offset=BALL2 // 8)  # taken on floor 2
+        self.timed(lambda started: self.press_until("right", started, "onto the entrance ladder"))
+        self.assertEqual(h.read8("wRogueFlagsBitfield2") & FLOOR_BIT, 0, "not back on floor 1")
+        self.assertFalse(hidden(), "floor 1's ball 2 took floor 2's")
+        self.assertTrue(h.read8("wStatusFlags2") & OFF_BALL2_BIT, "floor 2's taken ball 2 was not kept")
+        self.ladder_warp(2, 0)
+        self.assertTrue(hidden(), "floor 2's ball 2 came back")
+
+    def test_one_ball_floor_removes_ball_2(self) -> None:
+        h = self.h
+        self.force_balls2(False)
+        self.deep_cave()
+        h.write8("wProcCaveWildBudget", 0)
+        self.ladder_warp(2, 0)
+        self.assertFalse(self.balls2())
+        self.assert_floor2_layout()
 
     def step_off_and_back(self, description: str) -> int:
         """Standing on a warp tile: step off whichever way is open, then back on."""
