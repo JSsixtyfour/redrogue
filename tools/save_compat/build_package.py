@@ -78,7 +78,9 @@ ENGINE_WRAM = {"wPlayerName", "wPartyCount", "wPartySpecies", "wBoxCount", "wCur
                # migration deepFloorBitCleared (schema 21 -> 22)
                "wRogueFlagsBitfield2",
                # migration bridgeRecordsAdded (schema 22 -> 23)
-               "wBridgeSelectedEffect2", "wBridgeSelectedEffectsEnd", "wBridgeSelectedEffectOwner3"}
+               "wBridgeSelectedEffect2", "wBridgeSelectedEffectsEnd", "wBridgeSelectedEffectOwner3",
+               # migration wildGenericAdded (schema 24 -> 25)
+               "wWildGenericBeaten", "wNumSigns"}
 # (forestGenericAdded, schema 23 -> 24, reads SRAM labels only: every package carries those.)
 
 # Steps whose per-migration table flag_translation() computes and attaches to the target schema.

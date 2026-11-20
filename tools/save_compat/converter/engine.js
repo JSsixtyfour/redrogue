@@ -771,6 +771,38 @@
       return null;
     },
 
+    // Schema 24 -> 25 (2026-11-20, the generic route trainer in every wild area): the two SRAM
+    // bytes were renamed sWildGenericRow/Cell at the same addresses, and sWildGenericFloor was
+    // added from free space after them; nothing moved. The defeat flags left the event table for
+    // wWildGenericBeaten, a main-data pad byte (no main-data field moved); flagsRenumbered, listed
+    // before this step, translates the renumbered events by name and drops the retired
+    // EVENT_BEAT_FOREST_GENERIC_TRAINER. An old save made inside a wild area keeps no trainer:
+    // row 0, cell $fe, floor 0 and an unbeaten byte, until the next area's preload rolls one (an
+    // old Forest's row would otherwise name a pool row in whatever area the save is in).
+    wildGenericAdded: function (bytes, from, to) {
+      if (wramField(from, "wWildGenericBeaten")) return "this save already has the wild generic trainer";
+      var renamed = { sForestGenericRow: "sWildGenericRow", sForestGenericCell: "sWildGenericCell" };
+      for (var i = 0; i < from.sram.length; i++) {
+        var f = from.sram[i], t = sramField(to, renamed[f.label] || f.label);
+        if (!t || t.bank !== f.bank || t.address !== f.address || t.size !== f.size)
+          return "save field " + f.label + " moved, which this step does not expect";
+      }
+      var row = sramField(to, "sWildGenericRow"), cell = sramField(to, "sWildGenericCell");
+      var floor = sramField(to, "sWildGenericFloor");
+      if (!row || !cell || !floor) return "wild generic trainer layout not recognised";
+      var beaten = wramOffset(to, "wWildGenericBeaten");
+      if (beaten < 0) return "wWildGenericBeaten is not saved";
+      if (wramOffset(to, "wNumSigns") !== wramOffset(from, "wNumSigns")
+          || wramOffset(to, "wOptionalEncounterBattle") !== wramOffset(from, "wOptionalEncounterBattle"))
+        return "the main data moved, which this step does not expect";
+      bytes[offsetOf(row.bank, row.address)] = 0;
+      bytes[offsetOf(cell.bank, cell.address)] = 0xfe;
+      bytes[offsetOf(floor.bank, floor.address)] = 0;
+      bytes[beaten] = 0;
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
     lossRecoveryAdded: function (bytes, from, to) {
       var names = ["sLossRecovery1", "sLossRecovery2", "sLossRecovery3", "sLossRecoveryCRC", "sLossRecoveryValid"];
       for (var i = 0; i < names.length; i++) {

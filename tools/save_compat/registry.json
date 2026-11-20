@@ -175,6 +175,12 @@
    "to": "24",
    "steps": ["flagsRenumbered", "forestGenericAdded"],
    "verified": "2026-11-20 (Claude): Continue, verified with real saves. 3114017a (layout matches schema_23.json) made six saves (lobby, route, cave, forest, cemetery, facility); the engine converted all six, and saves.py continue on 64dede26 passed each (continues, saves and continues again); an unconverted control was refused. 2026-11-19: EVENT_BEAT_FOREST_GENERIC_TRAINER (new, clear) renumbered the events after it, translated by name; two new bank-0 SRAM bytes sForestGenericRow/Cell set to 'no trainer' (0, $fe); no other field moves. Synthetic test 'schema 23 to 24' checks every event by name, the two bytes, and that nothing else changes."
+  },
+  {
+   "from": "24",
+   "to": "25",
+   "steps": ["flagsRenumbered", "wildGenericAdded"],
+   "verified": "2026-11-20 (Claude): NOT verified with real saves. The generic trainer in every wild area: sForestGenericRow/Cell renamed sWildGenericRow/Cell (same addresses), sWildGenericFloor added from free space, wWildGenericBeaten from a main-data pad byte (nothing moved); EVENT_BEAT_FOREST_GENERIC_TRAINER retired, 349 events renumbered (RUN_EVENTS_END 495 -> 487), translated by name. The step writes no trainer (row 0, cell $fe, floor 0) and an unbeaten byte. Synthetic test 'schema 24 to 25'."
   }
  ]
 }

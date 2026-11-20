@@ -399,6 +399,60 @@ test("schema 23 to 24: events keep their meaning by name, the Forest trainer sta
   assert.equal(api.checksumStatus(b, to).main, true);
 });
 
+test("schema 24 to 25: events keep their meaning by name, every wild area's trainer starts absent", () => {
+  const full = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
+  const from = full(24), to = full(25);
+  const save = syntheticSave("24"), pkg = packageTargeting("25");
+  const ev = wramOffset(from, "wEventFlags");
+  assert.equal(wramOffset(to, "wEventFlags"), ev);
+  let x = 0x13579bdf;
+  for (let i = 0; i < 64; i++) { x = (Math.imul(x, 1103515245) + 12345) >>> 0; save[ev + i] = x >>> 24; }
+  const sram = (s, label) => { const f = s.sram.find((g) => g.label === label); return f ? offsetOf(f.bank, f.address) : -1; };
+  const row = sram(to, "sWildGenericRow"), cell = sram(to, "sWildGenericCell"), floor = sram(to, "sWildGenericFloor");
+  assert.equal(row, sram(from, "sForestGenericRow"), "renamed in place");
+  assert.equal(cell, sram(from, "sForestGenericCell"), "renamed in place");
+  assert.equal(floor, cell + 1);
+  const beaten = wramOffset(to, "wWildGenericBeaten");
+  assert.ok(beaten >= 0);
+  save[row] = 0x24;                       // an old Forest's trainer, rolled
+  save[cell] = 0x35;
+  save[floor] = 0x77;                     // stale free space
+  save[beaten] = 0x99;                    // stale pad
+  recomputeChecksums(save, from);
+  const out = api.convert(save, pkg, { mode: "continue" });
+  assert.equal(out.ok, true, out.reason);
+  const b = out.bytes;
+  assert.equal(b[row], 0, "no row: he is absent");
+  assert.equal(b[cell], 0xfe, "no cell");
+  assert.equal(b[floor], 0, "floor 1");
+  assert.equal(b[beaten], 0, "unbeaten");
+  const bit = (bytes, i) => (bytes[ev + (i >> 3)] >> (i & 7)) & 1;
+  const n = to.constants.NUM_EVENTS;
+  assert.equal(n, from.constants.NUM_EVENTS);
+  assert.equal(to.constants.EVENT_BEAT_FOREST_GENERIC_TRAINER, undefined, "retired");
+  const names = Object.keys(to.constants).filter((k) => k.startsWith("EVENT_") && to.constants[k] >= 0 && to.constants[k] < n);
+  let moved = 0;
+  for (const k of names) {
+    const nb = to.constants[k];
+    const olds = names.filter((j) => to.constants[j] === nb && j in from.constants).map((j) => from.constants[j]);
+    if (!olds.length) { assert.equal(bit(b, nb), 0, `${k}: new at schema 25, so clear`); continue; }
+    assert.equal(bit(b, nb), olds.some((o) => bit(save, o)) ? 1 : 0, `${k} (bit ${nb})`);
+    if (!olds.includes(nb)) moved++;
+  }
+  assert.ok(moved > 0, "expected renumbered events");
+  for (const f of from.saved_wram)
+    if (f.label !== "wOptionalEncounterBattle")   // its pad shrank to make wWildGenericBeaten
+      assert.equal(wramOffset(to, f.label), wramOffset(from, f.label), f.label);
+  const changed = new Set([row, cell, floor, beaten]);
+  for (let i = 0; i < 64; i++) changed.add(ev + i);
+  const sum = to.checksums.find((c) => c.name === "main");
+  changed.add(offsetOf(sum.at_bank, sum.at));
+  for (let i = 0; i < 8; i++) changed.add(0x2040 + i);
+  for (let i = 0; i < save.length; i++)
+    if (!changed.has(i)) assert.equal(b[i], save[i], `unrelated byte ${i}`);
+  assert.equal(api.checksumStatus(b, to).main, true);
+});
+
 // Full schema (with constants), for checks the trimmed package cannot make.
 const fullSchema =(id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
 

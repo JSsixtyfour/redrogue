@@ -113,7 +113,15 @@
 ; flagsRenumbered translates them by name), and two new bank-0 SRAM bytes,
 ; sForestGenericRow/Cell. Migration forestGenericAdded writes "no trainer" into
 ; them, so an old save made inside a Forest has none until the next Forest.
-DEF SAVE_SCHEMA_ID EQU 24
+; Schema 25 (2026-11-20): the generic route trainer in every wild area
+; (GENERIC_TRAINER_ALL_AREAS_SPEC.md). sForestGenericRow/Cell renamed
+; sWildGenericRow/Cell (same addresses) and sWildGenericFloor appended from free
+; space; the defeat flags moved out of the event table into wWildGenericBeaten (a
+; main-data pad byte), so EVENT_BEAT_FOREST_GENERIC_TRAINER was retired and the
+; events after it renumbered (flagsRenumbered). Migration wildGenericAdded writes
+; "no trainer" and an unbeaten byte, so an old save in a wild area has none until
+; the next area's preload.
+DEF SAVE_SCHEMA_ID EQU 25
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; Transient invalid magic while a writer owns the save. Completed headers and
