@@ -412,3 +412,156 @@ FGTCloseSRAM:
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
 	ld [rRAMG], a
 	ret
+
+; ------------------------------------------------------------
+; His lines (D4): each class speaks the trio of a vanilla trainer of that class
+; whom Red Rogue cut (GENERIC_TRAINER_TRIAL_SPEC.md, "D4 candidates,
+; corrected"). The header's three texts in $12 are text_far stubs to these
+; entries; each is a return-hl text_asm (bc is the live text cursor, kept), so
+; the stream - the end-battle "<CLASS>: " prefix included - stays as it is.
+; The row comes from the class he battles as (wMapSpriteExtraData, written by
+; ForestGenericPlace after FGTRow's clash shift), so his lines follow the class.
+; ------------------------------------------------------------
+ForestGenericIntroText::
+	text_asm
+	xor a
+	jr FGTLine
+
+ForestGenericDefeatText::
+	text_asm
+	ld a, 1
+	jr FGTLine
+
+ForestGenericAfterText::
+	text_asm
+	ld a, 2
+	; fall through
+
+; a = 0 intro, 1 defeat, 2 after. Out: hl = the line. Keeps bc.
+FGTLine:
+	push bc
+	ld e, a
+	ld a, [wMapSpriteExtraData + (FOREST_GENERIC - 1) * 2]
+	ld hl, GenericTrainerTable
+	ld bc, (NUM_GENERIC_TRAINERS << 8) | 0  ; b = rows left, c = this row
+.find
+	cp [hl]
+	jr z, .found
+	inc hl
+	inc hl
+	inc c
+	dec b
+	jr nz, .find
+	ld c, 0                                 ; unknown class: the first row's lines
+.found
+	ld a, c
+	add a
+	add c                                   ; row * 3
+	add e
+	add a                                   ; a word per line
+	ld e, a
+	ld d, 0
+	ld hl, FGTLines
+	add hl, de
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+.done                                     ; hl = the line (tests hook here)
+	pop bc
+	ret
+
+FGTLines: ; intro, defeat, after; in GenericTrainerTable's row order
+	dw FGTYoungsterIntro,  FGTYoungsterDefeat,  FGTYoungsterAfter   ; Route 25 Youngster 7
+	dw FGTBugCatcherIntro, FGTBugCatcherDefeat, FGTBugCatcherAfter  ; Route 6 Bug Catcher 11
+	dw FGTLassIntro,       FGTLassDefeat,       FGTLassAfter        ; Route 3 Lass 2
+	dw FGTHikerIntro,      FGTHikerDefeat,      FGTHikerAfter       ; Route 9 Hiker 6
+	dw FGTJrMIntro,        FGTJrMDefeat,        FGTJrMAfter         ; Route 6 Jr. Trainer M 5
+	dw FGTJrFIntro,        FGTJrFDefeat,        FGTJrFAfter         ; Route 13 Jr. Trainer F 11
+	ASSERT (@ - FGTLines) == NUM_GENERIC_TRAINERS * 6
+
+; Vanilla Red's text, verbatim (tmp/shinpokered-reference/text/maps/).
+FGTYoungsterIntro:
+	text "I knew I had to"
+	line "fight you!"
+	done
+FGTYoungsterDefeat:
+	text "I knew"
+	line "I'd lose too!"
+	prompt
+FGTYoungsterAfter:
+	text "If your #MON"
+	line "gets confused or"
+	cont "falls asleep,"
+	cont "switch it!"
+	done
+
+FGTBugCatcherIntro:
+	text "I've never seen"
+	line "you around!"
+	cont "Are you good?"
+	done
+FGTBugCatcherDefeat:
+	text "You"
+	line "are too good!"
+	prompt
+FGTBugCatcherAfter:
+	text "Are my #MON"
+	line "weak? Or, am I"
+	cont "just bad?"
+	done
+
+FGTLassIntro:
+	text "That look you"
+	line "gave me, it's so"
+	cont "intriguing!"
+	done
+FGTLassDefeat:
+	text "Be nice!"
+	prompt
+FGTLassAfter:
+	text "Avoid fights by"
+	line "not letting"
+	cont "people see you!"
+	done
+
+FGTHikerIntro:
+	text "Hahaha!"
+	line "Aren't you a"
+	cont "little toughie!"
+	done
+FGTHikerDefeat:
+	text "What's"
+	line "that?"
+	prompt
+FGTHikerAfter:
+	text "Hahaha! Kids"
+	line "should be tough!"
+	done
+
+FGTJrMIntro:
+	text "Huh? You want"
+	line "to talk to me?"
+	done
+FGTJrMDefeat:
+	text "I"
+	line "didn't start it!"
+	prompt
+FGTJrMAfter:
+	text "I should carry"
+	line "more #MON with"
+	cont "me for safety."
+	done
+
+FGTJrFIntro:
+	text "I'm told I'm good"
+	line "for a kid!"
+	done
+FGTJrFDefeat:
+	text "Ohh!"
+	line "I lost!"
+	prompt
+FGTJrFAfter:
+	text "I want to become"
+	line "a good trainer."
+	cont "I'll train hard."
+	done

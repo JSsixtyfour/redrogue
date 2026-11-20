@@ -95,21 +95,19 @@ _Route3Youngster4AfterBattleText::
 	done
 
 _Route3Youngster5BattleText::
-	text "I see you've"
-	line "faced my"
-    cont "rival."
+	text "Hey! You're not"
+	line "wearing shorts!"
 	done
 
 _Route3Youngster5EndBattleText::
-	text "Same"
-	line "guess pants are"
-    cont "no better than"
-    cont "short"
+	text "Lost!"
+	line "Lost! Lost!"
 	prompt
 
 _Route3Youngster5AfterBattleText::
-	text "I still like"
-	line "pants the best."
+	text "I always wear"
+	line "shorts, even in"
+	cont "winter!"
 	done
 
 _Route3CooltrainerF3BattleText::

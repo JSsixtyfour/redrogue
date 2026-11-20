@@ -270,6 +270,53 @@ class ForestGenericTrainerTest(unittest.TestCase):
         self.assertNotIn(h.symbols.get("PFGenericIntroText")[1], printed)
         self.assertEqual(h.read8("hIsInBattle"), 0)
 
+    LINES = ["Youngster", "BugCatcher", "Lass", "Hiker", "JrM", "JrF"]
+
+    def test_each_class_speaks_its_own_vanilla_trio(self) -> None:
+        """D4: FGTLine picks the row by the class he battles as, for each of the three
+        texts; an unknown class falls back to the first row."""
+        h = self.h
+        h.load_state(self.lobby)
+        h.park_before_hijack()
+        base = io.BytesIO()
+        h.save_state(base)
+        cases = [(row, kind) for row in range(len(TABLE_CLASS)) for kind in range(3)]
+        cases.append((None, 1))
+        for row, kind in cases:
+            with self.subTest(row=row, kind=kind):
+                h.load_state(base)
+                cls = self.opp(TABLE_CLASS[row]) if row is not None else 0xEE
+                h.write8("wMapSpriteExtraData", cls, offset=(SLOT - 1) * 2)
+
+                def which(_context, kind=kind) -> None:
+                    h.pyboy.register_file.A = kind
+
+                h.register_hook("FGTLine", which)
+                try:
+                    hl = h.call_routine("FGTLine", capture=lambda hh: hh.pyboy.register_file.HL)
+                finally:
+                    h.unregister_hook("FGTLine", which)
+                name = self.LINES[row if row is not None else 0]
+                label = f"FGT{name}{('Intro', 'Defeat', 'After')[kind]}"
+                self.assertEqual(hl, h.symbols.get(label)[1], label)
+
+    def test_the_live_intro_is_his_class_line(self) -> None:
+        """Talking to him reaches FGTLine through the $12 stub with the Hiker's intro."""
+        h = self.h
+        self.enter(4, 0, 2)                      # row 3: Hiker
+        self.assert_placed(3, "lines")
+        seen: list[int] = []
+
+        def done(_context) -> None:
+            seen.append(h.pyboy.register_file.HL)
+
+        h.register_hook("FGTLine.done", done)
+        try:
+            self.talk()
+        finally:
+            h.unregister_hook("FGTLine.done", done)
+        self.assertEqual(seen[:1], [h.symbols.get("FGTHikerIntro")[1]])
+
     def test_a_new_forest_finds_him_unbeaten(self) -> None:
         h = self.h
         self.enter(4, 0, 2)

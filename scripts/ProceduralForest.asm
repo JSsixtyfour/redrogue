@@ -779,23 +779,20 @@ PFGenericTrainerText:
 	ld hl, PFGenericHeader
 	jp ProceduralForestInitBattleScript
 
-; TODO(spec D4): PLACEHOLDER lines. Each class is to get a vanilla
-; Red line that Red Rogue no longer uses; the sourced candidates are listed in
-; GENERIC_TRAINER_TRIAL_SPEC.md. One shared set until a choice is made.
+; His three lines pick themselves by his class (ForestGenericIntroText etc.,
+; $1A, custom_functions/forest_generic_trainer.asm): vanilla trios of cut
+; trainers, one per class (GENERIC_TRAINER_TRIAL_SPEC.md, D4).
 PFGenericIntroText:
-	text "Hey! You look"
-	line "like a trainer!"
-	done
+	text_far ForestGenericIntroText
+	text_end
 
 PFGenericDefeatText:
-	text "Ow!"
-	line "You beat me!"
-	prompt
+	text_far ForestGenericDefeatText
+	text_end
 
 PFGenericAfterText:
-	text "Good luck out"
-	line "there!"
-	done
+	text_far ForestGenericAfterText
+	text_end
 
 ProceduralForest_TextPointers:
 	def_text_pointers
