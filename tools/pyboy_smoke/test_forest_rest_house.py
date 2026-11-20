@@ -64,6 +64,11 @@ class ForestWalk:
         self.toggles = parse_rgbds_constants(ROOT / "constants/toggle_constants.asm")
         self.sites = house_sites()
         self.h = RedRogueHarness(ROOT, ARTIFACTS)
+        # These tests walk the real maze: the Forest's route trainer (one tile of
+        # sight on a dead end) would stop the walk with a battle, which is his job
+        # and tested in test_forest_generic_trainer.py. Roll him out here.
+        self.h.register_hook("ForestGenericRoll.store",
+                             lambda _c: setattr(self.h.pyboy.register_file, "A", 0))
 
     def tearDown(self) -> None:
         self.h.close()

@@ -396,6 +396,15 @@ DEF MOVE_TUTOR_PRICE_C EQU 2700
 DEF MOVE_TUTOR_PRICE_B EQU 4500
 DEF MOVE_TUTOR_PRICE_A EQU 9000
 DEF MOVE_TUTOR_PRICE_S EQU 13500
+; Cemetery resurrection NPC fees (CEMETERY_RESURRECTION_NPC_SPEC.md, D1): ordinary
+; integers encoded with bcd3. Ironman brings back a fallen mon at the salesman's
+; tier price + 25%, by the mon's rarity tier (Master and Uber pay the Ultra
+; price); outside Ironman he revives a fainted party mon for a flat fee.
+DEF RESURRECT_FEE_POKEBALL  EQU 6250
+DEF RESURRECT_FEE_GREATBALL EQU 12500
+DEF RESURRECT_FEE_ULTRABALL EQU 22500
+DEF RESURRECT_REVIVE_FEE    EQU 3000
+	ASSERT RESURRECT_FEE_ULTRABALL <= 99999
 ; The two high bytes of a 3-byte BCD money value, from a BCD-thousands byte:
 ; $TU -> $0T, $U0 (Y TU,000), as (high << 8) | middle for `ld de`/`ld bc`.
 DEF SALESMAN_PRICE_POKEBALL_WORD  EQU ((SALESMAN_PRICE_POKEBALL_BCD >> 4) << 8) | ((SALESMAN_PRICE_POKEBALL_BCD & $0F) << 4)

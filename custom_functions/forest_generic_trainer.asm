@@ -44,6 +44,9 @@ DEF NUM_GENERIC_TRAINERS EQU (@ - GenericTrainerTable) / 2
 ; Clobbers everything; leaves SRAM open on bank 0, as that caller expects.
 ; ------------------------------------------------------------
 ForestGenericRoll::
+	; His defeat flag is run-scoped like the stage pair's: a new Forest finds him
+	; unbeaten. Reset here, not in the preload ($3F has no room for it).
+	ResetEvent EVENT_BEAT_FOREST_GENERIC_TRAINER
 IF GENERIC_TRAINER_ODDS < 256
 	call Random
 	cp GENERIC_TRAINER_ODDS

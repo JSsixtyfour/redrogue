@@ -468,6 +468,11 @@ NEW_EVENTS = [
     # the Dojo's RogueAutoWalkScripts one-shot, reset by its own setup block.
     "EVENT_FIGHTING_DOJO_VISITED",
     "EVENT_AUTOWALKED_INTO_FIGHTING_DOJO",
+    # The Forest's generic route trainer (GENERIC_TRAINER_TRIAL_SPEC.md, D3): its
+    # own object slot (FOREST_GENERIC, 9), so its own defeat flag and its own
+    # `def_trainers 9` block in scripts/ProceduralForest.asm. Run-zone; reset in
+    # the Forest's preload beside EVENT_BEAT_STAGE_EVENT_NPC_2.
+    "EVENT_BEAT_FOREST_GENERIC_TRAINER",
 ]
 
 MAP_DIRS = ("scripts", "data/maps/objects", "data/maps/headers", "text")

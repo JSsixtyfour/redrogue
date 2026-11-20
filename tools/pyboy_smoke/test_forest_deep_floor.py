@@ -288,6 +288,25 @@ class ForestDeepFloorTest(unittest.TestCase):
         self.assertEqual(h.read8("wSprite08StateData1"), 0, "the encounter followed the player up")
         self.assertNotEqual(h.read8("wSprite01StateData1"), 0, "floor 1's boss is gone after the trip")
 
+    def test_generic_trainer_stays_on_floor_1(self) -> None:
+        """The route trainer (object 9) belongs to floor 1: picture 0 and parked on
+        floor 2, and back on the same cell, class and flag after the round trip."""
+        h = self.h
+        self.deep_forest(house_on_2=False)
+        picture = h.read8("wSprite09StateData1")
+        cell = (h.read8("wSprite09StateData2MapY"), h.read8("wSprite09StateData2MapX"))
+        self.assertNotEqual(picture, 0, "no generic trainer on floor 1")
+        self.assertNotEqual(cell, (0, 0))
+        extra = h.read_bytes("wMapSpriteExtraData", 2, offset=8 * 2)
+        self.scripted_warp(FG_WARP, "down")
+        self.assertEqual(self.floor(), 2)
+        self.assertEqual(h.read8("wSprite09StateData1"), 0, "he followed the player down")
+        self.assertEqual((h.read8("wSprite09StateData2MapY"), h.read8("wSprite09StateData2MapX")), (0, 0))
+        self.scripted_warp(FG_WARP, "up")
+        self.assertEqual(h.read8("wSprite09StateData1"), picture)
+        self.assertEqual((h.read8("wSprite09StateData2MapY"), h.read8("wSprite09StateData2MapX")), cell)
+        self.assertEqual(h.read_bytes("wMapSpriteExtraData", 2, offset=8 * 2), extra)
+
     def test_second_ball_is_per_floor(self) -> None:
         """D1: a two-ball floor 2 shows ball 2 on its own dead end; taking it
         there leaves floor 1's ball 2 as it was, and it stays taken."""

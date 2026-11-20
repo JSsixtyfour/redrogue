@@ -1332,7 +1332,9 @@ StageEventKeepSpriteOnDefeat::
 	ldh a, [hCurMap]
 	cp b
 	jr z, .matched
-	inc hl                          ; step over the row's three slot bytes
+	ASSERT STAGE_EVENT_KEEP_SLOTS == 4
+	inc hl                          ; step over the row's four slot bytes
+	inc hl
 	inc hl
 	inc hl
 	jr .rowLoop

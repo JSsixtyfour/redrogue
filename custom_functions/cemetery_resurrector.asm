@@ -616,11 +616,592 @@ CRNear:
 	cp 3
 	ret
 
-; His text_asm (scripts/ProceduralCemetery1.asm, PCemResurrectorText).
-; PLACEHOLDER until the talk flow lands (spec "Talk"): one line.
+; ============================================================================
+; The talk (spec "Talk"). His text_asm (scripts/ProceduralCemetery1.asm,
+; PCemResurrectorText) saves bc and farcalls CemResurrectorTalk, which returns
+; to it. Once per Cemetery: bit 7 of sProcCemeteryItemGot, set by a service.
+;
+; IRONMAN. The list is drawn the way room_pc.asm draws its lists (TextBoxBorder +
+; PlaceString + HandleMenuInput), cheapest fee first and the newest fallen first
+; among equal fees. Its order lives in a stack frame (no free WRAM: wBuffer is
+; YesNoChoice's save area) built once at the top of CRIronman, so every access to
+; the frame is made at that routine's own depth, with nothing pushed:
+;   +0..9    each entry's fee index (0 Poke, 1 Great, 2 Ultra and above)
+;   +10..19  the list rows, as entry indices
+;   +20      the cursor (kept across a declined offer)
+;   +21      the chosen entry
+;   +22      hUILayoutFlags as found (the list sets BIT_DOUBLE_SPACED_MENU)
+; ============================================================================
+DEF CR_FRAME_TIERS   EQU 0
+DEF CR_FRAME_ORDER   EQU FALLEN_LOG_CAPACITY
+DEF CR_FRAME_CURSOR  EQU FALLEN_LOG_CAPACITY * 2
+DEF CR_FRAME_ENTRY   EQU CR_FRAME_CURSOR + 1
+DEF CR_FRAME_UIFLAGS EQU CR_FRAME_ENTRY + 1
+DEF CR_FRAME_SIZE    EQU CR_FRAME_UIFLAGS + 1
+DEF CR_NICK_OFFSET   EQU PARTYMON_STRUCT_LENGTH + NAME_LENGTH
+DEF CR_NAME_COL      EQU 2
+DEF CR_PRICE_COL     EQU 12              ; right-aligned: yen sign and digits end on col 18
+	ASSERT MON_SPECIES == 0
+	ASSERT FALLEN_LOG_CAPACITY <= 10     ; rows 1-10 are the box's whole height
+	ASSERT CR_FRAME_SIZE < 128           ; ld hl, sp + n reaches +127
+
 CemResurrectorTalk::
-	ld hl, .placeholder
+	call CRIsDone
+	ld hl, CRAfterText
+	jp c, PrintText
+	ld a, [wOptions3]
+	bit BIT_IRONMAN, a
+	jr nz, CRIronman
+	farcall CemReviverTalk
+	ret
+
+CRIronman:
+	ld a, [wFallenCount]
+	and a
+	ld hl, CRNoSoulsText
+	jp z, PrintText
+	add sp, -CR_FRAME_SIZE
+	ldh a, [hUILayoutFlags]
+	ld hl, sp + CR_FRAME_UIFLAGS
+	ld [hl], a
+	xor a
+	ld hl, sp + CR_FRAME_CURSOR
+	ld [hl], a
+
+	; Each entry's fee index.
+	ld a, [wFallenCount]
+	ld b, a
+	ld c, 0
+.tier
+	push bc
+	ld a, c
+	call CRFeeIndex
+	pop bc
+	ld hl, sp + CR_FRAME_TIERS
+	ld e, c
+	ld d, 0
+	add hl, de
+	ld [hl], a
+	inc c
+	ld a, c
+	cp b
+	jr c, .tier
+
+	; The rows: fee index 0, 1, 2 in turn, each newest entry first.
+	ld hl, sp + CR_FRAME_ORDER
+	ld d, h
+	ld e, l                             ; de = the order's write pointer
+	ld c, 0                             ; c = the fee index being laid out
+.fillTier
+	ld a, [wFallenCount]
+	ld b, a
+.fillEntry
+	ld a, b
+	and a
+	jr z, .nextTier
+	dec b
+	ld hl, sp + CR_FRAME_TIERS
+	ld a, l
+	add b
+	ld l, a
+	jr nc, .noCarry
+	inc h
+.noCarry
+	ld a, [hl]
+	cp c
+	jr nz, .fillEntry
+	ld a, b
+	ld [de], a
+	inc de
+	jr .fillEntry
+.nextTier
+	inc c
+	ld a, c
+	cp 3
+	jr c, .fillTier
+
+	ld hl, CRWhichText
+	call PrintText
+	call SaveScreenTilesToBuffer2
+.list
+	call LoadScreenTilesFromBuffer2
+	ldh a, [hUILayoutFlags]
+	set BIT_DOUBLE_SPACED_MENU, a       ; one row per entry (its sense is inverted)
+	ldh [hUILayoutFlags], a
+	hlcoord 0, 0
+	ld a, [wFallenCount]
+	ld b, a
+	ld c, SCREEN_WIDTH - 2
+	call TextBoxBorder
+	ld b, 0
+.row
+	ld hl, sp + CR_FRAME_ORDER
+	ld e, b
+	ld d, 0
+	add hl, de
+	ld a, [hl]
+	push bc
+	call CRPlaceRow
+	pop bc
+	inc b
+	ld a, [wFallenCount]
+	cp b
+	jr nz, .row
+
+	ld hl, sp + CR_FRAME_CURSOR
+	ld a, [hl]
+	ldh [hCurrentMenuItem], a
+	ld hl, wTopMenuItemY
+	ld a, 1
+	ld [hli], a                         ; wTopMenuItemY: the first row
+	ld [hli], a                         ; wTopMenuItemX: the cursor's column
+	inc hl
+	ld a, [wFallenCount]
+	dec a
+	ld [hli], a                         ; wMaxMenuItem
+	ld a, PAD_A | PAD_B
+	ld [hli], a
+	xor a
+	ld [hl], a                          ; wLastMenuItem
+	ld hl, wListScrollOffset
+	ld [hli], a
+	ld [hl], a
+	ld [wMenuWatchMovingOutOfBounds], a
+	call HandleMenuInput
+	call PlaceUnfilledArrowMenuCursor
+	bit B_PAD_B, a
+	jp nz, .leave
+	ldh a, [hCurrentMenuItem]
+	ld hl, sp + CR_FRAME_CURSOR
+	ld [hl], a
+	ld e, a
+	ld d, 0
+	ld hl, sp + CR_FRAME_ORDER
+	add hl, de
+	ld a, [hl]
+	ld hl, sp + CR_FRAME_ENTRY
+	ld [hl], a
+	call CRPrepareOffer                 ; wNameBuffer, wCurEnemyLevel, wPriceTemp
+	ld hl, CRConfirmText
+	call PrintText
+	ld a, MONEY_BOX
+	ld [wTextBoxID], a
+	call DisplayTextBoxID
+	call YesNoChoice
+	ldh a, [hCurrentMenuItem]
+	and a
+	jp nz, .list                        ; declined: back to the list
+
+	call LoadScreenTilesFromBuffer2     ; the list is done; its box goes
+	ld hl, wPriceTemp
+	ld de, hMoney
+	ld bc, 3
+	call CopyData
+	call HasEnoughMoney
+	ld hl, CRNoMoneyText
+	jr c, .say
+	; The fee waits on the stack: the restore clobbers everything.
+	ld a, [wPriceTemp]
+	ld b, a
+	ld a, [wPriceTemp + 1]
+	ld c, a
+	ld a, [wPriceTemp + 2]
+	ld d, a
+	push bc
+	push de
+	ld hl, sp + 4 + CR_FRAME_ENTRY
+	ld a, [hl]
+	call CemResurrectRestore            ; carry = nowhere to put it
+	jr c, .full
+	pop de
+	pop bc
+	push af                             ; the RESURRECT_* flags
+	ld a, b
+	ld [wPriceTemp], a
+	ld a, c
+	ld [wPriceTemp + 1], a
+	ld a, d
+	ld [wPriceTemp + 2], a
+	ld hl, wPriceTemp + 2
+	ld de, wPlayerMoney + 2
+	ld c, 3
+	predef SubBCDPredef
+	call CRSetDone
+	pop af
+	ld e, a                             ; farcall clobbers a; e crosses
+	farcall CemResultTexts
+	jr .exit
+.full
+	add sp, 4
+	ld hl, CRBoxFullText
+.say
+	call PrintText
+	jr .exit
+.leave
+	call LoadScreenTilesFromBuffer2
+.exit
+	ld hl, sp + CR_FRAME_UIFLAGS
+	ld a, [hl]
+	ldh [hUILayoutFlags], a
+	add sp, CR_FRAME_SIZE
+	ret
+
+; a = the entry, b = its row. Draws its nickname and its fee. Clobbers everything.
+CRPlaceRow:
+	push af
+	push bc
+	call CRLogEntry
+	ld bc, CR_NICK_OFFSET
+	add hl, bc
+	call CRLogOpen
+	ld de, wNameBuffer
+	ld bc, NAME_LENGTH
+	call CopyData
+	call CRLogClose
+	pop bc
+	push bc
+	ld c, CR_NAME_COL
+	call CRRowCoord
+	ld de, wNameBuffer
+	call PlaceString
+	pop bc
+	pop af
+	push bc
+	call CRFeeIndex
+	call CRFeeAddr
+	ld d, h
+	ld e, l
+	pop bc
+	ld c, CR_PRICE_COL
+	push de
+	call CRRowCoord
+	pop de
+	ld c, 3 | LEADING_ZEROES | MONEY_SIGN ; LEADING_ZEROES = skip them (inverted name)
+	jp PrintBCDNumber
+
+; b = a list row, c = a column. Out: hl = that tile of the box. Clobbers a/de.
+CRRowCoord:
+	hlcoord 0, 1
+	ld a, b
+	and a
+	jr z, .column
+	ld de, SCREEN_WIDTH
+.down
+	add hl, de
+	dec a
+	jr nz, .down
+.column
+	ld e, c
+	ld d, 0
+	add hl, de
+	ret
+
+; a = the entry. Out: wNameBuffer = its nickname, wCurEnemyLevel = what it comes
+; back at (max(its level, the reward level), D9), wPriceTemp = its fee.
+; Clobbers everything.
+CRPrepareOffer:
+	push af
+	farcall GetRewardMonLevel           ; wCurEnemyLevel = the reward level
+	pop af
+	push af
+	call CRLogEntry
+	push hl
+	ld bc, CR_NICK_OFFSET
+	add hl, bc
+	call CRLogOpen
+	ld de, wNameBuffer
+	ld bc, NAME_LENGTH
+	call CopyData
+	call CRLogClose
+	pop hl
+	ld bc, MON_LEVEL
+	add hl, bc
+	call CRLogOpen
+	ld a, [hl]
+	ld b, a
+	call CRLogClose
+	ld a, [wCurEnemyLevel]
+	cp b
+	jr nc, .rewardLevel                 ; the reward level is the higher
+	ld a, b
+	ld [wCurEnemyLevel], a
+.rewardLevel
+	pop af
+	call CRFeeIndex
+	call CRFeeAddr
+	ld de, wPriceTemp
+	ld bc, 3
+	jp CopyData
+
+; a = an entry. Out: a = its fee index: 0 Poke Ball, 1 Great Ball, 2 Ultra Ball
+; and above (D1), from its species and form (MON_CATCH_RATE bits 5-6).
+; Clobbers bc/de/hl.
+CRFeeIndex:
+	call CRLogEntry
+	call CRLogOpen
+	ld a, [hl]                          ; MON_SPECIES
+	ld e, a
+	ld bc, MON_CATCH_RATE
+	add hl, bc
+	ld a, [hl]
+	call CRLogClose
+	and FORM_MASK
+	ASSERT FORM_SHIFT == 5
+	rlca
+	rlca
+	rlca                                ; bits 5-6 -> 0-1
+	ld d, a
+	farcall RogueClassifyIdentityFar    ; e = the legacy class, 1-4
+	ld a, e
+	dec a
+	cp 2
+	ret c
+	ld a, 2
+	ret
+
+; a = a fee index. Out: hl = its three BCD bytes. Clobbers a/bc.
+CRFeeAddr:
+	ld c, a
+	add a
+	add c
+	ld c, a
+	ld b, 0
+	ld hl, CRFeeTable
+	add hl, bc
+	ret
+
+CRFeeTable:
+	bcd3 RESURRECT_FEE_POKEBALL
+	bcd3 RESURRECT_FEE_GREATBALL
+	bcd3 RESURRECT_FEE_ULTRABALL
+
+; Out: carry = he has served this Cemetery already. Clobbers a/b.
+CRIsDone:
+	call CDOpenSRAM
+	ld a, [sProcCemeteryItemGot]
+	ld b, a
+	call CDCloseSRAM
+	ld a, b
+	add a                               ; bit 7 into the carry
+	ret
+
+CRSetDone:
+	call CDOpenSRAM
+	ld a, [sProcCemeteryItemGot]
+	set 7, a
+	ld [sProcCemeteryItemGot], a
+	jp CDCloseSRAM
+
+; The lines (text/ProceduralCemetery.asm; placeholder wording).
+CRNoSoulsText:
+	text_far _CemResNoSoulsText
+	text_end
+CRWhichText:
+	text_far _CemResWhichText
+	text_end
+CRConfirmText:
+	text_far _CemResConfirmText
+	text_end
+CRBoxFullText:
+	text_far _CemResBoxFullText
+	text_end
+CRAfterText:
+	text_far _CemResAfterText
+	text_end
+CRNoMoneyText:
+	text_far _PCPokemonSalesmanNoMoneyText
+	text_end
+
+; ============================================================================
+; Outside Ironman (D6): a fainted party Pokemon, for a flat fee. Its own section:
+; $28 had no room for it beside the list. Entered only by farcall from
+; CemResurrectorTalk, and it calls nothing in $28 (a plain call from here would
+; land in whatever $28's labels' bank offsets map to in this bank), so the few
+; helpers it shares in spirit are its own, CV-prefixed.
+; ============================================================================
+SECTION "Cemetery Reviver", ROMX, BANK[$1A]
+
+CemReviverTalk::
+	call CVAnyFainted
+	ld hl, CVNoFaintedText
+	jp nc, PrintText
+	ld hl, CVAskText
+	call PrintText
+	call SaveScreenTilesToBuffer2
+	xor a
+	ldh [hUpdateSpritesEnabled], a
+	ld [wPartyMenuTypeOrMessageID], a
+	ld [wMenuItemToSwap], a
+	call DisplayPartyMenu
+	push af
+	call GBPalWhiteOutWithDelay3
+	call RestoreScreenTilesAndReloadTilePatterns
+	call LoadGBPal
+	pop af
+	ret c                               ; cancelled
+	ldh a, [hWhichPokemon]
+	call CVPartyMonAddr
+	ld de, MON_HP
+	add hl, de
+	ld a, [hli]
+	or [hl]
+	ld hl, CVNotFaintedText
+	jp nz, PrintText
+	ldh a, [hWhichPokemon]
+	ld hl, wPartyMonNicks
+	call GetPartyMonName
+	ld hl, CVFee
+	ld de, wPriceTemp
+	ld bc, 3
+	call CopyData
+	ld hl, CVConfirmText
+	call PrintText
+	ldh a, [hWhichPokemon]
+	push af
+	ld a, MONEY_BOX
+	ld [wTextBoxID], a
+	call DisplayTextBoxID
+	call YesNoChoice
+	ldh a, [hCurrentMenuItem]
+	ld c, a
+	pop af
+	ldh [hWhichPokemon], a
+	ld a, c
+	and a
+	ret nz                              ; declined
+	ld hl, wPriceTemp
+	ld de, hMoney
+	ld bc, 3
+	call CopyData
+	call HasEnoughMoney
+	ld hl, CVNoMoneyText
+	jp c, PrintText
+	ld hl, wPriceTemp + 2
+	ld de, wPlayerMoney + 2
+	ld c, 3
+	predef SubBCDPredef
+	ldh a, [hWhichPokemon]
+	call CVPartyMonAddr
+	push hl
+	ld de, MON_MAXHP
+	add hl, de
+	ld a, [hli]
+	ld b, a
+	ld a, [hl]
+	ld c, a                             ; bc = its max HP
+	pop hl
+	push hl
+	ld de, MON_HP
+	add hl, de
+	ld a, b
+	ld [hli], a
+	ld [hl], c
+	pop hl
+	ld de, MON_STATUS
+	add hl, de
+	xor a
+	ld [hl], a
+	; Served: bit 7 of sProcCemeteryItemGot (SRAM bank 0, closed again after).
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	xor a
+	ld [rRAMB], a
+	ld a, [sProcCemeteryItemGot]
+	set 7, a
+	ld [sProcCemeteryItemGot], a
+	ld a, BMODE_SIMPLE
+	ld [rBMODE], a
+	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
+	ld [rRAMG], a
+	ld hl, CVRevivedText
 	jp PrintText
-.placeholder
-	text "..."
-	done
+
+; a = a party slot. Out: hl = its struct. Clobbers a/bc.
+CVPartyMonAddr:
+	ld hl, wPartyMons
+	ld bc, PARTYMON_STRUCT_LENGTH
+	jp AddNTimes
+
+; Out: carry = some party Pokemon has 0 HP. Clobbers a/b/de/hl.
+CVAnyFainted:
+	ld a, [wPartyCount]
+	ld b, a
+	ld hl, wPartyMons + MON_HP
+	ld de, PARTYMON_STRUCT_LENGTH - 1
+.next
+	ld a, [hli]
+	or [hl]
+	jr z, .found
+	add hl, de
+	dec b
+	jr nz, .next
+	and a
+	ret
+.found
+	scf
+	ret
+
+CVFee:
+	bcd3 RESURRECT_REVIVE_FEE
+
+CVNoFaintedText:
+	text_far _CemResNoFaintedText
+	text_end
+CVAskText:
+	text_far _CemResReviveAskText
+	text_end
+CVNotFaintedText:
+	text_far _CemResNotFaintedText
+	text_end
+CVConfirmText:
+	text_far _CemResReviveConfirmText
+	text_end
+CVRevivedText:
+	text_far _CemResRevivedText
+	text_end
+CVNoMoneyText:
+	text_far _PCPokemonSalesmanNoMoneyText
+	text_end
+
+; e = the restore's flags: the result lines (farcalled from CRIronman). Clobbers
+; everything.
+CemResultTexts::
+	ld a, e
+	push af
+	bit BIT_RESURRECT_TO_BOX, a
+	ld hl, wPartyMonNicks
+	ld a, [wPartyCount]
+	jr z, .named
+	ld hl, wBoxMonNicks
+	ld a, [wBoxCount]
+.named
+	dec a                               ; it is the last one in
+	ld bc, NAME_LENGTH
+	call AddNTimes
+	ld de, wNameBuffer
+	ld bc, NAME_LENGTH
+	call CopyData
+	ld hl, CVReturnedText
+	call PrintText
+	pop af
+	push af
+	bit BIT_RESURRECT_TO_BOX, a
+	ld hl, CVToBoxText
+	call nz, PrintText
+	pop af
+	bit BIT_RESURRECT_EFFECT_LOST, a
+	ret z
+	ld hl, CVEffectLostText
+	jp PrintText
+
+CVReturnedText:
+	text_far _CemResReturnedText
+	text_end
+CVToBoxText:
+	text_far _CemResToBoxText
+	text_end
+CVEffectLostText:
+	text_far _CemResEffectLostText
+	text_end

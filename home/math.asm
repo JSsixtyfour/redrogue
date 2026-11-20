@@ -26,62 +26,69 @@ Multiply:: ; marcelnote - adapted from polishedcrystal
 	push de
 	push bc
 
-	ldh a, [hMultiplicand]
-	ld e, a
+; Rewritten 2026-11-19 (AI speed lever 3): the old loop accumulated through four
+; HRAM read-modify-writes per set multiplier bit (~1,075 cycles per AI call). Now
+; the low 16 bits of the multiplicand go through a register shift-add, c:h:l, its
+; multiplier bits taken high to low and fully unrolled; a nonzero top byte (1% of
+; AI calls) adds one 8x8 product into the top two bytes. Same contract, same exit
+; flags (Z set, C clear), same results: test_math_routines checks all three against
+; Python, and fails on a dropped carry.
 	ldh a, [hMultiplicand + 1]
-	ld h, a
-	ldh a, [hMultiplicand + 2]
-	ld l, a
-
-	xor a
 	ld d, a
-	ldh [hProduct], a
-	ldh [hProduct + 1], a
-	ldh [hProduct + 2], a
-	ldh [hProduct + 3], a
-
+	ldh a, [hMultiplicand + 2]
+	ld e, a                         ; de = the multiplicand's low 16 bits
 	ldh a, [hMultiplier]
+	ld b, a                         ; b = the multiplier, kept for the top byte
+	ld hl, 0
+	ld c, l                         ; c:h:l = low 16 bits x multiplier
+	REPT 8
+	add hl, hl
+	rl c                            ; product * 2
+	add a                           ; next multiplier bit, high first, into carry
+	jr nc, .low\@
+	add hl, de                      ; + multiplicand
+	jr nc, .low\@
+	inc c
+.low\@
+	ENDR
+	ldh a, [hMultiplicand]          ; read before hProduct + 1 (its alias) is written
+	and a
+	jr z, .store                    ; b = 0 below: the top byte adds nothing
+; Top byte: (top x multiplier) << 16, a 16-bit product, into the top two bytes.
+	push hl
+	ld e, a
+	ld d, 0                         ; de = the top byte
+	ld a, b
+	ld hl, 0
+	REPT 8
+	add hl, hl
+	add a
+	jr nc, .high\@
+	add hl, de                      ; an 8x8 product never carries out of hl
+.high\@
+	ENDR
+	ld a, l
+	add c
+	ld c, a                         ; product byte 1 += low byte of top x multiplier
+	ld a, h
+	adc 0
+	ld b, a                         ; product byte 0 = its high byte + carry
+	pop hl
+	jr .write
+.store
+	ld b, a                         ; a = 0: product byte 0
+.write
+	ld a, b
+	ldh [hProduct], a
+	ld a, c
+	ldh [hProduct + 1], a
+	ld a, h
+	ldh [hProduct + 2], a
+	ld a, l
+	ldh [hProduct + 3], a
+	xor a                           ; Z set, C clear, as the old loop exited
 
-.loop ; performs dehl * a
-	and a                 ; a = 0?
-	jr z, .done           ; if yes, we're done
-
-	; here a != 0, carry not set
-	rra                   ; divide a by 2, is the last bit 1?
-	jr nc, .next          ; if not, just multiply dehl by 2
-
-	; else, add dehl to result before multiplying it by 2
-	ld b, a               ; store multiplier in b
-
-	ld c, LOW(hProduct + 3)
-	ldh a, [c]
-	add l
-	ldh [c], a
-
-	dec c ; c = LOW(hProduct + 2)
-	ldh a, [c]
-	adc h
-	ldh [c], a
-
-	dec c ; c = LOW(hProduct + 1)
-	ldh a, [c]
-	adc e
-	ldh [c], a
-
-	dec c ; c = LOW(hProduct)
-	ldh a, [c]
-	adc d
-	ldh [c], a
-
-	ld a, b               ; retrieve multiplier
-
-.next
-	add hl, hl            ; multiply hl by 2
-	rl e                  ; multiply e by 2 (plus carry)
-	rl d                  ; multiply d by 2 (plus carry)
-	jr .loop
-
-.done ; flags here are `and a`'s with a = 0 (Z set, C clear), as before
+.done
 	pop bc
 	pop de
 	pop hl
@@ -181,19 +188,20 @@ Divide:: ; adapted from polishedcrystal via yumepokered
 	ldh a, [c]    ; a = [hDividend + nByte], next dividend byte
 	ld h, a       ; h = dividend for this byte, will become quotient
 	ld a, e       ; a = remainder within bits loop
-	ld b, 8       ; b = bit counter
-.loopBits
+; The 8 bits are unrolled (2026-11-19, AI speed lever 3): the old counted loop
+; spent `dec b` + `jr nz` (16 of ~52 cycles) per bit on loop control. Same steps,
+; same results; test_math_routines checks them against Python.
+	REPT 8
 	sla h         ; rotate dividend bit out and quotient bit left
 	rla           ; bring in next bit of dividend into a
-	jr c, .carry  ; if carry from rla, then $1a [9bits] >= d so subtract d and increase h
+	jr c, .carry\@ ; if carry from rla, then $1a [9bits] >= d so subtract d and increase h
 	cp d          ; a >= d?
-	jr c, .skip   ; if not, move to next bit
-.carry
+	jr c, .skip\@ ; if not, move to next bit
+.carry\@
 	sub d         ; subtract divisor from remainder
 	inc h         ; increase quotient
-.skip
-	dec b         ; one less bit to do
-	jr nz, .loopBits
+.skip\@
+	ENDR
 	ld e, a       ; update remainder
 	ld a, h
 	ldh [c], a    ; [hQuotient + nByte] = quotient

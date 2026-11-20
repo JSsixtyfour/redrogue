@@ -233,6 +233,9 @@ ENDC
 	cp 6
 	jr c, .haveTrainerHeaders
 	ld hl, PFStageNpc1Header
+	cp FOREST_GENERIC
+	jr nz, .haveTrainerHeaders
+	ld hl, PFGenericHeader
 .haveTrainerHeaders
 	ld de, ProceduralForest_ScriptPointers
 	ld a, [wProceduralForestCurScript]
@@ -254,6 +257,11 @@ PFStageNpc1Header:
 	trainer EVENT_BEAT_STAGE_EVENT_NPC_1, 4, PFStageEventHideoutText, PFStageEventDefeatText, PFStageEventAfterText
 PFStageNpc2Header:
 	trainer EVENT_BEAT_STAGE_EVENT_NPC_2, 4, PFStageEventHideoutText, PFStageEventDefeatText, PFStageEventAfterText
+	; The generic route trainer: object slot 9, its own block and flag byte (the
+	; header pick above chooses it by wTrainerHeaderFlagBit). Range 1: one tile.
+	def_trainers 9
+PFGenericHeader:
+	trainer EVENT_BEAT_FOREST_GENERIC_TRAINER, 1, PFGenericIntroText, PFGenericDefeatText, PFGenericAfterText
 	db -1 ; end
 
 ProceduralForest_ScriptPointers:
@@ -764,10 +772,29 @@ PFOptionalOffer:
 	text_far FGEncounterOffer
 	text_end
 
-; The generic route trainer (object FOREST_GENERIC). PLACEHOLDER until his
-; trainer header (def_trainers 9) and the D4 lines land: talking prints this.
+; The generic route trainer (object FOREST_GENERIC): the standard
+; talk-to-trainer flow, header PFGenericHeader (def_trainers 9).
 PFGenericTrainerText:
-	text "..."
+	text_asm
+	ld hl, PFGenericHeader
+	jp ProceduralForestInitBattleScript
+
+; TODO(user approval, spec D4): PLACEHOLDER lines. Each class is to get a vanilla
+; Red line that Red Rogue no longer uses; candidates are listed for approval
+; before they replace these. One shared set until then.
+PFGenericIntroText:
+	text "Hey! You look"
+	line "like a trainer!"
+	done
+
+PFGenericDefeatText:
+	text "Ow!"
+	line "You beat me!"
+	prompt
+
+PFGenericAfterText:
+	text "Good luck out"
+	line "there!"
 	done
 
 ProceduralForest_TextPointers:

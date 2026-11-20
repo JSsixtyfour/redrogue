@@ -2338,12 +2338,12 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         )
 
     def test_procedural_forest_generation(self) -> None:
-        # 8: the boss, four pokeballs, the two stage-event NPC slots (Phase 7
-        # rollout, as the cave's test_procedural_cave_generation above), and the
+        # 9: the boss, four pokeballs, the two stage-event NPC slots (Phase 7
+        # rollout, as the cave's test_procedural_cave_generation above), the
         # deep floor's optional encounter (FOREST_OPTIONAL_MON, picture 0 except
-        # on floor 2).
+        # on floor 2) and the generic route trainer (FOREST_GENERIC).
         self.assert_generation_contract(
-            "Procedural Forest", "PROCEDURAL_FOREST", 40, 40, 8, True
+            "Procedural Forest", "PROCEDURAL_FOREST", 40, 40, 9, True
         )
 
     def test_procedural_cemetery_generation(self) -> None:

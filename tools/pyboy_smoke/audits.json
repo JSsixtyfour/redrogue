@@ -57,6 +57,8 @@
      "guards": "Facility warp pads: a placed end failing the no-strand rule, ends too close, a pad block missing, a warp not armed to its partner or a spare site left armed"},
     {"script": "audit_cave_ladder_sites.py", "args": ["--runtime", "--layouts", "300"], "kind": "guard",
      "guards": "Cave subroom ladders: a drawn ladder failing the no-strand rule or too close to the other, one ladder when a far pair existed, none when a site was valid, a ladder block missing, or a site warp armed wrong or left armed"},
+    {"script": "audit_forest_generic_trainer.py", "args": ["--seeds", "300"], "kind": "guard",
+     "guards": "the Forest's generic route trainer (forest_generic_trainer.asm): none in more than 5% of Forests, off a maze cell, in a tree, on a ball, the boss, the entrance or near the hideout, facing a tree, wearing the villain's picture"},
     {"script": "audit_forest_stage_event.py", "args": [], "kind": "guard",
      "guards": "stage events on the Forest"},
     {"script": "audit_map_object_const_order.py", "args": [], "kind": "guard", "in_smoke": true,
