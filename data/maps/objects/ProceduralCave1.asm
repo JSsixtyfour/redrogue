@@ -95,4 +95,11 @@ ProceduralCave1_Object:
 	object_event 10, 10, SPRITE_MONSTER, STAY, DOWN, TEXT_PROCEDURALCAVE1_OPTIONAL, ONIX, 1 | OW_POKEMON
 	ASSERT CAVE_OPTIONAL_MON == 10
 
+	; The generic route trainer (custom_functions/forest_generic_trainer.asm,
+	; GENERIC_TRAINER_ALL_AREAS_SPEC.md): one per cave, on one floor. Class,
+	; sprite, cell and facing are set at load; picture 0 elsewhere. 8 args: a
+	; trainer (TRAINER flag), so TalkToTrainer runs. The class is a placeholder.
+	object_event 10, 10, SPRITE_HIKER, STAY, DOWN, TEXT_PROCEDURALCAVE1_GENERIC, OPP_HIKER, 1
+	ASSERT CAVE_GENERIC == 11
+
 	def_warps_to PROCEDURAL_CAVE_1

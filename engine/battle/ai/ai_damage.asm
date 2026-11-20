@@ -341,6 +341,7 @@ AILayerDamage:
 ; stand in. The scores are still set after the last layer (AIExplosionTradeVeto).
 	call AIExplosionVetoMask
 	call AIPossibleKOEndsBattle
+	farcall AIHazeYieldsToKO ; ai_postko.asm: before AISetupGate reads the shared byte
 	call AISetupGate ; ai_setup_gate.asm: tempo bits for AI_PLAN, AI_SETUP's encourage
 	ld a, [wBuffer + AI_BUF_BESTSLOT]
 	cp NUM_MOVES
@@ -420,11 +421,15 @@ AILayerDamage:
 ; a slot is no win. If a live slot that lands this turn can possibly KO the last
 ; mon: set AI_KO_ENDS_BATTLE_BIT, so AI_PLAN (which reads the whole byte, later)
 ; withholds its push, and AISetupGate, next, takes back AI_SETUP's encourage,
-; since AI_SETUP ran before this layer. Clobbers af, bc, de, hl.
+; since AI_SETUP ran before this layer. The vetoed slots are also dropped from
+; AI_BUF_POSSKO itself, for AIHazeYieldsToKO (2026-11-20); the scarce-PP rule
+; cannot tell, as an Explosion slot is never its best or a stand-in (0 damage).
+; Clobbers af, bc, de, hl.
 AIPossibleKOEndsBattle:
 	cpl
 	ld hl, wBuffer + AI_BUF_POSSKO
 	and [hl]
+	ld [hl], a
 	ret z ; no possible KO that is allowed to land this turn
 	call AIPlayerOnLastMon ; trainer_ai.asm, same bank
 	ret nc ; a reserve is alive

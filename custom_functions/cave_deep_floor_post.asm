@@ -32,6 +32,7 @@ DEF CAVE_DEEP_NO_SPOT EQU $FF
 ; ------------------------------------------------------------
 CaveDeepPatchSprites::
 	farcall OptionalEncounterPatchSprite
+	farcall CaveGenericPatch             ; his floor only (forest_generic_trainer.asm)
 	call CaveDeepPostCtrl               ; carry = deep, a = control
 	ret nc
 	ld c, a

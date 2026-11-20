@@ -267,7 +267,8 @@ DEF AI_BUF_BESTPARTYSLOT  EQU 19 ; 1 byte: slot it belongs to ($ff = none yet)
 ; bound", so it ranks last but is still chosen when nothing else is alive.
 DEF AI_SEND_OUT_SPENT EQU $fe
 ; B9 (2026-10-21): AI_DAMAGE's possible-KO mask, one bit per slot (slot N = bit N),
-; for the scarce-PP tiebreak at .applyBest. Shares +18 with the send-out ranking,
+; for the scarce-PP tiebreak at .applyBest; from AIPossibleKOEndsBattle on, minus
+; vetoed Explosions, for AIHazeYieldsToKO. Shares +18 with the send-out ranking,
 ; which runs at switch time, never inside a move-scoring pass.
 DEF AI_BUF_POSSKO EQU AI_BUF_BESTPARTYSCORE
 ; FOLLOWUPS #61 (2026-11-12): the slots AI_SETUP encouraged this decision, one bit
@@ -292,6 +293,16 @@ DEF AI_GUESS_MASTER_BADGES EQU 5
 ; that takes its KO away turns decisive. Measured +0.119 at +4, +0.038 (not
 ; significant) at +2; 2 also covers one Swords Dance / Amnesia that already KOs.
 DEF AI_HAZE_KO_STAGES EQU 2
+; AIHazeVerdict, slower half (2026-11-20, AI backlog "Level-matched Haze VALUE"): a
+; slower mon facing a player Attack or Special stage of this or more Hazes
+; decisively. Level-matched, Haze beat the best other move by +0.072 at +4
+; [+0.031, +0.112] and +0.004 at +2 (neutral), whether or not the boosted hit KOs.
+DEF AI_HAZE_SLOW_STAGES EQU 4
+; AI_BUF_SETUPMASK bit 7: the faster Haze verdict gave a slot AI_VERY_STRONG this
+; decision. AIHazeYieldsToKO (AI_DAMAGE's .applyBest) reads and clears it before
+; AISetupGate walks bits 0-3 of the same byte as a slot mask.
+DEF AI_HAZE_DECISIVE_BIT EQU 7
+ASSERT AI_HAZE_DECISIVE_BIT >= NUM_MOVES
 DEF AI_SCARCE_MAX_HITS EQU 8 ; a best move needing more hits than this keeps its nudge
 ; Phase 5: the four per-slot MOVE CLASS masks, two bytes each, little-endian.
 ; This region was reserved through Phase 4 as AI_BUF_PARTY (six party scores)

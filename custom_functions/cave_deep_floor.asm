@@ -193,6 +193,9 @@ ENDC
 	call CaveDeepWriteCtrl
 .done
 	call FGCloseSRAM
+	; The generic trainer, after the decision (his floor counts only on a deep
+	; cave) and before the post-pass parks floor 2's unused objects.
+	farcall CaveGenericPlace
 	farjp CaveDeepPostPass              ; the per-floor half ($15)
 
 ; ------------------------------------------------------------

@@ -575,6 +575,14 @@ AIHealOutpaces::
 ; at +4 (significant; mean decision regret is +0.022) and +0.038 at +2, while
 ; the old scoring picked it 16-19% of the time. Faster without that threat it
 ; lost by 0.02-0.03. A KO of our own still outranks it (AI_KILL, AI_DAMAGE).
+; Level-matched re-measure (2026-11-20, AI backlog "Level-matched Haze VALUE"):
+; - faster, when one of OUR moves could KO, Haze lost at +2 (-0.091) and +4
+;   (-0.058), and a possible KO (AI_KILL_POSSIBLE) only tied this verdict. So the
+;   faster verdict flags AI_HAZE_DECISIVE_BIT, and AIHazeYieldsToKO (AI_DAMAGE,
+;   which knows our KOs) takes the whole AI_VERY_STRONG back, leaving Haze neutral.
+; - slower, at +AI_HAZE_SLOW_STAGES Haze won (+0.072) with or without the
+;   player's KO, so that is decisive too, with no KO test and no take-back (our
+;   own KO did not make it lose there: +0.046, n.s.).
 ; Clobbers af, bc, d, hl.
 AIHazeVerdict::
 	ld a, d
@@ -593,8 +601,20 @@ AIHazeVerdict::
 .boosted
 	push de
 	farcall AIEnemyIsFaster ; carry = we act first; survives the return
-	jr nc, .popOrdinary
+	jr nc, .slower
 	farcall AIPlayerWouldKO ; carry = its boosted hit KOs us this turn
+	jr nc, .popOrdinary
+	ld hl, wBuffer + AI_BUF_SETUPMASK
+	set AI_HAZE_DECISIVE_BIT, [hl] ; ld and set keep the carry
+	jr .popOrdinary
+.slower
+	ld a, [wPlayerMonAttackMod]
+	cp BASE_STAT_LEVEL + AI_HAZE_SLOW_STAGES
+	ccf
+	jr c, .popOrdinary ; carry = at or above
+	ld a, [wPlayerMonSpecialMod]
+	cp BASE_STAT_LEVEL + AI_HAZE_SLOW_STAGES
+	ccf
 .popOrdinary
 	pop de ; flags survive
 	ld e, AI_VERY_STRONG
@@ -611,6 +631,45 @@ AIHazeVerdict::
 .harmful
 	and a ; carry clear = discourage
 	ret
+
+; The faster Haze verdict yields to our own KO (2026-11-20, see AIHazeVerdict).
+; Farcalled from AI_DAMAGE's .applyBest after AIPossibleKOEndsBattle, which left
+; AI_BUF_POSSKO = the live slots that could KO this turn, vetoed Explosions out.
+; AI_SMART scored Haze before AI_DAMAGE knew our KOs, hence the flag. Always
+; clears AI_HAZE_DECISIVE_BIT, since AISetupGate, next, walks the same byte as a
+; slot mask. If it was set and a slot could KO, every Haze slot gives back its
+; AI_VERY_STRONG (the verdict's whole encourage, not just the decisive part).
+; No register inputs; clobbers af, bc, hl.
+AIHazeYieldsToKO::
+	ld hl, wBuffer + AI_BUF_SETUPMASK
+	bit AI_HAZE_DECISIVE_BIT, [hl]
+	ret z
+	res AI_HAZE_DECISIVE_BIT, [hl]
+	ld a, [wBuffer + AI_BUF_POSSKO]
+	and a
+	ret z ; nothing of ours could KO: the decisive Haze stands
+	ld hl, wEnemyMonMoves
+	ld bc, wBuffer ; bc = this slot's score
+.slot
+	ld a, [hli]
+	cp HAZE ; the only HAZE_EFFECT move
+	jr nz, .next
+	ld a, [bc]
+	cp AI_SCORE_DISABLED
+	jr z, .next ; legality is not a preference
+	add AI_VERY_STRONG
+	cp AI_SCORE_MAX + 1
+	jr c, .store
+	ld a, AI_SCORE_MAX
+.store
+	ld [bc], a
+.next
+	inc c ; wBuffer + 0-3 never crosses a page (ASSERT below)
+	ld a, l
+	cp LOW(wEnemyMonMoves + NUM_MOVES)
+	jr nz, .slot
+	ret
+	ASSERT HIGH(wBuffer) == HIGH(wBuffer + NUM_MOVES - 1)
 
 IF DEF(STADIUM_SWITCH)
 ; E2b TEST BUILD ONLY (AI_T4_REGRET_PLAN E2b, 2026-11-18): Pokemon Stadium 1's

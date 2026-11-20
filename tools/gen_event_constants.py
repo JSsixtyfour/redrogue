@@ -46,6 +46,10 @@ NUM_EVENTS = 512
 # secretly load-bearing.
 # ---------------------------------------------------------------------------
 DELETE = [
+    # Retired 2026-11-20: the wild areas' generic trainers keep their defeat
+    # flags in wWildGenericBeaten (GENERIC_TRAINER_ALL_AREAS_SPEC.md); the event
+    # table had no room for the cave's, Cemetery's and Facility's.
+    "EVENT_BEAT_FOREST_GENERIC_TRAINER",
 # ----------------------------------------------------------------------------
 # POTENTIAL REMOVALS (not applied - flagged 2026-09-03, needs real feature
 # deletion, not just a constant delete). Each is still referenced by live game
@@ -472,7 +476,8 @@ NEW_EVENTS = [
     # own object slot (FOREST_GENERIC, 9), so its own defeat flag and its own
     # `def_trainers 9` block in scripts/ProceduralForest.asm. Run-zone; reset in
     # the Forest's preload beside EVENT_BEAT_STAGE_EVENT_NPC_2.
-    "EVENT_BEAT_FOREST_GENERIC_TRAINER",
+    # (EVENT_BEAT_FOREST_GENERIC_TRAINER was introduced here 2026-11-19 and retired
+    # 2026-11-20, see DELETE: the generic trainers' flags live in wWildGenericBeaten.)
 ]
 
 MAP_DIRS = ("scripts", "data/maps/objects", "data/maps/headers", "text")

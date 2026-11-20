@@ -18,13 +18,14 @@ ENDC
 
 ; SRAM0 is already open; use after the stage's season/theme has been latched.
 ; Every Forest preload comes through here, so the deep floor's decision follows
-; the roll (it may move a grotto encounter onto floor 2). SRAM0 open on return.
+; the encounter (it may move a grotto encounter onto floor 2). SRAM0 open on return.
 OptionalForestAssignEncounter::
 	call .assign
+	farcall ForestDeepLobbyDecide
 	; The generic trainer's roll (forest_generic_trainer.asm): every Forest
-	; preload, independent of the stage event. Leaves SRAM0 open.
-	farcall ForestGenericRoll
-	farjp ForestDeepLobbyDecide
+	; preload, independent of the stage event, after the decision (his floor is
+	; uniform over this Forest's floors). Leaves SRAM0 open.
+	farjp ForestGenericRoll
 .assign
 IF DEF(_DEBUG)
 	ld a, [wStatusFlags6]
@@ -65,6 +66,9 @@ OptionalForestOutcome::
 	ASSERT PROC_FOREST_PAL_COUNT == 4
 
 OptionalCaveAssignEncounter::
+	; The generic trainer's roll (forest_generic_trainer.asm): every cave preload,
+	; independent of the stage event. Leaves SRAM0 open.
+	farcall CaveGenericRoll
 	call OptionalEncounterClear
 IF DEF(_DEBUG)
 	ld a, [wStatusFlags6]

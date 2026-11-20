@@ -246,6 +246,9 @@ ProceduralCave1_Script:
 	cp 6
 	jr c, .haveTrainerHeaders
 	ld hl, PCStageNpc1Header
+	cp CAVE_GENERIC
+	jr nz, .haveTrainerHeaders
+	ld hl, PCGenericHeader
 .haveTrainerHeaders
 	ld de, ProceduralCave1_ScriptPointers
 	ld a, [wProceduralCave1CurScript]
@@ -588,7 +591,8 @@ ProceduralCave1_TextPointers:
 	dw_const PCGamblerText, TEXT_PROCEDURALCAVE1_GAMBLER
 	dw_const PCSuperNerdText, TEXT_PROCEDURALCAVE1_SUPER_NERD
 	dw_const PCOptionalText, TEXT_PROCEDURALCAVE1_OPTIONAL
-	; --- end of the object block (10 objects); script-only ids follow ---
+	dw_const PCGenericTrainerText, TEXT_PROCEDURALCAVE1_GENERIC
+	; --- end of the object block (11 objects); script-only ids follow ---
 	dw_const PCSuperNerdPrizeText, TEXT_PROCEDURALCAVE1_SUPER_NERD_PRIZE
 	dw_const ProceduralCave1BossOfferText, TEXT_PROCEDURALCAVE1_BOSS_OFFER
 	dw_const PCWildCalmedText, TEXT_PROCEDURALCAVE1_CALMED
@@ -646,7 +650,28 @@ PCStageNpc1Header:
 	trainer EVENT_BEAT_STAGE_EVENT_NPC_1, 4, PCStageEventHideoutText, PCStageEventDefeatText, PCStageEventAfterText
 PCStageNpc2Header:
 	trainer EVENT_BEAT_STAGE_EVENT_NPC_2, 4, PCStageEventHideoutText, PCStageEventDefeatText, PCStageEventAfterText
+	; The generic route trainer: object slot CAVE_GENERIC (11), his flag in
+	; wWildGenericBeaten (the header pick above chooses this header by
+	; wTrainerHeaderFlagBit). Range 1: one tile.
+PCGenericHeader:
+	wild_generic_trainer CAVE_GENERIC, 1, PCGenericIntroText, PCGenericDefeatText, PCGenericAfterText
 	db -1 ; end
+
+; The generic route trainer's talk and his three lines, which pick themselves by
+; his class (ForestGenericIntroText etc., $1A, forest_generic_trainer.asm).
+PCGenericTrainerText:
+	text_asm
+	ld hl, PCGenericHeader
+	jp ProceduralCaveInitBattleScript
+PCGenericIntroText:
+	text_far ForestGenericIntroText
+	text_end
+PCGenericDefeatText:
+	text_far ForestGenericDefeatText
+	text_end
+PCGenericAfterText:
+	text_far ForestGenericAfterText
+	text_end
 
 ProceduralCaveInitBattleScript:
 	call TalkToTrainer

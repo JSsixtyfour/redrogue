@@ -129,6 +129,25 @@ MACRO trainer
 	DEF CURRENT_TRAINER_BIT += 1
 ENDM
 
+; A wild area's generic route trainer (forest_generic_trainer.asm): `trainer`'s
+; header, with its defeat flag in wWildGenericBeaten instead of an event.
+; The engine sets bit \1 counted from the header's base pointer, so the base is
+; one byte back for a slot of 8 or more.
+;\1 object slot
+;\2 view range
+;\3 TextBeforeBattle
+;\4 TextEndBattle
+;\5 TextAfterBattle
+MACRO wild_generic_trainer
+	ASSERT BANK(\3) == BANK(@) || BANK(\3) == 0, "Trainer before-battle text must be in-bank"
+	ASSERT BANK(\4) == BANK(@) || BANK(\4) == 0, "Trainer end-battle text must be in-bank"
+	ASSERT (\1) < 16
+	db \1
+	db \2 << 4
+	dw wWildGenericBeaten - (\1) / 8
+	dw \3, \5, \4, \4
+ENDM
+
 ;\1 x position
 ;\2 y position
 ;\3 movement data

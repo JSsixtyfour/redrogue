@@ -37,9 +37,14 @@ MAX_NO_CELL = 0.05
 
 
 def table_classes() -> list[str]:
+    """The Forest pool's (OPP, SPRITE) pairs: WGTForestPool's indices into
+    WGTClasses, whose rows are in `const WGT_*` order."""
     text = (REPO_ROOT / "custom_functions/forest_generic_trainer.asm").read_text(encoding="utf-8")
-    body = text.split("GenericTrainerTable:")[1].split("DEF NUM_GENERIC_TRAINERS")[0]
-    return re.findall(r"db\s+(OPP_\w+),\s*(SPRITE_\w+)", body)
+    order = re.findall(r"^\s*const (WGT_\w+)", text, re.M)
+    body = text.split("WGTClasses:")[1].split("ASSERT")[0]
+    rows = re.findall(r"wgt_class\s+(OPP_\w+),\s*(SPRITE_\w+)", body)
+    pool = re.search(r"^WGTForestPool:\s*\n\s*db \d+, ([^\n;]+)", text, re.M).group(1)
+    return [rows[order.index(name.strip())] for name in pool.split(",")]
 
 
 def main() -> int:

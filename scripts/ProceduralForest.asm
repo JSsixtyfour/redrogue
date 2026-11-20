@@ -257,11 +257,11 @@ PFStageNpc1Header:
 	trainer EVENT_BEAT_STAGE_EVENT_NPC_1, 4, PFStageEventHideoutText, PFStageEventDefeatText, PFStageEventAfterText
 PFStageNpc2Header:
 	trainer EVENT_BEAT_STAGE_EVENT_NPC_2, 4, PFStageEventHideoutText, PFStageEventDefeatText, PFStageEventAfterText
-	; The generic route trainer: object slot 9, its own block and flag byte (the
-	; header pick above chooses it by wTrainerHeaderFlagBit). Range 1: one tile.
-	def_trainers 9
+	; The generic route trainer: object slot 9, his flag in wWildGenericBeaten
+	; (the header pick above chooses this header by wTrainerHeaderFlagBit).
+	; Range 1: one tile.
 PFGenericHeader:
-	trainer EVENT_BEAT_FOREST_GENERIC_TRAINER, 1, PFGenericIntroText, PFGenericDefeatText, PFGenericAfterText
+	wild_generic_trainer FOREST_GENERIC, 1, PFGenericIntroText, PFGenericDefeatText, PFGenericAfterText
 	db -1 ; end
 
 ProceduralForest_ScriptPointers:

@@ -13,7 +13,11 @@
 ; PFacResolveArrival lands. Floor 2's exits are closed.
 ;
 ; $14 (622 B free before this, 2026-11-19). Every entry is farcalled.
-SECTION "Facility Deep Floor", ROMX, BANK[$14]
+; $29, not $14 (2026-11-20): $14 holds the cave's map script, which needed the
+; room for its generic trainer. Every way in is a farcall (FacilityDeepLobbyDecide,
+; FacilityDeepSeam, FacilityDeepFastFadeOut/In), and its own calls are local or
+; HOME, so it moves whole (ROM Bible 2026-11-20).
+SECTION "Facility Deep Floor", ROMX, BANK[$29]
 
 	ASSERT BANK(sProcFacilityStagingBuffer) == 1
 	ASSERT BANK(sProcForestStagingBuffer) == 0

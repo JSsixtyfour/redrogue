@@ -549,7 +549,7 @@ FDCloseSRAM:
 ; ------------------------------------------------------------
 ForestDeepPatchSprites::
 	farcall OptionalEncounterPatchSprite
-	farcall ForestGenericPatch           ; floor 1 only (forest_generic_trainer.asm)
+	farcall ForestGenericPatch           ; his floor only (forest_generic_trainer.asm)
 	ld a, [wRogueFlagsBitfield2]
 	bit BIT_ROGUE_DEEP_FLOOR, a
 	ret z                               ; floor 1, or an ordinary forest

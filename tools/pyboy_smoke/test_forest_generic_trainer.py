@@ -23,7 +23,7 @@ SLOT = 9                       # FOREST_GENERIC
 PF_STRIDE, PF_BASE, PF_TREE = 26, 81, 2
 LAYOUTS = 6
 _EVENTS = parse_rgbds_constants(ROOT / "constants/event_constants.asm")
-EVENT_BIT = _EVENTS["EVENT_BEAT_FOREST_GENERIC_TRAINER"]
+BEATEN_BIT = SLOT % 8          # his flag: wWildGenericBeaten bit (slot mod 8), not an event
 EVENT_BEAT_BOSS = _EVENTS["EVENT_BEAT_PC_BOSS"]
 SCRIPT_END_BATTLE = 2          # ProceduralForest_ScriptPointers: default, start battle, end battle
 FACING = {0: (0, 1), 4: (0, -1), 8: (-1, 0), 12: (1, 0)}  # SPRITE_FACING_* -> step
@@ -223,7 +223,11 @@ class ForestGenericTrainerTest(unittest.TestCase):
         return printed
 
     def flag(self) -> int:
-        return self.h.read8("wEventFlags", offset=EVENT_BIT // 8) >> (EVENT_BIT % 8) & 1
+        return self.h.read8("wWildGenericBeaten") >> BEATEN_BIT & 1
+
+    def set_flag(self) -> None:
+        h = self.h
+        h.write8("wWildGenericBeaten", h.read8("wWildGenericBeaten") | 1 << BEATEN_BIT)
 
     def test_battle_is_a_roster_team_and_the_win_is_normal(self) -> None:
         h = self.h
@@ -263,29 +267,36 @@ class ForestGenericTrainerTest(unittest.TestCase):
     def test_once_beaten_he_gives_the_after_line_not_a_battle(self) -> None:
         h = self.h
         self.enter(4, 0, 2)
-        h.write8("wEventFlags", h.read8("wEventFlags", offset=EVENT_BIT // 8) | 1 << (EVENT_BIT % 8),
-                 offset=EVENT_BIT // 8)
+        self.set_flag()
         printed = self.talk(frames=900, until_battle=False)
         self.assertIn(h.symbols.get("PFGenericAfterText")[1], printed)
         self.assertNotIn(h.symbols.get("PFGenericIntroText")[1], printed)
         self.assertEqual(h.read8("hIsInBattle"), 0)
 
-    LINES = ["Youngster", "BugCatcher", "Lass", "Hiker", "JrM", "JrF"]
+    # Every class in WGTClasses (all areas' pools), with its line label stem.
+    CLASSES = [("YOUNGSTER", "Youngster"), ("BUG_CATCHER", "BugCatcher"), ("LASS", "Lass"),
+               ("HIKER", "Hiker"), ("JR_TRAINER_M", "JrM"), ("JR_TRAINER_F", "JrF"),
+               ("SUPER_NERD", "SuperNerd"), ("POKEMANIAC", "Pokemaniac"), ("BLACKBELT", "Blackbelt"),
+               ("COOLTRAINER_M", "CooltrainerM"), ("CHANNELER", "Channeler"),
+               ("GENTLEMAN", "Gentleman"), ("SCIENTIST", "Scientist"), ("ROCKET", "Rocket"),
+               ("BURGLAR", "Burglar"), ("ENGINEER", "Engineer"), ("JUGGLER", "Juggler")]
+    KINDS = ("Intro", "Defeat", "After")
 
     def test_each_class_speaks_its_own_vanilla_trio(self) -> None:
-        """D4: FGTLine picks the row by the class he battles as, for each of the three
-        texts; an unknown class falls back to the first row."""
+        """D4: FGTLine picks the lines by the class he battles as, for each of the
+        three texts and every class of every area's pool; an unknown class falls
+        back to the first class."""
         h = self.h
         h.load_state(self.lobby)
         h.park_before_hijack()
         base = io.BytesIO()
         h.save_state(base)
-        cases = [(row, kind) for row in range(len(TABLE_CLASS)) for kind in range(3)]
+        cases = [(i, kind) for i in range(len(self.CLASSES)) for kind in range(3)]
         cases.append((None, 1))
-        for row, kind in cases:
-            with self.subTest(row=row, kind=kind):
+        for i, kind in cases:
+            with self.subTest(cls=i, kind=kind):
                 h.load_state(base)
-                cls = self.opp(TABLE_CLASS[row]) if row is not None else 0xEE
+                cls = self.opp(self.CLASSES[i][0]) if i is not None else 0xEE
                 h.write8("wMapSpriteExtraData", cls, offset=(SLOT - 1) * 2)
 
                 def which(_context, kind=kind) -> None:
@@ -296,9 +307,25 @@ class ForestGenericTrainerTest(unittest.TestCase):
                     hl = h.call_routine("FGTLine", capture=lambda hh: hh.pyboy.register_file.HL)
                 finally:
                     h.unregister_hook("FGTLine", which)
-                name = self.LINES[row if row is not None else 0]
-                label = f"FGT{name}{('Intro', 'Defeat', 'After')[kind]}"
+                stem = self.CLASSES[i if i is not None else 0][1]
+                label = f"FGT{stem}{self.KINDS[kind]}"
                 self.assertEqual(hl, h.symbols.get(label)[1], label)
+
+    def test_the_new_classes_stubs_reach_their_far_text(self) -> None:
+        """The 11 new classes' lines live in another bank: each $1A stub is
+        `text_far _FGT<Class><Kind>` then `text_end`, aimed at that label's bank."""
+        h = self.h
+        rom = (ROOT / "pokeblue_debug.gbc").read_bytes()
+        for _, stem in self.CLASSES[6:]:
+            for kind in self.KINDS:
+                with self.subTest(stem=stem, kind=kind):
+                    bank, addr = h.symbols.get(f"FGT{stem}{kind}")
+                    off = bank * 0x4000 + addr - 0x4000
+                    far_bank, far_addr = h.symbols.get(f"_FGT{stem}{kind}")
+                    self.assertEqual(rom[off], 0x17, "not text_far")          # TX_FAR
+                    self.assertEqual(rom[off + 1] | rom[off + 2] << 8, far_addr)
+                    self.assertEqual(rom[off + 3], far_bank)
+                    self.assertEqual(rom[off + 4], 0x50, "not text_end")      # TX_END
 
     def test_the_live_intro_is_his_class_line(self) -> None:
         """Talking to him reaches FGTLine through the $12 stub with the Hiker's intro."""
@@ -320,8 +347,7 @@ class ForestGenericTrainerTest(unittest.TestCase):
     def test_a_new_forest_finds_him_unbeaten(self) -> None:
         h = self.h
         self.enter(4, 0, 2)
-        h.write8("wEventFlags", h.read8("wEventFlags", offset=EVENT_BIT // 8) | 1 << (EVENT_BIT % 8),
-                 offset=EVENT_BIT // 8)
+        self.set_flag()
         self.assertEqual(self.flag(), 1)
         self.enter(4, 0, 3)                      # the next Forest's preload
         self.assertEqual(self.flag(), 0)

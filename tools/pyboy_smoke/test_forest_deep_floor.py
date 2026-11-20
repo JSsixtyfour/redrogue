@@ -288,11 +288,47 @@ class ForestDeepFloorTest(unittest.TestCase):
         self.assertEqual(h.read8("wSprite08StateData1"), 0, "the encounter followed the player up")
         self.assertNotEqual(h.read8("wSprite01StateData1"), 0, "floor 1's boss is gone after the trip")
 
-    def test_generic_trainer_stays_on_floor_1(self) -> None:
-        """The route trainer (object 9) belongs to floor 1: picture 0 and parked on
-        floor 2, and back on the same cell, class and flag after the round trip."""
+    def generic_on_floor(self, floor: int) -> None:
+        """A deep Forest whose generic trainer is rolled onto floor ordinal `floor`
+        (0 = floor 1, 1 = floor 2) at ForestGenericRoll.floor."""
         h = self.h
-        self.deep_forest(house_on_2=False)
+
+        def force(_context) -> None:
+            h.pyboy.register_file.A = floor
+
+        h.register_hook("ForestGenericRoll.floor", force)
+        try:
+            self.deep_forest(house_on_2=False)
+        finally:
+            h.unregister_hook("ForestGenericRoll.floor", force)
+
+    def test_generic_trainer_on_floor_2_only(self) -> None:
+        """A2: rolled onto floor 2 he is absent from floor 1, stands on floor 2's own
+        dead end with his class, and is absent again back on floor 1."""
+        h = self.h
+        self.generic_on_floor(1)
+        self.assertEqual(h.read8("wSprite09StateData1"), 0, "he is on floor 1 too")
+        self.assertEqual((h.read8("wSprite09StateData2MapY"), h.read8("wSprite09StateData2MapX")), (0, 0))
+        self.scripted_warp(FG_WARP, "down")
+        self.assertEqual(self.floor(), 2)
+        picture = h.read8("wSprite09StateData1")
+        cell = (h.read8("wSprite09StateData2MapY"), h.read8("wSprite09StateData2MapX"))
+        self.assertNotEqual(picture, 0, "no generic trainer on floor 2")
+        self.assertNotEqual(cell, (0, 0))
+        self.assertNotEqual(h.read8("wMapSpriteExtraData", offset=8 * 2), 0, "no class")
+        self.scripted_warp(FG_WARP, "up")
+        self.assertEqual(h.read8("wSprite09StateData1"), 0, "he followed the player up")
+        self.scripted_warp(FG_WARP, "down")
+        self.assertEqual(h.read8("wSprite09StateData1"), picture)
+        self.assertEqual((h.read8("wSprite09StateData2MapY"), h.read8("wSprite09StateData2MapX")), cell,
+                         "floor 2's second visit moved him")
+
+    def test_generic_trainer_stays_on_floor_1(self) -> None:
+        """Rolled onto floor 1, the route trainer (object 9) belongs to it: picture 0
+        and parked on floor 2, and back on the same cell, class and flag after the
+        round trip."""
+        h = self.h
+        self.generic_on_floor(0)
         picture = h.read8("wSprite09StateData1")
         cell = (h.read8("wSprite09StateData2MapY"), h.read8("wSprite09StateData2MapX"))
         self.assertNotEqual(picture, 0, "no generic trainer on floor 1")

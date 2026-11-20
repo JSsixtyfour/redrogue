@@ -59,6 +59,8 @@
      "guards": "Cave subroom ladders: a drawn ladder failing the no-strand rule or too close to the other, one ladder when a far pair existed, none when a site was valid, a ladder block missing, or a site warp armed wrong or left armed"},
     {"script": "audit_forest_generic_trainer.py", "args": ["--seeds", "300"], "kind": "guard",
      "guards": "the Forest's generic route trainer (forest_generic_trainer.asm): none in more than 5% of Forests, off a maze cell, in a tree, on a ball, the boss, the entrance or near the hideout, facing a tree, wearing the villain's picture"},
+    {"script": "audit_cave_generic_trainer.py", "args": ["--seeds", "200"], "kind": "guard",
+     "guards": "the cave's generic route trainer (forest_generic_trainer.asm): with no stage event, absent in more than 15% of caves, or placed off his candidate dead end, on a ball, the boss or the pair, or where no reachable tile touches him; an absence without a measured reason (2026-11-20: 0 of 200 absent; with Jessie & James armed, 14 of 120: hideout 8, ball 4, exit 2)"},
     {"script": "audit_forest_stage_event.py", "args": [], "kind": "guard",
      "guards": "stage events on the Forest"},
     {"script": "audit_map_object_const_order.py", "args": [], "kind": "guard", "in_smoke": true,

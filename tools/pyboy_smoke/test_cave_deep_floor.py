@@ -719,6 +719,51 @@ class CaveDeepFloorTest(unittest.TestCase):
         self.assertEqual(h.read8(slot), 0, "the resolved encounter still shows")
         self.assertEqual(h.read8("wRogueFlagsBitfield2") & FLOOR_BIT, FLOOR_BIT)
 
+    def test_generic_trainer_on_floor_2_only(self) -> None:
+        """GENERIC_TRAINER_ALL_AREAS_SPEC.md A2: rolled onto floor 2 (row 1, the
+        Hiker), the cave's generic trainer (object 11) is absent from floor 1,
+        stands on floor 2's own candidate dead end, and is absent again above."""
+        h = self.h
+        hooks = []
+
+        def setup() -> None:
+            for label, value in (("CaveGenericRoll.store", 1), ("CaveGenericRoll.floor", 1)):
+                def force(_context, value=value) -> None:
+                    h.pyboy.register_file.A = value
+                h.register_hook(label, force)
+                hooks.append((label, force))
+
+        try:
+            self.deep_cave(setup)
+        finally:
+            for label, force in hooks:
+                h.unregister_hook(label, force)
+        self.assertEqual(h.read8("wSprite11StateData1"), 0, "he is on floor 1 too")
+        self.assertEqual((h.read8("wSprite11StateData2MapY"), h.read8("wSprite11StateData2MapX")), (0, 0))
+        self.ladder_warp(2, 0)
+        h.write8("wProcCaveWildBudget", 0)       # floor 2 refills it
+        cell = h.read_sram_bytes("sWildGenericCell", 1, bank=0)[0]
+        picture = h.read8("wSprite11StateData1")
+        here = (h.read8("wSprite11StateData2MapY"), h.read8("wSprite11StateData2MapX"))
+        if cell == 0xFE:
+            self.assertEqual(picture, 0, "absent but drawn")
+        else:
+            self.assertNotEqual(picture, 0, "no generic trainer on floor 2")
+            self.assertNotEqual(here, (0, 0))
+            ax, ay = h.read_sram_bytes("sStageEventHideoutAltX", 2, bank=0)
+            hx, hy = h.read_sram_bytes("sStageEventHideoutX", 2, bank=0)
+            block = ((here[1] - 4) // 2, (here[0] - 4) // 2)
+            self.assertIn(block, ((ax, ay), (hx, hy)), "not floor 2's candidate dead end")
+        # Up by floor 2's entrance ladder, then down again: the same tile.
+        self.timed(lambda started: self.press_until("right", started, "onto the entrance ladder"))
+        self.assertEqual(self.wram_bits()[0], 0, "not back on floor 1")
+        self.assertEqual(h.read8("wSprite11StateData1"), 0, "he followed the player up")
+        self.ladder_warp(2, 0)
+        h.write8("wProcCaveWildBudget", 0)
+        self.assertEqual(h.read8("wSprite11StateData1"), picture)
+        self.assertEqual((h.read8("wSprite11StateData2MapY"), h.read8("wSprite11StateData2MapX")), here,
+                         "floor 2's second visit moved him")
+
     def face_and_press_a(self, target, avoid_warps: bool = False) -> None:
         """From a walkable tile next to target, face it and press A."""
         h = self.h

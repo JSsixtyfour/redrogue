@@ -160,6 +160,12 @@ class AICheckpointATest(unittest.TestCase):
             ("+4 Special, KOs us, we are faster", {"wPlayerMonSpecialMod": 11}, 2, fast, 17),
             ("+2 Attack, no KO", {"wPlayerMonAttackMod": 9}, 1, fast, 19),
             ("+2 Attack, KOs us, we are slower", {"wPlayerMonAttackMod": 9}, 2, slow, 19),
+            # Slower half (2026-11-20): +AI_HAZE_SLOW_STAGES (4) or more is
+            # decisive with or without the player's KO; +3 is not.
+            ("+4 Attack, KOs us, we are slower", {"wPlayerMonAttackMod": 11}, 2, slow, 17),
+            ("+4 Special, no KO, we are slower", {"wPlayerMonSpecialMod": 11}, 1, slow, 17),
+            ("+3 Attack, KOs us, we are slower", {"wPlayerMonAttackMod": 10}, 2, slow, 19),
+            ("+3 Special, no KO, we are slower", {"wPlayerMonSpecialMod": 10}, 1, slow, 19),
             ("+1 Attack, KOs us, we are faster", {"wPlayerMonAttackMod": 8}, 2, fast, 19),
             ("+2 Speed only, KOs us, we are faster", {"wPlayerMonSpeedMod": 9}, 2, fast, 19),
             ("+2 Attack, KOs us, faster, but paralyzed", {"wPlayerMonAttackMod": 9,
@@ -177,6 +183,86 @@ class AICheckpointATest(unittest.TestCase):
             self.h.call_routine("AILayerSmart", limit=120)
         self.assertEqual(scores, [expected for *_r, expected in cases],
                          [label for label, *_r in cases])
+
+    SETUPMASK = 19  # AI_BUF_SETUPMASK; bit 7 = AI_HAZE_DECISIVE_BIT
+    POSSKO = 18     # AI_BUF_POSSKO
+
+    def test_only_the_faster_decisive_verdict_flags_the_take_back(self):
+        # AIHazeYieldsToKO may only undo the faster verdict: the slower one has
+        # no take-back (our own KO did not make it lose), and an ordinary one
+        # never gave AI_VERY_STRONG.
+        fast, slow = (200, 100), (100, 200)
+        cases = [
+            ("faster decisive", {"wPlayerMonAttackMod": 9}, 2, fast, True),
+            ("slower decisive", {"wPlayerMonAttackMod": 11}, 2, slow, False),
+            ("faster, no KO", {"wPlayerMonAttackMod": 9}, 1, fast, False),
+        ]
+        for label, writes, cache, (ours, theirs), flagged in cases:
+            with self.subTest(label):
+                self.prime_haze()
+                self.h.write8("wBuffer", 0x05, offset=self.SETUPMASK)  # AI_SETUP's slot bits
+                self.h.write8("wAILastMoveNum", 0)
+                self.h.write8("wAISameMoveCount", 0)
+                for name, value in writes.items():
+                    self.h.write8(name, value)
+                self.word("wEnemyMonSpeed", ours)
+                self.word("wBattleMonSpeed", theirs)
+                self.h.write8("wAIPlayerKOCache", cache)
+                self.h.call_routine("AILayerSmart", limit=120)
+                self.assertEqual(self.h.read_bytes("wBuffer", 20)[self.SETUPMASK],
+                                 0x85 if flagged else 0x05)
+
+    def test_haze_yields_its_whole_encourage_to_our_possible_ko(self):
+        # AIHazeYieldsToKO unit: flag + a possible-KO slot -> every live Haze
+        # slot +AI_VERY_STRONG (3); the flag is always cleared; a disabled slot
+        # and a non-Haze slot are untouched; the ceiling is AI_SCORE_MAX (79).
+        h = self.h
+        moves = [self.moves[m] for m in ("HAZE", "THUNDER", "HAZE", "HAZE")]
+        cases = [
+            ("flag + KO", 0x85, 0x02, [17, 16, 0x50, 78], [20, 16, 0x50, 79]),
+            ("flag, no KO (or a vetoed Explosion)", 0x85, 0x00, [17, 16, 0x50, 78], [17, 16, 0x50, 78]),
+            ("KO, no flag", 0x05, 0x02, [17, 16, 0x50, 78], [17, 16, 0x50, 78]),
+        ]
+        for label, mask, possko, before, after in cases:
+            with self.subTest(label):
+                h.park_before_hijack()
+                for i, move in enumerate(moves):
+                    h.write8("wEnemyMonMoves", move, offset=i)
+                for i, score in enumerate(before):
+                    h.write8("wBuffer", score, offset=i)
+                h.write8("wBuffer", mask, offset=self.SETUPMASK)
+                h.write8("wBuffer", possko, offset=self.POSSKO)
+                h.call_routine("AIHazeYieldsToKO", limit=60)
+                self.assertEqual(list(h.read_bytes("wBuffer", 4)), after)
+                self.assertEqual(h.read_bytes("wBuffer", 20)[self.SETUPMASK], 0x05)
+
+    def test_faster_haze_is_neutral_once_ai_damage_finds_our_ko(self):
+        # Whole path: AI_SMART's verdict, then AI_DAMAGE's .applyBest take-back.
+        # Haze + Thunder (70% accuracy, so at most a POSSIBLE KO, AI_KILL_POSSIBLE
+        # = AI_VERY_STRONG, the tie that let Haze through). Player +2 Attack, its
+        # KO forced, we are faster. Only the player's HP differs between runs.
+        h = self.h
+        haze_after = {}
+        for label, player_hp in (("we can KO", 1), ("we cannot", 999)):
+            self.prime_haze()
+            h.write8("wEnemyMonMoves", self.moves["THUNDER"], offset=1)
+            h.write8("wEnemyMonPP", 10, offset=1)
+            h.write8("wBuffer", 20, offset=1)
+            h.call_routine("AIClearDecisionCaches", limit=60)
+            h.park_before_hijack()
+            h.write8("wAILastMoveNum", 0)
+            h.write8("wAISameMoveCount", 0)
+            h.write8("wPlayerMonAttackMod", 9)
+            self.word("wEnemyMonSpeed", 200)
+            self.word("wBattleMonSpeed", 100)
+            self.word("wBattleMonHP", player_hp)
+            h.write8("wAIPlayerKOCache", 2)
+            h.call_routine("AILayerSmart", limit=120)
+            h.park_before_hijack()
+            h.call_routine("AILayerDamage", limit=120)
+            haze_after[label] = h.read8("wBuffer")
+            self.assertFalse(h.read_bytes("wBuffer", 20)[self.SETUPMASK] & 0x80, label)
+        self.assertEqual(haze_after["we can KO"] - haze_after["we cannot"], 3, haze_after)
 
     def read_word(self, label):
         return int.from_bytes(bytes(self.h.read_bytes(label, 2)), "big")

@@ -155,6 +155,9 @@ DEF CAVE_SUPER_NERD      EQU 9
 ; The deep floor's optional encounter (the B1F's cold Onix/Snorlax): exists only
 ; on floor 2; OptionalEncounterPatchSprite gives it picture 0 everywhere else.
 DEF CAVE_OPTIONAL_MON    EQU 10
+; The generic route trainer (custom_functions/forest_generic_trainer.asm,
+; GENERIC_TRAINER_ALL_AREAS_SPEC.md): picture 0 off his floor.
+DEF CAVE_GENERIC         EQU 11
 
 ; THE DEEP FLOOR (FOLLOWUPS #73, PROCEDURAL_DEEP_FLOOR_PLAN.md,
 ; custom_functions/cave_deep_floor.asm). Floor 2 is PROCEDURAL_CAVE_1 again with

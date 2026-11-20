@@ -1368,7 +1368,7 @@ DEF STAGE_EVENT_KEEP_SLOTS EQU 4
 StageEventKeepSpriteTable:
 	ASSERT WILD_AREA_BOSS == FACILITY_BOSS, "all three procedural bosses must share slot 1"
 	ASSERT FOREST_BOSS == FACILITY_BOSS, "all three procedural bosses must share slot 1"
-	db PROCEDURAL_CAVE_1,     1, 6, 7, 0    ; boss, stage-event NPC pair
+	db PROCEDURAL_CAVE_1,     1, 6, 7, CAVE_GENERIC ; boss, stage-event NPC pair, generic trainer
 	db PROCEDURAL_FOREST,     1, 6, 7, FOREST_GENERIC ; + the generic trainer
 	db PROCEDURAL_FACILITY,   1, 10, 11, 0  ; slots 6-9 are the fake balls: hide those
 	db PROCEDURAL_CEMETERY_1, 0, 2, 3, 0
