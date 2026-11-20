@@ -2348,9 +2348,10 @@ class ProceduralStageSmokeTest(HarnessTestCase):
 
     def test_procedural_cemetery_generation(self) -> None:
         # Only the ball is unconditional. Event NPCs may belong on a later
-        # floor; the Channeler appears on one random floor (covered separately).
+        # floor; the Channeler and the resurrection NPC (object 5) appear on one
+        # random floor each (covered separately).
         self.assert_generation_contract(
-            "Procedural Cemetery", "PROCEDURAL_CEMETERY_1", 20, 18, 4, False, placed=1
+            "Procedural Cemetery", "PROCEDURAL_CEMETERY_1", 20, 18, 5, False, placed=1
         )
         constants = parse_rgbds_constants(REPO_ROOT / "constants" / "ram_constants.asm")
         event = self.harness.read8("wStageEvent")

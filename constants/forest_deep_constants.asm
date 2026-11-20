@@ -57,3 +57,8 @@ DEF FOREST_DEEP_NUM_ALWAYS     EQU 4 ; restored on every first descent
 ; opening on wall N/W/E and floor 2's faces it (S/E/W). The wall floor 2's must
 ; use (0N/1W/2E/3S), stored by the first descent for FGCarveOpening.
 DEF FOREST_DEEP_UP_WALL      EQUS "(FOREST_DEEP_SAVE + FOREST_DEEP_NUM_SAVED_WRAM + FOREST_DEEP_SRAM_TAIL)"
+
+; The generic trainer (custom_functions/forest_generic_trainer.asm): object 9 of
+; ProceduralForest. Picture 0 and parked when absent, as the optional slot 8.
+DEF FOREST_GENERIC          EQU 9
+DEF GENERIC_TRAINER_ODDS    EQU 256 ; of 256; 256 = every Forest (the trial)

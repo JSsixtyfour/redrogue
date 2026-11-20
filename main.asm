@@ -884,6 +884,9 @@ INCLUDE "custom_functions/special_encounter_policy.asm"
 INCLUDE "custom_functions/procedural_cave_gen.asm"
 INCLUDE "custom_functions/procedural_cemetery_gen.asm"
 INCLUDE "custom_functions/procedural_forest_gen.asm"
+; The Forest's generic route trainer (GENERIC_TRAINER_TRIAL_SPEC.md). After the
+; generator, whose PF_* and wPF* constants it uses; pinned to $1A by its SECTION.
+INCLUDE "custom_functions/forest_generic_trainer.asm"
 INCLUDE "custom_functions/procedural_facility_gen.asm"
 INCLUDE "custom_functions/procedural_stage_hooks.asm"
 INCLUDE "custom_functions/room_decor.asm"
@@ -954,6 +957,10 @@ INCLUDE "custom_functions/cemetery_channeler.asm"
 ; Cemetery SPEC). After the generator, whose CEMAP_* constants it uses;
 ; pinned to $28 by its SECTION; farcall-only.
 INCLUDE "custom_functions/cemetery_deep_floor.asm"
+; The Cemetery's resurrection NPC and the Ironman fallen log's writer
+; (CEMETERY_RESURRECTION_NPC_SPEC.md). Pinned to $28 by its SECTION;
+; farcall-only.
+INCLUDE "custom_functions/cemetery_resurrector.asm"
 
 ; Route boss after-battle decision (reward menu vs. normal line vs. mini-boss
 ; line). Reached only by farcall from the route scripts, whose map

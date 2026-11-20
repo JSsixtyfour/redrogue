@@ -14,3 +14,8 @@ DEF BIT_CEM_CHANNELER_WON    EQU 6
 ; wSafariZoneGateCurScript while his battle is pending (the forest rest house
 ; uses 1, the subroom residents 2).
 DEF SCRIPT_CHANNELER_AFTER_BATTLE EQU 3
+
+; The resurrection NPC: object 5 on every floor map (custom_functions/
+; cemetery_resurrector.asm). Shown by picture on his floor, parked off-grid with
+; picture 0 elsewhere, like the Forest's optional slot: no toggle.
+DEF CEMETERY_RESURRECTOR EQU 5

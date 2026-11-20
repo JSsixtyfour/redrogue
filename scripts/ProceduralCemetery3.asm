@@ -28,7 +28,8 @@ ProceduralCemetery3_TextPointers:
 	dw_const PCemStageEventNpc1Text, TEXT_PROCEDURALCEMETERY3_STAGE_NPC_1
 	dw_const PCemStageEventNpc2Text, TEXT_PROCEDURALCEMETERY3_STAGE_NPC_2
 	dw_const PCemChannelerText, TEXT_PROCEDURALCEMETERY3_CHANNELER
-	; --- end of the object block (4 objects); script-only ids follow ---
+	dw_const PCemResurrectorText, TEXT_PROCEDURALCEMETERY3_RESURRECTOR
+	; --- end of the object block (5 objects); script-only ids follow ---
 	dw_const PCemChannelerHealText, TEXT_PROCEDURALCEMETERY3_CHANNELER_HEAL
 	dw_const PCemCalmedText, TEXT_PROCEDURALCEMETERY3_CALMED
 	dw_const PCemStageEventArrivalText, TEXT_PROCEDURALCEMETERY3_STAGE_EVENT

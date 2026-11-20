@@ -60,4 +60,10 @@ ProceduralForest_Object:
 	object_event 10, 10, SPRITE_MONSTER, STAY, DOWN, TEXT_PROCEDURALFOREST_OPTIONAL, ONIX, 1 | OW_POKEMON
 	ASSERT FOREST_OPTIONAL_MON == 8
 
+	; Slot 9: the generic route trainer (custom_functions/forest_generic_trainer.asm).
+	; Class, sprite, cell and facing are runtime-patched; picture 0 and parked
+	; when absent. Declared with 8 arguments for the TRAINER flag.
+	object_event 10, 10, SPRITE_YOUNGSTER, STAY, DOWN, TEXT_PROCEDURALFOREST_GENERIC, OPP_YOUNGSTER, 1
+	ASSERT FOREST_GENERIC == 9
+
 	def_warps_to PROCEDURAL_FOREST

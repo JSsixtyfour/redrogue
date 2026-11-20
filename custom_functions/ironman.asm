@@ -77,11 +77,13 @@ IronmanReleaseCommon:
 	pop bc
 	push bc
 .release
-	call FallenLogRecord ; c = slot
-	pop bc
-	push bc
 	ld a, c
 	ldh [hWhichPokemon], a
+	; $28 (custom_functions/cemetery_resurrector.asm): this bank has no room
+	; for its Bridge stamp. Leaves hWhichPokemon alone.
+	farcall FallenLogRecord
+	pop bc
+	push bc
 	xor a
 	ld [wRemoveMonFromBox], a
 	call RemovePokemon ; also updates the bridge owner map
@@ -130,47 +132,10 @@ IronmanClearFaintedEvolveFlags::
 ; ============================================================================
 ; Fallen log. sFallenLog (SRAM bank 2) holds wFallenCount valid entries, each
 ; FALLEN_ENTRY_SIZE bytes: the party struct, then the OT name, then the
-; nickname, copied just before RemovePokemon. Capture only; nothing reads it
-; yet. Once FALLEN_LOG_CAPACITY is reached, further releases are not logged.
+; nickname, copied just before RemovePokemon. The writer (FallenLogRecord) and
+; the reader (the Cemetery's resurrection NPC) are in
+; custom_functions/cemetery_resurrector.asm, $28.
 ; ============================================================================
-	ASSERT FALLEN_ENTRY_SIZE == PARTYMON_STRUCT_LENGTH + NAME_LENGTH + NAME_LENGTH
-
-; In: c = party slot. Clobbers everything.
-FallenLogRecord:
-	ld a, [wFallenCount]
-	cp FALLEN_LOG_CAPACITY
-	ret nc
-	ld hl, sFallenLog
-	push bc
-	ld bc, FALLEN_ENTRY_SIZE
-	call AddNTimes
-	pop bc
-	ld d, h
-	ld e, l ; de = this entry
-	call FallenLogOpen
-	ld a, c
-	push bc
-	ld hl, wPartyMons
-	ld bc, PARTYMON_STRUCT_LENGTH
-	call AddNTimes
-	call CopyData ; de advances past the struct
-	pop bc
-	ld a, c
-	push bc
-	ld hl, wPartyMonOT
-	ld bc, NAME_LENGTH
-	call AddNTimes
-	call CopyData
-	pop bc
-	ld a, c
-	ld hl, wPartyMonNicks
-	ld bc, NAME_LENGTH
-	call AddNTimes
-	call CopyData
-	call FallenLogClose
-	ld hl, wFallenCount
-	inc [hl]
-	ret
 
 ; Zero every entry. Called at every run end (RogueResetRunState) and at new
 ; game (IronmanNewGameSRAMInit). wFallenCount itself lives in the region both

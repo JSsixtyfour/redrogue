@@ -1353,7 +1353,7 @@ StageEventKeepSpriteOnDefeat::
 	scf
 	ret
 
-DEF STAGE_EVENT_KEEP_SLOTS EQU 3
+DEF STAGE_EVENT_KEEP_SLOTS EQU 4
 
 ; One row per map: the map id, then STAGE_EVENT_KEEP_SLOTS sprite slots to
 ; exempt. 0 pads a row that needs fewer - sprite slot 0 does not exist, since
@@ -1366,13 +1366,13 @@ DEF STAGE_EVENT_KEEP_SLOTS EQU 3
 StageEventKeepSpriteTable:
 	ASSERT WILD_AREA_BOSS == FACILITY_BOSS, "all three procedural bosses must share slot 1"
 	ASSERT FOREST_BOSS == FACILITY_BOSS, "all three procedural bosses must share slot 1"
-	db PROCEDURAL_CAVE_1,     1, 6, 7    ; boss, stage-event NPC pair
-	db PROCEDURAL_FOREST,     1, 6, 7
-	db PROCEDURAL_FACILITY,   1, 10, 11  ; slots 6-9 are the fake balls: hide those
-	db PROCEDURAL_CEMETERY_1, 0, 2, 3
-	db PROCEDURAL_CEMETERY_2, 0, 2, 3
-	db PROCEDURAL_CEMETERY_3, 0, 2, 3
-	db PROCEDURAL_CEMETERY_4, 0, 2, 3
+	db PROCEDURAL_CAVE_1,     1, 6, 7, 0    ; boss, stage-event NPC pair
+	db PROCEDURAL_FOREST,     1, 6, 7, FOREST_GENERIC ; + the generic trainer
+	db PROCEDURAL_FACILITY,   1, 10, 11, 0  ; slots 6-9 are the fake balls: hide those
+	db PROCEDURAL_CEMETERY_1, 0, 2, 3, 0
+	db PROCEDURAL_CEMETERY_2, 0, 2, 3, 0
+	db PROCEDURAL_CEMETERY_3, 0, 2, 3, 0
+	db PROCEDURAL_CEMETERY_4, 0, 2, 3, 0
 	db -1
 
 StageEventShowCaveNpcs::

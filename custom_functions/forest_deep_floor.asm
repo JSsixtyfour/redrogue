@@ -292,6 +292,8 @@ FDEndDoubleSpeed:
 ;     disables it too); the encounter stands on ball 4's dead end.
 ; ------------------------------------------------------------
 ForestDeepAfterFinalize::
+	; The generic trainer's cell and class, every Forest load, either floor.
+	farcall ForestGenericPlace
 	call FDOpenSRAM
 	call FDReadCtrl
 	jp nc, FDCloseSRAM                  ; not a deep Forest
@@ -547,6 +549,7 @@ FDCloseSRAM:
 ; ------------------------------------------------------------
 ForestDeepPatchSprites::
 	farcall OptionalEncounterPatchSprite
+	farcall ForestGenericPatch           ; floor 1 only (forest_generic_trainer.asm)
 	ld a, [wRogueFlagsBitfield2]
 	bit BIT_ROGUE_DEEP_FLOOR, a
 	ret z                               ; floor 1, or an ordinary forest

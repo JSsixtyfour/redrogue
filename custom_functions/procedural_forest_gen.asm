@@ -2105,6 +2105,9 @@ PFScanForBall:
     ; this reads. The boss's own cell is already excluded (Phase 1, above),
     ; so this only has to avoid the 4 balls.
     call PFPickForestHideout
+    ; The generic trainer's dead end, from the same intact list, clear of the
+    ; balls and the hideout (forest_generic_trainer.asm). Draws no Random.
+    farcall ForestGenericPick
 
     ; All 4 picked — copy accepted (X,Y) pairs into sProcForestGenScratch[0..7]
     ; (the candidate list there is no longer needed) so they survive the

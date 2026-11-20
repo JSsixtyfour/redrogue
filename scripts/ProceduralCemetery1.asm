@@ -103,6 +103,13 @@ PCemChannelerText::
 	pop bc
 	jp TextScriptEnd
 
+PCemResurrectorText::
+	text_asm
+	push bc
+	farcall CemResurrectorTalk
+	pop bc
+	jp TextScriptEnd
+
 PCemChannelerHealText::
 	text_asm
 	push bc
@@ -354,7 +361,8 @@ ProceduralCemetery1_TextPointers:
 	dw_const PCemStageEventNpc1Text, TEXT_PROCEDURALCEMETERY1_STAGE_NPC_1
 	dw_const PCemStageEventNpc2Text, TEXT_PROCEDURALCEMETERY1_STAGE_NPC_2
 	dw_const PCemChannelerText, TEXT_PROCEDURALCEMETERY1_CHANNELER
-	; --- end of the object block (4 objects); script-only ids follow ---
+	dw_const PCemResurrectorText, TEXT_PROCEDURALCEMETERY1_RESURRECTOR
+	; --- end of the object block (5 objects); script-only ids follow ---
 	dw_const PCemChannelerHealText, TEXT_PROCEDURALCEMETERY1_CHANNELER_HEAL
 	dw_const PCemCalmedText, TEXT_PROCEDURALCEMETERY1_CALMED
 	dw_const PCemStageEventArrivalText, TEXT_PROCEDURALCEMETERY1_STAGE_EVENT

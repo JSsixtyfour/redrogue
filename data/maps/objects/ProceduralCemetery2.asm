@@ -23,4 +23,9 @@ ProceduralCemetery2_Object:
 	object_event 5, 5, SPRITE_CHANNELER, STAY, DOWN, TEXT_PROCEDURALCEMETERY2_CHANNELER
 	ASSERT CEMETERY_2_CHANNELER == 4 ; the fourth object_event
 
+	; The resurrection NPC (custom_functions/cemetery_resurrector.asm): on one
+	; floor of 60% of Cemeteries; given his picture and cell there only.
+	object_event 5, 5, SPRITE_BALDING_GUY, STAY, DOWN, TEXT_PROCEDURALCEMETERY2_RESURRECTOR
+	ASSERT CEMETERY_RESURRECTOR == 5 ; the fifth object_event
+
 	def_warps_to PROCEDURAL_CEMETERY_2

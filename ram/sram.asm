@@ -183,6 +183,16 @@ sStageEventSprite7:: db            ; patched into PICTUREID before InitMapSprite
 ; moment that floor's blocks are known to be fresh and complete. No other
 ; stage needs this split because the other three are one map generated whole.
 sStageEventHideoutFloor:: db
+; FOREST ONLY: the generic trainer (custom_functions/forest_generic_trainer.asm,
+; GENERIC_TRAINER_TRIAL_SPEC.md). Rolled at the Forest preload; its cell picked at
+; the first generation, from the ball scan's dead ends (PFBraidPass opens dead
+; ends afterwards, so the saved maze cannot re-derive it). Picked once per
+; Forest ($ff = not yet), so the deep floor 2's generation leaves floor 1's
+; alone. Outside the deep floors' saved SRAM tail on purpose: that tail is shared
+; by the cave, Forest and Facility (deep_floor_core.asm).
+sForestGenericRow:: db             ; bits 0-3: GenericTrainerTable row + 1 (0 = none);
+                                   ; bits 4-5: facing (0 down, 1 up, 2 left, 3 right)
+sForestGenericCell:: db            ; dead-end cell, packed col | row << 4; $ff = not picked, $fe = none
 
 
 ; Procedural facility: 20x20 block map staged here at warp-in time. Same layout

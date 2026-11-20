@@ -75,6 +75,15 @@ DEF NUM_BOXES    EQU 12
 ; below it. Save schema 6 trims old logs to the first 10 entries.
 DEF FALLEN_LOG_CAPACITY EQU 10
 DEF FALLEN_ENTRY_SIZE   EQU PARTYMON_STRUCT_LENGTH + 11 + 11
+; An entry's MON_BOX_LEVEL holds FALLEN_STAMP | its selected Bridge effect (0 =
+; none) instead of a level: the restore rewrites both levels, so the byte is
+; free. Above every level, so an entry logged before the stamp reads "none".
+DEF FALLEN_STAMP        EQU $F0
+; CemResurrectRestore's result (custom_functions/cemetery_resurrector.asm).
+DEF BIT_RESURRECT_TO_BOX       EQU 0
+DEF BIT_RESURRECT_EFFECT_LOST  EQU 1
+DEF RESURRECT_TO_BOX           EQU 1 << BIT_RESURRECT_TO_BOX
+DEF RESURRECT_EFFECT_LOST      EQU 1 << BIT_RESURRECT_EFFECT_LOST
 
 ; Bridge selected-Pokémon effects use a sparse run-scoped registry instead of
 ; adding fields to party_struct/box_struct. A record stores one owner byte and

@@ -21,6 +21,9 @@ ENDC
 ; the roll (it may move a grotto encounter onto floor 2). SRAM0 open on return.
 OptionalForestAssignEncounter::
 	call .assign
+	; The generic trainer's roll (forest_generic_trainer.asm): every Forest
+	; preload, independent of the stage event. Leaves SRAM0 open.
+	farcall ForestGenericRoll
 	farjp ForestDeepLobbyDecide
 .assign
 IF DEF(_DEBUG)

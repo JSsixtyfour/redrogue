@@ -32,3 +32,11 @@ DEF BIT_CEM_SHADOW_GOT_3   EQU 3
 ; The gate: round 5 and later (the first round whose route trainers field five).
 DEF CEM_DEEP_MIN_PROGRESS  EQU 4 * ROUND_BATTLES
 DEF CEM_DEEP_NUM_ORDINALS  EQU 6   ; 1, 2, 3, 2b, 3b, 4
+
+; The resurrection NPC (custom_functions/cemetery_resurrector.asm): his ordinal
+; on the chain (0-5 deep; 0, 1, 2 or 5 in an ordinary Cemetery, CDOrdinal's
+; numbering), or CEM_RES_ABSENT. Written for every Cemetery, deep or not.
+DEF CEM_DEEP_RES_ORD       EQUS "(sProcCaveStagingBuffer + 5)"
+DEF CEM_RES_ABSENT         EQU $FF
+DEF RESURRECT_ODDS         EQU 154 ; of 256: he stands in 60% of Cemeteries (D5)
+DEF CEM_RES_SCAN_START     EQU 52  ; his fixed scan start (the Channeler's is 37)

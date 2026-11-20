@@ -1901,7 +1901,7 @@ PCemPlaceChanneler:
 ;
 ; SRAM bank 0 must already be open. Clobbers a/bc/de/hl.
 ; ============================================================
-PCemStageHideoutCellOk:
+PCemStageHideoutCellOk::  ; farcalled by the resurrection NPC's placement ($28): the Z result survives the farcall
 	call PCemGetCellHL
 	ld a, [hl]
 	call PCemIsFloor

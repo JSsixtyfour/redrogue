@@ -35,11 +35,13 @@ SECTION "Cemetery Deep Floor", ROMX, BANK[$28]
 ; ------------------------------------------------------------
 CemDeepGenerateMaps::
 	farcall PCemGenerateMaps
-	jr CemDeepLobbyDecide
+	call CemDeepLobbyDecide
+	jp CemResurrectorRoll               ; after the decision: his roll reads it
 
 CemDeepFinalizeMap::
 	call CemDeepReconcile
 	farcall PCemFinalizeMap
+	call CemResurrectorPlace            ; after the Channeler's placement
 	jp CemDeepAfterFinalize
 
 ; ------------------------------------------------------------
@@ -222,6 +224,7 @@ CemDeepPatchSprite::
 	call CDCtrl
 	call c, CDProject
 	call CDCloseSRAM
+	call CemResurrectorPatchSprite
 	farjp CemChannelerPatchSprite
 
 ; Each projection is kept as an ordinal over the six floors and shown to the

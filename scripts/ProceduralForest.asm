@@ -764,6 +764,12 @@ PFOptionalOffer:
 	text_far FGEncounterOffer
 	text_end
 
+; The generic route trainer (object FOREST_GENERIC). PLACEHOLDER until his
+; trainer header (def_trainers 9) and the D4 lines land: talking prints this.
+PFGenericTrainerText:
+	text "..."
+	done
+
 ProceduralForest_TextPointers:
 	def_text_pointers
 	; ORDER IS LOAD-BEARING: see scripts/ProceduralCave1.asm's copy of this
@@ -779,7 +785,8 @@ ProceduralForest_TextPointers:
 	dw_const PFStageEventNpc1Text, TEXT_PROCEDURALFOREST_STAGE_NPC_1
 	dw_const PFStageEventNpc2Text, TEXT_PROCEDURALFOREST_STAGE_NPC_2
 	dw_const PFOptionalText, TEXT_PROCEDURALFOREST_OPTIONAL
-	; --- end of the object block (8 objects); script-only ids follow ---
+	dw_const PFGenericTrainerText, TEXT_PROCEDURALFOREST_GENERIC
+	; --- end of the object block (9 objects); script-only ids follow ---
 	dw_const ProceduralForestBossOfferText, TEXT_PROCEDURALFOREST_BOSS_OFFER
 	dw_const ProceduralForestCalmedText, TEXT_PROCEDURALFOREST_CALMED
 	ASSERT BANK(ProceduralForestCalmedText) == BANK(ProceduralForest_TextPointers)
