@@ -4,7 +4,7 @@ _ProceduralCemeteryCalmedText::
 	text_end
 
 ; The Cemetery's resurrection NPC (custom_functions/cemetery_resurrector.asm).
-; TODO(user wording): every line below is a placeholder. Lines are at most 18
+; TODO(final wording): every line below is a placeholder. Lines are at most 18
 ; characters; a name or number printed by a command counts against that.
 _CemResNoSoulsText::
 	text "I sense no lost"

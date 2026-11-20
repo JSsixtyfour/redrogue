@@ -779,9 +779,9 @@ PFGenericTrainerText:
 	ld hl, PFGenericHeader
 	jp ProceduralForestInitBattleScript
 
-; TODO(user approval, spec D4): PLACEHOLDER lines. Each class is to get a vanilla
-; Red line that Red Rogue no longer uses; candidates are listed for approval
-; before they replace these. One shared set until then.
+; TODO(spec D4): PLACEHOLDER lines. Each class is to get a vanilla
+; Red line that Red Rogue no longer uses; the sourced candidates are listed in
+; GENERIC_TRAINER_TRIAL_SPEC.md. One shared set until a choice is made.
 PFGenericIntroText:
 	text "Hey! You look"
 	line "like a trainer!"

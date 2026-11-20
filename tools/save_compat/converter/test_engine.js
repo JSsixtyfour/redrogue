@@ -353,8 +353,54 @@ test("schema 21 to 22: only the old predict-badges bit (deep floor now) is clear
   assert.equal(api.checksumStatus(out.bytes, to).main, true);
 });
 
+test("schema 23 to 24: events keep their meaning by name, the Forest trainer starts absent", () => {
+  const full = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
+  const from = full(23), to = full(24);
+  const save = syntheticSave("23"), pkg = packageTargeting("24");
+  const ev = wramOffset(from, "wEventFlags");
+  assert.equal(wramOffset(to, "wEventFlags"), ev);
+  let x = 0x2468ace1;
+  for (let i = 0; i < 64; i++) { x = (Math.imul(x, 1103515245) + 12345) >>> 0; save[ev + i] = x >>> 24; }
+  const sram = (s, label) => { const f = s.sram.find((g) => g.label === label); return f ? offsetOf(f.bank, f.address) : -1; };
+  const row = sram(to, "sForestGenericRow"), cell = sram(to, "sForestGenericCell");
+  assert.ok(row >= 0 && cell === row + 1);
+  assert.equal(sram(from, "sForestGenericRow"), -1);
+  save[row] = 0x33; // stale bytes from before the fields existed
+  save[cell] = 0x55;
+  recomputeChecksums(save, from);
+  const out = api.convert(save, pkg, { mode: "continue" });
+  assert.equal(out.ok, true, out.reason);
+  const b = out.bytes;
+  assert.equal(b[row], 0, "no row: he is absent");
+  assert.equal(b[cell], 0xfe, "no cell");
+  const bit = (bytes, i) => (bytes[ev + (i >> 3)] >> (i & 7)) & 1;
+  const n = to.constants.NUM_EVENTS;
+  assert.equal(n, from.constants.NUM_EVENTS);
+  const names = Object.keys(to.constants).filter((k) => k.startsWith("EVENT_") && to.constants[k] >= 0 && to.constants[k] < n);
+  let moved = 0;
+  for (const k of names) {
+    const nb = to.constants[k];
+    const olds = names.filter((j) => to.constants[j] === nb && j in from.constants).map((j) => from.constants[j]);
+    if (!olds.length) { assert.equal(bit(b, nb), 0, `${k}: new at schema 24, so clear`); continue; }
+    assert.equal(bit(b, nb), olds.some((o) => bit(save, o)) ? 1 : 0, `${k} (bit ${nb})`);
+    if (!olds.includes(nb)) moved++;
+  }
+  assert.ok(moved > 0, "expected renumbered events");
+  assert.equal(bit(b, to.constants.EVENT_BEAT_FOREST_GENERIC_TRAINER), 0);
+  for (const f of from.saved_wram)
+    assert.equal(wramOffset(to, f.label), wramOffset(from, f.label), f.label);
+  const changed = new Set([row, cell]);
+  for (let i = 0; i < 64; i++) changed.add(ev + i);
+  const sum = to.checksums.find((c) => c.name === "main");
+  changed.add(offsetOf(sum.at_bank, sum.at));
+  for (let i = 0; i < 8; i++) changed.add(0x2040 + i);
+  for (let i = 0; i < save.length; i++)
+    if (!changed.has(i)) assert.equal(b[i], save[i], `unrelated byte ${i}`);
+  assert.equal(api.checksumStatus(b, to).main, true);
+});
+
 // Full schema (with constants), for checks the trimmed package cannot make.
-const fullSchema = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
+const fullSchema =(id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
 
 test("schema 18 to 19: held specials are credited; excluded species and flags are not", () => {
   const from = PKG.schemas["18"], to = PKG.schemas["19"], pkg = packageTargeting("19");

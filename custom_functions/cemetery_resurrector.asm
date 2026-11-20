@@ -982,13 +982,14 @@ CRIsDone:
 	ld b, a
 	call CDCloseSRAM
 	ld a, b
+	ASSERT BIT_CEM_RESURRECTOR_DONE == 7
 	add a                               ; bit 7 into the carry
 	ret
 
 CRSetDone:
 	call CDOpenSRAM
 	ld a, [sProcCemeteryItemGot]
-	set 7, a
+	set BIT_CEM_RESURRECTOR_DONE, a
 	ld [sProcCemeteryItemGot], a
 	jp CDCloseSRAM
 
@@ -1109,7 +1110,7 @@ CemReviverTalk::
 	xor a
 	ld [rRAMB], a
 	ld a, [sProcCemeteryItemGot]
-	set 7, a
+	set BIT_CEM_RESURRECTOR_DONE, a
 	ld [sProcCemeteryItemGot], a
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a

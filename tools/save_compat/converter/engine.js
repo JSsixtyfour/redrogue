@@ -751,6 +751,26 @@
       return null;
     },
 
+    // Schema 23 -> 24 (2026-11-19, the Forest's generic route trainer): two new bank-0 SRAM bytes,
+    // sForestGenericRow and sForestGenericCell, taken from free space, so no other field moves. (The
+    // new event EVENT_BEAT_FOREST_GENERIC_TRAINER renumbered the events after it; flagsRenumbered,
+    // listed before this step, translates those and leaves the new flag clear.) An old save made
+    // inside a Forest rolled no trainer: row 0 ("none") and cell $fe ("no cell") keep him absent
+    // until the next Forest's preload rolls one, as ForestGenericPatch/Place read them.
+    forestGenericAdded: function (bytes, from, to) {
+      if (sramField(from, "sForestGenericRow")) return "this save already has the Forest trainer";
+      var row = sramField(to, "sForestGenericRow"), cell = sramField(to, "sForestGenericCell");
+      if (!row || !cell || row.size !== 1 || cell.size !== 1) return "Forest trainer layout not recognised";
+      for (var i = 0; i < from.sram.length; i++) {
+        var f = from.sram[i], t = sramField(to, f.label);
+        if (!t || t.bank !== f.bank || t.address !== f.address || t.size !== f.size)
+          return "save field " + f.label + " moved, which this step does not expect";
+      }
+      bytes[offsetOf(row.bank, row.address)] = 0;
+      bytes[offsetOf(cell.bank, cell.address)] = 0xfe;
+      return null;
+    },
+
     lossRecoveryAdded: function (bytes, from, to) {
       var names = ["sLossRecovery1", "sLossRecovery2", "sLossRecovery3", "sLossRecoveryCRC", "sLossRecoveryValid"];
       for (var i = 0; i < names.length; i++) {

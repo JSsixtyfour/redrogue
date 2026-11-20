@@ -128,7 +128,8 @@ Divide:: ; adapted from polishedcrystal via yumepokered
 
 	ldh a, [hDivisor]
 	and a ; is divisor 0?
-	jr z, .done ; polishedcrystal crashed here; returning leaves hQuotient untouched
+	jp z, .done ; polishedcrystal crashed here; returning leaves hQuotient untouched
+	            ; (jp: the unrolled bit loop puts .done out of jr range)
 	ld d, a              ; d = divisor
 
 ; right-align a b-byte dividend in ONE move per case. A loop that shifted all

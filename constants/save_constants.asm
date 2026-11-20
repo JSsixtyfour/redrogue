@@ -108,7 +108,12 @@
 ; Effect2, so the array stays contiguous). Every later saved field moved up 4.
 ; Migration bridgeRecordsAdded copies the fields by label and zeroes the two new
 ; records (empty, as a new game has them).
-DEF SAVE_SCHEMA_ID EQU 23
+; Schema 24 (2026-11-19, the Forest's generic route trainer): a new event,
+; EVENT_BEAT_FOREST_GENERIC_TRAINER, renumbered the events after it (migration
+; flagsRenumbered translates them by name), and two new bank-0 SRAM bytes,
+; sForestGenericRow/Cell. Migration forestGenericAdded writes "no trainer" into
+; them, so an old save made inside a Forest has none until the next Forest.
+DEF SAVE_SCHEMA_ID EQU 24
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; Transient invalid magic while a writer owns the save. Completed headers and

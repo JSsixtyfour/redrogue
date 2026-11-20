@@ -10,6 +10,7 @@ DEF CEMETERY_4_CHANNELER EQU 4
 ; sProcCemeteryItemGot (bits 0-3 are the floors' balls).
 DEF CEM_CHANNELER_FLOOR_MASK EQU %00110000 ; his floor, 0-3
 DEF BIT_CEM_CHANNELER_WON    EQU 6
+DEF BIT_CEM_RESURRECTOR_DONE EQU 7 ; served this Cemetery (cemetery_resurrector.asm)
 
 ; wSafariZoneGateCurScript while his battle is pending (the forest rest house
 ; uses 1, the subroom residents 2).
