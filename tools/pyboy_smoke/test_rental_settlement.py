@@ -10,6 +10,9 @@ class RentalSettlementTest(unittest.TestCase):
     def setUp(self):
         self.h = RedRogueHarness(REPO_ROOT, ARTIFACTS)
         self.h.boot_to_lobby()
+        # boot_to_lobby does not park, and the lobby's reward roll can still be
+        # mid-scan when it returns (2026-11-20: a hijack there ran into WRAM).
+        self.h.park_before_hijack(idle=True)
         self.mon = self.h.read_bytes("wPartyMons", 33)
 
     def tearDown(self):

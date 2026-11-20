@@ -1398,7 +1398,7 @@ class RedRogueHarness:
         address = self.address("wEventFlags") + event // 8
         return bool(self.pyboy.memory[address] & (1 << (event % 8)))
 
-    def park_before_hijack(self, limit: int = 240) -> None:
+    def park_before_hijack(self, limit: int = 240, *, idle: bool = False) -> None:
         """Advance until the CPU is somewhere safe to overwrite PC.
 
         call_routine and probe_routine_until both hijack PC from wherever the
@@ -1433,16 +1433,67 @@ class RedRogueHarness:
                 "VBlank/DelayFrame are no longer adjacent in HOME; "
                 "park_before_hijack needs a new way to bound the handler"
             )
+        busy = None
         for _ in range(limit):
             if start <= self.pyboy.register_file.PC < end or self._in_vblank_callee(start, end):
-                self._snapshot_park_registers()
-                return
+                busy = self._interrupted_mainline_pc(start, end) if idle else None
+                if busy is None:
+                    self._snapshot_park_registers()
+                    return
             self.tick(1)
         raise AssertionError(
             f"CPU never parked inside the VBlank handler "
-            f"(${start:04x}-${end - 1:04x}) within {limit} frames; "
+            f"(${start:04x}-${end - 1:04x}) over an idle mainline within {limit} frames; "
             f"last PC=${self.pyboy.register_file.PC:04x}"
+            + (f", interrupted mainline PC=${busy:04x}" if busy is not None else "")
         )
+
+    def _interrupted_mainline_pc(self, start: int, end: int) -> int | None:
+        """None when the VBlank parked at is interrupting DelayFrame's halt, else
+        the interrupted mainline PC (or -1 when it cannot be located).
+
+        A hijacked callee runs on the parked VBlank's stack, so the mainline it
+        interrupted keeps its stack and bank, but not shared scratch it was in the
+        middle of using. Measured 2026-11-20: the Multiply/Divide rewrite moved
+        boot_to_lobby's park into the lobby's reward roll, mid-FarCopyData of an
+        evolution list into wEvoDataBuffer (AllSpeciesCheckFar). The hijacked
+        BridgeDoGift wrote a name over the three bytes already copied, and the
+        resumed scan ran into WRAM (SP $C398): test_warden_detox,
+        test_rental_settlement and test_bridge_intimidate_gift. FOLLOWUPS #64 was
+        the same hazard. Only a mainline halted in DelayFrame holds no such state.
+
+        Opt-in (park_before_hijack(idle=True)), not the default: a battle menu's
+        input loop is phase-locked to VBlank, so boot_fight2's park lands on
+        JoypadLowSensitivity every frame and never on DelayFrame (measured
+        2026-11-20, the whole suite failed to park). Use it where the mainline
+        has transient work in flight, such as a fresh lobby's reward roll.
+
+        VBlank's vector is a plain `jp VBlank` and its body pushes af/bc/de/hl and
+        nothing else, so the interrupted PC is 8 bytes above the body's stack. The
+        body's stack starts at SP when parked in the body itself, or just above the
+        first word that returns into the body (the _in_vblank_callee test).
+        """
+        memory = self.pyboy.memory
+        regs = self.pyboy.register_file
+        sp, pc = regs.SP, regs.PC
+        body = None
+        if start <= pc < end:
+            # The pushes at entry are 4 one-byte opcodes, and the pops end it.
+            if pc >= start + 4 and memory[pc] not in (0xE1, 0xD1, 0xC1, 0xF1, 0xD9):
+                body = sp
+        else:
+            for offset in range(0, 32, 2):
+                word = memory[(sp + offset) & 0xFFFF] | (memory[(sp + offset + 1) & 0xFFFF] << 8)
+                if start + 3 <= word < end and memory[word - 3] == 0xCD:
+                    body = (sp + offset + 2) & 0xFFFF
+                    break
+        if body is None:
+            return -1
+        interrupted = memory[(body + 8) & 0xFFFF] | (memory[(body + 9) & 0xFFFF] << 8)
+        _, delay_start, delay_end = self.symbols.routine_range("DelayFrame")
+        if delay_start <= interrupted < delay_end:
+            return None
+        return interrupted
 
     def _in_vblank_callee(self, start: int, end: int) -> bool:
         """True when the CPU is inside a routine the VBlank handler called directly.

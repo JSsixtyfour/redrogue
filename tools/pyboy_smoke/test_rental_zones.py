@@ -149,6 +149,11 @@ class RentalZoneTest(unittest.TestCase):
         h = self.h
         baseline = io.BytesIO()
         h.save_state(baseline)
+        # Each call fakes hCurMap; put the loaded map back at the callee's own
+        # return, before the parked game runs a real frame on it (2026-11-20:
+        # the faked FUCHSIA/VIRIDIAN frame ran into WRAM, SP $C398).
+        real_map = h.read8("hCurMap")
+        restore_map = lambda hh: hh.write8("hCurMap", real_map)
         names = ("ROUTE_1", "VICTORY_ROAD_1F", "SS_ANNE_B1F",
                  "PROCEDURAL_CAVE_1", "PROCEDURAL_FOREST", "PROCEDURAL_FACILITY",
                  "PROCEDURAL_CEMETERY_1", "PROCEDURAL_CEMETERY_4",
@@ -160,10 +165,10 @@ class RentalZoneTest(unittest.TestCase):
             h.load_state(baseline)
             self.seed(h, 0, {}, 0)
             zone = self.map(name)
-            h.call_routine("RentalRecordMapLoad")
+            h.call_routine("RentalRecordMapLoad", capture=restore_map)
             self.assertEqual(h.read_bytes("wRentalRecord", 4), [2,0,zone,131], name)
             self.map("PROCEDURAL_CEMETERY_2")
-            h.call_routine("RentalRecordMapLoad")
+            h.call_routine("RentalRecordMapLoad", capture=restore_map)
             self.assertEqual(h.read8("wRentalZone"), zone)
 
     def test_each_loaded_hub_reclaims_recovers_and_saves_once(self):

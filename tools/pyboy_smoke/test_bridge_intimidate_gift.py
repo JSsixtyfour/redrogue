@@ -36,6 +36,9 @@ class BridgeIntimidateGiftTest(unittest.TestCase):
         self.moves = parse_rgbds_constants(REPO_ROOT / "constants" / "move_constants.asm")
         self.harness = RedRogueHarness(REPO_ROOT, ARTIFACTS)
         self.harness.boot_to_lobby()
+        # boot_to_lobby does not park, and the lobby's reward roll can still be
+        # mid-scan when it returns (2026-11-20: a hijack there ran into WRAM).
+        self.harness.park_before_hijack(idle=True)
 
     def tearDown(self) -> None:
         self.harness.close()

@@ -620,8 +620,20 @@ class CaveDeepFloorTest(unittest.TestCase):
         if avoid_warps:
             blocked = {(x, y) for y, x, _dest, _map in h.warp_entries()
                        if y != 0xFF and (x, y) != goal}
+        # A taken ball keeps its picture byte, but it is hidden and the player
+        # walks through it (measured 2026-11-20 on 192f9284: from below the
+        # taken ball, two steps up). The cave's toggles are the plain list:
+        # (sprite slot, toggle index) pairs, $FF-terminated.
+        hidden = set()
+        pairs = h.read_bytes("wToggleableObjectList", 33)
+        for i in range(0, 32, 2):
+            if pairs[i] == 0xFF:
+                break
+            toggle = pairs[i + 1]
+            if h.read8("wToggleableObjectFlags", offset=toggle // 8) & 1 << toggle % 8:
+                hidden.add(pairs[i])
         for slot in range(1, 16):
-            if h.read8(f"wSprite{slot:02d}StateData1"):
+            if h.read8(f"wSprite{slot:02d}StateData1") and slot not in hidden:
                 tile = (h.read8(f"wSprite{slot:02d}StateData2MapX") - 4,
                         h.read8(f"wSprite{slot:02d}StateData2MapY") - 4)
                 if tile != goal:
@@ -684,11 +696,12 @@ class CaveDeepFloorTest(unittest.TestCase):
         self.assertEqual(h.read8(slot), encounter.optional_sprite(h), "the encounter has no picture")
         self.assertEqual((h.read8("wSprite10StateData2MapX"), h.read8("wSprite10StateData2MapY")),
                          (2 * ex + 5, 2 * ey + 5))
-        # Talk to it from below: the B1F's cold battle.
-        self.walk_to((2 * ex + 1, 2 * ey + 2))
-        h.tap("up")
-        h.tick(20)
+        # Talk to it from any open side: the B1F's cold battle. Not always from
+        # below: measured 2026-11-20, a spot on the floor's bottom corridor has
+        # the border's raised rock under it (an elevation step, no path), and
+        # the three other sides open.
         count = h.read8("wBattleCount")
+        self.face_and_press_a((2 * ex + 1, 2 * ey + 1))
         self.mash_until(lambda: h.read8("hIsInBattle") == 1 and h.read8("wOptionalEncounterBattle") == 0
                         and h.read8("wEnemyMonCatchRate") & 8, "the cold battle starts")
         self.assertEqual(h.read8("wEnemyMonSpecies"), SPECIES["ONIX"])
@@ -737,8 +750,9 @@ class CaveDeepFloorTest(unittest.TestCase):
         for _ in range(10):
             h.tap("b", 4)
         h.tick(30)
-        # Climb by the entrance ladder, save on floor 1, descend again.
-        self.walk_to((18, 39))
+        # Climb by the entrance ladder, save on floor 1, descend again. Around
+        # the ladder: a path from the east crossed it (192f9284's layout).
+        self.walk_to((18, 39), avoid_warps=True)
         self.timed(lambda started: self.press_until("right", started, "onto the entrance ladder"))
         self.assertEqual(self.wram_bits()[0], 0)
         self.assertTrue(save_reload.settle(h))
@@ -789,8 +803,19 @@ class CaveDeepFloorTest(unittest.TestCase):
         self.deep_cave()
         self.ladder_warp(2, 0)
         h.write8("wProcCaveWildBudget", 0)
+        # Take the floor's ball first, as a player would: measured 2026-11-20 on
+        # 192f9284's layout, it stood in the one-tile corridor that is the only
+        # way to the exit, and a taken ball no longer blocks.
+        bx, by = h.read8("wSprite02StateData2MapX") - 4, h.read8("wSprite02StateData2MapY") - 4
+        if h.read8("wSprite02StateData1"):
+            hidden = lambda: h.read8("wToggleableObjectFlags", offset=BALL1 // 8) & 1 << BALL1 % 8
+            self.face_and_press_a((bx, by), avoid_warps=True)
+            self.mash_until(hidden, "the ball is picked up", 600)
+            for _ in range(10):
+                h.tap("b", 4)
+            h.tick(30)
         y, x = h.warp_entries()[1][:2]
-        self.face_and_press_a((x, y))
+        self.face_and_press_a((x, y), avoid_warps=True)  # never across the exit itself
         self.assertEqual(h.read8("hIsInBattle"), 0, "something on the exit tile started a battle")
         here = (h.read8("wXCoord"), h.read8("wYCoord"))
         for way in ("left", "right", "up", "down"):

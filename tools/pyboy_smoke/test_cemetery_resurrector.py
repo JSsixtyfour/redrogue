@@ -17,6 +17,7 @@ from pathlib import Path
 import unittest
 
 from harness import RedRogueHarness
+import save_reload
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -294,6 +295,49 @@ class CemeteryResurrectorRestoreTest(unittest.TestCase):
         self.assertEqual(self.log_entry(0)[MON_BOX_LEVEL], FALLEN_STAMP | SHRINK_RAY)
         self.assertEqual(self.log_entry(1)[MON_BOX_LEVEL], FALLEN_STAMP)
         self.assertEqual(self.log_entry(0)[MON_LEVEL], self.template[MON_LEVEL])
+
+    def test_continue_after_a_resurrection_keeps_the_pokemon(self) -> None:
+        """Save after a resurrection, power on a fresh emulator on that cartridge
+        RAM and CONTINUE: the Pokemon, its nickname and its Bridge effect are
+        back, and the log still holds exactly the entries its count says."""
+        h = self.h
+        self.write_log([
+            self.make_entry(self.reward - 2, 0x81, FALLEN_STAMP | CRITICAL_RATE),
+            self.make_entry(self.reward - 3, 0x82),
+        ])
+        self.set_party_count(1)
+        _, carry = self.restore(0)
+        self.assertFalse(carry)
+        mon = self.party_mon(1)
+        records = h.read_bytes("wBridgeSelectedEffects", BRIDGE_RECORDS * 2)
+        self.assertEqual(records[:2], [2, CRITICAL_RATE])  # party slot 1 -> owner 2
+        log = [self.log_entry(i) for i in range(2)]
+
+        h.park_before_hijack()
+        h.call_routine("SaveGameData", limit=60_000)
+        reboot = save_reload.Reboot(save_reload.sram_image(h),
+                                    cgb_mode=h.hardware_mode == "CGB")
+        try:
+            reboot.load()
+            r = reboot.h
+            self.assertEqual(reboot.status, 2, "the save did not load")
+            self.assertTrue(reboot.overworld, "CONTINUE never reached the overworld")
+            self.assertEqual(r.read8("wPartyCount"), 2)
+            self.assertEqual(r.read8("wPartySpecies", offset=1), self.template[0])
+            self.assertEqual(r.read_bytes("wPartyMons", PARTYMON_STRUCT_LENGTH,
+                                          offset=PARTYMON_STRUCT_LENGTH), mon)
+            self.assertEqual(r.read8("wPartyMonNicks", offset=NAME_LENGTH), 0x81)
+            self.assertEqual(r.read_bytes("wBridgeSelectedEffects", BRIDGE_RECORDS * 2), records)
+            # The log: one entry left (the second, moved down), a zeroed tail,
+            # and the saved count agrees with it.
+            self.assertEqual(r.read8("wFallenCount"), 1)
+            reloaded = r.read_sram_bytes("sFallenLog", FALLEN_ENTRY_SIZE * 2, bank=FALLEN_LOG_BANK)
+            self.assertEqual(reloaded[:FALLEN_ENTRY_SIZE], log[0])
+            self.assertEqual(reloaded[PARTYMON_STRUCT_LENGTH + NAME_LENGTH], 0x82)
+            self.assertEqual(set(reloaded[FALLEN_ENTRY_SIZE:]), {0})
+            self.assertEqual(set(log[1]), {0})
+        finally:
+            reboot.close()
 
 
 if __name__ == "__main__":

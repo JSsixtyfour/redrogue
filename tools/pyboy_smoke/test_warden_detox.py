@@ -38,7 +38,8 @@ class WardenDetoxTest(unittest.TestCase):
         self.h = h = RedRogueHarness(ROOT, ARTIFACTS, **self.harness_args)
         self.addCleanup(h.close)
         h.boot_to_lobby()
-        h.park_before_hijack()
+        # Idle: the lobby's reward roll can still be mid-scan (2026-11-20).
+        h.park_before_hijack(idle=True)
         self.baseline = io.BytesIO()
         h.save_state(self.baseline)
         self.texts = 0
