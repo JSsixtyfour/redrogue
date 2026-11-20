@@ -20,7 +20,7 @@ ProceduralCemetery4_Script:
 	; It was reachable the moment the boss was beaten (the `jp nz,
 	; CheckFightingMapTrainers` in the default script below). The cemetery now
 	; has real trainers, so it points at the real shared table.
-	ld hl, PCemStageTrainerHeaders
+	call PCemTrainerHeaders
 	ld de, ProceduralCemetery4_ScriptPointers
 	ld a, [wProceduralCemetery4CurScript]
 	call ExecuteCurMapScriptInTable
@@ -156,7 +156,8 @@ ProceduralCemetery4_TextPointers:
 	dw_const PCemStageEventNpc2Text, TEXT_PROCEDURALCEMETERY4_STAGE_NPC_2
 	dw_const PCemChannelerText, TEXT_PROCEDURALCEMETERY4_CHANNELER
 	dw_const PCemResurrectorText, TEXT_PROCEDURALCEMETERY4_RESURRECTOR
-	; --- end of the object block (5 objects); script-only ids follow ---
+	dw_const PCemGenericTrainerText, TEXT_PROCEDURALCEMETERY4_GENERIC
+	; --- end of the object block (6 objects); script-only ids follow ---
 	dw_const PCemChannelerHealText, TEXT_PROCEDURALCEMETERY4_CHANNELER_HEAL
 	dw_const ProceduralCemetery4BeGoneText,    TEXT_PROCEDURALCEMETERY4_BEGONE
 	dw_const ProceduralCemetery4BossOfferText, TEXT_PROCEDURALCEMETERY4_BOSS_OFFER

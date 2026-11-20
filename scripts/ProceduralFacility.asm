@@ -253,6 +253,9 @@ ProceduralFacility_Script:
 	cp 10
 	jr c, .haveTrainerHeaders
 	ld hl, PFacStageNpc1Header
+	cp FACILITY_GENERIC
+	jr nz, .haveTrainerHeaders
+	ld hl, PFacGenericHeader
 .haveTrainerHeaders
 	ld de, ProceduralFacility_ScriptPointers
 	ld a, [wProceduralCave1CurScript]
@@ -430,7 +433,8 @@ ProceduralFacility_TextPointers:
 	dw_const PFacStageEventNpc2Text, TEXT_PROCEDURALFACILITY_STAGE_NPC_2
 	dw_const PFacSuperNerdText, TEXT_PROCEDURALFACILITY_SUPER_NERD
 	dw_const PFacOptionalText, TEXT_PROCEDURALFACILITY_OPTIONAL
-	; --- end of the object block (13 objects); script-only ids follow ---
+	dw_const PFacGenericTrainerText, TEXT_PROCEDURALFACILITY_GENERIC
+	; --- end of the object block (14 objects); script-only ids follow ---
 	dw_const PFacSuperNerdPrizeText, TEXT_PROCEDURALFACILITY_SUPER_NERD_PRIZE
 	dw_const ProceduralFacilityBossOfferText, TEXT_PROCEDURALFACILITY_BOSS_OFFER
 	dw_const PFacWildCalmedText, TEXT_PROCEDURALFACILITY_CALMED
@@ -490,7 +494,28 @@ PFacStageNpc1Header:
 	trainer EVENT_BEAT_FACILITY_STAGE_NPC_1, 4, PFacStageEventHideoutText, PFacStageEventDefeatText, PFacStageEventAfterText
 PFacStageNpc2Header:
 	trainer EVENT_BEAT_FACILITY_STAGE_NPC_2, 4, PFacStageEventHideoutText, PFacStageEventDefeatText, PFacStageEventAfterText
+	; The generic route trainer: object slot FACILITY_GENERIC (14), his flag in
+	; wWildGenericBeaten (the header pick above chooses this header by
+	; wTrainerHeaderFlagBit). Range 1: one tile.
+PFacGenericHeader:
+	wild_generic_trainer FACILITY_GENERIC, 1, PFacGenericIntroText, PFacGenericDefeatText, PFacGenericAfterText
 	db -1 ; end
+
+; The generic route trainer's talk and his three lines, which pick themselves by
+; his class (ForestGenericIntroText etc., $1A, forest_generic_trainer.asm).
+PFacGenericTrainerText:
+	text_asm
+	ld hl, PFacGenericHeader
+	jp ProceduralFacilityInitBattleScript
+PFacGenericIntroText:
+	text_far ForestGenericIntroText
+	text_end
+PFacGenericDefeatText:
+	text_far ForestGenericDefeatText
+	text_end
+PFacGenericAfterText:
+	text_far ForestGenericAfterText
+	text_end
 
 ProceduralFacilityInitBattleScript:
 	call TalkToTrainer

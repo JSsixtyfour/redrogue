@@ -29,7 +29,8 @@ ProceduralCemetery2_TextPointers:
 	dw_const PCemStageEventNpc2Text, TEXT_PROCEDURALCEMETERY2_STAGE_NPC_2
 	dw_const PCemChannelerText, TEXT_PROCEDURALCEMETERY2_CHANNELER
 	dw_const PCemResurrectorText, TEXT_PROCEDURALCEMETERY2_RESURRECTOR
-	; --- end of the object block (5 objects); script-only ids follow ---
+	dw_const PCemGenericTrainerText, TEXT_PROCEDURALCEMETERY2_GENERIC
+	; --- end of the object block (6 objects); script-only ids follow ---
 	dw_const PCemChannelerHealText, TEXT_PROCEDURALCEMETERY2_CHANNELER_HEAL
 	dw_const PCemCalmedText, TEXT_PROCEDURALCEMETERY2_CALMED
 	dw_const PCemStageEventArrivalText, TEXT_PROCEDURALCEMETERY2_STAGE_EVENT

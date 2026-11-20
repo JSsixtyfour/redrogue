@@ -566,6 +566,31 @@ function ConvertAsm {
 		}
 	}
 
+	# (f) tempo before the first note on the lowest channel. "tempo" sets every
+	# channel's tempo, but all channels start on the same frame in order 1-4,
+	# and a note already started keeps the length it was given (ChannelInit's
+	# default tempo $100; Tempo doesn't re-time it). A tempo that lives only in
+	# a later channel's block (say, after swapping the channel 1 and 2 labels)
+	# leaves the lowest channel's first note wrong and that channel out of step
+	# for the whole song. Every song in the game passes this (2026-11-20).
+	$chanCmds = @($cmds | Where-Object { $_.cmd -ieq 'channel' })
+	if ($chanCmds.Count -and ($cmds | Where-Object { $_.cmd -ieq 'tempo' })) {
+		$first = $chanCmds | Sort-Object { [int](($_.args -split ',')[0].Trim()) } | Select-Object -First 1
+		$firstNum = ($first.args -split ',')[0].Trim()
+		$target = ($first.args -split ',')[1].Trim()
+		$start = -1
+		for ($i = 0; $i -lt $src.Count; $i++) {
+			if ((($src[$i] -replace ';.*$', '').TrimEnd()) -match ('^' + [regex]::Escape($target) + '::?$')) { $start = $i; break }
+		}
+		for ($i = $start + 1; $start -ge 0 -and $i -lt $src.Count; $i++) {
+			$code = ($src[$i] -replace ';.*$', '').Trim()
+			if ($code -match '^(tempo|sound_call|sound_jump|sound_loop)\b') { break }   # set, or not provable from here
+			if ($code -match '^(note|rest|drum_note)\b') {
+				Fail "Channel $firstNum starts playing before the song's tempo is set: the 'tempo' line is in another channel's part. All channels start together and channel $firstNum goes first, so its first note would get the wrong length and that channel would play out of step for the whole song. Move the 'tempo' line to the top of the channel $firstNum part (right under the '$target' label)."
+			}
+		}
+	}
+
 	# Rename: entry -> $Label; <entry>_X -> ${Label}_X; anything else -> ${Label}_name.
 	# Partner labels get the partner's own conversion names (same rule, -PartnerLabel).
 	$map = @{}
@@ -591,6 +616,45 @@ function ConvertAsm {
 	return (($text -join "`n") + "`n")
 }
 
+# Menu sounds and the A button's beep play on the hardware channel that Ch1
+# shares (sfx channel 5: 30 of sfxheaders1's 52 channels; battle sounds use
+# channel 8 = Ch4 most, then 5, then 6), so while one plays, Ch1's notes drop
+# out (and a held note stays silent until Ch1's next note). Game Freak keeps the
+# melody on Ch2 for that reason. Measured 2026-11-20: GSC battle songs sit 3-8
+# semitones higher on Ch2; the Stadium conversions that dropped notes in
+# battle had their melody on Ch1. Average pitch is a rough melody detector, so
+# this is a note, never a failure.
+function Test-LeadChannel([string]$text) {
+	$names = @('C_', 'C#', 'D_', 'D#', 'E_', 'F_', 'F#', 'G_', 'G#', 'A_', 'A#', 'B_')
+	$chanOf = @{}
+	foreach ($m in [regex]::Matches($text, '(?m)^\s*channel\s+([12])\s*,\s*(\w+)')) { $chanOf[$m.Groups[2].Value] = [int]$m.Groups[1].Value }
+	$sum = @{ 1 = 0.0; 2 = 0.0 }; $count = @{ 1 = 0; 2 = 0 }
+	$ch = 0; $oct = 4
+	foreach ($l in ($text -split "`n")) {
+		$code = ($l -replace ';.*$', '').TrimEnd()
+		if ($code -match '^([A-Za-z_]\w*)::?$') {
+			if ($chanOf.ContainsKey($Matches[1])) { $ch = $chanOf[$Matches[1]]; $oct = 4 }
+			elseif ($Matches[1] -match '_Ch[34]$') { $ch = 0 }
+			continue
+		}
+		if ($ch -eq 0) { continue }
+		if ($code -match '^\s+octave\s+(\d+)') { $oct = [int]$Matches[1] }
+		elseif ($code -match '^\s+inc_octave\b') { $oct++ }
+		elseif ($code -match '^\s+dec_octave\b') { $oct-- }
+		elseif ($code -match '^\s+note\s+([A-G][_#])\s*,') {
+			$sum[$ch] += 12 * $oct + [array]::IndexOf($names, $Matches[1]); $count[$ch]++
+		}
+	}
+	if ($count[1] -lt 8 -or $count[2] -lt 8) { return }
+	$a1 = $sum[1] / $count[1]; $a2 = $sum[2] / $count[2]
+	if ($a1 -gt $a2 + 1) {
+		Say ("  Note: Ch1 sits higher than Ch2 (by {0:N1} semitones on average), so Ch1 is probably your melody." -f ($a1 - $a2)) 'Yellow'
+		Say '        In the game, the A button beep, menu sounds and many battle sounds borrow Ch1, and its' 'Yellow'
+		Say '        notes drop out while they play. Pokemon games keep the melody on Ch2. Consider swapping your' 'Yellow'
+		Say '        Ch1 and Ch2 tracks (see "WHICH TRACK GETS THE MELODY" in READ ME FIRST).' 'Yellow'
+	}
+}
+
 if ($SelfTest) {
 	# Rebuild the untouched game: proves the kit's tools, objects and flags
 	# still produce the real ROM. make_music_kit.py byte-compares it.
@@ -598,6 +662,7 @@ if ($SelfTest) {
 	Say 'Self-test: building the game with its original title music.' 'Cyan'
 } else {
 	$songText = if ($Mid -and [IO.Path]::GetExtension($Mid) -ieq '.asm') { ConvertAsm } else { ConvertMidi }
+	try { Test-LeadChannel $songText } catch {}
 	if ($NoBuild) {
 		if (-not $OutAsm) { Fail '-NoBuild needs -OutAsm.' }
 		[IO.File]::WriteAllText($OutAsm, $songText)
@@ -623,6 +688,16 @@ if ($null -ne $songText) {
 		Fail 'The kit''s engine files are not the ones this script expects. Ask the dev team for a fresh kit.' "title rows: $rows"
 	}
 	$tableText = [regex]::Replace($tableText, [regex]::Escape($TitleRow) + '\b', "dba $Label")
+	# Kit 5: every song a battle can play (kit.json battleRows, from the game's
+	# battle music ramps) points at the preview too, so FIGHT 2 and every other
+	# battle in the test ROM plays it.
+	$battleRows = if ($kit -and $kit.battleRows) { @($kit.battleRows) } else { @() }
+	foreach ($song in $battleRows) {
+		$row = [regex]::Escape("dba $song") + '\b'
+		$n = ([regex]::Matches($tableText, $row)).Count
+		if ($n -ne 1) { Fail 'The kit''s engine files are not the ones this script expects. Ask the dev team for a fresh kit.' "battle row ${song}: $n" }
+		$tableText = [regex]::Replace($tableText, $row, "dba $Label")
+	}
 	$audioText = $audioText.Replace($tableInclude, 'INCLUDE "kit_music_pointers.asm"')
 	$audioText += "`n`nSECTION `"$PreviewSection`", ROMX`n`nINCLUDE `"kit_song.asm`"`n"
 	[IO.File]::WriteAllText((Join-Path $Src 'kit_music_pointers.asm'), $tableText)
@@ -696,8 +771,14 @@ New-Bundle $songText $null
 # ---------------------------------------------------------------- 6. play
 
 if ($NoLaunch) { exit 0 }
-$emu = Join-Path $Engine 'emulator\mGBA.exe'
-Say 'Opening the game... (your song plays on the title screen; press Start to skip the intro)' 'Cyan'
+# BGB since kit 5 (kits 1-4 shipped mGBA; use it if an old emulator folder has it).
+$emu = Join-Path $Engine 'emulator\bgb64.exe'
+if (-not (Test-Path -LiteralPath $emu)) { $emu = Join-Path $Engine 'emulator\mGBA.exe' }
+Say ''
+Say 'Opening the game. Your song plays on the title screen (press Start to skip the intro).' 'Cyan'
+Say 'To hear it in battle: on the title screen, HOLD Select and press Start, choose FIGHT 2,' 'Cyan'
+Say 'press A twice. Every battle in this test game plays your song.' 'Cyan'
+Say 'BGB keys: arrows = D-pad, S = A, A = B, Enter = Start, Shift = Select.' 'DarkGray'
 if (Test-Path -LiteralPath $emu) {
 	Start-Process -FilePath $emu -ArgumentList ('"' + $rom + '"')
 } else {

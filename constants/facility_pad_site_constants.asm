@@ -62,6 +62,9 @@ DEF FACSUB_FALLBACK_MAX EQU 18  ; the block's E/S/SE neighbours stay on the map
 ; converter finds a toggle's new-game default by TOGGLE_<object name>.
 DEF FACILITY_SUPER_NERD EQU 12
 DEF FACILITY_OPTIONAL_MON EQU 13
+; The generic route trainer (forest_generic_trainer.asm,
+; GENERIC_TRAINER_ALL_AREAS_SPEC.md): the last usable slot (15 is the follower).
+DEF FACILITY_GENERIC EQU 14
 
 DEF NUM_FACILITY_PAD_SITES = 0
 MACRO pad_site

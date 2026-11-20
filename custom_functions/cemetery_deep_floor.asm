@@ -36,12 +36,20 @@ SECTION "Cemetery Deep Floor", ROMX, BANK[$28]
 CemDeepGenerateMaps::
 	farcall PCemGenerateMaps
 	call CemDeepLobbyDecide
-	jp CemResurrectorRoll               ; after the decision: his roll reads it
+	call CemResurrectorRoll             ; after the decision: his roll reads it
+	; The generic trainer's roll (forest_generic_trainer.asm), d = deep or not.
+	call CDCtrl
+	sbc a                               ; $ff deep, 0 ordinary
+	ld d, a
+	call CDCloseSRAM
+	farjp CemGenericRoll
 
 CemDeepFinalizeMap::
 	call CemDeepReconcile
 	farcall PCemFinalizeMap
 	call CemResurrectorPlace            ; after the Channeler's placement
+	call CDOrdinal                      ; d = map index, e = ordinal
+	farcall CemGenericPlace             ; after the resurrector's: he is avoided
 	jp CemDeepAfterFinalize
 
 ; ------------------------------------------------------------
@@ -225,6 +233,8 @@ CemDeepPatchSprite::
 	call c, CDProject
 	call CDCloseSRAM
 	call CemResurrectorPatchSprite
+	call CDOrdinal                      ; d = map index, e = ordinal
+	farcall CemGenericPatch             ; the generic trainer's picture
 	farjp CemChannelerPatchSprite
 
 ; Each projection is kept as an ordinal over the six floors and shown to the

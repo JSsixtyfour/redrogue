@@ -3,16 +3,23 @@ RED ROGUE MUSIC TESTER
 
 Make a MIDI in your music program (MuseScore, FL Studio, anything that exports
 .mid), drag it onto "DROP YOUR SONG HERE", and the game opens playing your song
-on the title screen. No install needed.
+on the title screen AND in every battle. No install needed.
 
 UPDATING FROM AN OLDER KIT
 -------------------------
-This is kit version 4. Extract it into a NEW folder and use its
+This is kit version 5. Extract it into a NEW folder and use its
 "DROP YOUR SONG HERE.bat". Keep your songs; do not copy the old _engine over
 the new one. Updating only the DLS/SF2 does not update the tester.
-Ch3 now follows three velocity bands: 1-42 = 25%, 43-84 = 50%, 85-127 = 100%.
-For an older song to keep its previous full-volume Ch3, use velocities 85-127.
-Read VOLUME below before adjusting your mix.
+New in version 5:
+  - Your song plays in battles too. See HEARING IT IN BATTLE below.
+  - The game opens in BGB (a more accurate Game Boy emulator) instead of mGBA.
+    Its keys are different; see HEARING IT IN BATTLE.
+  - "Game Songs" folder: every song in the game, with a sheet listing each
+    channel's instruments. See GAME SONGS below.
+  - The window warns when Ch1 looks like your melody. See WHICH TRACK GETS
+    THE MELODY below: it explains notes dropping out in battle.
+From version 4: Ch3 follows three velocity bands: 1-42 = 25%, 43-84 = 50%,
+85-127 = 100%. For an older song to keep its full-volume Ch3, use 85-127.
 
 
 QUICK START
@@ -25,7 +32,7 @@ QUICK START
 3. Export as a MIDI file (Type 1 / multi-track, not Type 0, if it asks).
 4. Drag the .mid onto "DROP YOUR SONG HERE.bat". A black window shows what
    happens, then the game opens. The song starts after the intro. Press Start
-   to skip the intro.
+   (Enter) to skip the intro. To hear it in a battle, see HEARING IT IN BATTLE.
 5. When a song is finished, send us the zip that appears in the folder
    "SEND THESE TO US" (open ATTRIBUTION.txt inside it first and fill in your
    name and the song title). It holds your original file, what the tester made
@@ -36,12 +43,38 @@ QUICK START
 
 THE FOUR TRACKS (it is a Game Boy, so there are only four voices)
 -----------------------------------------------------------------
-Ch1  Square wave. Melody or lead.
-Ch2  Square wave. Harmony or second lead.
+Ch1  Square wave. Harmony or second line (sound effects borrow it; see below).
+Ch2  Square wave. Melody or lead.
 Ch3  Soft wave. Usually bass.
 Ch4  Noise. Drums only.
 
 Every channel sounds at the pitch written in your program.
+
+WHICH TRACK GETS THE MELODY
+  The game's sound effects borrow the music's voices while they play. The
+  beep every time the player presses A and most menu sounds take over Ch1.
+  Attack sounds in battle take Ch4 most often, then Ch1, then Ch2. Pokemon
+  cries take Ch1, Ch2 and Ch4 for a moment. While a sound effect plays, that
+  channel's notes are silent, and a long note that was cut does not come
+  back: the channel stays quiet until its next note starts.
+  Ch1 is borrowed far more often than Ch2, which is why Pokemon games put
+  the melody on Ch2 and the harmony on Ch1 (Gold/Silver/Crystal's battle
+  themes sit 3-8 notes higher on Ch2). A melody on Ch1 loses notes every
+  time the player presses A, which is very noticeable in battle. Busy drum
+  parts lose hits during attacks for the same reason.
+  The tester warns you: "Note: Ch1 sits higher than Ch2 ... so Ch1 is
+  probably your melody." It is a hint (it compares the average pitch), not
+  an error.
+  To move the melody: swap the names of your Ch1 and Ch2 tracks (for
+  example "Ch1 Square 25" becomes "Ch2 Square 25" and the old Ch2 becomes
+  Ch1), export, and drop the song again. The sounds and volumes travel with
+  the track names, so nothing else changes. In a .asm song, swap the two
+  label names on the "channel 1," and "channel 2," lines at the top instead,
+  and move the "tempo" line (and "volume", if any) to the top of the part
+  that is now channel 1: channel 1 starts first, so it must set the tempo.
+  The tester stops with a message if it doesn't.
+  Then listen in a battle (next section) and press A a lot: the melody
+  should keep going and only the harmony should blink out.
 
 HOW THE TESTER FINDS YOUR TRACKS
   - Any track with Ch1, Ch2, Ch3 or Ch4 in its name is used for that voice.
@@ -206,8 +239,50 @@ THE LIMITS
    stored once, so reusing identical sections saves space. Very long songs
    fail with "too long".
 
-7. YOU HAVE ONE SONG SLOT. The tester replaces the title-screen music each
-   run. It does not keep or mix songs.
+7. YOU HAVE ONE SONG SLOT. The tester replaces the title-screen music and
+   all battle music each run. It does not keep or mix songs.
+
+
+HEARING IT IN BATTLE
+--------------------
+Every battle in the test game plays your song, so you can hear it under
+the menus, attacks and Pokemon cries, just like in the real game. The
+quickest way in is FIGHT 2, a test battle:
+  1. Drop your song. The game opens on its intro; wait for the title screen
+     (or press Enter to skip ahead).
+  2. On the title screen, HOLD Shift (Select) and press Enter (Start). A
+     menu opens. (Without Shift held you get the normal game, which also
+     plays your song in every battle, but takes longer to reach one.)
+  3. Press the down arrow once to FIGHT 2, then S (the A button).
+  4. It asks for a number (any number is fine; it picks the Pokemon). Press
+     S again. A battle starts with your song.
+  5. Play the battle with S (A) and A (B). When it ends, the next battle
+     starts on its own. Close BGB when you are done.
+  Things to listen for: notes dropping out when you press S, during attacks
+  and during cries (see WHICH TRACK GETS THE MELODY), and how the loop
+  sounds after a minute or two.
+
+  BGB keys:  arrows = D-pad   S = A   A = B   Enter = Start   Shift = Select
+  BGB is free (by beware, bgb.bircd.org), included unchanged in
+  _engine\emulator. Right-click its window for options, including key setup
+  (Options > Joypad). Victory music after a battle is the game's own.
+
+
+GAME SONGS
+----------
+The "Game Songs" folder holds every song in the game (Red/Blue, Gold/Silver/
+Crystal, Pokemon Stadium, Trading Card Game...), each as a .asm file with a
+.txt instrument sheet of the same name. INDEX.txt lists them all.
+  - The .txt lists, channel by channel, the sound each voice uses (with the
+    tester's names, like "Square 75" or "Wave 4"), volumes and fades as
+    MIDI velocities, vibrato, the notes' range, and the drums. Use it to copy
+    a classic setup into your own MIDI.
+  - Open the .asm in Crystal Tracker (in this kit) to see and hear every
+    note. Open it from the Game Songs folder so the tracker finds the waves
+    and drums.
+  - Drop a game song's .asm onto DROP YOUR SONG HERE to hear it in the
+    tester, for example to compare it with yours in battle. Songs marked
+    [tracker only] in INDEX.txt use a command the tester doesn't take.
 
 
 WRITING THE SONG FILE YOURSELF (optional, advanced)

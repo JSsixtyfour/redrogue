@@ -28,5 +28,10 @@ ProceduralCemetery1_Object:
 	; floor of 60% of Cemeteries; given his picture and cell there only.
 	object_event 5, 5, SPRITE_BALDING_GUY, STAY, DOWN, TEXT_PROCEDURALCEMETERY1_RESURRECTOR
 	ASSERT CEMETERY_RESURRECTOR == 5 ; the fifth object_event
+	; The generic route trainer (custom_functions/forest_generic_trainer.asm,
+	; GENERIC_TRAINER_ALL_AREAS_SPEC.md): one per Cemetery, on one floor; picture
+	; 0 and parked on the others. 8 args: a trainer. The class is a placeholder.
+	object_event 5, 5, SPRITE_CHANNELER, STAY, DOWN, TEXT_PROCEDURALCEMETERY1_GENERIC, OPP_CHANNELER, 1
+	ASSERT CEMETERY_GENERIC == 6 ; the sixth object_event
 
 	def_warps_to PROCEDURAL_CEMETERY_1

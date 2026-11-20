@@ -1370,11 +1370,11 @@ StageEventKeepSpriteTable:
 	ASSERT FOREST_BOSS == FACILITY_BOSS, "all three procedural bosses must share slot 1"
 	db PROCEDURAL_CAVE_1,     1, 6, 7, CAVE_GENERIC ; boss, stage-event NPC pair, generic trainer
 	db PROCEDURAL_FOREST,     1, 6, 7, FOREST_GENERIC ; + the generic trainer
-	db PROCEDURAL_FACILITY,   1, 10, 11, 0  ; slots 6-9 are the fake balls: hide those
-	db PROCEDURAL_CEMETERY_1, 0, 2, 3, 0
-	db PROCEDURAL_CEMETERY_2, 0, 2, 3, 0
-	db PROCEDURAL_CEMETERY_3, 0, 2, 3, 0
-	db PROCEDURAL_CEMETERY_4, 0, 2, 3, 0
+	db PROCEDURAL_FACILITY,   1, 10, 11, FACILITY_GENERIC ; slots 6-9 are the fake balls: hide those
+	db PROCEDURAL_CEMETERY_1, 0, 2, 3, CEMETERY_GENERIC
+	db PROCEDURAL_CEMETERY_2, 0, 2, 3, CEMETERY_GENERIC
+	db PROCEDURAL_CEMETERY_3, 0, 2, 3, CEMETERY_GENERIC
+	db PROCEDURAL_CEMETERY_4, 0, 2, 3, CEMETERY_GENERIC
 	db -1
 
 StageEventShowCaveNpcs::

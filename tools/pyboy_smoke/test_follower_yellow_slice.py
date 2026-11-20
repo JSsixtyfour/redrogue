@@ -134,7 +134,8 @@ class YellowFollowerSliceTests(unittest.TestCase):
             r"wOptionalEncounterState:: db[^\n]*\s+wOptionalEncounterMap:: db\s+"
             r"wOptionalEncounterScript:: db\s+wOptionalEncounterBattle:: db[^\n]*\s+"
             r"ASSERT wOptionalEncounterBattle - wOptionalEncounterSpecies == 6\s+"
-            r"ds 28 - 19 - 7\s+wFollowerDataEnd::\s+"
+            # The generic trainers' flag byte (2026-11-20) takes one spare pad byte.
+            r"(?:;[^\n]*\s+)*wWildGenericBeaten:: db\s+ds 28 - 19 - 7 - 1\s+wFollowerDataEnd::\s+"
             r"ASSERT wFollowerDataEnd - wFollowerDataStart == 28",
         )
         warp = self.overworld.split("WarpFound2::", 1)[1].split(

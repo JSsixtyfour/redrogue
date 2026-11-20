@@ -20,3 +20,6 @@ DEF SCRIPT_CHANNELER_AFTER_BATTLE EQU 3
 ; cemetery_resurrector.asm). Shown by picture on his floor, parked off-grid with
 ; picture 0 elsewhere, like the Forest's optional slot: no toggle.
 DEF CEMETERY_RESURRECTOR EQU 5
+; The generic route trainer (forest_generic_trainer.asm,
+; GENERIC_TRAINER_ALL_AREAS_SPEC.md): object 6 on all four floor maps.
+DEF CEMETERY_GENERIC EQU 6

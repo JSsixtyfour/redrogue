@@ -5,6 +5,7 @@
     python3 tools/music_kit/record_title.py kitswitch <test.gbc> <test.map>
     python3 tools/music_kit/record_title.py pitch <test.gbc> <test.map>
     python3 tools/music_kit/record_title.py looptime <test.gbc> <test.map>
+    python3 tools/music_kit/record_title.py fight2 <test.gbc> <test.map> <battle rows>
 
 We hook HOME PlayMusic and start the clock when it's called with the
 preview song's id (its row in the Music table, read from the ROM), so timing
@@ -57,28 +58,30 @@ def map_symbols(path):
     return syms
 
 
-def music_id(rom, syms, label):
-    """The song id whose Music table row (bank, address) is `label`.
+def music_ids(rom, syms, label):
+    """Every song id whose Music table row is `label` (the kit points the title
+    row and every battle row at the preview).
 
     Crystal engine (crysaudio/music_pointers_red.asm): ids index a table of
-    3-byte `dba` rows, so the id is the row, read back from the ROM itself."""
+    3-byte `dba` rows, so the ids are rows, read back from the ROM itself."""
     bank, addr = syms[label]
     table_bank, table = syms["Music"]
     with open(rom, "rb") as f:
         data = f.read()
     base = table_bank * 0x4000 + table - 0x4000
     row = bytes((bank, addr & 0xFF, addr >> 8))
-    for song in range(256):
-        if data[base + 3 * song: base + 3 * song + 3] == row:
-            return song
-    sys.exit("%s is not in the Music table" % label)
+    return [song for song in range(256) if data[base + 3 * song: base + 3 * song + 3] == row]
 
 
 def record(rom, mapfile, seconds, label="Music_KitPreview", stereo=False):
     """Return int16 samples starting at the PlayMusic for `label`: mono (L+R), or
     an (n, 2) left/right array with stereo=True."""
     syms = map_symbols(mapfile)
-    song = music_id(rom, syms, label)
+    # Since kit 5 the title row and every battle row point at the preview, so
+    # any of their ids counts (the title screen plays the title row's).
+    songs = music_ids(rom, syms, label)
+    if not songs:
+        sys.exit("%s is not in the Music table" % label)
     pm_bank, pm_addr = syms["PlayMusic"]
 
     pyboy = PyBoy(rom, window="null", sound_emulated=True, sound_sample_rate=RATE, sound_volume=100)
@@ -87,7 +90,7 @@ def record(rom, mapfile, seconds, label="Music_KitPreview", stereo=False):
 
     # HOME PlayMusic takes the song id in a (home/audio.asm).
     def on_playmusic(_):
-        if not started and pyboy.register_file.A == song:
+        if not started and pyboy.register_file.A in songs:
             started.append(True)
 
     pyboy.hook_register(pm_bank, pm_addr, on_playmusic, None)
@@ -96,7 +99,7 @@ def record(rom, mapfile, seconds, label="Music_KitPreview", stereo=False):
         pyboy.tick(1, False, True)
         frames += 1
         if frames > 60 * 120:
-            sys.exit("%s never started (no PlayMusic with id %#x within 120 s)" % (label, song))
+            sys.exit("%s never started (no PlayMusic with ids %s within 120 s)" % (label, songs))
 
     # The hook fired during the last tick; the song's first engine update is
     # in the next VBlank, so recording from the next buffer loses nothing.
@@ -236,6 +239,74 @@ def cmd_looptime(rom, mapfile):
     print("looptime: plays bars %s, as the Loop track says" % " ".join(str(b + 1) for b in order))
 
 
+def cmd_fight2(rom, mapfile, battle_rows, label="Music_KitPreview"):
+    """The preview plays in a FIGHT 2 battle (debug ROM): the title row and
+    every battle row point at it, and a battle entered the way a composer does
+    (hold Select, press Start on the title, FIGHT 2, A, A) starts it, audibly."""
+    syms = map_symbols(mapfile)
+    ids = music_ids(rom, syms, label)
+    if len(ids) != 1 + int(battle_rows):
+        sys.exit("fight2: %s is in %d Music table rows, expected the title + %s battle rows" % (label, len(ids), battle_rows))
+    pyboy = PyBoy(rom, window="null", sound_emulated=True, sound_sample_rate=RATE, sound_volume=100)
+    pyboy.set_emulation_speed(0)
+    seen = {"debug": 0, "quantity": 0}
+    played = []
+
+    def hook(name, action):
+        bank, addr = syms[name]
+        pyboy.hook_register(bank, addr, action, None)
+
+    hook("DebugMenu", lambda _: seen.__setitem__("debug", seen["debug"] + 1))
+    hook("DisplayChooseQuantityMenu", lambda _: seen.__setitem__("quantity", seen["quantity"] + 1))
+    # After the seed prompt only the battle can start a song. Id 0 (silence)
+    # comes first: FIGHT 2 stops the title music before the battle starts.
+    hook("PlayMusic", lambda _: played.append(pyboy.register_file.A) if seen["quantity"] and pyboy.register_file.A else None)
+
+    def tap(button, frames=2):
+        pyboy.button_press(button)
+        pyboy.tick(frames, False, True)
+        pyboy.button_release(button)
+        pyboy.tick(frames, False, True)
+
+    pyboy.tick(240, False, True)
+    pyboy.button_press("select")
+    for _ in range(300):
+        tap("start", 1)
+        if seen["debug"]:
+            break
+    pyboy.button_release("select")
+    if not seen["debug"]:
+        sys.exit("fight2: Select+Start on the title never reached the debug menu")
+    pyboy.tick(30, False, True)
+    tap("down")
+    tap("a")
+    for _ in range(600):
+        if seen["quantity"]:
+            break
+        pyboy.tick(1, False, True)
+    else:
+        sys.exit("fight2: FIGHT 2's seed prompt never came up")
+    tap("a")
+    for _ in range(200):
+        if played:
+            break
+        tap("a", 1)
+        pyboy.tick(15, False, True)
+    if not played:
+        sys.exit("fight2: the FIGHT 2 battle never started a song")
+    if played[0] not in ids:
+        sys.exit("fight2: the battle played song id %d, not %s (ids %s)" % (played[0], label, ids))
+    chunks = []
+    for _ in range(120):
+        pyboy.tick(1, False, True)
+        chunks.append(pyboy.sound.ndarray.copy())
+    pyboy.stop(save=False)
+    audio = np.concatenate(chunks).astype(np.int16)
+    if not np.any(np.abs(audio[:, 0] + audio[:, 1]) > THRESH):
+        sys.exit("fight2: the battle started %s but the next 2 s were silent" % label)
+    print("fight2: the battle plays %s (song id %d; %d rows point at it)" % (label, played[0], len(ids)))
+
+
 def main():
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     cmd = sys.argv[1]
@@ -250,6 +321,8 @@ def main():
         cmd_pitch(*sys.argv[2:4])
     elif cmd == "looptime":
         cmd_looptime(*sys.argv[2:4])
+    elif cmd == "fight2":
+        cmd_fight2(*sys.argv[2:5])
     else:
         sys.exit(__doc__)
 

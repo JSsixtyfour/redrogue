@@ -6378,6 +6378,7 @@ PFacPreload::
 
     farcall OptionalFacilityAssignEncounter ; bank 1 stays open
     farcall FacilityDeepLobbyDecide         ; the deep floor (facility_deep_floor.asm); SRAM closed
+    farcall FacilityGenericRoll             ; the generic trainer, after the decision; SRAM closed
 
     ; Reset reused run events (shared cave events; facility never concurrent).
     ResetEvent EVENT_BEAT_PC_BOSS
@@ -6510,6 +6511,9 @@ PFacFinalize::
     ; free after .ballSave). Last, so they move no generation roll.
     call PFacPlaceSubroomPad
     farcall FacSubroomGenerate
+    ; The generic trainer's room (GENERIC_TRAINER_ALL_AREAS_SPEC.md): after the
+    ; pads and the subroom piece, so neither can land under him.
+    call PFacGenericPick
     farcall OptionalFacilityPlaceEncounter ; last too: its search moves nothing
 
     ; === Bake: copy wOverworldMap -> sProcFacilityStagingBuffer ===
@@ -7009,6 +7013,173 @@ PFacPickHideout:
 .restoreBank
     ld a, BANK(sProcFacilityStagingBuffer)
     ld [rRAMB], a
+    ret
+
+; ============================================================
+; PFacGenericPick  (GENERIC_TRAINER_ALL_AREAS_SPEC.md, Phase 3)
+; The wild generic trainer's cell, on his floor's generation while it is pending
+; (forest_generic_trainer.asm). Rooms 2-10 as PFacPickHideout walks them, from a
+; fixed start (the hideout's X + Y mod 9: no Random, so no other roll moves): the
+; first placed, non-spinner room whose plain-floor block by PFacHideoutFindFloor
+; (which also refuses a block that would seal a door) is more than two blocks
+; from the hideout and is no ball's. Writes the block X into sWildGenericCell and
+; its Y into sWildGenericFloor's bits 3-7, or $fe (none).
+; Called after FacSubroomGenerate, so the map is final; sets the PFacReadBlock
+; target itself. SRAM open; leaves bank 1 selected, as PFacFinalize's bake
+; expects. Clobbers everything.
+; ============================================================
+PFacGenericPick:
+    xor a
+    ld [rRAMB], a                   ; bank 0: the trainer's bytes, the hideout
+    ld a, [sWildGenericCell]
+    cp $ff                          ; pending
+    jp nz, .done
+    ld a, [wRogueFlagsBitfield2]
+    rlca                            ; BIT_ROGUE_DEEP_FLOOR (7) -> bit 0
+    and 1
+    ld b, a
+    ld a, [sWildGenericFloor]
+    and %111
+    cp b
+    jp nz, .done                    ; another floor's generation
+    ld a, LOW(wOverworldMap + PFAC_BASE)
+    ld [wBuffer + wPFacTargetBaseLo], a
+    ld a, HIGH(wOverworldMap + PFAC_BASE)
+    ld [wBuffer + wPFacTargetBaseHi], a
+    ld a, [sStageEventHideoutX]
+    ld b, a
+    ld a, [sStageEventHideoutY]
+    add b
+.mod
+    cp 9
+    jr c, .haveStart
+    sub 9
+    jr .mod
+.haveStart
+    add 2
+    ld b, a                         ; b = the room id (2-10)
+    ld c, 9                         ; c = rooms left
+    ld a, BANK(sProcFacilityGenScratch)
+    ld [rRAMB], a
+.room
+    push bc
+    ld a, b
+    call PFacRoomRecordAddr
+    push hl
+    ld de, 2
+    add hl, de
+    call PFacWUnlessSpinner         ; W, 0 = not placed or a spinner room
+    pop hl
+    and a
+    jr z, .next
+    ld a, [hli]
+    ld d, a                         ; d = room X
+    ld a, [hli]
+    ld e, a                         ; e = room Y
+    ld a, [hli]
+    srl a
+    add d
+    ld d, a                         ; d = center X
+    ld a, [hl]
+    srl a
+    add e
+    ld e, a                         ; e = center Y
+    call PFacHideoutFindFloor       ; carry, d/e = a plain-floor block
+    jr nc, .next
+    call PFacGenericClear           ; carry = clear of the hideout and the balls
+    jr c, .found
+.next
+    pop bc
+    inc b
+    ld a, b
+    cp 11
+    jr c, .noWrap
+    ld b, 2
+.noWrap
+    dec c
+    jr nz, .room
+    xor a
+    ld [rRAMB], a
+    ld a, $fe                       ; none
+    ld [sWildGenericCell], a
+    jr .done
+.found
+    pop bc
+    xor a
+    ld [rRAMB], a
+    ld a, d
+    ld [sWildGenericCell], a
+    ld a, e
+    add a
+    add a
+    add a
+    ld b, a
+    ld a, [sWildGenericFloor]
+    and %111
+    or b
+    ld [sWildGenericFloor], a
+.done
+    ld a, BANK(sProcFacilityStagingBuffer)
+    ld [rRAMB], a
+    ret
+
+; d/e = a block. Carry = more than two blocks (Chebyshev) from the hideout, so
+; clear of the pair (the hideout and the block right of it), and not a ball's
+; block (sProcFacilityBallXY, tile Y/X). Keeps de; leaves bank 1 selected.
+; Clobbers a/bc/hl.
+PFacGenericClear:
+    xor a
+    ld [rRAMB], a
+    ld a, [sStageEventHideoutX]
+    cp STAGE_EVENT_NO_HIDEOUT
+    jr z, .balls
+    sub d
+    add 2                           ; -2..2 -> 0..4
+    cp 5
+    jr nc, .balls
+    ld a, [sStageEventHideoutY]
+    sub e
+    add 2
+    cp 5
+    jr c, .no
+.balls
+    ASSERT BANK(sProcFacilityBallXY) == BANK(sProcFacilityGenScratch)
+    ld a, BANK(sProcFacilityBallXY)
+    ld [rRAMB], a
+    ld hl, sProcFacilityBallXY
+    call .four
+    jr z, .no
+    ; The fake balls too (PFacPlaceFakeBalls' .save, the same tile Y/X pairs):
+    ; measured 2026-11-20 (CGB), he stood on fake ball 2 without this.
+    ld hl, sProcFacilityGenScratch + 72
+    call .four
+    jr z, .no
+    scf
+    ret
+
+; hl -> four tile (Y, X) pairs. Z = one is block d/e. Clobbers a/b/hl.
+.four
+    ld b, 4
+.ball
+    ld a, [hli]                     ; tile Y = block * 2 + 4
+    sub 4
+    srl a
+    cp e
+    ld a, [hli]                     ; tile X
+    jr nz, .nextBall
+    sub 4
+    srl a
+    cp d
+    ret z
+.nextBall
+    dec b
+    jr nz, .ball
+    or 1                            ; nz
+    ret
+.no
+    ld a, BANK(sProcFacilityGenScratch)
+    ld [rRAMB], a
+    and a
     ret
 
 ; ============================================================

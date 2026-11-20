@@ -1077,8 +1077,12 @@ class ProceduralStageSmokeTest(HarnessTestCase):
         # 10 since the deep floor (PROCEDURAL_DEEP_FLOOR_PLAN.md S8): object 10
         # is the B1F's cold encounter standing on a deep cave's floor 2. It has
         # picture 0 everywhere else (this is floor 1 of an ordinary cave).
+        #
+        # 11 since GENERIC_TRAINER_ALL_AREAS_SPEC.md Phase 2: object 11 is the
+        # generic route trainer, placed on its own dead end (or parked with
+        # picture 0); test_cave_generic_trainer checks where.
         self.assert_generation_contract(
-            "Procedural Cave", "PROCEDURAL_CAVE_1", 40, 40, 10, True, placed=7
+            "Procedural Cave", "PROCEDURAL_CAVE_1", 40, 40, 11, True, placed=7
         )
         for slot in (8, 9, 10):
             self.assertEqual(self.harness.read8(f"wSprite{slot:02d}StateData1"), 0,
@@ -2348,10 +2352,11 @@ class ProceduralStageSmokeTest(HarnessTestCase):
 
     def test_procedural_cemetery_generation(self) -> None:
         # Only the ball is unconditional. Event NPCs may belong on a later
-        # floor; the Channeler and the resurrection NPC (object 5) appear on one
-        # random floor each (covered separately).
+        # floor; the Channeler, the resurrection NPC (object 5) and the generic
+        # route trainer (object 6, GENERIC_TRAINER_ALL_AREAS_SPEC.md) appear on
+        # one random floor each (covered separately).
         self.assert_generation_contract(
-            "Procedural Cemetery", "PROCEDURAL_CEMETERY_1", 20, 18, 5, False, placed=1
+            "Procedural Cemetery", "PROCEDURAL_CEMETERY_1", 20, 18, 6, False, placed=1
         )
         constants = parse_rgbds_constants(REPO_ROOT / "constants" / "ram_constants.asm")
         event = self.harness.read8("wStageEvent")

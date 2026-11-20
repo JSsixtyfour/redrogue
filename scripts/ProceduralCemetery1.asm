@@ -121,7 +121,7 @@ PCemChannelerHealText::
 ; passes its own five-entry pointer table.
 PCemStageRunScripts::
 	call EnableAutoTextBoxDrawing
-	ld hl, PCemStageTrainerHeaders
+	call PCemTrainerHeaders
 	ld de, PCemStageScriptPointers
 	ld a, [wProceduralCemetery4CurScript]
 	call ExecuteCurMapScriptInTable
@@ -207,7 +207,23 @@ PCemStageNpc1Header::
 	trainer EVENT_BEAT_FACILITY_STAGE_NPC_1, 4, PCemStageEventHideoutText, PCemStageEventDefeatText, PCemStageEventAfterText
 PCemStageNpc2Header::
 	trainer EVENT_BEAT_FACILITY_STAGE_NPC_2, 4, PCemStageEventHideoutText, PCemStageEventDefeatText, PCemStageEventAfterText
+	; The generic route trainer: object slot CEMETERY_GENERIC (6) on every floor,
+	; his flag in wWildGenericBeaten. Range 1: one tile.
+PCemGenericHeader::
+	wild_generic_trainer CEMETERY_GENERIC, 1, PCemGenericIntroText, PCemGenericDefeatText, PCemGenericAfterText
 	db -1 ; end
+
+; The header table for the map script, by the engaged trainer: EndTrainerBattle
+; re-reads the flag byte from the table base, and the generic trainer's flag is in
+; another byte (the 2026-09-17 flag-byte rule; the cave's and Forest's pick).
+; Out: hl. Clobbers a.
+PCemTrainerHeaders::
+	ld hl, PCemStageTrainerHeaders
+	ld a, [wTrainerHeaderFlagBit]
+	cp CEMETERY_GENERIC
+	ret nz
+	ld hl, PCemGenericHeader
+	ret
 
 ; Shared by floors 1-3. Floor 4 keeps its own five-entry table because it also
 ; carries the boss-battle and player-moving states; indices 0-2 match here, so
@@ -244,6 +260,22 @@ PCemStageEventNpc2Text::
 	text_asm
 	ld hl, PCemStageNpc2Header
 	jp PCemStageInitBattleScript
+
+; The generic route trainer's talk and his three lines, which pick themselves by
+; his class (ForestGenericIntroText etc., $1A, forest_generic_trainer.asm).
+PCemGenericTrainerText::
+	text_asm
+	ld hl, PCemGenericHeader
+	jp PCemStageInitBattleScript
+PCemGenericIntroText:
+	text_far ForestGenericIntroText
+	text_end
+PCemGenericDefeatText:
+	text_far ForestGenericDefeatText
+	text_end
+PCemGenericAfterText:
+	text_far ForestGenericAfterText
+	text_end
 
 PCemStageEventDefeatText::
 	text_far PCStageEventDefeatText
@@ -362,7 +394,8 @@ ProceduralCemetery1_TextPointers:
 	dw_const PCemStageEventNpc2Text, TEXT_PROCEDURALCEMETERY1_STAGE_NPC_2
 	dw_const PCemChannelerText, TEXT_PROCEDURALCEMETERY1_CHANNELER
 	dw_const PCemResurrectorText, TEXT_PROCEDURALCEMETERY1_RESURRECTOR
-	; --- end of the object block (5 objects); script-only ids follow ---
+	dw_const PCemGenericTrainerText, TEXT_PROCEDURALCEMETERY1_GENERIC
+	; --- end of the object block (6 objects); script-only ids follow ---
 	dw_const PCemChannelerHealText, TEXT_PROCEDURALCEMETERY1_CHANNELER_HEAL
 	dw_const PCemCalmedText, TEXT_PROCEDURALCEMETERY1_CALMED
 	dw_const PCemStageEventArrivalText, TEXT_PROCEDURALCEMETERY1_STAGE_EVENT

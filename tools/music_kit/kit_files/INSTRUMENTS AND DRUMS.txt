@@ -10,6 +10,9 @@ CH1 and CH2: square waves. Pick the pulse width in the track name.
     Square 75     sounds almost the same as 25   Duty 3
   Volume = floor(MIDI velocity / 8), values 0-15. MIDI 1-7 is silent;
   120-127 is maximum. See READ ME FIRST for the complete table.
+  Put the melody on Ch2: the A button beep and menu sounds borrow Ch1 and
+  cut its notes (READ ME FIRST, WHICH TRACK GETS THE MELODY).
+  Every existing song's setup is in the Game Songs folder.
 
 CH3: wave channel, 15 wave shapes (put "Wave N" in the track name).
   Kit v4 MIDI velocity: 1-42 = 25%, 43-84 = 50%, 85-127 = 100%.

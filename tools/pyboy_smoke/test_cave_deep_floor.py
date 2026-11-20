@@ -472,7 +472,10 @@ class CaveDeepFloorTest(unittest.TestCase):
             self.set_bit("wToggleableObjectFlags", 1 << t % 8, True, offset=t // 8)
         toggles = h.read_bytes("wToggleableObjectFlags", 32)
         preloads = h.hook_flag("PCPreloadCave")
-        h.write8("wProcCaveWildBudget", 3)              # floor 2 must not refill it
+        # Floor 2 must not refill it. 0, not 3: a budget lets a wild battle start on
+        # the step back onto the ladder (measured 2026-11-20 on CGB after an RNG
+        # shift: hIsInBattle 1 there), and a refill would still show as non-zero.
+        h.write8("wProcCaveWildBudget", 0)
         self.assertEqual(h.warp_entries()[2][2:], [0, CAVE], "floor 1's ladder A does not lead down")
         self.assertEqual(h.warp_entries()[3][2:], [1, CAVE], "floor 1's ladder B does not lead down")
 
@@ -505,7 +508,7 @@ class CaveDeepFloorTest(unittest.TestCase):
             self.assertEqual(after[i // 8] >> i % 8 & 1, toggles[i // 8] >> i % 8 & 1,
                              f"floor 2's first entry changed toggle ${i:02x}")
         self.assertEqual(self.wram_bits()[:2], (FLOOR_BIT, OFF_BALL_BIT))
-        self.assertEqual(h.read8("wProcCaveWildBudget"), 3, "floor 2 refilled the wild budget")
+        self.assertEqual(h.read8("wProcCaveWildBudget"), 0, "floor 2 refilled the wild budget")
         h.write8("wProcCaveWildBudget", 0)              # no wild battle from here on
         self.assert_floor2_layout()
 

@@ -39,4 +39,5 @@ DEF CEM_DEEP_NUM_ORDINALS  EQU 6   ; 1, 2, 3, 2b, 3b, 4
 DEF CEM_DEEP_RES_ORD       EQUS "(sProcCaveStagingBuffer + 5)"
 DEF CEM_RES_ABSENT         EQU $FF
 DEF RESURRECT_ODDS         EQU 154 ; of 256: he stands in 60% of Cemeteries (D5)
+DEF CEM_GEN_SCAN_START     EQU 22  ; the generic trainer's (forest_generic_trainer.asm)
 DEF CEM_RES_SCAN_START     EQU 52  ; his fixed scan start (the Channeler's is 37)

@@ -66,9 +66,12 @@ class ScarcePPBase(unittest.TestCase):
     def _apply(self, _ctx) -> None:
         raw = self.h.read_bytes("wBuffer", 8, offset=self.ai["AI_BUF_SLOTDMG"])
         self.at_apply = [raw[2 * s] << 8 | raw[2 * s + 1] for s in range(4)]
+        # The loop's raw mask: from AIPossibleKOEndsBattle on (2026-11-20) the byte drops
+        # vetoed Explosions, and variant B needs to see the bit it must not act on.
+        self.possko_at_apply = self.h.read8("wBuffer", self.ai["AI_BUF_POSSKO"])
 
     def damage(self, pp=(FULL,) * 4, *, player_hp=None):
-        """(scores, per-slot expected damage, possible-KO mask) after AI_DAMAGE alone."""
+        """(scores, per-slot expected damage, possible-KO mask as the loop left it) after AI_DAMAGE alone."""
         h = self.h
         h.park_before_hijack()
         if player_hp is not None:
@@ -79,10 +82,12 @@ class ScarcePPBase(unittest.TestCase):
             h.write8("wEnemyMonPP", pp[slot], offset=slot)
         h.write8("wEnemyDisabledMove", 0)
         h.write8("wAIReliableKOFound", 0)
+        self.possko_at_apply = None
         h.call_routine("AILayerDamage", limit=900)
+        self.assertIsNotNone(self.possko_at_apply, "the .applyBest hook did not fire")
         raw = h.read_bytes("wBuffer", 8, offset=self.ai["AI_BUF_SLOTDMG"])
         dmg = [raw[2 * s] << 8 | raw[2 * s + 1] for s in range(4)]
-        return list(h.read_bytes("wBuffer", 4)), dmg, h.read8("wBuffer", self.ai["AI_BUF_POSSKO"])
+        return list(h.read_bytes("wBuffer", 4)), dmg, self.possko_at_apply
 
     def hp_for(self, hp: int):
         """Scores at full PP and with the best slot (0) scarce, at player HP `hp`."""
@@ -211,6 +216,8 @@ class ScarcePPVetoedExplosionTest(ScarcePPBase):
                   "moves": [self.moves["SPLASH"]]}
         self.h.close()
         self.h = RedRogueHarness(ROOT, ROOT / "tools/pyboy_smoke/artifacts")
+        self.h.register_hook("AILayerDamage.trackBest", self._track)
+        self.h.register_hook("AILayerDamage.applyBest", self._apply)
         self.h.inject_fight2_spec(
             [player, dict(player)],  # not the last mon: the explosion is vetoed
             [{"species": species["ELECTRODE"], "level": 50,

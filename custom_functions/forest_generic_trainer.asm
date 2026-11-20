@@ -98,6 +98,14 @@ WGTForestArea:
 WGTCaveArea:
 	db PROCEDURAL_CAVE_1, CAVE_GENERIC
 	dw WGTCavePool
+WGTFacilityArea:
+	db PROCEDURAL_FACILITY, FACILITY_GENERIC
+	dw WGTFacilityPool
+WGTCemeteryArea:                         ; one row per floor map, the same pool
+FOR n, 1, 5
+	db PROCEDURAL_CEMETERY_{d:n}, CEMETERY_GENERIC
+	dw WGTCemeteryPool
+ENDR
 	db -1
 
 ; sWildGenericFloor: bits 0-2 his floor ordinal; the cave keeps its cell's block
@@ -281,12 +289,19 @@ FGTCellBlock:
 	ret
 
 ; Carry = wPFCurX/Y may hold him: not a ball's block, and more than one cell
-; (two blocks) from the hideout's. Keeps bc/de/hl.
+; (two blocks) from the hideout's. On a deep floor 2 only balls 1-2 can stand
+; there and there is no stage pair (ForestDeepPatchSprites parks the rest), so
+; only those balls count and the hideout does not: measured 2026-11-20 (CGB),
+; floor 2 had 5 dead ends, 4 under balls and 1 near floor 1's hideout. Keeps bc/de/hl.
 FGTCellOk:
 	push hl
 	push bc
 	ld hl, wBuffer + wPFAcceptedXY
 	ld b, 4
+	ld a, [wRogueFlagsBitfield2]
+	bit BIT_ROGUE_DEEP_FLOOR, a
+	jr z, .ball
+	ld b, 2
 .ball
 	ld a, [wBuffer + wPFCurX]
 	cp [hl]
@@ -299,6 +314,9 @@ FGTCellOk:
 	inc hl
 	dec b
 	jr nz, .ball
+	ld a, [wRogueFlagsBitfield2]
+	bit BIT_ROGUE_DEEP_FLOOR, a
+	jr nz, .yes                         ; floor 2: no stage pair
 	ld a, [sStageEventHideoutX]
 	cp STAGE_EVENT_NO_HIDEOUT
 	jr z, .yes
@@ -684,7 +702,9 @@ CaveGenericPlace::
 	push hl
 	ld a, [sWildGenericCell]
 	cp FGT_CELL_PENDING
-	call z, WGTCavePick                 ; his floor's first load: from this floor
+	jr nz, .picked
+	farcall WGTCavePick                 ; his floor's first load: from this floor
+.picked
 	pop hl
 	ld a, [sWildGenericCell]
 	cp FGT_CELL_NONE
@@ -750,196 +770,313 @@ CaveGenericPlace::
 	ld [wSprite{02d:CAVE_GENERIC}StateData2MapX], a
 	ret
 
-; His cave cell: the hideout's second candidate (sStageEventHideoutAltX/Y,
-; PCStageHideoutCapture), one of the generator's carved edge targets, so a dead
-; end that is reachable by construction and blocks no way. None when the hideout
-; took it (its first candidate was the exit), when it is the exit's block, or a
-; ball's. He stands on the block's first walkable quadrant, facing the first open
-; neighbour (down, up, left, right). Writes sWildGenericCell (X | quadrant << 5),
-; the block Y into sWildGenericFloor's bits 3-7, the facing into sWildGenericRow's
-; bits 4-5. SRAM bank 0 open. Clobbers everything.
-WGTCavePick:
-	ld a, [sStageEventHideoutAltX]
-	ld d, a
-	ld a, [sStageEventHideoutAltY]
-	ld e, a
-	call WGTCaveCellOk
-	jr c, .found
-	; No stage event this cave: the hideout's own dead end stands empty (the
-	; pair's pictures are 0, so they do not exist), the second choice.
-	; Measured 2026-11-20: a ball took the second candidate in 2 of 9 caves.
-	ld a, [wStageEvent]
-	and STAGE_EVENT_TYPE_MASK
-	jp nz, .none
-	ld a, [sStageEventHideoutX]
-	ld d, a
-	ld a, [sStageEventHideoutY]
-	ld e, a
-	call WGTCaveCellOk.notHideout
-	jp nc, .none
-.found
-	call WGTCaveBlockMask
-	ld c, 0
-.quadrant
-	rrca
-	jr c, .haveQuadrant
-	inc c
-	jr .quadrant
-.haveQuadrant
-	ld b, 0                             ; b = the facing
-	inc e
-	call WGTCaveBlockMask               ; below
-	dec e
-	and a
-	jr nz, .haveFacing
-	inc b
-	dec e
-	call WGTCaveBlockMask               ; above
-	inc e
-	and a
-	jr nz, .haveFacing
-	inc b
-	dec d
-	call WGTCaveBlockMask               ; left
-	inc d
-	and a
-	jr nz, .haveFacing
-	inc b
-	inc d
-	call WGTCaveBlockMask               ; right
-	dec d
-	and a
-	jr nz, .haveFacing
-	ld b, 0
-.haveFacing
-	ld a, c
-	swap a
-	add a                               ; quadrant << 5
-	or d
-	ld [sWildGenericCell], a
-	ld a, e
-	add a
-	add a
-	add a                               ; Y << 3
-	ld c, a
-	ld a, [sWildGenericFloor]
-	and WGT_FLOOR_MASK
-	or c
+; ============================================================
+; The Facility (GENERIC_TRAINER_ALL_AREAS_SPEC.md, Phase 3). Object
+; FACILITY_GENERIC (14).
+;   preload   FacilityGenericRoll    PFacPreload ($2F), after FacilityDeepLobbyDecide
+;   generate  PFacGenericPick        PFacFinalize ($2F), his floor's generation
+;   each load FacilityGenericPatch   FacilityDeepPatchSprites ($15), the picture
+;             FacilityGenericPlace   FacilityDeepAfterFinalize ($15): cell, class
+; The Facility decides deep or not at its preload, so the roll reads it directly
+; (as the Forest's) and WGTOnHisFloor serves. Cell as the cave's: X in
+; sWildGenericCell, Y in sWildGenericFloor's bits 3-7, the top-left step.
+; ============================================================
+
+; The preload, after the deep decision. Leaves SRAM closed, as the caller.
+; Clobbers everything.
+FacilityGenericRoll::
+	; The same Facility's floor 2 generation must keep him (measured on the cave,
+	; which re-runs its preload there; cheap to rule out here too).
+	ld a, [wRogueFlagsBitfield2]
+	bit BIT_ROGUE_DEEP_FLOOR, a
+	ret nz
+	xor a
+	ld [wWildGenericBeaten], a          ; a new Facility finds him unbeaten
+	ld hl, WGTFacilityArea
+	call WGTRollRow
+.store                                  ; tests force a here: row + 1, 0 = none
+	ld b, a
+	call FGTOpenSRAM
+	ld hl, FACILITY_DEEP_CTRL + 1       ; FDFReadCtrl's test: carry = deep
+	ld a, [hld]
+	cpl
+	cp [hl]
+	jr nz, .one
+	and DEEP_MAGIC_MASK
+	cp FACILITY_DEEP_MAGIC
+	jr nz, .one
+	ld c, 2
+	push bc
+	call Rangerandom
+	pop bc
+	jr .floor
+.one
+	xor a
+.floor                                  ; tests force a here: 0 floor 1, 1 floor 2
 	ld [sWildGenericFloor], a
 	ld a, b
-	swap a
-	ld b, a
-	ld a, [sWildGenericRow]
-	and $0f
-	or b
 	ld [sWildGenericRow], a
-	ret
-.none
-	ld a, FGT_CELL_NONE
+	ld a, FGT_CELL_PENDING
 	ld [sWildGenericCell], a
+	jp FGTCloseSRAM
+
+; The picture: FacilityDeepPatchSprites, every Facility load before
+; InitMapSprites. Clobbers everything.
+FacilityGenericPatch::
+	call FGTOpenSRAM
+	call WGTOnHisFloor
+	ld b, 0
+	jr nc, .close
+	ld hl, WGTFacilityArea
+	call WGTRow
+	ld b, 0                             ; WGTRow used b; keeps the carry
+	jr nc, .close
+	ld a, [sWildGenericCell]
+	cp FGT_CELL_NONE
+	jr z, .close
+	inc hl
+	ld b, [hl]                          ; his sprite
+.close
+	call FGTCloseSRAM
+	ld a, b
+	ld [wSprite{02d:FACILITY_GENERIC}StateData1 + SPRITESTATEDATA1_PICTUREID], a
 	ret
 
-; d/e = a candidate block. Carry = he may stand there: in the grid, not the
-; hideout's (from .notHideout: skipped), not the exit's, not a ball's (slots
-; 2-5), and walkable somewhere. SRAM bank 0 open. Keeps de; clobbers a/bc/hl.
-WGTCaveCellOk:
-	ld a, d
-	cp CAVESUB_SIZE
-	jr nc, .no                          ; unset ($ff)
+; The cell and class: FacilityDeepAfterFinalize, every Facility load after
+; PFacFinalize (which picked his cell on his floor's first generation). Another
+; floor, no trainer or no cell: picture 0, parked. A battle's return keeps his
+; position. Clobbers everything; SRAM closed.
+FacilityGenericPlace::
+	call FGTOpenSRAM
+	call WGTOnHisFloor
+	jr nc, .closePark
+	ld hl, WGTFacilityArea
+	call WGTRow
+	jr nc, .closePark
+	ld a, [sWildGenericCell]
+	cp FGT_CELL_NONE
+	jr nc, .closePark                   ; none, or never picked
+	ld b, a                             ; b = block X
+	ld a, [sWildGenericFloor]
+	rrca
+	rrca
+	rrca
+	and $1f
+	ld e, a                             ; e = block Y
+	ld c, [hl]                          ; c = his class
+	call FGTCloseSRAM
+	ld hl, wMapSpriteExtraData + (FACILITY_GENERIC - 1) * 2
+	ld a, c
+	ld [hli], a
+	ld [hl], 1                          ; the roster ignores the team number
+	ld a, [wStatusFlags4]
+	bit BIT_BATTLE_OVER_OR_BLACKOUT, a
+	ret nz
 	ld a, e
-	cp CAVESUB_SIZE
-	jr nc, .no
-	ld a, [sStageEventHideoutX]
-	cp d
-	jr nz, .notHideout
-	ld a, [sStageEventHideoutY]
-	cp e
-	jr z, .no
-.notHideout
-	ld a, [wWarpEntries + 4]            ; the exit (warp 1): tile Y, X
-	srl a
-	cp e
-	jr nz, .notExit
-	ld a, [wWarpEntries + 5]
-	srl a
-	cp d
-	jr z, .no
-.notExit
-	ld hl, wSprite02StateData2MapY      ; the balls, slots 2-5
-	ld b, 4
-.ball
-	ld a, [hli]
-	sub 4
-	srl a
-	cp e
-	jr nz, .nextBall
-	ld a, [hl]
-	sub 4
-	srl a
-	cp d
-	jr z, .no
-.nextBall
-	ld a, l
-	add SPRITESTATEDATA2_LENGTH - 1     ; the next slot's MapY
-	ld l, a
-	dec b
-	jr nz, .ball
-	call WGTCaveBlockMask
-	and a
-	ret z                               ; and a: carry clear
-	scf
+	add a
+	add 4                               ; block * 2 + 4, as the balls and the pair
+	ld [wSprite{02d:FACILITY_GENERIC}StateData2MapY], a
+	ld a, b
+	and $1f
+	add a
+	add 4
+	ld [wSprite{02d:FACILITY_GENERIC}StateData2MapX], a
+	ld a, SPRITE_FACING_DOWN
+	ld [wSprite{02d:FACILITY_GENERIC}StateData1FacingDirection], a
+	ld a, DOWN
+	ld [wMapSpriteData + (FACILITY_GENERIC - 1) * 2], a
 	ret
-.no
-	and a
-	ret
-
-; d/e = a cave block (out of the 20x20 grid reads as solid). Out: a = its
-; walkable-quadrant mask (CavernQuadWalkMasks, $3F, read with FarCopyData into
-; wBuffer + 1: wBuffer is free after PCFinalizeCave; FarCopyData itself uses
-; wBuffer + 0). Keeps bc/de.
-WGTCaveBlockMask:
-	ld a, d
-	cp CAVESUB_SIZE
-	jr nc, .solid
-	ld a, e
-	cp CAVESUB_SIZE
-	jr nc, .solid
-	push bc
-	push de
-	ld hl, wOverworldMap + CAVESUB_BASE
-	ld b, 0
-	ld c, d
-	add hl, bc
-	ld c, CAVESUB_STRIDE
-	ld a, e
-	and a
-	jr z, .haveBlock
-.row
-	add hl, bc
-	dec a
-	jr nz, .row
-.haveBlock
-	ld a, [hl]                          ; the block id
-	cp 128                              ; NUM_CAVERN_QUAD_MASKS (cavern_quad_masks.asm)
-	jr nc, .solidPop
-	ld c, a
-	ld b, 0
-	ld hl, CavernQuadWalkMasks
-	add hl, bc
-	ld de, wBuffer + 1
-	ld bc, 1
-	ld a, BANK(CavernQuadWalkMasks)
-	call FarCopyData
-	ld a, [wBuffer + 1]
-	pop de
-	pop bc
-	ret
-.solidPop
-	pop de
-	pop bc
-.solid
+.closePark
+	call FGTCloseSRAM
 	xor a
+	ld [wSprite{02d:FACILITY_GENERIC}StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	ld [wSprite{02d:FACILITY_GENERIC}StateData2MapY], a
+	ld [wSprite{02d:FACILITY_GENERIC}StateData2MapX], a
 	ret
+
+; ============================================================
+; The Cemetery (GENERIC_TRAINER_ALL_AREAS_SPEC.md, Phase 3). Object
+; CEMETERY_GENERIC (6) on all four floor maps. The resurrection NPC's pattern:
+;   preload   CemGenericRoll    CemDeepGenerateMaps ($28), after the deep decision
+;                               and the resurrector's roll; d = deep or not
+;   each load CemGenericPatch   CemDeepPatchSprite ($28), the picture
+;             CemGenericPlace   CemDeepFinalizeMap ($28), after the resurrector
+; Both loads pass d = the map index, e = the floor ordinal (CDOrdinal: 0-5 over
+; 1, 2, 3, 2b, 3b, 4; an ordinary Cemetery's maps read 0, 1, 2, 5). His floor is
+; an ordinal, uniform over the Cemetery's floors (CemResurrectorRoll's rule). His
+; cell is not saved: the floors' blocks are, so every load's scan finds it again.
+; ============================================================
+
+; In: d = nonzero on a deep Cemetery. Clobbers everything; SRAM closed.
+CemGenericRoll::
+	xor a
+	ld [wWildGenericBeaten], a          ; a new Cemetery finds him unbeaten
+	push de
+	ld hl, WGTCemeteryArea
+	call WGTRollRow
+	pop de
+.store                                  ; tests force a here: row + 1, 0 = none
+	ld b, a
+	ld a, d
+	and a
+	ld c, CEM_DEEP_NUM_ORDINALS
+	jr nz, .roll
+	ld c, 4                             ; ordinary: ordinals 0, 1, 2, 5
+.roll
+	push bc
+	call Rangerandom
+	pop bc
+	ld d, a
+	ld a, c
+	cp 4
+	ld a, d
+	jr nz, .floor
+	cp 3
+	jr nz, .floor
+	ld a, 5                             ; map 4 is ordinal 5
+.floor                                  ; tests force a here: the ordinal
+	ld c, a
+	call FGTOpenSRAM
+	ld a, c
+	ld [sWildGenericFloor], a
+	ld a, b
+	ld [sWildGenericRow], a
+	ld a, FGT_CELL_PENDING
+	ld [sWildGenericCell], a
+	jp FGTCloseSRAM
+
+; e = this floor's ordinal. Carry = his floor. SRAM bank 0 open. Clobbers a.
+WGTCemOnHisFloor:
+	ld a, [sWildGenericFloor]
+	and WGT_FLOOR_MASK
+	cp e
+	scf
+	ret z
+	and a
+	ret
+
+; The picture, before InitMapSprites. In: d/e from CDOrdinal. Clobbers everything.
+CemGenericPatch::
+	call FGTOpenSRAM
+	call WGTCemOnHisFloor
+	ld b, 0
+	jr nc, .close
+	ld hl, WGTCemeteryArea
+	call WGTRow
+	ld b, 0                             ; WGTRow used b; keeps the carry
+	jr nc, .close
+	inc hl
+	ld b, [hl]                          ; his sprite
+.close
+	call FGTCloseSRAM
+	ld a, b
+	ld [wSprite{02d:CEMETERY_GENERIC}StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	ret
+
+; The cell and class, after PCemFinalizeMap and the resurrector's placement. In:
+; d/e from CDOrdinal. On his floor, the first cell from CEM_GEN_SCAN_START that
+; the hideout rule accepts (PCemStageHideoutCellOk: a floor block, not the ball's,
+; not a stair, not floor 4's boss steps, never sealing a gap), that the
+; resurrector's crowd test passes (CRCrowded: not within one block of the
+; Channeler, the hideout or floor 1's arrival) and that is not within one block
+; of the resurrector himself. Elsewhere, or with no cell, parked.
+; Clobbers everything; SRAM closed.
+CemGenericPlace::
+	call FGTOpenSRAM
+	call WGTCemOnHisFloor
+	jp nc, .closePark
+	push de
+	ld hl, WGTCemeteryArea
+	call WGTRow
+	pop de
+	jp nc, .closePark
+	ld a, [hl]
+	ld [wMapSpriteExtraData + (CEMETERY_GENERIC - 1) * 2], a
+	ld a, 1                             ; the roster ignores the team number
+	ld [wMapSpriteExtraData + (CEMETERY_GENERIC - 1) * 2 + 1], a
+	ld a, [wStatusFlags4]
+	bit BIT_BATTLE_OVER_OR_BLACKOUT, a
+	jp nz, FGTCloseSRAM                 ; a battle's return keeps his position
+	ld a, d
+	ld [wBuffer + wCemMapIndex], a
+	ld c, CEM_GEN_SCAN_START
+	ld b, CEMAP_SIZE
+.scan
+	ld a, c
+	ld d, 0
+.div
+	cp CEMAP_WIDTH
+	jr c, .divDone
+	sub CEMAP_WIDTH
+	inc d
+	jr .div
+.divDone
+	ld [wBuffer + wCemTryX], a
+	ld a, d
+	ld [wBuffer + wCemTryY], a
+	push bc
+	farcall PCemStageHideoutCellOk      ; Z = usable; Bankswitch's return keeps flags
+	jr nz, .rejected
+	farcall CRCrowded                   ; carry = crowded
+	jr c, .rejected
+	call WGTCemNearResurrector
+	jr nc, .found
+.rejected
+	pop bc
+	inc c
+	ld a, c
+	cp CEMAP_SIZE
+	jr c, .noWrap
+	ld c, 0
+.noWrap
+	dec b
+	jr nz, .scan
+.closePark
+	call FGTCloseSRAM
+	xor a
+	ld [wSprite{02d:CEMETERY_GENERIC}StateData1 + SPRITESTATEDATA1_PICTUREID], a
+	ld [wSprite{02d:CEMETERY_GENERIC}StateData2MapY], a
+	ld [wSprite{02d:CEMETERY_GENERIC}StateData2MapX], a
+	ret
+.found
+	pop bc
+	call FGTCloseSRAM
+	ld a, [wBuffer + wCemTryY]
+	add a
+	add 4                               ; block * 2 + 4, as the ball and the pair
+	ld [wSprite{02d:CEMETERY_GENERIC}StateData2MapY], a
+	ld a, [wBuffer + wCemTryX]
+	add a
+	add 4
+	ld [wSprite{02d:CEMETERY_GENERIC}StateData2MapX], a
+	ld a, SPRITE_FACING_DOWN
+	ld [wSprite{02d:CEMETERY_GENERIC}StateData1FacingDirection], a
+	ld a, DOWN
+	ld [wMapSpriteData + (CEMETERY_GENERIC - 1) * 2], a
+	ret
+
+; Carry = wCemTryX/Y is within one block of the resurrector, when he stands on
+; this floor (a picture). Clobbers a/hl.
+WGTCemNearResurrector:
+	ld a, [wSprite{02d:CEMETERY_RESURRECTOR}StateData1 + SPRITESTATEDATA1_PICTUREID]
+	and a
+	ret z                               ; carry clear
+	ld a, [wSprite{02d:CEMETERY_RESURRECTOR}StateData2MapX]
+	sub 4
+	srl a
+	ld hl, wBuffer + wCemTryX
+	sub [hl]
+	inc a                               ; -1..1 -> 0..2
+	cp 3
+	ret nc
+	ld a, [wSprite{02d:CEMETERY_RESURRECTOR}StateData2MapY]
+	sub 4
+	srl a
+	ld hl, wBuffer + wCemTryY
+	sub [hl]
+	inc a
+	cp 3
+	ret                                 ; carry = within one block
 
 ; ------------------------------------------------------------
 ; His lines (D4): each class speaks the trio of a vanilla trainer of that class
@@ -1337,3 +1474,198 @@ _FGTJugglerAfter::
 	cont "after battle!"
 	done
 
+
+; The cave's cell pick, in $29: $1A ran out of room with the Cemetery's code
+; (2026-11-20). Farcalled by CaveGenericPlace; SRAM bank 0 open, as there.
+SECTION "Wild Generic Trainer Cave Pick", ROMX, BANK[$29]
+
+; His cave cell: the hideout's second candidate (sStageEventHideoutAltX/Y,
+; PCStageHideoutCapture), one of the generator's carved edge targets, so a dead
+; end that is reachable by construction and blocks no way. None when the hideout
+; took it (its first candidate was the exit), when it is the exit's block, or a
+; ball's. He stands on the block's first walkable quadrant, facing the first open
+; neighbour (down, up, left, right). Writes sWildGenericCell (X | quadrant << 5),
+; the block Y into sWildGenericFloor's bits 3-7, the facing into sWildGenericRow's
+; bits 4-5. SRAM bank 0 open. Clobbers everything.
+WGTCavePick::
+	ld a, [sStageEventHideoutAltX]
+	ld d, a
+	ld a, [sStageEventHideoutAltY]
+	ld e, a
+	call WGTCaveCellOk
+	jr c, .found
+	; No stage event this cave: the hideout's own dead end stands empty (the
+	; pair's pictures are 0, so they do not exist), the second choice.
+	; Measured 2026-11-20: a ball took the second candidate in 2 of 9 caves.
+	ld a, [wStageEvent]
+	and STAGE_EVENT_TYPE_MASK
+	jp nz, .none
+	ld a, [sStageEventHideoutX]
+	ld d, a
+	ld a, [sStageEventHideoutY]
+	ld e, a
+	call WGTCaveCellOk.notHideout
+	jp nc, .none
+.found
+	call WGTCaveBlockMask
+	ld c, 0
+.quadrant
+	rrca
+	jr c, .haveQuadrant
+	inc c
+	jr .quadrant
+.haveQuadrant
+	ld b, 0                             ; b = the facing
+	inc e
+	call WGTCaveBlockMask               ; below
+	dec e
+	and a
+	jr nz, .haveFacing
+	inc b
+	dec e
+	call WGTCaveBlockMask               ; above
+	inc e
+	and a
+	jr nz, .haveFacing
+	inc b
+	dec d
+	call WGTCaveBlockMask               ; left
+	inc d
+	and a
+	jr nz, .haveFacing
+	inc b
+	inc d
+	call WGTCaveBlockMask               ; right
+	dec d
+	and a
+	jr nz, .haveFacing
+	ld b, 0
+.haveFacing
+	ld a, c
+	swap a
+	add a                               ; quadrant << 5
+	or d
+	ld [sWildGenericCell], a
+	ld a, e
+	add a
+	add a
+	add a                               ; Y << 3
+	ld c, a
+	ld a, [sWildGenericFloor]
+	and WGT_FLOOR_MASK
+	or c
+	ld [sWildGenericFloor], a
+	ld a, b
+	swap a
+	ld b, a
+	ld a, [sWildGenericRow]
+	and $0f
+	or b
+	ld [sWildGenericRow], a
+	ret
+.none
+	ld a, FGT_CELL_NONE
+	ld [sWildGenericCell], a
+	ret
+
+; d/e = a candidate block. Carry = he may stand there: in the grid, not the
+; hideout's (from .notHideout: skipped), not the exit's, not a ball's (slots
+; 2-5), and walkable somewhere. SRAM bank 0 open. Keeps de; clobbers a/bc/hl.
+WGTCaveCellOk:
+	ld a, d
+	cp CAVESUB_SIZE
+	jr nc, .no                          ; unset ($ff)
+	ld a, e
+	cp CAVESUB_SIZE
+	jr nc, .no
+	ld a, [sStageEventHideoutX]
+	cp d
+	jr nz, .notHideout
+	ld a, [sStageEventHideoutY]
+	cp e
+	jr z, .no
+.notHideout
+	ld a, [wWarpEntries + 4]            ; the exit (warp 1): tile Y, X
+	srl a
+	cp e
+	jr nz, .notExit
+	ld a, [wWarpEntries + 5]
+	srl a
+	cp d
+	jr z, .no
+.notExit
+	ld hl, wSprite02StateData2MapY      ; the balls, slots 2-5
+	ld b, 4
+.ball
+	ld a, [hli]
+	sub 4
+	srl a
+	cp e
+	jr nz, .nextBall
+	ld a, [hl]
+	sub 4
+	srl a
+	cp d
+	jr z, .no
+.nextBall
+	ld a, l
+	add SPRITESTATEDATA2_LENGTH - 1     ; the next slot's MapY
+	ld l, a
+	dec b
+	jr nz, .ball
+	call WGTCaveBlockMask
+	and a
+	ret z                               ; and a: carry clear
+	scf
+	ret
+.no
+	and a
+	ret
+
+; d/e = a cave block (out of the 20x20 grid reads as solid). Out: a = its
+; walkable-quadrant mask (CavernQuadWalkMasks, $3F, read with FarCopyData into
+; wBuffer + 1: wBuffer is free after PCFinalizeCave; FarCopyData itself uses
+; wBuffer + 0). Keeps bc/de.
+WGTCaveBlockMask:
+	ld a, d
+	cp CAVESUB_SIZE
+	jr nc, .solid
+	ld a, e
+	cp CAVESUB_SIZE
+	jr nc, .solid
+	push bc
+	push de
+	ld hl, wOverworldMap + CAVESUB_BASE
+	ld b, 0
+	ld c, d
+	add hl, bc
+	ld c, CAVESUB_STRIDE
+	ld a, e
+	and a
+	jr z, .haveBlock
+.row
+	add hl, bc
+	dec a
+	jr nz, .row
+.haveBlock
+	ld a, [hl]                          ; the block id
+	cp 128                              ; NUM_CAVERN_QUAD_MASKS (cavern_quad_masks.asm)
+	jr nc, .solidPop
+	ld c, a
+	ld b, 0
+	ld hl, CavernQuadWalkMasks
+	add hl, bc
+	ld de, wBuffer + 1
+	ld bc, 1
+	ld a, BANK(CavernQuadWalkMasks)
+	call FarCopyData
+	ld a, [wBuffer + 1]
+	pop de
+	pop bc
+	ret
+.solidPop
+	pop de
+	pop bc
+.solid
+	xor a
+	ret

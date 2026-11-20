@@ -1,20 +1,23 @@
 """Build RedRogueMusicTester_<date>_<hash>.zip for the composer.
 
-    make music_kit          (builds pokered.gbc first, then runs this under WSL)
+    make music_kit          (builds the debug ROM first, then runs this under WSL)
 
 See MUSIC_TEST_KIT_PLAN.md in Red Rogue Files. Steps:
-  1. read the exact rgbasm/rgblink/rgbfix flags for pokered.gbc from `make -n`
-  2. stage _engine/: prebuilt *_red.o + buildid, layout.link, audio.asm's
-     include closure, Windows rgbds/pokemid, portable mGBA, convert.ps1;
-     Crystal Tracker (+ its LGPL/GPL texts) and its Makefile/crysaudio stub at the kit root
-  3. kit.json: flags, IMPORT_BUDGET (largest free audio bank), build hash
+  1. read the exact rgbasm/rgblink/rgbfix flags for the debug ROM from `make -n`
+     (since kit 5 the tester is the debug ROM, so composers get FIGHT 2)
+  2. stage _engine/: prebuilt *_blue_debug.o + buildid, layout.link, audio.asm's
+     include closure, Windows rgbds/pokemid, BGB, convert.ps1;
+     Crystal Tracker (+ its LGPL/GPL texts) and its Makefile/crysaudio stub at
+     the kit root; Game Songs (every song + an instrument sheet, song_sheets.py)
+  3. kit.json: flags, IMPORT_BUDGET (largest free audio bank), the Music table
+     rows battles play (the preview takes them over too), build hash
   4. end-to-end check through the staged kit with powershell.exe: an untouched
-     rebuild must equal pokered.gbc byte for byte; Template.mid must build
+     rebuild must equal the debug ROM byte for byte; Template.mid must build
+     and must play in a FIGHT 2 battle
   5. record the 19 drums from the game (PyBoy) and build the DAW sample pack
   6. zip
 
-Runs under WSL: needs powershell.exe interop, PyBoy, and 7-Zip on Windows for
-the first mGBA download.
+Runs under WSL: needs powershell.exe interop and PyBoy.
 """
 
 import datetime
@@ -35,6 +38,7 @@ sys.path.insert(0, HERE)
 import audio_banks  # noqa: E402
 import make_sample_pack  # noqa: E402
 import record_title  # noqa: E402
+import song_sheets  # noqa: E402
 import test_midis  # noqa: E402
 
 CACHE = os.path.join(HERE, "cache")
@@ -46,15 +50,27 @@ WORK = os.path.join(OUT, "work")
 ENGINE_ID = "crysaudio pokered-crysaudio 9753183a"
 # Engine files whose exact bytes decide how a song sounds (kit.json "engineHashes").
 ENGINE_HASH_FILES = ("crysaudio/macros.asm", "crysaudio/wave_samples.asm", "crysaudio/drumkits.asm", "crysaudio/engine.asm")
+# The ROM the kit rebuilds. The debug ROM, so composers can start FIGHT 2
+# battles (hold Select, press Start on the title screen) and hear their song
+# in battle; otherwise it plays like the real game.
+ROM = "pokeblue_debug.gbc"
+AUDIO_OBJ = "audio_blue_debug.o"
 
 RGBDS_VERSION = open(os.path.join(REPO, ".rgbds-version")).read().strip()
-MGBA_VERSION = "0.10.5"
+# BGB, the most accurate Game Boy emulator for sound (freeware by beware).
+# bgbw64.zip has no version in its URL, so the download is pinned by hash:
+# when the site moves to a newer BGB the build stops and says so. Its site,
+# readme and zip (checked 2026-11-20) say nothing about redistribution either
+# way; the project owner decided to bundle it unmodified.
+BGB_VERSION = "1.6.7"
+BGB_SHA256 = "203b4d659b213ff362b4add9944bf50083221a29bd46bd6f766a136ef7a2b8c8"
+BGB_DIR = "emulator"
 TRACKER_VERSION = "0.9.1"  # dannye/crystal-tracker, LGPL-3.0; latest as of 2026-10-29
 TRACKER_SOURCE = "https://github.com/dannye/crystal-tracker/tree/v%s" % TRACKER_VERSION
 DOWNLOADS = {
     "rgbds": ("https://github.com/gbdev/rgbds/releases/download/v%s/rgbds-win64.zip" % RGBDS_VERSION, "rgbds-%s.zip" % RGBDS_VERSION),
     "pokemid": ("https://github.com/mtolly/pokemid/releases/download/v0.9/pokemid-v0.9-windows-x64.zip", "pokemid-v0.9.zip"),
-    "mgba": ("https://github.com/mgba-emu/mgba/releases/download/%s/mGBA-%s-win64.7z" % (MGBA_VERSION, MGBA_VERSION), "mgba-%s.7z" % MGBA_VERSION),
+    "bgb": ("https://bgb.bircd.org/bgbw64.zip", "bgbw64-%s.zip" % BGB_VERSION),
     # one portable exe; LGPL-3.0 is GPL-3.0 plus permissions, so both texts ship with it
     "tracker": ("https://github.com/dannye/crystal-tracker/releases/download/v%s/crystaltracker-x64.exe" % TRACKER_VERSION,
                 "crystaltracker-v%s-x64.exe" % TRACKER_VERSION),
@@ -63,9 +79,7 @@ DOWNLOADS = {
     "gpl3": ("https://www.gnu.org/licenses/gpl-3.0.txt", "gpl-3.0.txt"),
 }
 TRACKER_DIR = "Crystal Tracker"
-SEVENZIP = "/mnt/c/Program Files/7-Zip/7z.exe"
-# mGBA files the composer doesn't need (keep LICENSE.txt + licenses/: MPL-2.0)
-MGBA_SKIP = {"mgba-sdl.exe", "nointro.dat", "README_DE.html", "README_ES.html", "README_ZH_CN.html", "shaders", "scripts"}
+GAME_SONGS_DIR = "Game Songs"
 
 
 def log(msg):
@@ -87,6 +101,10 @@ def fetch(key):
         os.makedirs(CACHE, exist_ok=True)
         log("downloading " + url)
         urllib.request.urlretrieve(url, path + ".part")
+        if key == "bgb" and sha256_file(path + ".part") != BGB_SHA256:
+            os.remove(path + ".part")
+            sys.exit("%s is no longer BGB %s (hash changed): a new BGB is out. Check it, then bump "
+                     "BGB_VERSION and BGB_SHA256 in make_music_kit.py" % (url, BGB_VERSION))
         os.replace(path + ".part", path)
     return path
 
@@ -103,9 +121,7 @@ def unpack(key):
             with zipfile.ZipFile(archive) as z:
                 z.extractall(tmp)
         else:
-            if not os.path.exists(SEVENZIP):
-                sys.exit("need 7-Zip at %s to unpack %s" % (SEVENZIP, archive))
-            run([SEVENZIP, "x", "-y", "-o" + winpath(tmp), winpath(archive)])
+            sys.exit("don't know how to unpack %s" % archive)
         os.replace(tmp, dest)
     return dest
 
@@ -120,21 +136,21 @@ def find_file(root, name):
 # ------------------------------------------------------------------ flags
 
 def make_flags():
-    """Exact pokered.gbc commands, as make would run them after audio.asm changed."""
+    """Exact ROM commands, as make would run them after audio.asm changed."""
     # A fresh top-level make: when called from `make import_music` the inherited
     # MAKEFLAGS/MAKELEVEL make the dependency-file rules misbehave under -n.
     env = {k: v for k, v in os.environ.items() if k not in ("MAKEFLAGS", "MAKELEVEL", "MFLAGS", "MAKEOVERRIDES")}
-    text = run(["make", "-n", "-W", "audio.asm", "pokered.gbc"], cwd=REPO, env=env)
+    text = run(["make", "-n", "-W", "audio.asm", ROM], cwd=REPO, env=env)
     asm = link = fix = None
     for line in text.splitlines():
         words = shlex.split(line) if re.match(r"^(rgbasm|rgblink|rgbfix) ", line) else []
         if not words:
             continue
-        if words[0] == "rgbasm" and "audio_red.o" in words:
+        if words[0] == "rgbasm" and AUDIO_OBJ in words:
             asm = words[1:words.index("-o")]
         elif words[0] == "rgblink":
             link = words
-        elif words[0] == "rgbfix" and words[-1] == "pokered.gbc":
+        elif words[0] == "rgbfix" and words[-1] == ROM:
             fix = words[1:-1]
     if not (asm and link and fix):
         sys.exit("couldn't read rgbasm/rgblink/rgbfix lines from `make -n`:\n" + text)
@@ -149,9 +165,9 @@ def make_flags():
         else:
             link_flags.append(w)
         i += 1
-    if "audio_red.o" not in objs:
-        sys.exit("audio_red.o not in the link line: %s" % objs)
-    prebuilt = [o for o in objs if o != "audio_red.o"]
+    if AUDIO_OBJ not in objs:
+        sys.exit("%s not in the link line: %s" % (AUDIO_OBJ, objs))
+    prebuilt = [o for o in objs if o != AUDIO_OBJ]
     return {"asm": asm, "link": link_flags, "fix": fix}, prebuilt
 
 
@@ -166,10 +182,37 @@ def engine_hashes():
     return {rel: sha256_file(os.path.join(REPO, rel)) for rel in ENGINE_HASH_FILES}
 
 
-def stage(flags, prebuilt):
+def battle_rows():
+    """Music table labels of every song a battle can play: the MUSIC_* ids in
+    audio/play_battle_music.asm's ramps (every battle reaches PlayMusic through
+    GetBattleMusicSong), mapped to rows of crysaudio/music_pointers_red.asm (row
+    = song id; constants/music_constants.asm counts from 1, row 0 is silence)."""
+    consts = []
+    for line in open(os.path.join(REPO, "constants/music_constants.asm")):
+        m = re.match(r"\s*const (MUSIC_\w+)", line)
+        if m:
+            consts.append(m.group(1))
+    rows = song_sheets.music_table(REPO)
+    if len(rows) != len(consts) + 1:
+        sys.exit("music table has %d rows for %d MUSIC_ constants" % (len(rows), len(consts)))
+    text = open(os.path.join(REPO, "audio/play_battle_music.asm")).read()
+    ramps = text[text.index("BattleMusicRamps:"):]
+    labels = []
+    for name in re.findall(r"^\s*db \d+, (MUSIC_\w+)", ramps, re.M):
+        if name not in consts:
+            sys.exit("battle ramp names %s, which isn't a MUSIC_ constant" % name)
+        label = rows[consts.index(name) + 1]
+        if label not in labels:
+            labels.append(label)
+    if not labels:
+        sys.exit("found no battle songs in audio/play_battle_music.asm")
+    return labels
+
+
+def stage(flags, prebuilt, battle):
     shutil.rmtree(KIT, ignore_errors=True)
     if os.path.exists(KIT):
-        sys.exit("could not delete the old kit at %s; close the kit's mGBA (or anything "
+        sys.exit("could not delete the old kit at %s; close the kit's emulator (or anything "
                  "else with a file open in it) and run again" % KIT)
     for d in ("src", "prebuilt", "output", "emulator"):
         os.makedirs(os.path.join(ENGINE, d))
@@ -204,13 +247,18 @@ def stage(flags, prebuilt):
     for script in ("convert.ps1", "midi_normalize.ps1", "gm_drums.json"):
         shutil.copy2(os.path.join(HERE, script), ENGINE)
 
-    mgba = os.path.dirname(find_file(unpack("mgba"), "mGBA.exe"))
-    for entry in os.listdir(mgba):
-        if entry in MGBA_SKIP:
-            continue
-        src = os.path.join(mgba, entry)
-        dst = os.path.join(ENGINE, "emulator", entry)
-        (shutil.copytree if os.path.isdir(src) else shutil.copy2)(src, dst)
+    # BGB, unmodified (its own readme bgb.html and default bgb.ini included;
+    # the test ROM bgbtest.gb is left out).
+    bgb = os.path.dirname(find_file(unpack("bgb"), "bgb64.exe"))
+    for entry in os.listdir(bgb):
+        if entry != "bgbtest.gb":
+            shutil.copy2(os.path.join(bgb, entry), os.path.join(ENGINE, BGB_DIR, entry))
+    with open(os.path.join(ENGINE, BGB_DIR, "ABOUT BGB.txt"), "w", newline="\r\n") as f:
+        f.write("BGB %s, the Game Boy emulator by beware: https://bgb.bircd.org\n"
+                "Freeware, included unchanged. bgb.html is its own readme.\n" % BGB_VERSION)
+
+    songs = song_sheets.build(os.path.join(KIT, GAME_SONGS_DIR), battle, REPO)
+    log("Game Songs: %d songs with instrument sheets" % songs)
 
     for entry in os.listdir(os.path.join(HERE, "kit_files")):
         shutil.copy2(os.path.join(HERE, "kit_files", entry), KIT)
@@ -282,6 +330,12 @@ NATIVE_REJECTIONS = [
     ("unknown_command", "A::\n\tchannel_count 1\n\tchannel 1, A_Ch1\nA_Ch1::\n\tdw $12\n\tsound_ret\n", "isn't a command"),
     ("load_wave", "A::\n\tchannel_count 1\n\tchannel 1, A_Ch1\nA_Ch1::\n\tload_wave Foo\n\tsound_ret\n", "load_wave"),
     ("include", "A::\n\tchannel_count 1\n\tchannel 1, A_Ch1\nA_Ch1::\n\tINCLUDE \"x.asm\"\n", "isn't allowed"),
+    # Ch1/Ch2 labels swapped in the header without moving tempo: channel 1's
+    # first note would be timed at the default tempo (convert.ps1 check f).
+    ("tempo_in_later_channel",
+     "A::\n\tchannel_count 2\n\tchannel 1, A_Ch2\n\tchannel 2, A_Ch1\nA_Ch1::\n\ttempo 144\n\tnote_type 12, 10, 0\n"
+     "\toctave 4\n\tnote C_, 4\n\tsound_ret\nA_Ch2::\n\tnote_type 12, 10, 0\n\toctave 4\n\tnote E_, 4\n\tsound_ret\n",
+     "starts playing before the song's tempo"),
 ]
 
 
@@ -415,14 +469,18 @@ def main():
     if budget <= 0 or id_room <= 0:
         sys.exit("no room for a new song (ROMX gap or song ids exhausted); see audio_banks.py")
 
-    stage(flags, prebuilt)
+    battle = battle_rows()
+    log("battle songs the preview takes over: %s" % " ".join(battle))
+    stage(flags, prebuilt, battle)
     kit = {
-        "kitDate": date, "buildHash": git, "rgbds": RGBDS_VERSION, "pokemid": "0.9", "mgba": MGBA_VERSION,
+        "kitDate": date, "buildHash": git, "rgbds": RGBDS_VERSION, "pokemid": "0.9", "bgb": BGB_VERSION,
         "crystalTracker": TRACKER_VERSION,
         # 3 (2026-11-08): loop set by a "Loop" track; begin/end markers are song-wide
-        "kitSchema": 4, "engine": ENGINE_ID,
-        "engineHashes": engine_hashes(), "romSha256": sha256_file(os.path.join(REPO, "pokered.gbc")),
+        # 5 (2026-11-20): debug ROM, the song also plays in every battle (FIGHT 2), BGB, Game Songs
+        "kitSchema": 5, "engine": ENGINE_ID, "rom": ROM,
+        "engineHashes": engine_hashes(), "romSha256": sha256_file(os.path.join(REPO, ROM)),
         "importBudget": budget, "songIdRoom": id_room, "romSpace": space,
+        "battleRows": battle,
         "flags": flags,
     }
     with open(os.path.join(ENGINE, "kit.json"), "w") as f:
@@ -440,12 +498,12 @@ def main():
     out = os.path.join(ENGINE, "output")
 
     # 1. The pipeline itself: the game's own title music through the kit's
-    #    tools, objects and flags must give pokered.gbc exactly.
-    log("check: kit self-test == pokered.gbc")
+    #    tools, objects and flags must give the ROM exactly.
+    log("check: kit self-test == %s" % ROM)
     print(convert(None, "-SelfTest"), end="")
-    with open(os.path.join(out, "test.gbc"), "rb") as a, open(os.path.join(REPO, "pokered.gbc"), "rb") as b:
+    with open(os.path.join(out, "test.gbc"), "rb") as a, open(os.path.join(REPO, ROM), "rb") as b:
         if a.read() != b.read():
-            sys.exit("untouched kit rebuild differs from pokered.gbc: stale objects or flag drift")
+            sys.exit("untouched kit rebuild differs from %s: stale objects or flag drift" % ROM)
 
     # 2. Drums: record from the game for the sample pack.
     log("recording drums")
@@ -461,6 +519,12 @@ def main():
     print(said, end="")
     if "goes back to the start of bar 2" not in said:
         sys.exit("Template.mid should loop back to bar 2 (its Loop track):\n" + said)
+
+    # 3'. The same song in battle: every battle row of the Music table points at
+    #     it, and a real FIGHT 2 battle (entered with the buttons a composer
+    #     presses) starts it through PlayBattleMusic.
+    log("check: Template.mid plays in a FIGHT 2 battle")
+    record_title.cmd_fight2(os.path.join(out, "test.gbc"), os.path.join(out, "test.map"), len(battle))
 
     # 3a. Loop points: the Loop track, song-wide markers, held notes, conflicts.
     #     Runtime: the game really jumps back to the Loop track's bar.
@@ -579,8 +643,8 @@ def main():
                 full = os.path.join(d, name)
                 z.write(full, os.path.relpath(full, OUT))
     log("wrote %s (%.1f MB)" % (zpath, os.path.getsize(zpath) / 1e6))
-    log("prebuilt objects are from %s. Re-run after changes to the audio engine or title screen;" % git)
-    log("other code changes don't affect what he hears.")
+    log("prebuilt objects are from %s. Re-run after changes to the audio engine, title screen," % git)
+    log("battle music routing or FIGHT 2; other code changes don't affect what composers hear.")
 
 
 if __name__ == "__main__":

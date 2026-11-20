@@ -144,8 +144,9 @@ smoke: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/run_smoke.py $(if $(TEST),--test '$(TEST)')
 
 # The composer's music test kit (tools/music_kit, MUSIC_TEST_KIT_PLAN.md). Needs
-# WSL interop (powershell.exe) and, for the first mGBA download, 7-Zip on Windows.
-music_kit: pokered.gbc
+# WSL interop (powershell.exe). The kit rebuilds the debug ROM (FIGHT 2); the
+# other two maps feed the import budget.
+music_kit: pokered.gbc pokeblue.gbc pokeblue_debug.gbc
 	python3 tools/music_kit/make_music_kit.py
 
 # Import the composer's finished song: make import_music MID=song.mid NAME=SongName

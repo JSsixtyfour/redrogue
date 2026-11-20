@@ -567,7 +567,7 @@ CemResurrectorPlace:
 ; Carry = wCemTryX/Y is within one block of the Channeler (on this floor), the
 ; stage pair's hideout (on this floor) or, on floor 1, the pair's arrival
 ; block. SRAM bank 0 open. Clobbers a/bc/hl.
-CRCrowded:
+CRCrowded:: ; also farcalled by CemGenericPlace (forest_generic_trainer.asm)
 	ld hl, wBuffer + wCemMapIndex
 	ld a, [sProcCemeteryItemGot]
 	and CEM_CHANNELER_FLOOR_MASK
@@ -1020,7 +1020,10 @@ CRNoMoneyText:
 ; land in whatever $28's labels' bank offsets map to in this bank), so the few
 ; helpers it shares in spirit are its own, CV-prefixed.
 ; ============================================================================
-SECTION "Cemetery Reviver", ROMX, BANK[$1A]
+; $29, not $1A (2026-11-20): $1A holds the wild areas' generic trainer, which
+; needed the room. Reached only by farcall (CemReviverTalk, CemResultTexts); its
+; own calls are local, HOME or predef, so it moves whole (ROM Bible 2026-11-20).
+SECTION "Cemetery Reviver", ROMX, BANK[$29]
 
 CemReviverTalk::
 	call CVAnyFainted

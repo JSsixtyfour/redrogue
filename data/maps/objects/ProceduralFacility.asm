@@ -65,5 +65,11 @@ ProceduralFacility_Object:
 	; moved there each load (OptionalEncounterPlaceFacility), otherwise picture 0.
 	object_event 10, 10, SPRITE_MONSTER, WALK, ANY_DIR, TEXT_PROCEDURALFACILITY_OPTIONAL, PSYDUCK, 1 | OW_POKEMON
 	ASSERT FACILITY_OPTIONAL_MON == 13 ; the thirteenth object_event
+	; The generic route trainer (custom_functions/forest_generic_trainer.asm,
+	; GENERIC_TRAINER_ALL_AREAS_SPEC.md): one per Facility, on one floor. Class,
+	; sprite and cell are set at load; picture 0 elsewhere. 8 args: a trainer.
+	; Slot 14 is the last one a map may use (15 is the follower).
+	object_event 10, 10, SPRITE_SCIENTIST, STAY, DOWN, TEXT_PROCEDURALFACILITY_GENERIC, OPP_SCIENTIST, 1
+	ASSERT FACILITY_GENERIC == 14 ; the fourteenth object_event
 
 	def_warps_to PROCEDURAL_FACILITY

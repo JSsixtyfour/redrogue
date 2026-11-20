@@ -452,6 +452,7 @@ SECTION "Facility Deep Floor 2", ROMX, BANK[$15]
 ; ------------------------------------------------------------
 FacilityDeepAfterFinalize::
 	farcall OptionalEncounterPlaceFacility
+	farcall FacilityGenericPlace         ; the generic trainer (forest_generic_trainer.asm)
 	call FDF2OpenSRAM
 	call FDF2ReadCtrl
 	jp nc, FDF2CloseSRAM                 ; not deep
@@ -609,6 +610,7 @@ FacilityDeepReconcile::
 ; picture 0, "this slot does not exist", so their toggle bits keep floor 1's
 ; state. Clobbers everything.
 FacilityDeepPatchSprites::
+	farcall FacilityGenericPatch         ; his floor only (forest_generic_trainer.asm)
 	call FDF2OpenSRAM
 	call FDF2ReadCtrl
 	ld b, a
