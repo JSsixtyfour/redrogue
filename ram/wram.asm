@@ -2357,7 +2357,14 @@ wOptionalEncounterMap:: db
 wOptionalEncounterScript:: db
 wOptionalEncounterBattle:: db ; one-shot enemy creation request, guarded at consumer
 ASSERT wOptionalEncounterBattle - wOptionalEncounterSpecies == 6
-	ds 28 - 19 - 7
+; The wild areas' generic route trainer's defeat flags (forest_generic_trainer.asm,
+; GENERIC_TRAINER_ALL_AREAS_SPEC.md), one of the reservation's two spare saved
+; bytes. Bit = his object slot mod 8 (the trainer header's flag bit): Forest 9 ->
+; 1, cave 11 -> 3, Cemetery 6 and Facility 14 -> 6. One wild area is live at a
+; time and each area's roll clears the byte, so the areas share it. Not an event:
+; the event table is full (gen_event_constants.py: 520 bits needed of 512).
+wWildGenericBeaten:: db
+	ds 28 - 19 - 7 - 1
 wFollowerDataEnd::
 ASSERT wFollowerDataEnd - wFollowerDataStart == 28
 
@@ -3509,6 +3516,15 @@ ASSERT wMainDataEnd - wRentalRecord == 16
 SECTION "Final AI Fusion State", WRAM0
 wFinalAISecondarySpecies:: db
 wFinalAISecondaryForm:: db
+
+; Unsaved. AIGetCritThreshold's one-entry cache of the attacker's base Speed,
+; keyed on species and MON_CATCH_RATE's form bits (the only inputs the header
+; row depends on), so a repeat lookup skips PublishFormContext + GetMonHeader.
+; Species 0 = empty; AIClearDecisionCaches empties it once per decision.
+SECTION "AI Crit Cache", WRAM0
+wAICritCacheSpecies:: db
+wAICritCacheForm:: db
+wAICritCacheSpeed:: db
 
 
 SECTION "Current Box Data", WRAM0

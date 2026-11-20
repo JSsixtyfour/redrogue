@@ -544,10 +544,13 @@ class CritCertainEstimateTest(unittest.TestCase):
     CATCH_RATE = 7  # MON_CATCH_RATE in the battle struct
 
     def lookups(self, move: str) -> tuple[bool, int]:
-        """(crit path ran, CalcCritRate calls) for the player's `move`."""
+        """(crit path ran, exact threshold lookups) for the player's `move`.
+        Counted at CalcCritRateWithBaseSpeed, which both a full CalcCritRate and
+        a crit-cache hit (2026-11-20) pass through; CalcCritRate's own entry is
+        skipped by a hit."""
         h = self.harness
         assert h is not None
-        calls = h.hook_flag("CalcCritRate")
+        calls = h.hook_flag("CalcCritRateWithBaseSpeed")
         before = calls["count"]
         _, ran = self.estimate(move)
         return ran, calls["count"] - before

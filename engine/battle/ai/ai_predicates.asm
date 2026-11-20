@@ -466,6 +466,7 @@ AIClearDecisionCaches::
 	ld [wAIReliableKOFound], a ; set by AI_DAMAGE, read by AI_PLAN (#55)
 	ld [wBuffer + AI_BUF_SETUPMASK], a ; set by AI_SETUP, read by AI_DAMAGE (#61)
 	ld [wBuffer + AI_BUF_SETUPGATE], a ; set by AI_DAMAGE, read by AI_PLAN
+	ld [wAICritCacheSpecies], a ; species 0: the crit cache is empty (ai_crit.asm)
 	ASSERT wAIPlayerKOMaxDamage == wAIEnemyEstimateCache + NUM_MOVES * 2
 	ld hl, wAIEnemyEstimateCache
 	ld b, NUM_MOVES * 2 + 2 ; the estimates and wAIPlayerKOMaxDamage

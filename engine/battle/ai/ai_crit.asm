@@ -36,6 +36,11 @@ AIGetEnemyCritThreshold::
 ; form context and hWhoseTurn are put back; the header itself stays clobbered, as
 ; CriticalHitTest leaves it moments later in the real move. CalcCritRate returns
 ; in e plus the Z and C flags, which survive its farcall return.
+; CRIT CACHE (speed lever 1, 2026-11-20): the header load is ~3.6k of a ~4.9k
+; cycle call, and all it yields is the base Speed, which depends only on the
+; species and the form bits. wAICritCache* keeps the last one; a hit enters
+; CalcCritRateWithBaseSpeed and leaves the header as it was. Measured on the
+; 24 decision_cycles boards: 54 of 90 lookups hit (a per-side pair: also 54).
 ; Clobbers af, c, de, hl.
 AIGetCritThreshold:
 	ld b, a
@@ -51,7 +56,40 @@ AIGetCritThreshold:
 	push af
 	ld a, b
 	ldh [hWhoseTurn], a ; CalcCritRate picks the attacker off this
+; The key, exactly what PublishFormContext + GetMonHeader read: d = species,
+; e = MON_CATCH_RATE's form bits, of the attacker's battle struct.
+	and a
+	ld hl, wBattleMon
+	jr z, .gotAttacker
+	ld hl, wEnemyMon
+.gotAttacker
+	ld d, [hl]
+	ld bc, MON_CATCH_RATE
+	add hl, bc
+	ld a, [hl]
+	and FORM_MASK
+	ld e, a
+	ld hl, wAICritCacheSpecies
+	ASSERT wAICritCacheForm == wAICritCacheSpecies + 1
+	ASSERT wAICritCacheSpeed == wAICritCacheForm + 1
+	ld a, [hli]
+	cp d
+	jr nz, .miss
+	ld a, [hli]
+	cp e
+	jr nz, .miss
+	ld d, [hl] ; the cached base Speed (farcall keeps de)
+	farcall CalcCritRateWithBaseSpeed ; -> as CalcCritRate
+	jr .answer
+.miss
+	ld hl, wAICritCacheSpecies
+	ld [hl], d
+	inc hl
+	ld [hl], e
 	farcall CalcCritRate ; -> e = threshold, Z = no power, C = form always crits
+	ld a, [wMonHBaseSpeed] ; nothing after GetMonHeader reloads the header; ld keeps flags
+	ld [wAICritCacheSpeed], a
+.answer
 ; Capture the answer BEFORE the pops below: `pop af` restores flags.
 	ld b, e
 	jr z, .noPower

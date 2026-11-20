@@ -5079,7 +5079,12 @@ CalcCritRate:: ; exported 2026-09-01 for AIScaleDamageForCrit (ai_predicates.asm
 	call PublishFormContext
 	call GetMonHeader
 	ld a, [wMonHBaseSpeed]
-	ld b, a
+	ld d, a
+; AIGetCritThreshold's cache hit enters here with d = the attacker's base Speed,
+; skipping the header load (and leaving wCurSpecies, the form context and the
+; header untouched). hWhoseTurn must name the attacker, as for CalcCritRate.
+CalcCritRateWithBaseSpeed::
+	ld b, d
 	srl b                        ; (effective (base speed/2))
 	ldh a, [hWhoseTurn]
 	and a

@@ -586,6 +586,12 @@ WRAM0
 	"Party Data"
 	"Main Data"
 	"Current Box Data"
+	; AIGetCritThreshold's 3-byte cache (ram/wram.asm). Pinned at the very top
+	; of the free span: floating, its size put it ahead of the smaller floaters
+	; and moved three existing labels up 3 B (measured 2026-11-20). Here nothing
+	; moves and the free span stays one piece below it.
+	org $defd
+	"AI Crit Cache"
 	org $df00
 	"Stack"
 VRAM
