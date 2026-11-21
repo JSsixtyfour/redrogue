@@ -2,6 +2,49 @@
 ; "rogue" (bridge_selected_effects.asm's bank) and "Battle Core" (which calls
 ; them) are both full.
 
+; Battle move menu's refusal checks, called once GetCurrentMove has loaded the
+; pick. Out: carry = refused (message already shown), back to the menu.
+BattleMenuRefusesSelectedMove::
+	call BridgeBodyArmorBlocksSelectedMove
+	ret c
+	; Body Armor's Struggle fallback leaves wPlayerMove* holding whichever move
+	; it scanned last, which says nothing about Struggle.
+	ld a, [wPlayerSelectedMove]
+	cp STRUGGLE
+	ret z ; carry clear
+	; fallthrough
+
+; The first time in a battle the player picks a sleep move Sleep Clause would
+; block, print a warning and refuse the pick, the way a Disabled move is
+; refused. Picking it again is accepted: SleepEffect still blocks it when it
+; runs, so this is a heads-up, not a rule. Here rather than beside the clause
+; because its bank ($34) is full.
+; Out: carry = refused (text printed, screen restored). Clobbers af, bc, d, hl.
+SleepClauseWarnAtMenu:
+	ld a, [wPlayerMoveEffect]
+	cp SLEEP_EFFECT
+	jr nz, .allow
+	ld a, [wSleepClauseState]
+	bit SLEEP_CLAUSE_WARNED_BIT, a
+	jr nz, .allow
+	ld d, SLEEP_CLAUSE_ENEMY_SIDE
+	farcall SleepClauseIsActive
+	ret nc
+	ld hl, wSleepClauseState
+	set SLEEP_CLAUSE_WARNED_BIT, [hl]
+	ld hl, .warnText
+	call PrintText
+	call LoadScreenTilesFromBuffer1
+	scf
+	ret
+.allow
+	and a
+	ret
+.warnText
+	text "WARNING: SLEEP"
+	line "CLAUSE ACTIVE"
+	prompt
+
 ; Called after GetCurrentMove has loaded wPlayerMovePower, with the menu's
 ; choice in wPlayerSelectedMove. Carry is set after printing the rejection only
 ; when Body Armor blocks a zero-power move. When it would block every move the

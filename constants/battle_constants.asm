@@ -89,6 +89,9 @@ DEF SLP_MASK EQU %111 ; 0-7 turns
 ; current move is side (hWhoseTurn ^ 1) and the user is side hWhoseTurn.
 DEF SLEEP_CLAUSE_PLAYER_SIDE EQU 0
 DEF SLEEP_CLAUSE_ENEMY_SIDE  EQU 1
+; Bit 7 of wSleepClauseState: the move menu has already warned the player once
+; this battle. Holder nibbles are slot + 1 (at most 6), so bits 3 and 7 are free.
+DEF SLEEP_CLAUSE_WARNED_BIT  EQU 7
 
 DEF MAX_STAT_VALUE EQU 999
 

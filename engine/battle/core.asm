@@ -3185,7 +3185,7 @@ SelectMenuItem:
 	xor a
 	ldh [hWhoseTurn], a
 	call GetCurrentMove
-	farcall BridgeBodyArmorBlocksSelectedMove ; carry = blocked
+	farcall BattleMenuRefusesSelectedMove ; carry = blocked (Body Armor, Sleep Clause warning)
 	pop bc                      ; b = saved hWhoseTurn; pop bc leaves F intact
 	ld a, b
 	ldh [hWhoseTurn], a         ; ldh leaves carry intact

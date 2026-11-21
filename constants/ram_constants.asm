@@ -213,6 +213,10 @@ DEF NUM_BADGES EQU const_value
 	                               ; Victory Road clear. Kept as a skip rather than
 	                               ; reclaimed: bits 0/1 keep their positions and
 	                               ; nothing silently inherits bit 2's old meaning.
+	; Set once the lobby move tutor's greeting has been shown; cleared on each
+	; fresh lobby entry (PCPsychicSetup). Later talks that visit skip the greeting
+	; and yes/no. The forest rest house tutor shares it.
+	const BIT_MOVE_TUTOR_GREETED  ; 3
 
 ; wMovementFlags
 	const_def

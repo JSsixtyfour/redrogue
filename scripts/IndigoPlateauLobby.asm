@@ -1292,6 +1292,12 @@ PCMoveTutorTalk::
 	pop bc
 	ret
 .teach
+	; Greeting and yes/no once per lobby visit; later talks go straight to the
+	; party menu, where B already declines.
+	ld hl, wElite4Flags
+	bit BIT_MOVE_TUTOR_GREETED, [hl]
+	jr nz, .chooseMon
+	set BIT_MOVE_TUTOR_GREETED, [hl]
 	ld hl, PCMoveTutorGreetingText
 	call PrintText
 	ld a, MONEY_BOX
@@ -1301,6 +1307,7 @@ PCMoveTutorTalk::
 	ldh a, [hCurrentMenuItem]
 	and a
 	jp nz, .exit
+.chooseMon
 	ld hl, PCMoveTutorSaidYesText
 	call PrintText
 	; Select pokemon from party.

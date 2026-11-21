@@ -7,7 +7,9 @@
 ; State is one byte, wSleepClauseState: low nibble = the player's mon the enemy
 ; put to sleep, high nibble = the enemy's mon the player put to sleep, each as
 ; party slot + 1 (0 = none). Zeroed by InitBattleVariables, so sleep carried in
-; from an earlier battle never counts.
+; from an earlier battle never counts. Slot + 1 is at most 6, so bit 7
+; (SLEEP_CLAUSE_WARNED_BIT) is spare and records that the move menu has shown
+; its once-per-battle warning (SleepClauseWarnAtMenu, body_armor_moves.asm).
 ;
 ; Only SleepEffect (opponent-inflicted sleep) records a holder. Rest writes its
 ; sleep counter itself in heal.asm and never comes through here, so it neither
@@ -148,7 +150,7 @@ SleepClauseGetHolder:
 	jr z, .low
 	swap a
 .low
-	and $0f
+	and $07 ; slot + 1 fits in 3 bits; bit 3 of the high nibble is the warned flag
 	ret
 
 ; In: d = side. Out: a = that side's active party slot. A wild mon has no
@@ -176,7 +178,7 @@ SleepClauseClearSide:
 	and $f0
 	jr .store
 .enemy
-	and $0f
+	and $0f | (1 << SLEEP_CLAUSE_WARNED_BIT) ; keep the warned flag
 .store
 	ld [wSleepClauseState], a
 	ret

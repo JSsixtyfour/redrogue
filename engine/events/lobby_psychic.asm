@@ -78,6 +78,8 @@ PCLobbyExtrasSetup:
 ; block). The toggle resets on every warp, so both branches are explicit. Also
 ; rolls the salesman, trader and move tutor first.
 PCPsychicSetup::
+	ld hl, wElite4Flags
+	res BIT_MOVE_TUTOR_GREETED, [hl] ; new visit: the tutor greets again
 	call PCLobbyExtrasSetup
 	ld a, TOGGLE_PC_PSYCHIC
 	ld [wToggleableObjectIndex], a
