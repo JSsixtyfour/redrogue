@@ -312,13 +312,13 @@ GameCornerTrainerHeaders:
 	; block no longer depends on include order.
 	def_trainers 2
 GameCornerTrainerHeader0:
-	trainer EVENT_BEAT_GAME_CORNER_TRAINER_0, 1, GameCornerGamblerBattleText, GameCornerGamblerEndBattleText, GameCornerGamblerAfterBattleText
+	trainer EVENT_BEAT_GAME_CORNER_TRAINER_0, 3, GameCornerGamblerBattleText, GameCornerGamblerEndBattleText, GameCornerGamblerAfterBattleText
 GameCornerTrainerHeader1:
-	trainer EVENT_BEAT_GAME_CORNER_TRAINER_1, 2, GameCornerGambler2BattleText, GameCornerGambler2EndBattleText, GameCornerGambler2AfterBattleText
+	trainer EVENT_BEAT_GAME_CORNER_TRAINER_1, 3, GameCornerGambler2BattleText, GameCornerGambler2EndBattleText, GameCornerGambler2AfterBattleText
 GameCornerTrainerHeader2:
-	trainer EVENT_BEAT_GAME_CORNER_TRAINER_2, 4, GameCornerGambler3BattleText, GameCornerGambler3EndBattleText, GameCornerGambler3AfterBattleText
+	trainer EVENT_BEAT_GAME_CORNER_TRAINER_2, 3, GameCornerGambler3BattleText, GameCornerGambler3EndBattleText, GameCornerGambler3AfterBattleText
 GameCornerTrainerHeader3:
-	trainer EVENT_BEAT_GAME_CORNER_TRAINER_3, 5, GameCornerGambler4BattleText, GameCornerGambler4EndBattleText, GameCornerGambler4AfterBattleText
+	trainer EVENT_BEAT_GAME_CORNER_TRAINER_3, 3, GameCornerGambler4BattleText, GameCornerGambler4EndBattleText, GameCornerGambler4AfterBattleText
 	db -1 ; end
 
 GameCornerGamblerBattleText:

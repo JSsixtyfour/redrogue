@@ -31,7 +31,7 @@ Route12_Object:
 	; three trainers and the boss sit in slots 2-5 so the boss stays in slot 5
 	; (MiniBossStageSlots) and slots 6-10 keep the reward cluster. It stands
 	; below the map, so CheckSpriteAvailability never draws it.
-	object_event  0, 63, SPRITE_FISHER, STAY, DOWN, TEXT_ROUTE12_PADDING
+	object_event 16, 88, SPRITE_FISHER, STAY, DOWN, TEXT_ROUTE12_PADDING
 	object_event  8, 57, SPRITE_FISHER, STAY, RIGHT, TEXT_ROUTE12_FISHER1, OPP_FISHER, 1
 	object_event  9, 49, SPRITE_FISHER, STAY, LEFT, TEXT_ROUTE12_FISHER2, OPP_FISHER, 1
 	object_event  8, 40, SPRITE_ROCKER, STAY, DOWN, TEXT_ROUTE12_ROCKER, OPP_ROCKER, 1
