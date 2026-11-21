@@ -26,12 +26,12 @@ class PostKOTest(unittest.TestCase):
         self.h.write8(label, value >> 8)
         self.h.write8(label, value & 255, offset=1)
 
-    def boot(self, reserves=None, tier=3):
+    def boot(self, reserves=None, tier=3, active=None):
         reserves = reserves or [self.mon("MAGMORTAR", ["THUNDERBOLT"]),
                                 self.mon("SLOWBRO", ["THUNDERBOLT"])]
         self.h.inject_fight2_spec(
             [self.mon("STARMIE", ["SURF", "PSYCHIC_M", "THUNDERBOLT", "ICE_BEAM"])],
-            [self.mon("RATTATA", ["TACKLE"]), *reserves],
+            [active or self.mon("RATTATA", ["TACKLE"]), *reserves],
             trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=tier)
         self.h.boot_fight2(seed=1)
         self.h.write8("wAITurnPlan", 0)
@@ -239,6 +239,35 @@ class PostKOTest(unittest.TestCase):
         self.h.register_hook("AIEstimateDamage", lambda _: estimates.append(1))
         self.assertEqual(self.select(), 2)
         self.assertEqual(estimates, [])
+
+    # --- E4 near tie (AI_T4_REGRET_PLAN, 2026-11-20) -----------------------------------
+    # A VOLUNTARY target tied on tier and legacy score is a uniform pick; a FAINT send-out
+    # keeps the damage order (re-measured on the built ROM: mixing cost +0.0050 of party
+    # HP per send-out there, switch targets +0.0009 within noise).
+    def voluntary_board(self, count):
+        """Charizard out (Surf and Thunderbolt are 2x: legacy 40), `count` identical
+        Rattata behind it (all 1x: 20, so each beats the active mon)."""
+        self.boot([self.mon("RATTATA", ["TACKLE"]) for _ in range(count)],
+                  active=self.mon("CHARIZARD", ["FLAMETHROWER"]))
+        self.word("wEnemyMonHP", 100)
+        self.word("wEnemyMon1HP", 100)
+
+    def voluntary_pick(self):
+        self.h.write8("wBuffer", 1, offset=19)  # AI_BUF_BESTPARTYSLOT: the fallback
+        got = {}
+        self.h.call_routine("AIRankVoluntaryTarget",
+                            capture=lambda hh: got.update(slot=hh.read8("wBuffer", offset=19)))
+        return got["slot"]
+
+    def test_voluntary_near_tie_reaches_every_tied_reserve(self):
+        # The reservoir (k-th tie leads with chance 1/k) must reach the last slot too.
+        self.voluntary_board(5)
+        self.assertEqual({self.voluntary_pick() for _ in range(40)}, {1, 2, 3, 4, 5})
+
+    def test_faint_send_out_tie_keeps_the_damage_order(self):
+        # Same five reserves after a faint: no mixing, the earliest equal candidate.
+        self.boot([self.mon("RATTATA", ["TACKLE"]) for _ in range(5)])
+        self.assertEqual({self.select() for _ in range(12)}, {1})
 
     def test_six_mon_scan_has_bounded_latency_and_stack_use(self):
         self.boot([self.mon("SLOWBRO", ["SURF", "THUNDERBOLT", "PSYCHIC_M", "ICE_BEAM"])

@@ -20,7 +20,9 @@ ASSERT wEnemyMonPP + NUM_MOVES - wEnemyMon == PK_MON_LENGTH
 
 ; Candidates compare by quality tier, then the old type/health/status score,
 ; then expected attack damage, then party order (the enumeration already breaks
-; exact ties). Damage beneath the legacy score: more damage short of a KO is no
+; exact ties). For a voluntary switch target, below FINISH, a tie on tier and
+; legacy score is a uniform random pick instead of the damage order (E4 near
+; tie, see .rankLoop's same-tier compare); faint send-outs keep damage. Damage beneath the legacy score: more damage short of a KO is no
 ; reason to send in a mon that matches up worse. A KO is its own tier (FINISH).
 ; If ALL reserves are threatened, their potential retaliation still breaks ties:
 ; the defensive scan uses maximum rolls/hit counts, not a certain prediction.
@@ -40,7 +42,10 @@ DEF PK_MODE_FAINT EQU 0
 DEF PK_MODE_VOLUNTARY EQU 1
 DEF PK_FRAME_MODE EQU PARTY_LENGTH
 DEF PK_FRAME_BOUND EQU PARTY_LENGTH + 1
-DEF PK_FRAME_SIZE EQU PARTY_LENGTH + 2
+DEF PK_FRAME_TIES EQU PARTY_LENGTH + 2 ; candidates tied with the leader (0: the leader is a caller's floor)
+DEF PK_FRAME_SIZE EQU PARTY_LENGTH + 3
+ASSERT PK_FRAME_TIES == PK_FRAME_BOUND + 1 && PK_FRAME_BOUND == PK_FRAME_MODE + 1
+ASSERT PK_MODE_FAINT == 0
 
 AIRankPostKOSendOut::
 	farcall AIRankSendOutCandidates
@@ -129,6 +134,8 @@ AIRankPostKOSendOut::
 	ld [hl], d
 	inc hl
 	ld [hl], e
+	inc hl
+	ld [hl], 0 ; PK_FRAME_TIES: no candidate leads yet
 	ld a, [wEnemyMonType1]
 	push af
 	ld a, [wEnemyMonType2]
@@ -203,6 +210,40 @@ AIRankPostKOSendOut::
 	cp [hl]
 	jr c, .better
 	jr nz, .next
+; E4 near tie (AI_T4_REGRET_PLAN, 2026-11-20), VOLUNTARY mode only (switch
+; targets: AIRankVoluntaryTarget, AIRankStalemateTarget): same tier and same
+; legacy score is a uniform pick, not the damage tiebreak, so the same board
+; does not always get the same reserve. Reservoir: the k-th tied candidate takes
+; the lead with chance 1/k. Measured on the built ROM's gate: switch targets
+; +0.0009 [-0.0006, +0.0028] of party HP per decision (within noise); a FAINT
+; send-out lost +0.0050 [+0.0005, +0.0099] (the damage order carries value
+; there), so it keeps that order. Never at tier 0 (KO'd on entry, or spent),
+; never at FINISH (a reliable KO keeps the damage order), and never against a
+; caller's floor (no candidate leads yet).
+	ld a, [wBuffer + PK_QUALITY]
+	and a
+	jr z, .damage
+	cp PK_FINISH
+	jr z, .damage
+	ld hl, sp + PK_FRAME_MODE
+	ld a, [hli]
+	and a ; PK_MODE_FAINT
+	jr z, .damage
+	inc hl ; PK_FRAME_TIES
+	ld a, [hl]
+	and a
+	jr z, .damage
+	inc a
+	ld [hl], a
+	ld b, a ; b = k, 2..PARTY_LENGTH
+	call Random ; keeps bc, de, hl
+.mod
+	sub b
+	jr nc, .mod
+	add b ; a = roll mod k; z iff this candidate takes the lead
+	jr z, .take
+	jr .next
+.damage
 	ld a, [wBuffer + PK_DAMAGE + 1]
 	ld hl, wBuffer + PK_BEST_DAMAGE + 1
 	sub [hl]
@@ -216,6 +257,9 @@ AIRankPostKOSendOut::
 	cp [hl]
 	jr z, .next ; exact tie keeps the earlier legacy-ranked candidate
 .better
+	ld hl, sp + PK_FRAME_TIES
+	ld [hl], 1 ; a new leader: the only candidate at its tier and score so far
+.take
 	ld a, [wBuffer + PK_QUALITY]
 	ld [wBuffer + PK_BEST_QUALITY], a
 	ld a, [wBuffer + PK_DAMAGE]
