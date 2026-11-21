@@ -4,10 +4,11 @@ For each cave: the control pair after the first load must be decided (0/$FF or
 CAVE_DEEP_MAGIC and complement); every deep cave must have both dynamic ladders
 (A = $FD, B = $FC) armed down to cave warps 0/1; an encounter assigned to the
 premade B1F must have moved to PROCEDURAL_CAVE_1 in a deep cave. Reports the
-deep rate against CAVE_DEEP_ODDS (64/256 = 25%).
+deep rate against the deep ramp at battle count 11 (92/256, ~36%, times the ~92%
+of caves with two dynamic ladders: ~33%).
 
 usage (worktree tools/pyboy_smoke): python3 audit_cave_deep_floor.py [--caves N]
-Exit 1 on any violation or a rate outside 25% +- 6.
+Exit 1 on any violation or a rate outside 33% +- 8.
 """
 import argparse
 import io
@@ -88,6 +89,6 @@ for kind, counts in found.items():
     print(f"  {kind:8s} {total:4d} caves: {shares}")
 for p in problems[:20]:
     print("PROBLEM", p)
-ok = not problems and (99.0 <= rate if args.debug2 else 19.0 <= rate <= 31.0)
+ok = not problems and (99.0 <= rate if args.debug2 else 25.0 <= rate <= 41.0)
 print("AUDIT", "OK" if ok else "FAILED", f"({len(problems)} problems)")
 sys.exit(0 if ok else 1)

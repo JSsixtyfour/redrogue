@@ -6,10 +6,11 @@ the deep magic and its complement); every deep forest must have its opening arme
 on floor 1 exactly when the coin did not give it to floor 2; and an encounter
 assigned to the grotto must have moved to PROCEDURAL_FOREST in a deep forest and
 stayed in the grotto in an ordinary one. Reports the deep rate against
-FOREST_DEEP_ODDS (128/256 = 50%) and the coin's split.
+the deep ramp's odds at battle count 11 (DeepRampRoll: 26 + 6 x 11 = 92/256,
+~36%) and the coin's split.
 
 usage (worktree tools/pyboy_smoke): python3 audit_forest_deep_floor.py [--forests N]
-Exit 1 on any violation or a rate outside 50% +- 10.
+Exit 1 on any violation or a rate outside 36% +- 10.
 """
 import argparse
 import io
@@ -81,6 +82,6 @@ print(f"forests {args.forests}, deep {deep} ({rate:.1f}%), house on floor 2 in {
       f"encounters moved to floor 2: {moved}, stayed in the grotto (ordinary): {stayed}")
 for p in problems[:20]:
     print("PROBLEM", p)
-ok = not problems and 40.0 <= rate <= 60.0
+ok = not problems and 26.0 <= rate <= 46.0
 print("AUDIT", "OK" if ok else "FAILED", f"({len(problems)} problems)")
 sys.exit(0 if ok else 1)

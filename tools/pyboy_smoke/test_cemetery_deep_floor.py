@@ -103,23 +103,61 @@ class CemeteryDeepFloorTest(unittest.TestCase):
                          f"{description}: not on the arrival stair")
 
     # --- tests -----------------------------------------------------------
-    def test_decided_deep_from_round_5_only(self) -> None:
+    def ramp_says_deep(self, progress: int, roll: int) -> bool:
+        """DeepRampRoll's answer for wBattleCount = progress and d = roll."""
         h = self.h
-        self.enter(battle_count=4 * ROUND["ROUND_BATTLES"])
-        ctrl = self.ctrl()
-        self.assertEqual(ctrl[0] ^ ctrl[1], 0xFF, f"control pair {ctrl}")
-        self.assertEqual(ctrl[0] & (MAGIC_MASK | LIVE_2B | LIVE_3B), MAGIC, f"control {ctrl[0]:02x}")
-        self.assertFalse(self.on_b())
-        early = RedRogueHarness(ROOT, ARTIFACTS)
+
+        def roll_in(_context) -> None:
+            h.pyboy.register_file.D = roll
+
+        h.write8("wBattleCount", progress)
+        h.write8("wEndlessDepth", 0)
+        h.register_hook("DeepRampRoll", roll_in)
         try:
-            early.allow_deep_cemetery_floor = True
-            early.boot_to_lobby(battle_count=4 * ROUND["ROUND_BATTLES"] - 1, encounter_kind=4)
-            early.write8("wStageEvent", 0)
-            early.preload_and_enter_wild_area(CEM[1], "cemetery")
-            self.assertEqual(early.read_sram_bytes("sProcCaveStagingBuffer", 2, bank=0), [0x00, 0xFF],
-                             "round 4 decided deep")
+            h.park_before_hijack()
+            return h.call_routine("DeepRampRoll", capture=lambda hh: bool(hh.pyboy.register_file.F & 0x10))
         finally:
-            early.close()
+            h.unregister_hook("DeepRampRoll", roll_in)
+
+    def test_the_deep_ramp(self) -> None:
+        """Every area's deep floor is DeepRampRoll's: deep when the roll is under
+        min(CAP, BASE + STEP x progress) out of 256, ~10% at the start and ~85%
+        at round 5 (2026-11-20); always under Debug 2."""
+        h = self.h
+        h.boot_to_lobby(battle_count=1, encounter_kind=4)   # the fixture's minimum
+        base, step, cap = ROUND["DEEP_ODDS_BASE"], ROUND["DEEP_ODDS_STEP"], ROUND["DEEP_ODDS_CAP"]
+        self.assertEqual(base + step * 4 * ROUND["ROUND_BATTLES"], 218, "round 5 is not ~85%")
+        h.write8("wStatusFlags6", h.read8("wStatusFlags6") | 0x80)      # BIT_DEBUG2_MODE
+        self.assertTrue(self.ramp_says_deep(0, 255), "Debug 2 does not force deep")
+        h.write8("wStatusFlags6", h.read8("wStatusFlags6") & 0x7F)
+        for progress in (0, 1, 8, 31, 32, 36, 37, 40, 71):
+            odds = min(cap, base + step * progress)
+            with self.subTest(progress=progress):
+                self.assertTrue(self.ramp_says_deep(progress, odds - 1), f"roll {odds - 1} not deep")
+                self.assertFalse(self.ramp_says_deep(progress, odds), f"roll {odds} deep")
+
+    def test_the_cemetery_rolls_the_ramp(self) -> None:
+        """CemDeepLobbyDecide decides by the ramp at any round: forced under
+        the odds a battle-1 Cemetery is deep, over them a round-6 one is not."""
+        for count, roll, deep in ((1, 0, True), (41, 255, False)):
+            with self.subTest(count=count):
+                h = RedRogueHarness(ROOT, ARTIFACTS)
+                try:
+                    h.allow_deep_cemetery_floor = True
+                    h.boot_to_lobby(battle_count=count, encounter_kind=4)
+                    h.write8("wStatusFlags6", h.read8("wStatusFlags6") & 0x7F)   # no Debug 2
+
+                    def roll_in(_context, roll=roll) -> None:
+                        h.pyboy.register_file.D = roll
+
+                    h.register_hook("DeepRampRoll", roll_in)
+                    h.write8("wStageEvent", 0)
+                    h.preload_and_enter_wild_area(CEM[1], "cemetery")
+                    ctrl = h.read_sram_bytes("sProcCaveStagingBuffer", 2, bank=0)
+                    self.assertEqual(ctrl[0] ^ ctrl[1], 0xFF, f"control pair {ctrl}")
+                    self.assertEqual(ctrl[0] & MAGIC_MASK == MAGIC, deep, f"control {ctrl[0]:02x}")
+                finally:
+                    h.close()
         default = RedRogueHarness(ROOT, ARTIFACTS)
         try:
             default.boot_to_lobby(battle_count=41, encounter_kind=4)

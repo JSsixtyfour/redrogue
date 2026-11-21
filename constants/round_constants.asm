@@ -64,3 +64,18 @@ DEF ENDLESS_UBER_BASE EQU 1
 DEF ENDLESS_UBER_STEP EQU 4
 	ASSERT ENDLESS_UBER_BASE >= 1 && ENDLESS_UBER_BASE <= 255
 	ASSERT LAST_ROUND_BATTLECOUNT < 256, "wBattleCount is one byte"
+
+; The deep-floor ramp (DeepRampRoll, facility_deep_floor.asm): every wild area's
+; chance of a deep floor 2 grows with the run. Out of 256, BASE + STEP x progress,
+; capped at CAP: ~10% at the start, ~29% at round 2, ~48% at round 3, ~66% at
+; round 4, ~85% at round 5's first battle (progress 4 x ROUND_BATTLES), ~95% from
+; progress DEEP_RAMP_FULL_AT on (Endless saturates there). Chosen 2026-11-20:
+; "rare at the beginning and pretty high by round 5", the Cemetery on it too;
+; then every step +5 points (+13/256).
+DEF DEEP_ODDS_BASE EQU 26
+DEF DEEP_ODDS_STEP EQU 6           ; DeepRampRoll multiplies by 6 with adds
+DEF DEEP_ODDS_CAP  EQU 243
+DEF DEEP_RAMP_FULL_AT EQU (DEEP_ODDS_CAP - DEEP_ODDS_BASE + DEEP_ODDS_STEP - 1) / DEEP_ODDS_STEP
+	ASSERT DEEP_ODDS_BASE + (DEEP_RAMP_FULL_AT - 1) * DEEP_ODDS_STEP < DEEP_ODDS_CAP
+	ASSERT DEEP_ODDS_BASE + DEEP_RAMP_FULL_AT * DEEP_ODDS_STEP >= DEEP_ODDS_CAP
+	ASSERT DEEP_ODDS_BASE + 4 * ROUND_BATTLES * DEEP_ODDS_STEP == 218 ; round 5: ~85%

@@ -240,7 +240,7 @@ ForestGenericPick::
 	jr .mod
 .start
 	ld c, a                             ; c = the candidate index
-	ld d, e                             ; d = tries left
+	ld d, e                             ; d = tries left; bit 7 = the loose pass
 .try
 	ld b, 0
 	ld hl, sProcForestGenScratch
@@ -256,7 +256,16 @@ ForestGenericPick::
 	ld c, 0
 .noWrap
 	dec d
+	ld a, d
+	and $7f
 	jr nz, .try
+	; Second pass (2026-11-20): the same dead ends, refusing only the hideout's
+	; own cell, not its neighbours (FGTCellOk reads d's bit 7). Measured: the
+	; strict pass alone left 1 of 200 Forests without him. c is back at the start.
+	bit 7, d
+	ld d, e
+	set 7, d
+	jr z, .try
 .none
 	ld a, FGT_CELL_NONE
 	ld [sWildGenericCell], a
@@ -289,7 +298,8 @@ FGTCellBlock:
 	ret
 
 ; Carry = wPFCurX/Y may hold him: not a ball's block, and more than one cell
-; (two blocks) from the hideout's. On a deep floor 2 only balls 1-2 can stand
+; (two blocks) from the hideout's; with d's bit 7 (the pick's second pass), only
+; not the hideout's own block. On a deep floor 2 only balls 1-2 can stand
 ; there and there is no stage pair (ForestDeepPatchSprites parks the rest), so
 ; only those balls count and the hideout does not: measured 2026-11-20 (CGB),
 ; floor 2 had 5 dead ends, 4 under balls and 1 near floor 1's hideout. Keeps bc/de/hl.
@@ -323,6 +333,8 @@ FGTCellOk:
 	ld b, a
 	ld a, [wBuffer + wPFCurX]
 	sub b
+	bit 7, d
+	jr nz, .loose
 	add 2                               ; -2..2 -> 0..4
 	cp 5
 	jr nc, .yes
@@ -333,6 +345,15 @@ FGTCellOk:
 	add 2
 	cp 5
 	jr c, .no
+	jr .yes
+.loose                                  ; the pick's second pass: not his own cell
+	and a
+	jr nz, .yes
+	ld a, [sStageEventHideoutY]
+	ld b, a
+	ld a, [wBuffer + wPFCurY]
+	cp b
+	jr z, .no
 .yes
 	pop bc
 	pop hl
@@ -976,10 +997,10 @@ CemGenericPatch::
 ; The cell and class, after PCemFinalizeMap and the resurrector's placement. In:
 ; d/e from CDOrdinal. On his floor, the first cell from CEM_GEN_SCAN_START that
 ; the hideout rule accepts (PCemStageHideoutCellOk: a floor block, not the ball's,
-; not a stair, not floor 4's boss steps, never sealing a gap), that the
-; resurrector's crowd test passes (CRCrowded: not within one block of the
-; Channeler, the hideout or floor 1's arrival) and that is not within one block
-; of the resurrector himself. Elsewhere, or with no cell, parked.
+; not a stair, not floor 4's boss steps, never sealing a gap) and that is not
+; crowded (WGTCemCrowded: the Channeler, the resurrector, the hideout and both
+; stairs' arrival blocks), first strictly, then loosely. Elsewhere, or with no
+; cell on either pass, parked.
 ; Clobbers everything; SRAM closed.
 CemGenericPlace::
 	call FGTOpenSRAM
@@ -999,8 +1020,17 @@ CemGenericPlace::
 	jp nz, FGTCloseSRAM                 ; a battle's return keeps his position
 	ld a, d
 	ld [wBuffer + wCemMapIndex], a
+	; Two passes over every cell from CEM_GEN_SCAN_START. e = the crowd radius:
+	; 1 = not within one block of the Channeler, the resurrector, the hideout or
+	; a stair's arrival block; then 0 = only not on those blocks themselves (the
+	; hideout keeps its one-block margin for the pair).
+	; Measured 2026-11-20 (audit_cemetery_generic_trainer.py, the resurrector
+	; forced onto his floor): the strict pass alone found no cell on 5 of 211
+	; floor loads.
+	ld e, 1
+.pass
 	ld c, CEM_GEN_SCAN_START
-	ld b, CEMAP_SIZE
+	ld b, CEMAP_SIZE                    ; bit 7 = the third (open ground) pass
 .scan
 	ld a, c
 	ld d, 0
@@ -1015,11 +1045,19 @@ CemGenericPlace::
 	ld a, d
 	ld [wBuffer + wCemTryY], a
 	push bc
+	push de
+	bit 7, b
+	jr nz, .open
 	farcall PCemStageHideoutCellOk      ; Z = usable; Bankswitch's return keeps flags
+	pop de
 	jr nz, .rejected
-	farcall CRCrowded                   ; carry = crowded
-	jr c, .rejected
-	call WGTCemNearResurrector
+	jr .crowd
+.open
+	farcall WGTCemOpenGround            ; carry = he seals nothing there; keeps de
+	pop de
+	jr nc, .rejected
+.crowd
+	farcall WGTCemCrowded               ; carry = crowded; e = the radius; keeps de
 	jr nc, .found
 .rejected
 	pop bc
@@ -1030,7 +1068,24 @@ CemGenericPlace::
 	ld c, 0
 .noWrap
 	dec b
+	ld a, b
+	and $7f
 	jr nz, .scan
+	bit 7, b
+	jr nz, .closePark                   ; the third pass found nothing either
+	ld a, e
+	and a
+	jr z, .openPass
+	dec e
+	jr .pass
+.openPass
+	; Third pass (2026-11-20): any fully walkable block his one step cannot seal
+	; (WGTCemOpenGround), instead of PCemStageHideoutCellOk's plain floor and
+	; two-step pair rule. Measured: a prefab floor 1 had two cells that passed
+	; that rule, and the Channeler and the resurrector stood on both. e stays 0.
+	ld c, CEM_GEN_SCAN_START
+	ld b, $80 | CEMAP_SIZE
+	jr .scan
 .closePark
 	call FGTCloseSRAM
 	xor a
@@ -1054,29 +1109,6 @@ CemGenericPlace::
 	ld a, DOWN
 	ld [wMapSpriteData + (CEMETERY_GENERIC - 1) * 2], a
 	ret
-
-; Carry = wCemTryX/Y is within one block of the resurrector, when he stands on
-; this floor (a picture). Clobbers a/hl.
-WGTCemNearResurrector:
-	ld a, [wSprite{02d:CEMETERY_RESURRECTOR}StateData1 + SPRITESTATEDATA1_PICTUREID]
-	and a
-	ret z                               ; carry clear
-	ld a, [wSprite{02d:CEMETERY_RESURRECTOR}StateData2MapX]
-	sub 4
-	srl a
-	ld hl, wBuffer + wCemTryX
-	sub [hl]
-	inc a                               ; -1..1 -> 0..2
-	cp 3
-	ret nc
-	ld a, [wSprite{02d:CEMETERY_RESURRECTOR}StateData2MapY]
-	sub 4
-	srl a
-	ld hl, wBuffer + wCemTryY
-	sub [hl]
-	inc a
-	cp 3
-	ret                                 ; carry = within one block
 
 ; ------------------------------------------------------------
 ; His lines (D4): each class speaks the trio of a vanilla trainer of that class
@@ -1499,13 +1531,33 @@ WGTCavePick::
 	; Measured 2026-11-20: a ball took the second candidate in 2 of 9 caves.
 	ld a, [wStageEvent]
 	and STAGE_EVENT_TYPE_MASK
-	jp nz, .none
+	jr nz, .scan
 	ld a, [sStageEventHideoutX]
 	ld d, a
 	ld a, [sStageEventHideoutY]
 	ld e, a
 	call WGTCaveCellOk.notHideout
-	jp nc, .none
+	jr c, .found
+	; Last (2026-11-20): the first block, in reading order, inside open floor
+	; (WGTCaveOpenOk), clear of the pair, every object and every warp. Measured:
+	; with Jessie & James armed, the two candidates above left 14 of 120 caves
+	; without him; a block-level dead end was too rare in a cavern (9 of 120
+	; still without) and two found sat in unreachable edge pockets.
+.scan
+	lb de, 0, 0
+.scanBlock
+	call WGTCaveOpenOk
+	jr c, .found
+	inc d
+	ld a, d
+	cp CAVESUB_SIZE
+	jr c, .scanBlock
+	ld d, 0
+	inc e
+	ld a, e
+	cp CAVESUB_SIZE
+	jr c, .scanBlock
+	jp .none
 .found
 	call WGTCaveBlockMask
 	ld c, 0
@@ -1568,6 +1620,102 @@ WGTCavePick::
 	ld [sWildGenericCell], a
 	ret
 
+; d/e = a block. Carry = WGTCaveCellOk passes, it is more than one block from
+; the hideout (the pair), no other object (slots 1-10) and no warp stands on it,
+; it is carved floor (reachable), and it and its eight neighbours are all fully
+; walkable (open floor). SRAM bank 0 open. Keeps de; clobbers a/bc/hl.
+WGTCaveOpenOk:
+	call WGTCaveCellOk
+	ret nc
+	ld a, [sStageEventHideoutX]
+	sub d
+	inc a                               ; -1..1 -> 0..2
+	cp 3
+	jr nc, .farFromPair
+	ld a, [sStageEventHideoutY]
+	sub e
+	inc a
+	cp 3
+	jr c, .no
+.farFromPair
+	ld hl, wSprite01StateData2MapY
+	ld b, CAVE_GENERIC - 1              ; every object before his
+.object
+	ld a, [hli]
+	sub 4
+	srl a
+	cp e
+	jr nz, .nextObject
+	ld a, [hl]
+	sub 4
+	srl a
+	cp d
+	jr z, .no
+.nextObject
+	ld a, l
+	add SPRITESTATEDATA2_LENGTH - 1     ; the next slot's MapY
+	ld l, a
+	dec b
+	jr nz, .object
+	ld a, [wNumberOfWarps]
+	and a
+	jr z, .neighbours
+	ld b, a
+	ld hl, wWarpEntries
+.warp
+	ld a, [hli]                         ; tile Y
+	srl a
+	cp e
+	ld a, [hli]                         ; tile X
+	inc hl
+	inc hl
+	jr nz, .nextWarp
+	srl a
+	cp d
+	jr z, .no
+.nextWarp
+	dec b
+	jr nz, .warp
+.neighbours
+	; His block must be carved floor: only the carving writes PC_BLOCK_FLOOR,
+	; and every carve walks from the entrance, so it is reachable (the balls'
+	; own rule). Measured 2026-11-20: open floor alone found decorated fill in
+	; sealed pockets near the top edge (12 of 120 caves).
+	call WGTCaveBlockId
+	cp PC_BLOCK_FLOOR
+	jr nz, .no
+	; All nine blocks around and under him fully walkable: then a path through
+	; his step can always go round it, so he cuts nothing off. Off the grid
+	; reads solid, so the edge blocks never pass.
+	push de
+	dec e
+	dec d
+	ld c, 3                             ; rows
+.nRow
+	ld b, 3                             ; columns
+	push de
+.nCol
+	call WGTCaveBlockMask               ; keeps bc/de
+	and $0f
+	cp $0f
+	jr nz, .nFail
+	inc d
+	dec b
+	jr nz, .nCol
+	pop de
+	inc e
+	dec c
+	jr nz, .nRow
+	pop de
+	scf
+	ret
+.nFail
+	pop de
+	pop de
+.no
+	and a
+	ret
+
 ; d/e = a candidate block. Carry = he may stand there: in the grid, not the
 ; hideout's (from .notHideout: skipped), not the exit's, not a ball's (slots
 ; 2-5), and walkable somewhere. SRAM bank 0 open. Keeps de; clobbers a/bc/hl.
@@ -1622,6 +1770,27 @@ WGTCaveCellOk:
 	and a
 	ret
 
+; d/e = a block in the 20x20 grid. Out: a = its block id in wOverworldMap.
+; Keeps bc/de; clobbers hl.
+WGTCaveBlockId:
+	push bc
+	ld hl, wOverworldMap + CAVESUB_BASE
+	ld b, 0
+	ld c, d
+	add hl, bc
+	ld c, CAVESUB_STRIDE
+	ld a, e
+	and a
+	jr z, .haveBlock
+.row
+	add hl, bc
+	dec a
+	jr nz, .row
+.haveBlock
+	ld a, [hl]
+	pop bc
+	ret
+
 ; d/e = a cave block (out of the 20x20 grid reads as solid). Out: a = its
 ; walkable-quadrant mask (CavernQuadWalkMasks, $3F, read with FarCopyData into
 ; wBuffer + 1: wBuffer is free after PCFinalizeCave; FarCopyData itself uses
@@ -1669,3 +1838,233 @@ WGTCaveBlockMask:
 .solid
 	xor a
 	ret
+
+; The Cemetery's crowd and open-ground tests for CemGenericPlace's scan, out of
+; "Wild Generic Trainer" ($1A), which their third pass overflowed (2026-11-20);
+; $2A, not $29, which the debug ROM filled. Both entries are farcalled (the
+; radius comes in e, the answer is the carry, de is kept); their own calls are
+; local or HOME (FarCopyData).
+SECTION "Wild Generic Trainer Cemetery Scan", ROMX, BANK[$2A]
+
+; Carry = he can stand on wCemTryX/Y's top-left step without sealing anything:
+; its block is walkable in all four quadrants, and each step that touches his
+; from outside the block also reaches the block's bottom-right step without
+; him: the west block's top-right only with its bottom-right, the north block's
+; bottom-left only with its bottom-right (off the map is solid). Not the floor's
+; ball block, a stair block or one of floor 4's boss and exit steps. Reads the
+; floor's stored map (sProcCemeteryMaps, SRAM bank 0 open).
+; Keeps de; clobbers a/bc/hl.
+WGTCemOpenGround::
+	push de
+	ld a, [wBuffer + wCemMapIndex]
+	ld e, a
+	ld d, 0
+	; The ball's block.
+	ld hl, sProcCemeteryBallX
+	add hl, de
+	ld a, [wBuffer + wCemTryX]
+	cp [hl]
+	jr nz, .notBall
+	ld hl, sProcCemeteryBallY
+	add hl, de
+	ld a, [wBuffer + wCemTryY]
+	cp [hl]
+	jr z, .no
+.notBall
+	; The stair blocks (PCemHideoutExcludeCommon) and, on floor 4, the boss
+	; steps and the south exit (PCemHideoutExcludeFloor4).
+	ld hl, WGTCemNeverHere
+	ld a, e
+	cp 3
+	jr z, .exclude
+	ld hl, WGTCemNeverHere.common
+.exclude
+	ld a, [hli]
+	cp $ff
+	jr z, .haveMap
+	ld b, a
+	ld a, [hli]
+	ld c, a
+	ld a, [wBuffer + wCemTryX]
+	cp b
+	jr nz, .exclude
+	ld a, [wBuffer + wCemTryY]
+	cp c
+	jr nz, .exclude
+	jr .no
+.haveMap
+	; hl -> the block: maps + index * 90 + Y * 10 + X.
+	ld hl, sProcCemeteryMaps
+	ld bc, CEMAP_SIZE
+	ld a, e
+	and a
+	jr z, .rows
+.map
+	add hl, bc
+	dec a
+	jr nz, .map
+.rows
+	ld c, CEMAP_WIDTH
+	ld a, [wBuffer + wCemTryY]
+	and a
+	jr z, .columns
+.row
+	add hl, bc
+	dec a
+	jr nz, .row
+.columns
+	ld a, [wBuffer + wCemTryX]
+	ld c, a
+	add hl, bc
+	ld a, [hl]
+	call WGTCemMask
+	cp %1111
+	jr nz, .no
+	ld a, [wBuffer + wCemTryX]
+	and a
+	jr z, .north                        ; the west edge: solid beyond
+	dec hl
+	ld a, [hli]
+	call WGTCemMask
+	and %1010                           ; TR, BR
+	cp %0010                            ; TR without BR
+	jr z, .no
+.north
+	ld a, [wBuffer + wCemTryY]
+	and a
+	jr z, .yes
+	ld bc, -CEMAP_WIDTH
+	add hl, bc
+	ld a, [hl]
+	call WGTCemMask
+	and %1100                           ; BL, BR
+	cp %0100                            ; BL without BR
+	jr z, .no
+.yes
+	pop de
+	scf
+	ret
+.no
+	pop de
+	and a
+	ret
+
+WGTCemNeverHere:
+	db 4, 7                             ; floor 4: boss trigger, player step (9,15)
+	db 5, 8                             ; floor 4: boss trigger, player step (10,16)
+	db 4, 8                             ; floor 4: south exit warp, player step (9,16)
+.common
+	db 1, 4                             ; west staircase block
+	db 9, 4                             ; east staircase block
+	db $ff
+
+; a = a Cemetery block id. Out: a = its walkable-quadrant mask (bit 0 TL, 1 TR,
+; 2 BL, 3 BR; CemeteryQuadWalkMasks, $05, one byte through FarCopyData, which
+; uses wBuffer + 0: the map index, saved round it). Keeps bc/de/hl.
+DEF WGT_CEM_MASK_SCRATCH EQU 29          ; wBuffer's last byte; the Cemetery uses 0-20
+WGTCemMask:
+	cp NUM_CEMETERY_QUAD_MASKS
+	jr c, .inTable
+	xor a
+	ret
+.inTable
+	push bc
+	push de
+	push hl
+	ld e, a
+	ld d, 0
+	ld hl, CemeteryQuadWalkMasks
+	add hl, de
+	ld a, [wBuffer + wCemMapIndex]
+	push af
+	ld de, wBuffer + WGT_CEM_MASK_SCRATCH
+	ld bc, 1
+	ld a, BANK(CemeteryQuadWalkMasks)
+	call FarCopyData
+	pop af
+	ld [wBuffer + wCemMapIndex], a
+	ld a, [wBuffer + WGT_CEM_MASK_SCRATCH]
+	pop hl
+	pop de
+	pop bc
+	ret
+
+; The east stair's arrival block, as PCEM_ARRIVAL_BLOCK is the west stair's: the
+; block inside each stair tile ((3, 9) and (18, 9) on floors 1-3, (18, 9) on 4).
+DEF WGT_CEM_EAST_ARRIVAL_X EQU 8
+
+; e = the radius (0 or 1). Carry = wCemTryX/Y is crowded: within e of the
+; Channeler (on this floor), the resurrector (a picture here) and either stair's
+; arrival block (floor 1's west one holds the stage pair's arrival steps), and
+; within one of the hideout (on this floor). SRAM bank 0 open. Keeps de;
+; clobbers a/bc/hl.
+WGTCemCrowded::
+	ld hl, wBuffer + wCemMapIndex
+	ld a, [sProcCemeteryItemGot]
+	and CEM_CHANNELER_FLOOR_MASK
+	swap a
+	cp [hl]
+	jr nz, .resurrector
+	ASSERT CEMETERY_1_CHANNELER == 4
+	ld hl, wSprite04StateData2MapY
+	call WGTCemNearSprite
+	ret c
+.resurrector
+	ld a, [wSprite{02d:CEMETERY_RESURRECTOR}StateData1 + SPRITESTATEDATA1_PICTUREID]
+	and a
+	jr z, .hideout
+	ld hl, wSprite{02d:CEMETERY_RESURRECTOR}StateData2MapY
+	call WGTCemNearSprite
+	ret c
+.hideout
+	ld hl, wBuffer + wCemMapIndex
+	ld a, [sStageEventHideoutFloor]
+	cp [hl]
+	jr nz, .stairs
+	ld a, [sStageEventHideoutX]
+	ld b, a
+	ld a, [sStageEventHideoutY]
+	ld c, a
+	push de
+	ld e, 1                             ; the pair: always one block clear
+	call WGTCemNear
+	pop de
+	ret c
+.stairs
+	lb bc, PCEM_ARRIVAL_BLOCK_X, PCEM_ARRIVAL_BLOCK_Y
+	call WGTCemNear
+	ret c
+	lb bc, WGT_CEM_EAST_ARRIVAL_X, PCEM_ARRIVAL_BLOCK_Y
+	jr WGTCemNear
+
+; hl -> a sprite's StateData2MapY (MapX follows). Its block into b/c, then
+; WGTCemNear. Clobbers a/bc/hl.
+WGTCemNearSprite:
+	ld a, [hli]
+	sub 4
+	srl a
+	ld c, a
+	ld a, [hl]
+	sub 4
+	srl a
+	ld b, a
+	; fall through
+
+; b/c = a block X/Y, e = a radius (0 or 1). Carry = wCemTryX/Y is within e of
+; it on both axes. Keeps de; clobbers a/hl.
+WGTCemNear:
+	ld a, e
+	add a
+	inc a
+	ld h, a                             ; 2e + 1
+	ld a, [wBuffer + wCemTryX]
+	sub b
+	add e                               ; -e..e -> 0..2e
+	cp h
+	ret nc
+	ld a, [wBuffer + wCemTryY]
+	sub c
+	add e
+	cp h
+	ret                                 ; carry = within e
+

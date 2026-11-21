@@ -63,17 +63,12 @@ ForestDeepLobbyDecide::
 	ld d, a                             ; the deep roll
 	call Random
 	ld e, a                             ; the rest house's coin
-	ld b, 0
 IF FOREST_DEEP_ENABLED
-IF DEF(_DEBUG)
-	ld a, [wStatusFlags6]
-	bit BIT_DEBUG2_MODE, a
-	jr nz, .deep                        ; Debug 2: every Forest is deep
+	farcall DeepRampRoll                ; carry = deep: the run's ramp, or Debug 2 (keeps de)
 ENDC
-	ld a, d
-	cp FOREST_DEEP_ODDS
+	ld b, 0                             ; keeps the carry
+IF FOREST_DEEP_ENABLED
 	jr nc, .decided
-.deep
 	inc b
 ENDC
 .decided

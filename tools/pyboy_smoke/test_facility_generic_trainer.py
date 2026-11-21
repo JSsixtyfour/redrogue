@@ -31,6 +31,8 @@ POOL = [("SCIENTIST", "SPRITE_SCIENTIST"), ("ROCKET", "SPRITE_ROCKET"),
 STEMS = {"SCIENTIST": "Scientist", "ROCKET": "Rocket", "BURGLAR": "Burglar",
          "SUPER_NERD": "SuperNerd", "ENGINEER": "Engineer", "JUGGLER": "Juggler"}
 LAYOUTS = 8
+TOGGLES = parse_rgbds_constants(ROOT / "constants/toggle_constants.asm")
+RAM = parse_rgbds_constants(ROOT / "constants/ram_constants.asm")
 
 
 class FacilityGenericTrainerTest(unittest.TestCase):
@@ -124,6 +126,14 @@ class FacilityGenericTrainerTest(unittest.TestCase):
         h = self.h
         return h.pyboy.memory[h.address("wOverworldMap") + PFAC_BASE + by * PFAC_STRIDE + bx]
 
+    def hidden(self, slot: int) -> bool:
+        """Slot 12, the Super Nerd, is hidden unless the Facility got no subroom
+        pad (its toggle); the others draw from their picture alone."""
+        if slot != 12:
+            return False
+        n = TOGGLES["TOGGLE_FACILITY_SUPER_NERD"]
+        return bool(self.h.read8("wToggleableObjectFlags", offset=n // 8) >> n % 8 & 1)
+
     def cell(self) -> int:
         return self.h.read_sram_bytes("sWildGenericCell", 1, bank=0)[0]
 
@@ -143,12 +153,19 @@ class FacilityGenericTrainerTest(unittest.TestCase):
         bx, by = tx // 2, ty // 2
         self.assertEqual(self.block(bx, by), PFAC_FLOOR, f"{label}: not plain floor")
         hx, hy = h.read_sram_bytes("sStageEventHideoutX", 2, bank=0)
-        if hx != 0xFF:
+        armed = h.read8("wStageEvent") & RAM["STAGE_EVENT_TYPE_MASK"]
+        if hx != 0xFF and armed:           # no event: nobody stands there
             self.assertFalse(abs(hx - bx) <= 2 and abs(hy - by) <= 2,
                              f"{label}: next to the hideout {(hx, hy)}")
         for slot in range(1, 14):
-            if self.picture(slot):
+            if self.picture(slot) and not self.hidden(slot):
                 self.assertNotEqual(self.pos(slot), (tx, ty), f"{label}: on slot {slot}")
+        # The optional encounter's block and the shown Super Nerd's (both on a
+        # block's bottom-right step): never his block (PFacGenericClear).
+        for slot in (12, 13):
+            if self.picture(slot) and not self.hidden(slot) and self.pos(slot) != (6, 6):
+                x, y = self.pos(slot)
+                self.assertNotEqual((x // 2, y // 2), (tx // 2, ty // 2), f"{label}: slot {slot}'s block")
         self.assertEqual(h.read8("wMapSpriteExtraData", offset=(SLOT - 1) * 2),
                          self.trainers[name], label)
         base = h.read8(f"wSprite{SLOT:02d}StateData2ImageBaseOffset")
@@ -160,12 +177,10 @@ class FacilityGenericTrainerTest(unittest.TestCase):
         for offset in range(LAYOUTS):
             with self.subTest(offset=offset):
                 self.enter(1, offset)
-                if self.picture(SLOT):
-                    cells.add(self.assert_placed(0, f"layout {offset}"))
-                    placed += 1
-                else:
-                    self.assertEqual(self.cell(), CELL_NONE, "absent without a reason")
-        self.assertGreaterEqual(placed, LAYOUTS - 1, "he is absent too often")
+                self.assertTrue(self.picture(SLOT), "absent")
+                cells.add(self.assert_placed(0, f"layout {offset}"))
+                placed += 1
+        self.assertEqual(placed, LAYOUTS)
         self.assertGreater(len(cells), 1, "every layout gave the same cell")
 
     def test_every_pool_class_is_placed_as_itself(self) -> None:

@@ -30,8 +30,8 @@ DEF BIT_FACILITY_DEEP_FAST_FADE EQU 2 ; transient: this warp is the first descen
 DEF BIT_FACILITY_DEEP_BALLS_2 EQU 3   ; floor 2 keeps ball 2 too (slot 3)
 DEF BIT_FACILITY_DEEP_ENC_2   EQU 4   ; the subroom's encounter moved to floor 2
 	ASSERT (1 << BIT_FACILITY_DEEP_ENC_2) & FACILITY_DEEP_MAGIC == 0
-; The deep-floor roll, out of 256, made once per Facility in its preload.
-DEF FACILITY_DEEP_ODDS        EQU 128 ; 50%, as the Forest
+; The deep-floor roll, made once per Facility in its preload, is the shared ramp
+; (DeepRampRoll, DEEP_ODDS_* in round_constants.asm; 50% flat until 2026-11-20).
 ; 0 = every Facility is decided ordinary: the kill switch. The PyBoy harness
 ; decides Facilities ordinary on its own unless a test sets allow_deep_facility_floor.
 DEF FACILITY_DEEP_ENABLED     EQU 1

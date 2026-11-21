@@ -30,8 +30,8 @@ DEF BIT_FOREST_DEEP_HOUSE_2  EQU 2   ; the coin put the rest house on floor 2
 DEF BIT_FOREST_DEEP_BALLS_2  EQU 3   ; floor 2 keeps ball 2 too (slot 3), from the coin's bit 3
 DEF BIT_FOREST_DEEP_OPENING_2 EQU 4  ; floor 2 has its own opening (its exit is closed)
 	ASSERT (1 << BIT_FOREST_DEEP_OPENING_2) & FOREST_DEEP_MAGIC_MASK == 0
-; The deep-floor roll, out of 256, made once per Forest in the lobby.
-DEF FOREST_DEEP_ODDS         EQU 128 ; 50% (the cave's is 25%)
+; The deep-floor roll, made once per Forest in the lobby, is the shared ramp
+; (DeepRampRoll, DEEP_ODDS_* in round_constants.asm; 50% flat until 2026-11-20).
 ; 0 = every Forest is decided ordinary: the kill switch. The PyBoy harness
 ; decides Forests ordinary on its own unless a test sets allow_deep_forest_floor.
 DEF FOREST_DEEP_ENABLED      EQU 1

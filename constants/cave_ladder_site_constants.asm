@@ -189,8 +189,8 @@ DEF CAVE_DEEP_MANIAC       EQU 2   ; uses the Super Nerd's object, as in the B1F
 DEF CAVE_DEEP_NO_RESIDENT  EQU 3
 DEF BIT_CAVE_DEEP_SETTLED  EQU 4   ; floor 2's one-time conversion has run
 	ASSERT (1 << BIT_CAVE_DEEP_SETTLED) & CAVE_DEEP_MAGIC_MASK == 0
-; The deep-floor roll, out of 256, made once per cave on its first load.
-DEF CAVE_DEEP_ODDS         EQU 64  ; 25%
+; The deep-floor roll, made once per cave on its first load, is the shared ramp
+; (DeepRampRoll, DEEP_ODDS_* in round_constants.asm; 25% flat until 2026-11-20).
 ; 0 = every cave is decided ordinary (the roll and Debug 2's forcing are off):
 ; the kill switch. The PyBoy harness decides caves ordinary on its own unless a
 ; test sets allow_deep_cave_floor, so B1F fixtures are unaffected either way.

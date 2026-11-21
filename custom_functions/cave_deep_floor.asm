@@ -166,15 +166,9 @@ ENDC
 	ld a, [CAVESUB_LADDER_B]
 	cp CAVESUB_DYN_LADDER_2
 	jr nz, .decide                      ; two real ladders, or no floor 2
-IF DEF(_DEBUG)
-	ld a, [wStatusFlags6]
-	bit BIT_DEBUG2_MODE, a
-	jr nz, .deep                        ; Debug 2: every cave that can be is
-ENDC
-	ld a, d
-	cp CAVE_DEEP_ODDS
+	farcall DeepRampRoll                ; carry = deep: the run's ramp, or Debug 2 (keeps de)
+	ld b, 0                             ; an ordinary cave; keeps the carry
 	jr nc, .decide
-.deep
 	ld b, CAVE_DEEP_MAGIC
 	; Floor 2 is the B1F now: an encounter assigned to the premade one (the
 	; cold cave's Onix or Snorlax) stands on floor 2 instead.

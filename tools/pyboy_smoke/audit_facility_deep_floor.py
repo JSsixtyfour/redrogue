@@ -7,13 +7,13 @@ For each Facility, after its first load:
   * an encounter rolled for the subroom stands on PROCEDURAL_FACILITY with the
     floor-2 state bit in a deep Facility, and is never left on the subroom map;
   * an ordinary Facility keeps the state bit clear.
-Reports the deep rate against FACILITY_DEEP_ODDS (128/256 = 50%) and how often the
+Reports the deep rate against the deep ramp at battle count 11 (92/256, ~36%) and how often the
 no-pad demotion fired. For the first --descend deep Facilities it also takes the pad
 down and checks floor 2: the resident stands on a plain-floor block that no ball,
 encounter or other object occupies, is shown, and floor 2 carries a way back up.
 
 usage (worktree tools/pyboy_smoke): python3 audit_facility_deep_floor.py [--facilities N] [--descend M]
-Exit 1 on any violation or a deep rate outside 50% +- 10.
+Exit 1 on any violation or a deep rate outside 36% +- 10.
 """
 import argparse
 import io
@@ -124,6 +124,6 @@ if sum(spots.values()) >= 30 and len(spots) * 3 < sum(spots.values()):
     problems.append(("-", f"the resident stands on only {len(spots)} tiles in {sum(spots.values())} floors 2"))
 for p in problems[:20]:
     print("PROBLEM", p)
-ok = not problems and 40.0 <= rate <= 60.0
+ok = not problems and 26.0 <= rate <= 46.0
 print("AUDIT", "OK" if ok else "FAILED", f"({len(problems)} problems)")
 sys.exit(0 if ok else 1)

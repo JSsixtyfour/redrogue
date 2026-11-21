@@ -29,8 +29,8 @@ DEF BIT_CEM_SHADOW_READY_3 EQU 1
 DEF BIT_CEM_SHADOW_GOT_2   EQU 2
 DEF BIT_CEM_SHADOW_GOT_3   EQU 3
 
-; The gate: round 5 and later (the first round whose route trainers field five).
-DEF CEM_DEEP_MIN_PROGRESS  EQU 4 * ROUND_BATTLES
+; Deep or not: the shared ramp (DeepRampRoll, DEEP_ODDS_* in round_constants.asm).
+; Until 2026-11-20 every Cemetery from round 5 was deep and none before.
 DEF CEM_DEEP_NUM_ORDINALS  EQU 6   ; 1, 2, 3, 2b, 3b, 4
 
 ; The resurrection NPC (custom_functions/cemetery_resurrector.asm): his ordinal

@@ -45,17 +45,13 @@ FacilityDeepLobbyDecide::
 	ld d, a                             ; the deep roll
 	call Random
 	ld e, a                             ; bit 3: floor 2's second ball
-	ld b, 0
 IF FACILITY_DEEP_ENABLED
-IF DEF(_DEBUG)
-	ld a, [wStatusFlags6]
-	bit BIT_DEBUG2_MODE, a
-	jr nz, .deep                        ; Debug 2: every Facility is deep
+	ASSERT BANK(DeepRampRoll) == BANK(FacilityDeepLobbyDecide)
+	call DeepRampRoll                   ; carry = deep: the run's ramp, or Debug 2 (keeps de)
 ENDC
-	ld a, d
-	cp FACILITY_DEEP_ODDS
+	ld b, 0                             ; keeps the carry
+IF FACILITY_DEEP_ENABLED
 	jr nc, .decided
-.deep
 	inc b
 ENDC
 .decided
@@ -702,4 +698,40 @@ FDF2CloseSRAM:
 	ld a, BMODE_SIMPLE
 	ld [rBMODE], a
 	ld [rRAMG], a
+	ret
+
+; Its own section in $29, beside "Facility Deep Floor", which reaches it with a
+; plain call (the file's second section is $15).
+SECTION "Deep Ramp", ROMX, BANK[$29]
+
+; ------------------------------------------------------------
+; The deep-floor ramp, shared by all four wild areas' decisions (Forest, Cave,
+; Facility, Cemetery; constants/round_constants.asm DEEP_ODDS_*). In: d = the
+; area's deep roll (0-255). Out: carry = deep, when d is under
+; min(CAP, BASE + STEP x GetRunProgress), or always under Debug 2. Farcall-safe:
+; the answer is the carry, the input is d; keeps de. Clobbers a/b.
+; ------------------------------------------------------------
+DeepRampRoll::
+IF DEF(_DEBUG)
+	ld a, [wStatusFlags6]
+	bit BIT_DEBUG2_MODE, a
+	jr z, .ramp
+	scf                                 ; Debug 2: every area that can be is deep
+	ret
+.ramp
+ENDC
+	call GetRunProgress                 ; a = battles, Endless included (saturates)
+	cp DEEP_RAMP_FULL_AT
+	ld b, DEEP_ODDS_CAP
+	jr nc, .roll
+	ld b, a
+	add a
+	add b
+	add a                               ; x 6
+	ASSERT DEEP_ODDS_STEP == 6
+	add DEEP_ODDS_BASE
+	ld b, a
+.roll
+	ld a, d
+	cp b                                ; carry = the roll is under the odds
 	ret

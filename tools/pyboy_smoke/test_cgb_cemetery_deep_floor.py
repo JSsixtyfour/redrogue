@@ -16,7 +16,7 @@ class CGBCemeteryDeepFloorTest(deep.CemeteryDeepFloorTest):
 
 # Its extra harnesses check the harness's defaults, not the hardware, and a
 # second DMG harness cannot run in a CGB worker.
-CGBCemeteryDeepFloorTest.test_decided_deep_from_round_5_only = None
+CGBCemeteryDeepFloorTest.test_the_cemetery_rolls_the_ramp = None
 
 
 if __name__ == "__main__":

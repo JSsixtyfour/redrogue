@@ -2,11 +2,12 @@
 """Audit: the cave's generic route trainer (GENERIC_TRAINER_ALL_AREAS_SPEC.md).
 
 For each seeded cave (one fresh boot, real preload and warp-in, no stage event),
-with his roll forced to a row on floor 1, this checks that he is either placed by
-test_cave_generic_trainer's assert_placed (the candidate dead end, clear of balls,
-boss and pair, talkable from a tile the player reaches) or absent for a measured
-reason (both candidates taken by the exit or a ball). It reports the absence rate
-by reason and fails above MAX_ABSENT.
+with his roll forced to a row on floor 1, this checks that he is placed by
+test_cave_generic_trainer's assert_placed (a candidate dead end, or, when every
+candidate is taken, the fallback dead end clear of the pair, objects and warps;
+talkable from a tile the player reaches). Any absence fails (2026-11-20: the
+fallback scan made him always present; before it, 14 of 120 caves with Jessie &
+James armed had none).
 
 Usage:
     python3 tools/pyboy_smoke/audit_cave_generic_trainer.py [--seeds 120]
@@ -20,7 +21,7 @@ from collections import Counter
 
 import test_cave_generic_trainer as t
 
-MAX_ABSENT = 0.15  # without an event; with one, see the report (no hideout fallback)
+MAX_ABSENT = 0.0
 
 
 class Audit(t.CaveGenericTrainerTest):
@@ -46,7 +47,12 @@ def main() -> int:
             try:
                 if audit.picture(t.SLOT):
                     audit.assert_placed(0, f"seed {seed}")
-                    reasons["placed"] += 1
+                    ax, ay = h.read_sram_bytes("sStageEventHideoutAltX", 2, bank=0)
+                    hx, hy = h.read_sram_bytes("sStageEventHideoutX", 2, bank=0)
+                    tx, ty = audit.pos(t.SLOT)
+                    which = ("second candidate" if (tx // 2, ty // 2) == (ax, ay)
+                             else "hideout's dead end" if (tx // 2, ty // 2) == (hx, hy) else "fallback")
+                    reasons[f"placed: {which}"] += 1
                     continue
                 ax, ay = h.read_sram_bytes("sStageEventHideoutAltX", 2, bank=0)
                 ey, ex = h.read8("wWarpEntries", offset=4) // 2, h.read8("wWarpEntries", offset=5) // 2
@@ -64,7 +70,7 @@ def main() -> int:
     absent = sum(n for k, n in reasons.items() if k.startswith("absent"))
     rate = absent / args.seeds
     print(f"caves {args.seeds}, {dict(reasons)}, absent {rate:.1%} (max {MAX_ABSENT:.0%}), problems {problems}")
-    return 1 if problems or (not event and rate > MAX_ABSENT) else 0
+    return 1 if problems or rate > MAX_ABSENT else 0
 
 
 if __name__ == "__main__":

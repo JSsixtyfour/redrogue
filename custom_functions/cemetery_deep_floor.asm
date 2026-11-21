@@ -63,10 +63,11 @@ CemDeepLobbyDecide::
 	res BIT_ROGUE_DEEP_FLOOR, [hl]
 	ld hl, wOptionalEncounterState
 	res BIT_OPTIONAL_ON_FLOOR_2, [hl]
-	ld b, 0
-	call GetRunProgress                 ; the wild budget's own measure of the run
-	cp CEM_DEEP_MIN_PROGRESS
-	jr c, .decided
+	call Random
+	ld d, a                             ; the deep roll
+	farcall DeepRampRoll                ; carry = deep: the run's ramp, or Debug 2
+	ld b, 0                             ; keeps the carry
+	jr nc, .decided
 	inc b
 .decided
 	; b = 1 deep, 0 ordinary. The PyBoy harness forces 0 here unless a test

@@ -6513,8 +6513,10 @@ PFacFinalize::
     farcall FacSubroomGenerate
     ; The generic trainer's room (GENERIC_TRAINER_ALL_AREAS_SPEC.md): after the
     ; pads and the subroom piece, so neither can land under him.
-    call PFacGenericPick
     farcall OptionalFacilityPlaceEncounter ; last too: its search moves nothing
+    ; The generic trainer's cell, after the encounter's block (he avoids it; his
+    ; pick draws no Random, so the order moves no roll).
+    call PFacGenericPick
 
     ; === Bake: copy wOverworldMap -> sProcFacilityStagingBuffer ===
     ld hl, wOverworldMap + PFAC_BASE
@@ -7058,7 +7060,7 @@ PFacGenericPick:
 .haveStart
     add 2
     ld b, a                         ; b = the room id (2-10)
-    ld c, 9                         ; c = rooms left
+    ld c, 9                         ; c = rooms left; bit 7 = the second pass
     ld a, BANK(sProcFacilityGenScratch)
     ld [rRAMB], a
 .room
@@ -7068,10 +7070,12 @@ PFacGenericPick:
     push hl
     ld de, 2
     add hl, de
-    call PFacWUnlessSpinner         ; W, 0 = not placed or a spinner room
+    call PFacWUnlessSpinner         ; W, 0 = not placed or a spinner room; keeps bc
     pop hl
     and a
     jr z, .next
+    bit 7, c
+    jr nz, .wholeRoom
     ld a, [hli]
     ld d, a                         ; d = room X
     ld a, [hli]
@@ -7086,8 +7090,8 @@ PFacGenericPick:
     ld e, a                         ; e = center Y
     call PFacHideoutFindFloor       ; carry, d/e = a plain-floor block
     jr nc, .next
-    call PFacGenericClear           ; carry = clear of the hideout and the balls
-    jr c, .found
+    farcall PFacGenericClear        ; carry = clear of the hideout and the balls; keeps de
+    jp c, .found
 .next
     pop bc
     inc b
@@ -7097,12 +7101,81 @@ PFacGenericPick:
     ld b, 2
 .noWrap
     dec c
+    ld a, c
+    and $3f
     jr nz, .room
+    ; Second pass (2026-11-20): every plain-floor block of each room, by the
+    ; same rules. Measured: the centre pass alone left 13% of Facilities with no
+    ; cell (few rooms, half refused by PFacHideoutFindFloor, the rest the
+    ; hideout's room or a ball's). b is back at the first room.
+    ; Third pass: the same blocks, by the rule for his one step instead of the
+    ; pair's two (PFacOneStepKeepsWayOpen). Measured: a Facility of one spinner
+    ; room and one-block corridors had no other block than a ball's.
+    bit 6, c
+    jr nz, .none
+    bit 7, c
+    ld c, $80 | 9
+    jr z, .room
+    ld c, $c0 | 9
+    jr .room
+.none
     xor a
     ld [rRAMB], a
     ld a, $fe                       ; none
     ld [sWildGenericCell], a
     jr .done
+
+; The second pass's room: hl -> its record (X, Y, W, H). Rows, then columns;
+; on a block that passes, .found. Bank 1 stays selected.
+.wholeRoom
+    ld a, [hli]
+    ld [wBuffer + wPFacRmX], a
+    ld a, [hli]
+    ld [wBuffer + wPFacRmY], a
+    ld a, [hli]
+    ld [wBuffer + wPFacRmW], a
+    ld a, [hl]
+    ld [wBuffer + wPFacRmH], a
+.row
+    ld a, [wBuffer + wPFacRmX]
+    ld [wBuffer + wPFacCurX], a
+    ld a, [wBuffer + wPFacRmW]
+    ld [wBuffer + wPFacRmCounter], a
+.block
+    ld a, [wBuffer + wPFacRmY]
+    ld [wBuffer + wPFacCurY], a
+    call PFacReadBlock              ; clobbers a/de/hl
+    cp PFAC_FLOOR
+    jr nz, .nextBlock
+    pop bc                          ; the pass bits
+    push bc
+    bit 6, c
+    jr nz, .oneStep
+    call PFacHideoutKeepsWayOpen    ; carry = safe; keeps bc
+    jr .safe
+.oneStep
+    call PFacOneStepKeepsWayOpen    ; carry = safe
+.safe
+    jr nc, .nextBlock
+    ld a, [wBuffer + wPFacCurX]
+    ld d, a
+    ld a, [wBuffer + wPFacCurY]
+    ld e, a
+    farcall PFacGenericClear        ; carry = clear; keeps de
+    jr c, .found
+.nextBlock
+    ld hl, wBuffer + wPFacCurX
+    inc [hl]
+    ld hl, wBuffer + wPFacRmCounter
+    dec [hl]
+    jr nz, .block
+    ld hl, wBuffer + wPFacRmY
+    inc [hl]
+    ld hl, wBuffer + wPFacRmH
+    dec [hl]
+    jr nz, .row
+    jp .next
+
 .found
     pop bc
     xor a
@@ -7123,62 +7196,39 @@ PFacGenericPick:
     ld [rRAMB], a
     ret
 
-; d/e = a block. Carry = more than two blocks (Chebyshev) from the hideout, so
-; clear of the pair (the hideout and the block right of it), and not a ball's
-; block (sProcFacilityBallXY, tile Y/X). Keeps de; leaves bank 1 selected.
-; Clobbers a/bc/hl.
-PFacGenericClear:
-    xor a
-    ld [rRAMB], a
-    ld a, [sStageEventHideoutX]
-    cp STAGE_EVENT_NO_HIDEOUT
-    jr z, .balls
-    sub d
-    add 2                           ; -2..2 -> 0..4
-    cp 5
-    jr nc, .balls
-    ld a, [sStageEventHideoutY]
-    sub e
-    add 2
-    cp 5
-    jr c, .no
-.balls
-    ASSERT BANK(sProcFacilityBallXY) == BANK(sProcFacilityGenScratch)
-    ld a, BANK(sProcFacilityBallXY)
-    ld [rRAMB], a
-    ld hl, sProcFacilityBallXY
-    call .four
+; wPFacCurX/Y = a PFAC_FLOOR block. Carry = the generic trainer can stand on its
+; top-left step without sealing anything: the block is walkable in all four
+; quadrants (its other three steps stay joined), the west block's top-right
+; step is walkable only with its bottom-right, and the north block's
+; bottom-left only with its bottom-right, so every step touching his reaches
+; the rest round him. (PFacHideoutKeepsWayOpen is the pair's rule: two steps.)
+; Clobbers a/de/hl; keeps bc.
+PFacOneStepKeepsWayOpen:
+    ld a, [wBuffer + wPFacCurX]
+    ld d, a
+    ld a, [wBuffer + wPFacCurY]
+    ld e, a
+    call PFacPadBlockAddr           ; hl -> the block (the border pad is solid)
+    ld a, [hl]
+    call PFacQuadMask               ; keeps hl
+    cp %1111
+    jr nz, .no
+    dec hl
+    ld a, [hl]                      ; W
+    call PFacQuadMask
+    and %1010                       ; TR, BR
+    cp %0010
     jr z, .no
-    ; The fake balls too (PFacPlaceFakeBalls' .save, the same tile Y/X pairs):
-    ; measured 2026-11-20 (CGB), he stood on fake ball 2 without this.
-    ld hl, sProcFacilityGenScratch + 72
-    call .four
+    ld de, 1 - PFAC_STRIDE
+    add hl, de                      ; N
+    ld a, [hl]
+    call PFacQuadMask
+    and %1100                       ; BL, BR
+    cp %0100
     jr z, .no
     scf
     ret
-
-; hl -> four tile (Y, X) pairs. Z = one is block d/e. Clobbers a/b/hl.
-.four
-    ld b, 4
-.ball
-    ld a, [hli]                     ; tile Y = block * 2 + 4
-    sub 4
-    srl a
-    cp e
-    ld a, [hli]                     ; tile X
-    jr nz, .nextBall
-    sub 4
-    srl a
-    cp d
-    ret z
-.nextBall
-    dec b
-    jr nz, .ball
-    or 1                            ; nz
-    ret
 .no
-    ld a, BANK(sProcFacilityGenScratch)
-    ld [rRAMB], a
     and a
     ret
 
@@ -9070,3 +9120,93 @@ PFacSpinnerStep::
 	ASSERT RAMG_SRAM_DISABLE == BMODE_SIMPLE
 	ld [rRAMG], a
 	ret
+
+; The generic trainer's clearance test, out of "ProceduralFacilityGen" (2026-11-20)
+; to make room for PFacGenericPick's third pass. Farcalled by it only: the block
+; comes in d/e, the answer is the carry, de is kept; it calls nothing.
+SECTION "Wild Generic Trainer Facility Clear", ROMX, BANK[$2A]
+
+; d/e = a block. Carry = more than two blocks (Chebyshev) from the hideout when
+; a stage event is armed, so clear of the pair (the hideout and the block right
+; of it), not the encounter's or the Super Nerd's block, and not a ball's
+; block (sProcFacilityBallXY, tile Y/X). Keeps de; leaves bank 1 selected.
+; Clobbers a/bc/hl.
+PFacGenericClear::
+    xor a
+    ld [rRAMB], a
+    ; No stage event: nobody stands at the hideout, so it costs him nothing
+    ; (measured 2026-11-20: 5 of 200 Facilities had only the hideout's room).
+    ld a, [wStageEvent]
+    and STAGE_EVENT_TYPE_MASK
+    jr z, .balls
+    ld a, [sStageEventHideoutX]
+    cp STAGE_EVENT_NO_HIDEOUT
+    jr z, .balls
+    sub d
+    add 2                           ; -2..2 -> 0..4
+    cp 5
+    jr nc, .balls
+    ld a, [sStageEventHideoutY]
+    sub e
+    add 2
+    cp 5
+    jr c, .no
+.balls
+    ASSERT BANK(sProcFacilityBallXY) == BANK(sProcFacilityGenScratch)
+    ld a, BANK(sProcFacilityBallXY)
+    ld [rRAMB], a
+    ld hl, sProcFacilityBallXY
+    call .four
+    jr z, .no
+    ; The fake balls too (PFacPlaceFakeBalls' .save, the same tile Y/X pairs):
+    ; measured 2026-11-20 (CGB), he stood on fake ball 2 without this.
+    ld hl, sProcFacilityGenScratch + 72
+    call .four
+    jr z, .no
+    ; The optional encounter's block (OptionalFacilityPlaceEncounter has run)
+    ; and the Super Nerd's fallback block: both stand on a block's bottom-right
+    ; step, which would close the bottom row PFacHideoutKeepsWayOpen relies on.
+    ld a, [sProcFacilityGenScratch + FACSUB_SCRATCH_MON_X]
+    cp d
+    jr nz, .nerd
+    ld a, [sProcFacilityGenScratch + FACSUB_SCRATCH_MON_Y]
+    cp e
+    jr z, .no
+.nerd
+    ld a, [sProcFacilityGenScratch + FACSUB_SCRATCH_PIECE]
+    xor FACSUB_FALLBACK
+    cp d
+    jr nz, .yes
+    ld a, [sProcFacilityGenScratch + FACSUB_SCRATCH_PAD]
+    xor FACSUB_FALLBACK_ROW
+    cp e
+    jr z, .no
+.yes
+    scf
+    ret
+
+; hl -> four tile (Y, X) pairs. Z = one is block d/e. Clobbers a/b/hl.
+.four
+    ld b, 4
+.ball
+    ld a, [hli]                     ; tile Y = block * 2 + 4
+    sub 4
+    srl a
+    cp e
+    ld a, [hli]                     ; tile X
+    jr nz, .nextBall
+    sub 4
+    srl a
+    cp d
+    ret z
+.nextBall
+    dec b
+    jr nz, .ball
+    or 1                            ; nz
+    ret
+.no
+    ld a, BANK(sProcFacilityGenScratch)
+    ld [rRAMB], a
+    and a
+    ret
+

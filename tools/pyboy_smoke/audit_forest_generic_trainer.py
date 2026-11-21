@@ -5,10 +5,11 @@ For each Forest (real warp-in, one fresh boot per seed, like
 audit_forest_house.py) with GENERIC_TRAINER_ODDS at 256, this checks that the
 trainer, object FOREST_GENERIC, is:
 
-  * present (a picture and a cell), apart from the rare Forest with no usable
-    dead end, whose rate is reported and held under MAX_NO_CELL;
+  * present (a picture and a cell) in every Forest (2026-11-20: the pick's
+    second pass made him always present; before it, 1 of 200 had none);
   * on a maze cell that is not a tree, a ball, the boss, the entrance block
-    (9, 17) or within two blocks of the stage event's hideout;
+    (9, 17) or the stage event's hideout (one cell from it only on the pick's
+    second pass, counted);
   * facing an open block, so his one-tile sight covers the way in;
   * never wearing the villain's picture (slot 6 or 7), and carrying a roster
     class from the table.
@@ -33,7 +34,7 @@ ARTIFACTS = Path(__file__).resolve().parent / "artifacts"
 SLOT = 9
 PF_STRIDE, PF_BASE, PF_TREE = 26, 81, 2
 FACING = {0: (0, 1), 4: (0, -1), 8: (-1, 0), 12: (1, 0)}
-MAX_NO_CELL = 0.05
+MAX_NO_CELL = 0.0
 
 
 def table_classes() -> list[str]:
@@ -59,7 +60,7 @@ def main() -> int:
     rows = table_classes()
     row_sprites = {sprites[s] for _, s in rows}
     used: Counter = Counter()
-    problems = absent = errors_run = 0
+    problems = absent = errors_run = near_hideout = 0
     for seed in range(args.start, args.start + args.seeds):
         h = RedRogueHarness(REPO_ROOT, ARTIFACTS)
         try:
@@ -113,17 +114,20 @@ def main() -> int:
                     found.append(f"wears slot {slot}'s picture {pic:#x}")
             if (bx, by) == (9, 17):
                 found.append("on the entrance block")
-            if hx != 0xFF and abs(hx - bx) <= 2 and abs(hy - by) <= 2:
-                found.append(f"within two blocks of the hideout ({hx}, {hy})")
+            if hx != 0xFF and (hx, hy) == (bx, by):
+                found.append(f"on the hideout ({hx}, {hy})")
+            elif hx != 0xFF and abs(hx - bx) <= 2 and abs(hy - by) <= 2:
+                near_hideout += 1             # the pick's second pass only
+                print(f"seed {seed}: one cell from the hideout (second pass)")
         for line in found:
             problems += 1
             print(f"seed {seed}: {line}")
 
     ran = args.seeds - errors_run
     print(f"forests {ran}, trainers {sum(used.values())}, none {absent}, problems {problems}, "
-          f"harness errors {errors_run}")
+          f"harness errors {errors_run}, one cell from the hideout {near_hideout}")
     print("pictures:", dict(used))
-    if ran and absent / ran > MAX_NO_CELL:
+    if ran and absent / ran > MAX_NO_CELL or (ran and absent and MAX_NO_CELL == 0):
         print(f"FAIL: {absent}/{ran} Forests had no trainer (> {MAX_NO_CELL:.0%})")
         return 1
     return 1 if problems or errors_run else 0

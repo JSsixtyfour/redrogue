@@ -123,11 +123,22 @@ class CaveGenericTrainerTest(unittest.TestCase):
         bx, by = tx // 2, ty // 2
         ax, ay = h.read_sram_bytes("sStageEventHideoutAltX", 2, bank=0)
         hx, hy = h.read_sram_bytes("sStageEventHideoutX", 2, bank=0)
-        if h.read8("wStageEvent") & self.ram["STAGE_EVENT_TYPE_MASK"]:
-            self.assertEqual((bx, by), (ax, ay), f"{label}: not the hideout's second candidate")
-        else:
-            # No event: the second candidate, else the empty hideout's dead end.
-            self.assertIn((bx, by), ((ax, ay), (hx, hy)), f"{label}: not a candidate dead end")
+        armed = h.read8("wStageEvent") & self.ram["STAGE_EVENT_TYPE_MASK"]
+        candidates = [(ax, ay)] if armed else [(ax, ay), (hx, hy)]
+        if (bx, by) not in candidates:
+            # The last resort (WGTCaveDeadEndOk): only when every candidate was
+            # taken, and then clear of the pair, every object and every warp.
+            for cell in candidates:
+                self.assertTrue(self.taken(cell, hideout=armed),
+                                f"{label}: a fallback cell {(bx, by)} though {cell} was free")
+            if hx < 20:
+                self.assertFalse(abs(hx - bx) <= 1 and abs(hy - by) <= 1,
+                                 f"{label}: next to the hideout {(hx, hy)}")
+            for slot in range(1, SLOT):
+                x, y = self.pos(slot)
+                self.assertNotEqual((x // 2, y // 2), (bx, by), f"{label}: on slot {slot}'s block")
+            for y, x, *_ in h.warp_entries():
+                self.assertNotEqual((x // 2, y // 2), (bx, by), f"{label}: on a warp's block")
         for slot in range(1, 8):
             if self.picture(slot):
                 self.assertNotEqual(self.pos(slot), (tx, ty), f"{label}: on slot {slot}")
@@ -141,32 +152,25 @@ class CaveGenericTrainerTest(unittest.TestCase):
         self.assertTrue(3 <= base <= 10, (label, base))
         return tx, ty
 
-    def test_stands_on_a_reachable_dead_end_or_is_absent_for_a_reason(self) -> None:
+    def taken(self, cell, hideout: bool = False) -> bool:
+        """A candidate WGTCaveCellOk refuses: the exit's, a ball's, unset, or
+        (with an event armed) the hideout's own block."""
         h = self.h
-        placed = absent = 0
+        ey, ex = h.read8("wWarpEntries", offset=4) // 2, h.read8("wWarpEntries", offset=5) // 2
+        balls = {(x // 2, y // 2) for x, y in (self.pos(s) for s in range(2, 6))}
+        hx, hy = h.read_sram_bytes("sStageEventHideoutX", 2, bank=0)
+        return (cell == (ex, ey) or cell in balls or cell[0] >= 20
+                or (hideout and cell == (hx, hy)))
+
+    def test_always_stands_on_a_reachable_dead_end(self) -> None:
         cells = set()
         for offset in range(LAYOUTS):
-            with self.subTest(offset=offset):
-                self.enter(1, offset)            # row 0: Hiker
-                if self.picture(SLOT):
-                    cells.add(self.assert_placed(0, f"layout {offset}"))
-                    placed += 1
-                    continue
-                absent += 1
-                self.assertEqual(self.cell(), CELL_NONE, "absent without a reason")
-                self.assertEqual(self.pos(SLOT), (-4, -4), "absent but not parked")
-                ax, ay = h.read_sram_bytes("sStageEventHideoutAltX", 2, bank=0)
-                hx, hy = h.read_sram_bytes("sStageEventHideoutX", 2, bank=0)
-                ey, ex = h.read8("wWarpEntries", offset=4) // 2, h.read8("wWarpEntries", offset=5) // 2
-                balls = {(x // 2, y // 2) for x, y in (self.pos(s) for s in range(2, 6))}
-
-                def taken(cell) -> bool:
-                    return cell == (ex, ey) or cell in balls or cell[0] >= 20
-
-                self.assertTrue(taken((ax, ay)) or (ax, ay) == (hx, hy),
-                                f"absent at a free second candidate {(ax, ay)}")
-                self.assertTrue(taken((hx, hy)), f"absent though the hideout {(hx, hy)} is free")
-        self.assertGreater(placed, 2 * absent, "he is absent too often")
+            for event in (0, self.ram["STAGE_EVENT_JESSIE_JAMES"]):
+                with self.subTest(offset=offset, event=event):
+                    self.enter(1, offset, event)     # row 0: Hiker
+                    self.assertTrue(self.picture(SLOT), "absent")
+                    self.assertNotEqual(self.cell(), CELL_NONE)
+                    cells.add(self.assert_placed(0, f"layout {offset}, event {event}"))
         self.assertGreater(len(cells), 1, "every layout gave the same cell")
 
     def test_every_pool_class_is_placed_as_itself(self) -> None:

@@ -567,7 +567,7 @@ CemResurrectorPlace:
 ; Carry = wCemTryX/Y is within one block of the Channeler (on this floor), the
 ; stage pair's hideout (on this floor) or, on floor 1, the pair's arrival
 ; block. SRAM bank 0 open. Clobbers a/bc/hl.
-CRCrowded:: ; also farcalled by CemGenericPlace (forest_generic_trainer.asm)
+CRCrowded::
 	ld hl, wBuffer + wCemMapIndex
 	ld a, [sProcCemeteryItemGot]
 	and CEM_CHANNELER_FLOOR_MASK

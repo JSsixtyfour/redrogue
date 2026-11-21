@@ -38,6 +38,7 @@ RAM = parse_rgbds_constants(ROOT / "constants/ram_constants.asm")
 PSYCHIC_PACKAGE = RAM["OPTIONAL_PACKAGE_PSYCHIC"]
 ENC_STATE_BIT = 0x08                    # BIT_OPTIONAL_ON_FLOOR_2
 NERD_SLOT, ENC_SLOT = 12, 13
+GENERIC_SLOT = 14                       # FACILITY_GENERIC
 WALL, EXIT_N, EXIT_E, EXIT_W = 46, 0x08, 0x04, 0x05
 
 
@@ -281,6 +282,43 @@ class FacilityDeepFloorTest(unittest.TestCase):
         self.assertEqual(self.floor(), 2)
         self.assertEqual(self.live()[:MAP_SIZE], floor2[:MAP_SIZE], "the second descent regenerated floor 2")
         self.on_own_pad("down again")
+
+    def test_generic_trainer_on_floor_2_only(self) -> None:
+        """GENERIC_TRAINER_ALL_AREAS_SPEC.md A2: rolled onto floor 2 (row 1, the
+        Scientist), the generic trainer (object 14) is parked on floor 1, stands
+        on a plain-floor block of floor 2, and keeps that tile after a climb and
+        a second descent."""
+        h = self.h
+        hooks = []
+
+        def setup() -> None:
+            for label, value in (("FacilityGenericRoll.store", 1), ("FacilityGenericRoll.floor", 1)):
+                def force(_context, value=value) -> None:
+                    h.pyboy.register_file.A = value
+                h.register_hook(label, force)
+                hooks.append((label, force))
+
+        try:
+            self.deep_facility(before_preload=setup)
+        finally:
+            for label, force in hooks:
+                h.unregister_hook(label, force)
+        self.assertEqual(self.floor(), 1)
+        self.assertEqual(self.picture(GENERIC_SLOT), 0, "he is on floor 1 too")
+        self.trip("down")
+        self.assertEqual(self.floor(), 2)
+        picture, here = self.picture(GENERIC_SLOT), self.spot(GENERIC_SLOT)
+        self.assertNotEqual(picture, 0, "no generic trainer on floor 2")
+        self.assertNotEqual(h.read_sram_bytes("sWildGenericCell", 1, bank=0)[0], 0xFE, "no cell")
+        bx, by = (here[0] - 4) // 2, (here[1] - 4) // 2
+        block = h.pyboy.memory[h.address("wOverworldMap") + 81 + by * 26 + bx]
+        self.assertEqual(block, 14, f"not plain floor at {(bx, by)}")          # PFAC_FLOOR
+        self.trip("up")
+        self.assertEqual(self.floor(), 1)
+        self.assertEqual(self.picture(GENERIC_SLOT), 0, "he followed the player up")
+        self.trip("down again")
+        self.assertEqual((self.picture(GENERIC_SLOT), self.spot(GENERIC_SLOT)), (picture, here),
+                         "floor 2's second visit moved him")
 
     def test_floor_2_hosts_the_resident_and_floor_1_does_not(self) -> None:
         h = self.h

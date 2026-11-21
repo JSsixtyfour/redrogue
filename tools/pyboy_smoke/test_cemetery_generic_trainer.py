@@ -27,16 +27,34 @@ SCRIPT_END_BATTLE = 2          # PCemStageScriptPointers: default, start, end ba
 POOL = [("CHANNELER", "SPRITE_CHANNELER"), ("GENTLEMAN", "SPRITE_GENTLEMAN")]
 STEMS = {"CHANNELER": "Channeler", "GENTLEMAN": "Gentleman"}
 LAYOUTS = 8
+ARRIVALS = (ARRIVAL_BLOCK, (8, ARRIVAL_BLOCK[1]))   # inside the west and east stairs
+STAIR_BLOCKS = ((1, 4), (9, 4))
 
 
 class CemeteryGenericTrainerTest(unittest.TestCase):
     CGB = False
+
+    def track_passes(self) -> None:
+        """Record which of CemGenericPlace's passes placed him (1 strict, 2
+        loose, 3 open ground): margins of one block hold only on pass 1."""
+        h = self.h
+        self.place_pass = 1
+
+        def pass_start(_context) -> None:
+            self.place_pass = 1 if h.pyboy.register_file.E else 2
+
+        def open_pass(_context) -> None:
+            self.place_pass = 3
+
+        h.register_hook("CemGenericPlace.pass", pass_start)
+        h.register_hook("CemGenericPlace.openPass", open_pass)
 
     def setUp(self) -> None:
         self.maps = parse_map_constants(ROOT / "constants/map_constants.asm")
         self.sprites = parse_rgbds_constants(ROOT / "constants/sprite_constants.asm")
         self.trainers = trainer_ids()
         self.h = RedRogueHarness(ROOT, ARTIFACTS, cgb_mode=self.CGB)
+        self.track_passes()
         self.h.boot_to_lobby(battle_count=11, encounter_kind=4, wild_type="cemetery")
         self.h.write8("wStageEvent", 0)
         self.lobby = io.BytesIO()
@@ -89,12 +107,17 @@ class CemeteryGenericTrainerTest(unittest.TestCase):
         block = h.pyboy.memory[h.address("wOverworldMap") + BASE + by * STRIDE + bx]
         self.assertIn(blockset[block * 16 + QUADRANT[0]], walkable_tiles(), f"{label}: not ground")
         self.assertNotEqual(self.block(1), (bx, by), f"{label}: on the ball")
-        others = [ARRIVAL_BLOCK]
+        self.assertNotIn((bx, by), STAIR_BLOCKS, f"{label}: on a stair")
+        # One block clear of the Channeler, the resurrector and both stairs'
+        # arrival blocks on the strict pass; off their own blocks on the others.
+        margin = 1 if getattr(self, "place_pass", 1) == 1 else 0
+        others = list(ARRIVALS)
         for slot in (4, RESURRECTOR):            # the Channeler, the resurrector
             if self.picture(slot):
                 others.append(self.block(slot))
         for ox, oy in others:
-            self.assertFalse(abs(ox - bx) <= 1 and abs(oy - by) <= 1, f"{label}: next to {(ox, oy)}")
+            self.assertFalse(abs(ox - bx) <= margin and abs(oy - by) <= margin,
+                             f"{label}: pass {getattr(self, 'place_pass', 1)}, within {margin} of {(ox, oy)}")
         self.assertEqual(h.read8("wMapSpriteExtraData", offset=(SLOT - 1) * 2), self.trainers[name], label)
         base = h.read8(f"wSprite{SLOT:02d}StateData2ImageBaseOffset")
         self.assertTrue(3 <= base <= 10, (label, base))
@@ -238,6 +261,25 @@ class CemeteryGenericTrainerTest(unittest.TestCase):
             h.write8("wTrainerEngageDistance", 64)
             got = h.call_routine("TrainerEngage", capture=lambda hh: hh.read8("wTrainerSpriteOffset"))
             self.assertEqual(got, expected, f"distance {distance}")
+
+
+
+class CemeteryOpenGroundTableTest(unittest.TestCase):
+    """WGTCemOpenGround reads CemeteryQuadWalkMasks through FarCopyData; its
+    floor-4 exclusions must stay PCemHideoutExcludeFloor4's."""
+
+    def test_never_here_matches_the_hideout_exclusions(self) -> None:
+        import re
+        gen = (ROOT / "custom_functions/procedural_cemetery_gen.asm").read_text()
+        wgt = (ROOT / "custom_functions/forest_generic_trainer.asm").read_text()
+
+        def pairs(text: str, label: str) -> list[tuple[int, int]]:
+            body = text.split(label + ":", 1)[1].split("db $ff", 1)[0]
+            return [(int(x), int(y)) for x, y in re.findall(r"db (\d+), (\d+)", body)]
+
+        floor4 = pairs(gen, "PCemHideoutExcludeFloor4")
+        common = pairs(gen, "PCemHideoutExcludeCommon")
+        self.assertEqual(sorted(pairs(wgt, "WGTCemNeverHere")), sorted(floor4 + common))
 
 
 if __name__ == "__main__":

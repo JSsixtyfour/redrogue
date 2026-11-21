@@ -177,8 +177,8 @@ class RedRogueHarness:
                     self.pyboy.register_file.PC = self.address(
                         f"StartupSensitivityChoice.{target}")
             self.register_hook("StartupSensitivityChoice.ready", choose_startup)
-        # The cave's deep floor (custom_functions/cave_deep_floor.asm) makes about
-        # a quarter of caves, and every Debug 2 cave, lead to a second floor
+        # The cave's deep floor (custom_functions/cave_deep_floor.asm) makes some
+        # caves (the run's deep ramp, DeepRampRoll), and every Debug 2 cave, lead to a second floor
         # instead of the premade B1F. Regression fixtures written for the B1F
         # (its ladders, its resident, its cold encounter) get an ordinary cave:
         # an UNDECIDED control pair is decided "not deep" just before the ROM's
@@ -195,7 +195,7 @@ class RedRogueHarness:
                     memory[1, ctrl] = 0x00
                     memory[1, ctrl + 1] = 0xFF
             self.register_hook("CaveDeepAfterFinalize", ordinary_cave)
-        # The Forest's deep floor is decided in the lobby preload, 50% (and every
+        # The Forest's deep floor is decided in the lobby preload, by the deep ramp (and every
         # Forest under Debug 2, which this harness boots through). Existing Forest
         # fixtures (grotto, rest house, stage events) get an ordinary Forest: the
         # decision's b (1 = deep) is forced to 0 at the label where the ROM reads
@@ -214,8 +214,8 @@ class RedRogueHarness:
                 if not self.allow_deep_facility_floor:
                     self.pyboy.register_file.B = 0
             self.register_hook("FacilityDeepLobbyDecide.decided", ordinary_facility)
-        # The Cemetery's two extra floors, from round 5 (CemDeepLobbyDecide). Cemetery
-        # fixtures at battle count 41+ keep their four floors unless a test sets
+        # The Cemetery's two extra floors, by the deep ramp or Debug 2 (CemDeepLobbyDecide).
+        # Cemetery fixtures keep their four floors unless a test sets
         # allow_deep_cemetery_floor = True.
         self.allow_deep_cemetery_floor = False
         if "CemDeepLobbyDecide.decided" in self.symbols._symbols:
