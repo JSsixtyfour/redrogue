@@ -49,6 +49,13 @@ class FacilitySpinnerRoomTest(unittest.TestCase):
         facility = self.maps["PROCEDURAL_FACILITY"]
         h.boot_to_lobby(battle_count=11, encounter_kind=4)
         h.write8("wStageEvent", 0)
+        # Production odds. Debug 2 forces Psyduck into every palette-1 Facility
+        # (OptionalFacilityAssignEncounter), about half of them, and the skip
+        # below then left the rarest piece too few usable entries: measured
+        # 2026-11-21, arrow_decor_2's first usable entry moved to offset 123
+        # when an unrelated rarity-list edit shifted preload RNG. Without
+        # Debug 2, Psyduck is the 10% roll and the piece mix is unchanged.
+        h.write8("wStatusFlags6", h.read8("wStatusFlags6") & ~(1 << self.ram["BIT_DEBUG2_MODE"]) & 0xFF)
         lobby = io.BytesIO()
         h.save_state(lobby)
         for offset in range(ENTRY_ATTEMPTS):
@@ -56,7 +63,7 @@ class FacilitySpinnerRoomTest(unittest.TestCase):
             h.tick(offset * 5)
             h.preload_and_enter_wild_area(facility, "facility")
             ox, oy, key, ball = h.read_sram_bytes("sProcFacilityGenScratch", 6)[2:6]
-            # Psychic Psyduck (~9% of Facilities) wanders and starts its battle
+            # Psychic Psyduck (~10% of Facilities) wanders and starts its battle
             # from any tile beside the player, which this walk does not play.
             # Its roll spends preload RNG, so which entry carries it moves with
             # unrelated pool changes; skip those entries rather than plan around it.

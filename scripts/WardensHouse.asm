@@ -36,24 +36,37 @@ WardensHouseWardenText:
 	CheckEvent EVENT_BRIDGE_RECEIVE_GIFT
 	jr nz, .got_item
 	CheckEvent EVENT_BRIDGE_INTRO
-	jr nz, .skip_intro
-	ld hl, .ThanksText
+	ld hl, .LetMeGiveYouText
+	jr nz, .print_offer
+	; First talk this visit: hand over the teeth, then the full thanks.
+	ld hl, .GaveTheGoldTeethText
 	call PrintText
 	SetEvent EVENT_BRIDGE_INTRO
-	.skip_intro
+	ld hl, .ThanksText
+.print_offer
+	call PrintText
 	ld a, TEXT_WARDENSHOUSE_GIFT_1
 	ldh [hTextID], a
 	call DisplayTextID
 	call DisableWaitingAfterTextDisplay
 	jr .done
 .got_item
-	ld hl, .Gibberish1Text
+	ld hl, .GoodLuckText
 	call PrintText
 .done
 	jp TextScriptEnd
 
-.Gibberish1Text:
-	text_far _WardensHouseWardenGibberish1Text
+.GaveTheGoldTeethText:
+	text_far _WardensHouseWardenGaveTheGoldTeethText
+	text_far _WardensHouseWardenTeethPoppedInHisTeethText
+	text_end
+
+.LetMeGiveYouText:
+	text_far _WardensHouseWardenLetMeGiveYouText
+	text_end
+
+.GoodLuckText:
+	text_far _WardensHouseWardenGoodLuckText
 	text_end
 
 .ThanksText:

@@ -646,6 +646,12 @@ DrawBattleVariantMarker::
 	ld c, '<HUD_DRAGON>'
 	cp DRAGON
 	jr z, .draw
+	ld c, '<HUD_ICE>'
+	cp ICE
+	jr z, .draw
+	ld c, '<HUD_PSYCHIC>'
+	cp PSYCHIC_TYPE
+	jr z, .draw
 	ld c, '<HUD_VARIANT>'
 	jr .draw
 .ghost

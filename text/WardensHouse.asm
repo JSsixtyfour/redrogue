@@ -43,6 +43,17 @@ _WardensHouseWardenThanksText::
 	cont "your trouble."
 	prompt
 
+_WardensHouseWardenLetMeGiveYouText::
+	text "WARDEN: Let me"
+	line "give you"
+	cont "something for"
+	cont "your trouble."
+	prompt
+
+_WardensHouseWardenGoodLuckText::
+	text "WARDEN: Good luck!"
+	done
+
 _WardensHouseWardenReceivedHM04Text::
 	text "<PLAYER> received"
 	line "@"

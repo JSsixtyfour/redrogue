@@ -171,6 +171,8 @@
 	charmap "<HUD_DRAGON>",  $d3
 	charmap "<HUD_SHINY>",   $d4
 	charmap "<HUD_VARIANT>", $d5
+	charmap "<HUD_ICE>",     $d6
+	charmap "<HUD_PSYCHIC>", $d7
 
 	charmap "'",         $e0
 	charmap "<PK>",      $e1

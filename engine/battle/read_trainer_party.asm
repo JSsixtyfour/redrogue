@@ -39,6 +39,14 @@ ReadTrainer:
 ; write their own movesets overwrite their slots below.
 	xor a
 	call FillEnemyMoveOrigins
+; BIT_ROGUE_FINAL_TRAINER belongs to the trainer being built now. Only
+; GetRandRoster sets or clears it, so every authored or spec team (leaders,
+; rivals, mini-bosses, Elite Four) used to inherit the previous battle's
+; value. A leader always follows the final gym trainer, which sets it, so
+; AIResolveTier gave every leader an extra skill tier. Clear it here, and
+; GetRandRoster sets it again for the final route and gym trainers.
+	ld hl, wRogueFlagsBitfield
+	res BIT_ROGUE_FINAL_TRAINER, [hl]
 
 ; Phase 2: a party spec for (wTrainerClass, wTrainerNo) supersedes BOTH older
 ; team paths. RogueBuildParty returns carry clear when there is no spec, and
