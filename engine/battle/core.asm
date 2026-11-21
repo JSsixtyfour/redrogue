@@ -6107,6 +6107,36 @@ AIGetTypeEffectiveness:
 	ld [wTypeEffectiveness], a
 	ret
 
+; Carry SET if the enemy's best expected hit this decision is below 40% of the
+; player's current HP (tested exactly as 5 * best < 2 * HP), i.e. no move does
+; solid damage. 40% rather than half: a third or more of what is left is
+; already a real hit, worth more than a quarter-chance skip. Reads
+; AI_BUF_BESTDMG, which AI_DAMAGE fills (capped at the player's HP <= 999, so
+; 5 * best fits 16 bits); only valid at tiers that run AI_DAMAGE, which is
+; every caller's tier (AI_THREAT's AIIsDisablingStatus). Lives here for room:
+; bank $0E is full. Clobbers af, bc, de, hl.
+AIBestHitUnder40Pct::
+	ld hl, wBuffer + AI_BUF_BESTDMG
+	ld a, [hli]
+	ld e, [hl]
+	ld d, a
+	ld h, d
+	ld l, e
+	add hl, hl
+	add hl, hl
+	add hl, de                 ; hl = 5 * best
+	ld a, [wBattleMonHP]
+	ld b, a
+	ld a, [wBattleMonHP + 1]
+	ld c, a
+	sla c
+	rl b                       ; bc = 2 * HP
+	ld a, l
+	sub c
+	ld a, h
+	sbc b                      ; carry iff 5 * best < 2 * HP
+	ret
+
 ; ============================================================
 ; AI damage simulator (AI_OVERHAUL_PLAN.md Phase 3).
 ;

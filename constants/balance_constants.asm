@@ -264,6 +264,25 @@ DEF START_MONEY EQU $3000
 ; --- Wild areas ---------------------------------------------------------
 ; Encounter chance per step = rate/256. Read by data/wild/maps/Procedural*.asm.
 DEF WILD_AREA_ENCOUNTER_RATE EQU 10
+; The Forest only rolls on grass tiles (FOREST tileset, see TryDoWildEncounter),
+; while Cave/Facility/Cemetery roll on every floor tile. Measured 2026-11-21 in
+; generated Forest layouts: 47.4% of all reachable steps are grass (100 layouts),
+; and 31% (grass-avoiding) to 58% (grass-ignoring) of the shortest entrance-to-
+; exit route (60 layouts). Parity with the other stages per step walked would be
+; 10/0.47 = 21 for a wanderer and 10/0.31 = 32 for a path-follower; 20 is a
+; deliberately conservative pick between Route 4 (20) and Route 1 (25).
+; Re-measure if the Forest generator's grass density changes.
+DEF WILD_FOREST_ENCOUNTER_RATE EQU 20
+ASSERT WILD_AREA_ENCOUNTER_RATE <= WILD_FOREST_ENCOUNTER_RATE && WILD_FOREST_ENCOUNTER_RATE < 256
+; The Cemetery rolls on every floor tile like Cave/Facility, but its floors are
+; small (10x9 blocks): measured 2026-11-21 over 60 floor-1 layouts, ~109
+; reachable steps per floor, so ~436 for all four, against 553 (Facility) and
+; 1219 (Cave). Less to explore means fewer steps walked per visit, so the rate
+; is raised to compensate: 13 matches the Facility's area, 20 the Cave/Facility
+; mean; 15 sits between (the Cave's open caverns overstate what gets walked).
+; Its budget is shared across all four floors, so the cap is unchanged.
+DEF WILD_CEMETERY_ENCOUNTER_RATE EQU 15
+ASSERT WILD_AREA_ENCOUNTER_RATE <= WILD_CEMETERY_ENCOUNTER_RATE && WILD_CEMETERY_ENCOUNTER_RATE < 256
 ; Per-visit random encounter budget: min(MAX, BASE + wBattleCount/DIVISOR).
 ; The divisor is half a round, so the budget grows by 2 per round whatever
 ; ROUND_BATTLES is (constants/round_constants.asm).

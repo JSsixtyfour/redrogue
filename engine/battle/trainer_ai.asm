@@ -1160,8 +1160,8 @@ AIOwnsPhysicalMove:
 	ret
 
 ; All tiers heavily discourage type-immune attacks. T1+ also encourage effective
-; moves (even non-damaging) and mildly discourage resisted moves when another
-; damaging type is available. Fixed-damage, called moves and Counter bypass this layer.
+; attacks and mildly discourage resisted ones when another damaging type is
+; available. Status (power 0) moves are skipped. Fixed-damage, called moves and Counter bypass this layer.
 AIMoveChoiceModification3:
 	ld hl, wBuffer - 1 ; temp move selection array (-1 byte offset)
 	ld de, wEnemyMonMoves ; enemy moves
@@ -1212,6 +1212,18 @@ AIMoveChoiceModification3:
 	jr z, .nextMove
 	cp MIRROR_MOVE_EFFECT
 	jr z, .nextMove
+; 2026-11-21: zero-power status moves skip the type chart entirely. Their listed
+; type never scales anything they do, so "super effective" Thunder Wave on a
+; Water type was earning a nudge it had no claim to (measured: one of the three
+; boosts that made a low-HP Electabuzz pick Thunder Wave over a near-KO
+; ThunderPunch into Octillery), and Sing was discouraged as "resisted" by Rock.
+; The one immunity that does stop a status move, Ground vs Thunder Wave, is
+; AI_REDUNDANT's job (AIPrimaryParalyzeIsBlocked saturates it); the others the
+; chart lists (Ghost vs Normal) do not apply to status moves in this engine.
+; Hoisting the old power-0 skip from the immune branch keeps this byte-neutral.
+	ld a, [wEnemyMovePower]
+	and a
+	jr z, .nextMove
 	push hl
 	push bc
 	push de
@@ -1225,11 +1237,7 @@ AIMoveChoiceModification3:
 	jr nz, .scoreEffectiveness
 ; Type-immune attacks are whole-move no-ops, just like AI_REDUNDANT's heavy
 ; cases. Do not require alternative coverage before discouraging them.
-; The effect exceptions above still work; zero-power status/setup moves do
-; not generally obey their listed type's damage immunity.
-	ld a, [wEnemyMovePower]
-	and a
-	jr z, .nextMove
+; Only damaging moves reach here (status moves were skipped above).
 	ld a, AI_SATURATE
 	jr .discourageMove
 .scoreEffectiveness

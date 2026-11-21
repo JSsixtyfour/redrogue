@@ -756,14 +756,25 @@ AIIsInvestmentMove:
 ; Only the guaranteed-application effects qualify: the side-effect versions
 ; (Body Slam's paralysis, Ice Beam's freeze) are a chance riding on an attack,
 ; and AI_DAMAGE already scores those on their damage.
-; Clobbers af.
+;
+; Paralysis qualifies only when the enemy has no real hit (2026-11-21): no move
+; expected to take 40% of the player's current HP. Sleep stops the player's
+; lethal move; paralysis stops it a quarter of the time, so spending a last
+; turn on it is only right when attacking would barely matter. Measured:
+; Electabuzz at 20/86 HP, Octillery able to KO it, chose Thunder Wave over a
+; ThunderPunch worth ~55 of Octillery's 72 HP on this layer's push.
+; AIBestHitUnder40Pct (bank $0F, for room) reads AI_DAMAGE's best expected hit.
+; Clobbers af, bc, de, hl.
 AIIsDisablingStatus:
 	ld a, [wEnemyMoveEffect]
 	cp SLEEP_EFFECT
 	jr z, .yes
 	cp PARALYZE_EFFECT
-	jr z, .yes
+	jr z, .paralyze
 	and a
+	ret
+.paralyze
+	farcall AIBestHitUnder40Pct ; carry = no hit worth 40%; flags survive
 	ret
 .yes
 	scf
