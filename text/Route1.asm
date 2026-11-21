@@ -61,8 +61,8 @@ _Route1Youngster4EndBattleText::
 	prompt
 
 _Route1Youngster4AfterBattleText::
-	text "Do you have"
-	line "any pointer?"
+	text "Do you have any"
+	line "pointers?"
 	done
 
 _Route1Youngster5BattleText::

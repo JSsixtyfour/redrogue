@@ -151,6 +151,7 @@ KantoPokeball:
 	rarity_mon KOFFING
 	rarity_mon HORSEA
 	rarity_mon GOLDEEN
+	rarity_mon VENONAT
 KantoPokeball_Evos:
 ; stage 2
 	rarity_mon METAPOD
@@ -179,6 +180,7 @@ KantoPokeball_Evos:
 	rarity_mon WEEZING
 	rarity_mon SEADRA
 	rarity_mon SEAKING
+	rarity_mon VENOMOTH
 ; stage 3
 	rarity_mon BUTTERFREE
 	rarity_mon BEEDRILL
@@ -211,7 +213,6 @@ KantoGreatball:
 	rarity_mon MEOWTH
 	rarity_mon VULPIX
 	rarity_mon TANGELA
-	rarity_mon VENONAT
 	rarity_mon NIDORAN_M
 	rarity_mon HITMONCHAN
 	rarity_mon TENTACOOL
@@ -241,7 +242,6 @@ KantoGreatball_Evos:
 	rarity_mon RAPIDASH
 	rarity_mon PERSIAN
 	rarity_mon NINETALES
-	rarity_mon VENOMOTH
 	rarity_mon NIDORINO
 	rarity_mon TENTACRUEL
 ; stage 3
