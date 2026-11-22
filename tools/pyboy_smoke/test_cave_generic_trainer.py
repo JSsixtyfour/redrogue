@@ -148,6 +148,13 @@ class CaveGenericTrainerTest(unittest.TestCase):
         reach = self.reachable()
         sides = {(tx + dx, ty + dy) for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0))}
         self.assertTrue(sides & reach, f"{label}: nobody can reach him at {(tx, ty)}")
+        # His sight square, the step he faces: the player must be able to stand
+        # there, or he can never start the battle himself (2026-11-21: seed 12
+        # faced a wall at (0,1) and seed 37 one at (38,9), as the facing read
+        # the neighbouring block's mask, not the exact adjacent step).
+        dx, dy = FACING[h.read8(f"wSprite{SLOT:02d}StateData1FacingDirection")]
+        self.assertIn((tx + dx, ty + dy), reach,
+                      f"{label}: he at {(tx, ty)} faces {(tx + dx, ty + dy)}, which nobody can reach")
         base = h.read8(f"wSprite{SLOT:02d}StateData2ImageBaseOffset")
         self.assertTrue(3 <= base <= 10, (label, base))
         return tx, ty

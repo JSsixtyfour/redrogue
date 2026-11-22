@@ -29,6 +29,9 @@ FALLEN_ENTRY_SIZE = PARTYMON_STRUCT_LENGTH + 2 * NAME_LENGTH
 FALLEN_LOG_BANK = 2
 FALLEN_STAMP = 0xF0
 MON_HP, MON_BOX_LEVEL, MON_STATUS, MON_LEVEL, MON_MAXHP = 1, 3, 4, 33, 34
+MON_CATCH_RATE = 7
+FORM_MASK, FORM_SHIFT = 0x60, 5
+MAGNETON = 0x36
 BIT_IRONMAN = 0
 DONE_BIT = 0x80                         # sProcCemeteryItemGot bit 7
 CHAR_A = 0x80                           # the charmap "A"
@@ -329,6 +332,39 @@ class IronmanTalkTest(TalkBase):
                                  [e[NICK] for i, e in enumerate(entries) if i != entry])
                 self.assertTrue(self.served())
                 self.assertIn(h.symbols.get("CVReturnedText")[1], state["printed"])
+
+    def fee_index(self, species: int, form: int) -> int:
+        """CRFeeIndex's answer, from the ROM's own classifier."""
+        h = self.h
+        h.park_before_hijack()
+        h.pyboy.register_file.D = form
+        h.pyboy.register_file.E = species
+        cls = h.call_routine("RogueClassifyIdentityFar", capture=lambda hh: hh.pyboy.register_file.E)
+        return min(cls - 1, 2)
+
+    def test_a_form_is_charged_its_own_tier(self) -> None:
+        """2026-11-21: CRLogClose zeroed a between reading the form byte and
+        masking it, so every form was charged its base species' fee (Magneton
+        form 1: 6,250 instead of 22,500)."""
+        h = self.h
+        base, form = self.fee_index(MAGNETON, 0), self.fee_index(MAGNETON, 1)
+        self.assertLess(base, form, "Magneton form 1 no longer outranks the base: pick another pair")
+        entries = [self.entry(MAGNETON, 30, CHAR_A), self.entry(MAGNETON, 31, CHAR_A + 2)]
+        entries[1][MON_CATCH_RATE] = entries[1][MON_CATCH_RATE] & ~FORM_MASK | 1 << FORM_SHIFT
+        # Every no first: nothing charged, nothing taken.
+        self.fill_log(entries)
+        self.set_money(99999)
+        count = h.read8("wPartyCount")
+        self.talk([("list", 0), ("no",), ("list", 1), ("no",), ("b",)])
+        self.assertEqual(self.player_money(), 99999)
+        self.assertEqual(h.read8("wFallenCount"), 2)
+        self.assertEqual(h.read8("wPartyCount"), count)
+        # Sorted by fee, the base (cheaper) first; the form charges its own tier.
+        self.talk([("list", 1), ("yes",)])
+        self.assertEqual(self.party_nick(count)[0], CHAR_A + 2, "rank 1 is the form")
+        self.assertEqual(self.party_mon(count)[MON_CATCH_RATE] & FORM_MASK, 1 << FORM_SHIFT)
+        self.assertEqual(self.player_money(), 99999 - FEES[form])
+        self.assertEqual(self.log_nicks(), [CHAR_A])
 
     def test_equal_fees_list_the_newest_first(self) -> None:
         h = self.h

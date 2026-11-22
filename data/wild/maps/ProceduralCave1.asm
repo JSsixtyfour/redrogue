@@ -1,5 +1,5 @@
 ProceduralCave1WildMons:
-	def_grass_wildmons WILD_AREA_ENCOUNTER_RATE ; chance per step = rate/256
+	def_grass_wildmons WILD_CAVE_ENCOUNTER_RATE ; tuned per stage, see balance_constants.asm
 	db 14, ZUBAT
 	db 15, GEODUDE
 	db 16, ZUBAT

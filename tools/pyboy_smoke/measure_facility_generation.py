@@ -70,8 +70,9 @@ def main() -> int:
     baseline = io.BytesIO()
     harness.save_state(baseline)
 
-    # PFacFillUntouched runs once at the top of PFacFinalize and then once per
-    # layout attempt inside PFacGenerateFacility's retry loop, so counting it
+    # PFacFillUntouched runs once per layout attempt inside
+    # PFacGenerateFacility's retry loop (PFacFinalize's own extra fill went
+    # 2026-11-21), so counting it
     # separates "generation is expensive" from "generation is RETRYING", which
     # are very different problems with very different fixes.
     fills = {"count": 0}
@@ -90,7 +91,7 @@ def main() -> int:
         before = harness.cycle_count()
         harness.call_routine("PFacFinalize", limit=CALL_LIMIT)
         cost = harness.cycle_count() - before
-        samples.append((seed, cost, max(fills["count"] - 1, 0)))
+        samples.append((seed, cost, fills["count"]))
 
     costs = [cost for _, cost, _ in samples]
     attempts = [tries for _, _, tries in samples]

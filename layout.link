@@ -511,6 +511,9 @@ ROMX $3E
 	; 2026-09-16 because that bank had only 80 bytes left after it. See the
 	; comment in gfx/tilesets.asm for the bank-safety argument.
 	"Tilesets 5"
+	; AI_THREAT's paralysis test, out of the full $0E/$0F (2026-11-21). Reached
+	; only by farcall, so any bank with room would do.
+	"AI Paralysis Hit"
 ROMX $3F
 	; "ProceduralCaveGen" relocated here 2026-09-16, out of ROMX $5.
 	;

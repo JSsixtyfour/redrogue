@@ -53,6 +53,13 @@ PLAN_MOVE_CHOSEN, PLAN_SWITCH, PLAN_PLANNED, PLAN_ARMED = 7, 6, 5, 4
 PLAN_SLOT_MASK = 0b111
 PP_MASK = 0x3F
 MAX_STEPS = 5000
+# Cumulative per base battle and per branch, across every menu return (2026-11-21 AI review):
+# each driver.play(MAX_STEPS) ends at the next battle menu and play() loops, so a battle that
+# never ends (seen: Haze probe round 3, one branch at 23 h and 5 GB) never returned. The values
+# are the ones ai_haze_probe4.py ran 38,272 branches under (3 capped). A capped battle has no
+# outcome: its branch is invalid, so run() keeps it out of the regret table.
+MAX_TURNS = 200
+MAX_FRAMES = 500_000
 LOOKAHEAD = "lookahead_1"
 HEAL_EFFECTS = ("HEAL_EFFECT",)
 SETUP_EFFECTS = (
@@ -187,6 +194,8 @@ class Replayer:
                                    move_powers=rab.parse_move_powers(root / "data/moves/moves.asm"))
         h.register_hook("MoveSelectionMenu", lambda _c: self._count_move_menu())
         self.seed, self.tier, self.policy = seed, tier, policy
+        self.max_turns, self.max_frames = MAX_TURNS, MAX_FRAMES
+        self.budget: dict[str, object] = {}
         self.outcome: dict[str, float] | None = None
         self.branch: dict[str, object] | None = None
         self.recorder = None  # pass-1 callbacks
@@ -334,12 +343,38 @@ class Replayer:
             self.branch, self.recorder, self.outcome = saved
         d.move_override = min(slots, key=lambda s: (means[s], s))
 
+    def start_budget(self) -> None:
+        """Open the turn/frame budget for one base battle or one branch. play() spends it
+        across every call until the next start_budget, so the recorder's re-entries share it."""
+        self.budget = {"turn0": len(self.driver.turns), "frames": 0, "limit": None}
+
+    def _over_budget(self, frames_now: int = 0) -> str | None:
+        b = self.budget
+        if len(self.driver.turns) - b["turn0"] > self.max_turns:
+            return "turns"
+        if b["frames"] + frames_now > self.max_frames:
+            return "frames"
+        return None
+
     def play(self, extra_stop=None) -> str:
         """driver.play, running the lookahead at every battle menu when it is on. Returns
-        "stopped" only for extra_stop (the caller handles it, then calls play again)."""
+        "stopped" only for extra_stop (the caller handles it, then calls play again), and
+        "capped" once the budget start_budget opened is spent (budget["limit"] says which).
+        Only frames played here count: a lookahead's trials are rewound, and their turns are
+        truncated by _host_restore."""
+        if not self.budget:
+            self.start_budget()
         while True:
+            f0 = self.h.pyboy.frame_count
             result = self.driver.play(
-                MAX_STEPS, stop=lambda: self._menu_flag or bool(extra_stop and extra_stop()))
+                MAX_STEPS, stop=lambda: (self._menu_flag or bool(extra_stop and extra_stop())
+                                         or self._over_budget(self.h.pyboy.frame_count - f0) is not None))
+            self.budget["frames"] += self.h.pyboy.frame_count - f0
+            limit = self._over_budget()
+            if limit is not None and result in ("stopped", "timeout"):
+                self.budget["limit"] = limit
+                self.outcome = None
+                return "capped"
             if result != "stopped":
                 return result
             if extra_stop and extra_stop():
@@ -516,6 +551,7 @@ def record_battle(rp: Replayer, prepare=None) -> tuple[list[bytes], list[Decisio
         prepare(rp.h)
     turns_start = len(rp.driver.turns)
     rp.driver.boot(rp.seed)
+    rp.start_budget()
     states: list[bytes] = []
     dropped = 0
 
@@ -547,8 +583,12 @@ def record_battle(rp: Replayer, prepare=None) -> tuple[list[bytes], list[Decisio
     if result == "timeout":
         raise AssertionError("base battle exceeded the step limit")
     rp.recorder = None
+    # A capped base battle keeps the decisions saved before the cap (each state is a real
+    # position; branches replay from it with their own budget), but has no outcome.
     base = dict(rp.outcome or {}, result=result, dropped_turn_states=dropped,
-                turns=len(rp.driver.turns) - turns_start, frame=rp.h.pyboy.frame_count)
+                turns=len(rp.driver.turns) - turns_start, frame=rp.h.pyboy.frame_count,
+                capped=rp.budget["limit"])
+    rp.budget = {}
     return states, rec.decisions, base
 
 
@@ -557,6 +597,7 @@ def play_branch(rp: Replayer, state: bytes, decision: Decision, alt: str, k: int
     rp.h.load_state(io.BytesIO(state))
     rp.driver.resync()
     rp.outcome = None
+    rp.start_budget()
     rp.branch = {"kind": decision.kind, "alt": alt, "k": k, "decision_id": decision_id,
                  "occurrence": decision.occurrence, "seen": 0, "applied": False}
     turns_start = len(rp.driver.turns)
@@ -569,10 +610,14 @@ def play_branch(rp: Replayer, state: bytes, decision: Decision, alt: str, k: int
         rp.lookahead()
     result = rp.play()
     b, rp.branch = rp.branch, None
+    capped, rp.budget = rp.budget["limit"], {}
     out = dict(rp.outcome or {}, result=result, applied=b["applied"],
-               turns_after=len(rp.driver.turns) - turns_start, frame=rp.h.pyboy.frame_count)
+               turns_after=len(rp.driver.turns) - turns_start, frame=rp.h.pyboy.frame_count,
+               capped=capped)
     if "invalid" in b:
         out["invalid"] = b["invalid"]
+    if capped:   # no outcome: keep it out of every comparison
+        out["invalid"] = f"capped at the {capped} limit"
     if b.get("expect_switch") and not b.get("switched"):
         out["invalid"] = "planned switch did not happen"
     if not b["applied"]:
@@ -640,8 +685,12 @@ def run(seed: int, tier: int, policy: str, k: int, jobs: int, out: Path, limit: 
             f.write(json.dumps(record) + "\n")
             records.append(record)
     scored = [r for r in records if "regret" in r]
+    capped = {limit: sum(1 for alts in results.values() for rs in alts.values()
+                         for r in rs.values() if r.get("capped") == limit)
+              for limit in ("turns", "frames")}
     summary = {"seed": seed, "tier": tier, "policy": policy, "k": k, "base": base,
                "decisions": len(decisions), "scored": len(scored), "branches": len(tasks),
+               "capped_branches": capped,
                "seconds": round(time.perf_counter() - t0, 1), "table": summarize(scored)}
     out.with_suffix(".summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     return summary
@@ -668,7 +717,8 @@ def run_many(seeds: list[int], tier: int, policy: str, k: int, jobs: int, out: P
     for seed in seeds:
         path = out.with_name(f"{out.stem}.seed{seed}.jsonl")
         s = run(seed, tier, policy, k, jobs, path, limit)
-        per_seed.append({key: s[key] for key in ("seed", "base", "decisions", "scored", "branches", "seconds")})
+        per_seed.append({key: s[key] for key in ("seed", "base", "decisions", "scored", "branches",
+                                                 "capped_branches", "seconds")})
         records.extend(json.loads(line) for line in path.read_text(encoding="utf-8").splitlines())
         print(f"seed {seed}: {s['decisions']} decisions, {s['branches']} branches, {s['seconds']} s",
               flush=True)
@@ -683,6 +733,7 @@ def run_many(seeds: list[int], tier: int, policy: str, k: int, jobs: int, out: P
 
 
 def main() -> int:
+    global MAX_TURNS, MAX_FRAMES
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--seed", type=int, default=17)
     ap.add_argument("--seeds", default=None, help='several fixtures: "100:130" or "17,18"')
@@ -694,11 +745,16 @@ def main() -> int:
     ap.add_argument("--out", type=Path, default=ROOT / "tools/pyboy_smoke/artifacts/ai_counterfactual.jsonl")
     ap.add_argument("--look-seeds", type=int, default=2,
                     help=f"--policy {LOOKAHEAD}: trial seeds per player move per turn")
+    ap.add_argument("--max-turns", type=int, default=MAX_TURNS,
+                    help="turn budget per base battle and per branch (a capped one is dropped)")
+    ap.add_argument("--max-frames", type=int, default=MAX_FRAMES,
+                    help="frame budget per base battle and per branch")
     ap.add_argument("--kinds", default=None,
                     help='branch only these decision kinds, e.g. "send_out" (pass 1 still records all)')
     args = ap.parse_args()
     args.out.parent.mkdir(parents=True, exist_ok=True)
     RUN_OPTIONS["look_seeds"] = args.look_seeds
+    MAX_TURNS, MAX_FRAMES = args.max_turns, args.max_frames   # forked workers inherit them
     RUN_OPTIONS["kinds"] = set(args.kinds.split(",")) if args.kinds else None
     if args.seeds:
         summary = run_many(parse_seeds(args.seeds), args.tier, args.policy, args.k, args.jobs,

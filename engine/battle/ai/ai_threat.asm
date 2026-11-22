@@ -758,12 +758,16 @@ AIIsInvestmentMove:
 ; and AI_DAMAGE already scores those on their damage.
 ;
 ; Paralysis qualifies only when the enemy has no real hit (2026-11-21): no move
-; expected to take 40% of the player's current HP. Sleep stops the player's
-; lethal move; paralysis stops it a quarter of the time, so spending a last
-; turn on it is only right when attacking would barely matter. Measured:
-; Electabuzz at 20/86 HP, Octillery able to KO it, chose Thunder Wave over a
-; ThunderPunch worth ~55 of Octillery's 72 HP on this layer's push.
-; AIBestHitUnder40Pct (bank $0F, for room) reads AI_DAMAGE's best expected hit.
+; it can use THIS turn expected to take 40% of the player's current HP. Sleep
+; stops the player's lethal move; paralysis stops it a quarter of the time, so
+; spending a last turn on it is only right when attacking would barely matter.
+; Measured: Electabuzz at 20/86 HP, Octillery able to KO it, chose Thunder Wave
+; over a ThunderPunch worth ~55 of Octillery's 72 HP on this layer's push.
+; AIImmediateHitUnder40Pct (ai_para_hit.asm, out of the full $0E/$0F) reads
+; AI_DAMAGE's per-slot hits, where a two-turn move lands 0, plus a blast the
+; trade policy allows. It used to read the best-damage record, which ranks Solar
+; Beam at half its hit: a threatened Solar Beam user (49 of 100 HP) skipped
+; Thunder Wave for a move that lands nothing before the player's KO.
 ; Clobbers af, bc, de, hl.
 AIIsDisablingStatus:
 	ld a, [wEnemyMoveEffect]
@@ -774,7 +778,7 @@ AIIsDisablingStatus:
 	and a
 	ret
 .paralyze
-	farcall AIBestHitUnder40Pct ; carry = no hit worth 40%; flags survive
+	farcall AIImmediateHitUnder40Pct ; carry = no hit worth 40%; flags survive
 	ret
 .yes
 	scf

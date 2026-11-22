@@ -215,5 +215,42 @@ class LookaheadPlayerTest(unittest.TestCase):
             rp.close()
 
 
+class BattleBudgetTest(unittest.TestCase):
+    """The turn/frame budget is cumulative per base battle and per branch, across every menu
+    return, and a capped branch neither scores nor leaves the worker stuck (2026-11-21)."""
+
+    def test_caps_fire_drop_the_branch_and_the_worker_moves_on(self):
+        rp = cf.Replayer(seed=17, tier=3, policy="best_power")
+        try:
+            # Base battle, forced 1-turn cap: the recorder re-enters play() at every turn,
+            # so only a cumulative budget can fire here.
+            rp.max_turns = 1
+            states, decisions, base = cf.record_battle(rp)
+            self.assertEqual((base["result"], base["capped"]), ("capped", "turns"), base)
+            self.assertNotIn("V", base)
+            self.assertTrue(decisions, "decisions before the cap are kept")
+            d = decisions[0]
+            # The same worker: a capped branch, then a normal one, then a frame cap.
+            cf._WORKER = rp
+            task = (states[d.state_index], cf.asdict(d), d.chosen, 0, "budget")
+            _, _, _, capped = cf._work(task)
+            self.assertEqual(capped["capped"], "turns", capped)
+            self.assertNotIn("V", capped)
+            self.assertIn("capped", capped["invalid"])
+            rp.max_turns = cf.MAX_TURNS
+            _, _, _, done = cf._work(task)
+            self.assertIsNone(done["capped"], done)
+            self.assertIn("V", done)
+            self.assertNotIn("invalid", done, done)
+            rp.max_frames = 50
+            _, _, _, framed = cf._work(task)
+            self.assertEqual(framed["capped"], "frames", framed)
+            self.assertNotIn("V", framed)
+            self.assertEqual(rp.h.hook_errors, [])
+        finally:
+            cf._WORKER = None
+            rp.close()
+
+
 if __name__ == "__main__":
     unittest.main()

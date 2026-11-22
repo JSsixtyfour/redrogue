@@ -944,13 +944,13 @@ CRFeeIndex:
 	ld bc, MON_CATCH_RATE
 	add hl, bc
 	ld a, [hl]
-	call CRLogClose
 	and FORM_MASK
 	ASSERT FORM_SHIFT == 5
 	rlca
 	rlca
 	rlca                                ; bits 5-6 -> 0-1
-	ld d, a
+	ld d, a                             ; before CRLogClose, which zeroes a
+	call CRLogClose
 	farcall RogueClassifyIdentityFar    ; e = the legacy class, 1-4
 	ld a, e
 	dec a

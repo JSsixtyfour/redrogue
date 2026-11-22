@@ -684,6 +684,13 @@ SECTION "AI Crit Species", ROMX
 INCLUDE "engine/battle/ai/ai_crit_species.asm"
 
 
+; AI_THREAT's paralysis test (2026-11-21). Bank-free: its caller in $0E farcalls
+; it. Pinned in layout.link so it does not reshuffle the first-fit floaters.
+SECTION "AI Paralysis Hit", ROMX
+
+INCLUDE "engine/battle/ai/ai_para_hit.asm"
+
+
 SECTION "Battle Engine 9", ROMX
 
 INCLUDE "engine/battle/experience.asm"

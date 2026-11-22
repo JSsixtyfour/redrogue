@@ -430,6 +430,129 @@ class ForestDeepFloorTest(unittest.TestCase):
         for label, want in (("wRoguePokemon1", species), ("wRoguePokemonForm1", 0x05), ("wProcForestWildBudget", 77)):
             self.assertEqual(h.read8(label), want, f"the climb changed {label}")
 
+    # --- the real opening, a save and a Continue (handoff 2026-11-21) -------
+    def walk_out(self, h, description: str) -> None:
+        """Walk the live floor to its opening (warp FG_WARP), clear of every
+        sprite and the generic trainer's sight step, and step off the edge."""
+        import forest_walk as fw
+        budget = lambda: h.write8("wProcForestWildBudget", 0)
+        y, x = h.warp_entries()[FG_WARP][:2]
+        blocked = fw.sprite_tiles(h)
+        if h.read8("wSprite09StateData1"):
+            gx, gy = h.read8("wSprite09StateData2MapX") - 4, h.read8("wSprite09StateData2MapY") - 4
+            dx, dy = {0: (0, 1), 4: (0, -1), 8: (-1, 0), 12: (1, 0)}[h.read8("wSprite09StateData1FacingDirection")]
+            blocked.add((gx + dx, gy + dy))
+        # Registered before the walk: a last step taken outward onto the opening
+        # warps by itself (CheckWarpsNoCollision -> ExtraWarpCheck), inside the
+        # walk's own settle frames.
+        seen = h.hook_flag("WarpFound2")
+        buttons = fw.path(h, (x, y), blocked)
+        if buttons is None:
+            free = fw.path(h, (x, y))
+            here = (h.read8("wXCoord"), h.read8("wYCoord"))
+            grid = fw.tiles(h)
+            near = {(xx, yy): f"{grid.get((xx, yy), 0):02x}" for xx in range(x - 2, x + 3) for yy in range(y - 3, y + 1)}
+            self.fail(f"{description}: no path from {here} to the opening {(x, y)}; blocked {sorted(blocked)}; "
+                      f"unblocked path {'exists' if free is not None else 'none'}; tiles near {near}")
+        button = fw.outward((x, y))
+        if buttons and buttons[-1] == button:
+            fw.walk(h, buttons[:-1], settle=budget)
+            fw.step(h, button, settle=budget)       # onto it, holding outward
+        else:
+            fw.walk(h, buttons, settle=budget)
+        for _ in range(240):
+            if seen["count"]:
+                break
+            budget()
+            h.pyboy.button_press(button)
+            h.tick(1)
+        h.pyboy.button_release(button)
+        self.assertTrue(seen["count"], f"{description}: stepping off {(x, y)} {button} did not warp")
+        h.wait_until(lambda: h.read8("hCurMap") == FOREST and h.read8("hJoyIgnore") == 0,
+                     f"{description}: settled", 900)
+        h.tick(120)
+        budget()
+
+    def take_ball(self, h, slot: int) -> None:
+        """Walk next to the ball in `slot`, face it and press A through its text."""
+        import forest_walk as fw
+        bx, by = h.read8(f"wSprite{slot:02d}StateData2MapX") - 4, h.read8(f"wSprite{slot:02d}StateData2MapY") - 4
+        blocked = fw.sprite_tiles(h)
+        budget = lambda: h.write8("wProcForestWildBudget", 0)
+        for button, (dx, dy) in fw.STEP.items():
+            side = (bx - dx, by - dy)                  # stand here, press `button` to face it
+            if side not in blocked and fw.path(h, side, blocked) is not None:
+                fw.walk_to(h, side, blocked, settle=budget)
+                h.tap(button, 4)
+                h.tick(10)
+                break
+        else:
+            self.fail(f"no side of the ball at {(bx, by)} is reachable")
+        for _ in range(30):
+            h.tap("a", 4)
+            h.tick(16)
+        h.tick(60)
+
+    def test_floor_2_survives_a_save_and_continue_through_the_real_opening(self) -> None:
+        """Walk out of floor 1's opening, take floor 2's first ball, save, power
+        off, Continue, then walk back up through floor 2's opening: the arrival
+        tile, the floor, the taken ball and the generic trainer (rolled onto
+        floor 2) all come back as saved."""
+        import save_reload
+        h = self.h
+        self.generic_on_floor(1)
+        floor1 = self.live()
+        opening1 = h.warp_entries()[FG_WARP][:2]
+        self.walk_out(h, "down")
+        self.assertEqual(self.floor(), 2)
+        floor2 = self.live()
+        self.assertNotEqual(floor2[0], floor1[0], "floor 2 is floor 1's map")
+        arrival = [h.read8("wYCoord"), h.read8("wXCoord")]
+        self.assertEqual(arrival, h.warp_entries()[FG_WARP][:2], "not on floor 2's opening")
+        trainer = (h.read8("wSprite09StateData1"), h.read8("wSprite09StateData2MapY"),
+                   h.read8("wSprite09StateData2MapX"), h.read_bytes("wMapSpriteExtraData", 2, offset=8 * 2))
+        self.assertNotEqual(trainer[0], 0, "no generic trainer on floor 2")
+        beaten = h.read8("wWildGenericBeaten")
+
+        self.assertEqual(self.toggle_bit("TOGGLE_WILD_AREA_POKEBALL_1"), 0, "floor 2's ball starts taken")
+        self.take_ball(h, 2)
+        self.assertEqual(self.toggle_bit("TOGGLE_WILD_AREA_POKEBALL_1"), 1, "the ball was not taken")
+        bag_size = h.address("wItemCountsEnd") - h.address("wRecoveryItemCounts")
+        bag = h.read_bytes("wRecoveryItemCounts", bag_size)
+        here = [h.read8("wYCoord"), h.read8("wXCoord")]
+
+        self.assertTrue(save_reload.settle(h))
+        h.park_before_hijack()
+        h.call_routine("SaveGameData")
+        reboot = save_reload.Reboot(save_reload.sram_image(h), cgb_mode=h.hardware_mode == "CGB")
+        try:
+            reboot.h.allow_deep_forest_floor = True
+            reboot.load()
+            self.assertTrue(reboot.overworld, "Continue did not reach the overworld")
+            r = reboot.h
+            self.h = r                                   # the helpers read self.h
+            self.assertEqual(r.read8("hCurMap"), FOREST)
+            self.assertEqual(self.floor(), 2, "Continue is not on floor 2")
+            self.assertEqual([r.read8("wYCoord"), r.read8("wXCoord")], here, "not where the save was")
+            self.assertEqual(self.live(), floor2, "Continue changed floor 2")
+            self.assertEqual(self.shadow(), floor1, "Continue changed floor 1's shadow")
+            self.assertEqual(self.toggle_bit("TOGGLE_WILD_AREA_POKEBALL_1"), 1, "the taken ball came back")
+            self.assertEqual(r.read_bytes("wRecoveryItemCounts", bag_size), bag, "the bag is not as saved")
+            self.assertEqual((r.read8("wSprite09StateData1"), r.read8("wSprite09StateData2MapY"),
+                              r.read8("wSprite09StateData2MapX"), r.read_bytes("wMapSpriteExtraData", 2, offset=8 * 2)),
+                             trainer, "the generic trainer is not as saved")
+            self.assertEqual(r.read8("wWildGenericBeaten"), beaten)
+
+            self.walk_out(r, "up")
+            self.assertEqual(self.floor(), 1)
+            self.assertEqual([r.read8("wYCoord"), r.read8("wXCoord")], opening1, "not on floor 1's opening")
+            self.assertEqual(self.live(), floor1, "floor 1 changed")
+            self.assertEqual(self.shadow(), floor2, "floor 2 is not in the shadow")
+            self.assertEqual(r.read8("wSprite09StateData1"), 0, "he followed the player up")
+        finally:
+            self.h = h
+            reboot.close()
+
     def test_sign_text_is_true_on_floor_1(self) -> None:
         """The sign speaks for the whole forest: its house may be on floor 2, and
         floor 2 has no boss, so neither line may say otherwise. Step up from the

@@ -130,10 +130,9 @@ def main() -> int:
         harness.call_routine("PFacFinalize", limit=CALL_LIMIT)
         end = harness.cycle_count()
 
-        # PFacFillUntouched also runs once at the top of PFacFinalize, outside
-        # the retry loop, so the first firing is not a layout attempt.
-        fills = sum(1 for label, _ in trace if label == "PFacFillUntouched")
-        attempts = max(fills - 1, 0)
+        # PFacFillUntouched runs once per layout attempt (PFacFinalize's own
+        # fill outside the retry loop went 2026-11-21).
+        attempts = sum(1 for label, _ in trace if label == "PFacFillUntouched")
         attempts_total += attempts
 
         for position, (label, cycles) in enumerate(trace):

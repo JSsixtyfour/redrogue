@@ -344,6 +344,85 @@ class ForestGenericTrainerTest(unittest.TestCase):
             h.unregister_hook("FGTLine.done", done)
         self.assertEqual(seen[:1], [h.symbols.get("FGTHikerIntro")[1]])
 
+    def money(self) -> int:
+        return int("".join(f"{b:02x}" for b in self.h.read_bytes("wPlayerMoney", 3)))
+
+    def test_a_real_win_pays_and_survives_a_save_and_continue(self) -> None:
+        """Handoff 2026-11-21: one battle played through to the win (the enemy's
+        HP zeroed each turn, A through every box), not ended by hand. The prize
+        is paid once (the amount the win text shows), wBattleCount does not move,
+        his flag is set, talking again gives his after-line, and after a save,
+        a power-off and Continue he is still beaten: the after-line again, no
+        rematch."""
+        import save_reload
+        h = self.h
+        self.enter(4, 0, 2)                      # row 3: Hiker
+        tx, ty = self.assert_placed(3, "real win")
+        count = h.read8("wBattleCount")
+        money = self.money()
+        self.talk()
+        self.assertEqual(h.read8("hIsInBattle"), 2, "talking did not start his battle")
+        back = h.hook_flag("JoypadOverworld")
+        # The prize as MoneyForWinningText prints it: wAmountMoneyWon shares a
+        # UNION with wObjectToHide/Show, so it is not readable after the battle.
+        shown: list[int] = []
+        win_text = h.symbols.get("MoneyForWinningText")[1]
+
+        def printing(_context) -> None:
+            if h.pyboy.register_file.HL == win_text:
+                shown.append(int("".join(f"{b:02x}" for b in h.read_bytes("wAmountMoneyWon", 3))))
+
+        h.register_hook("PrintText", printing)
+        for _ in range(900):
+            if h.read8("hIsInBattle"):
+                h.write8("wEnemyMonHP", 0)
+                h.write8("wEnemyMonHP", 0, offset=1)
+                for i, b in enumerate(h.read_bytes("wBattleMonMaxHP", 2)):
+                    h.write8("wBattleMonHP", b, offset=i)
+                back["count"] = 0
+            h.tap("a", 4)
+            h.tick(6)
+            if not h.read8("hIsInBattle") and back["count"] > 2:
+                break
+        h.unregister_hook("PrintText", printing)
+        self.assertTrue(save_reload.settle(h), "the overworld never came back")
+        self.assertEqual(h.read8("hIsInBattle"), 0, "the battle did not end")
+        self.assertEqual(h.read8("hCurMap"), self.maps["PROCEDURAL_FOREST"], "the win left the Forest")
+        self.assertEqual(len(shown), 1, f"the prize text printed {len(shown)} times")
+        won = shown[0]
+        self.assertGreater(won, 0, "no prize")
+        self.assertEqual(self.money(), min(money + won, 999999), "the prize was not paid exactly once")
+        self.assertEqual(h.read8("wBattleCount"), count, "his battle counted as a round battle")
+        self.assertEqual(self.flag(), 1, "the win did not set his flag")
+        self.assertEqual(self.pos(SLOT), (tx, ty), "he moved")
+        printed = self.talk(frames=900, until_battle=False)
+        self.assertIn(h.symbols.get("PFGenericAfterText")[1], printed, "no after-line")
+        self.assertEqual(h.read8("hIsInBattle"), 0, "a rematch")
+
+        self.assertTrue(save_reload.settle(h))
+        h.park_before_hijack()
+        h.call_routine("SaveGameData")
+        saved_money = self.money()
+        reboot = save_reload.Reboot(save_reload.sram_image(h), cgb_mode=self.CGB)
+        try:
+            reboot.load()
+            self.assertTrue(reboot.overworld, "Continue did not reach the overworld")
+            r = reboot.h
+            self.h = r                                   # the helpers read self.h
+            self.assertEqual(r.read8("hCurMap"), self.maps["PROCEDURAL_FOREST"])
+            self.assertEqual(self.flag(), 1, "Continue forgot he was beaten")
+            self.assertEqual(self.pos(SLOT), (tx, ty), "Continue moved him")
+            self.assertNotEqual(self.picture(SLOT), 0, "Continue removed him")
+            self.assertEqual(self.money(), saved_money)
+            self.assertEqual(r.read8("wBattleCount"), count)
+            printed = self.talk(frames=900, until_battle=False)
+            self.assertIn(r.symbols.get("PFGenericAfterText")[1], printed, "no after-line after Continue")
+            self.assertNotIn(r.symbols.get("PFGenericIntroText")[1], printed, "a rematch after Continue")
+            self.assertEqual(r.read8("hIsInBattle"), 0, "a rematch after Continue")
+        finally:
+            self.h = h
+            reboot.close()
+
     def test_a_new_forest_finds_him_unbeaten(self) -> None:
         h = self.h
         self.enter(4, 0, 2)

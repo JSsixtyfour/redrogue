@@ -4445,31 +4445,30 @@ PCDecorateLast:
 	ld a, 42
 	call PCWriteCell
 
-	ld a, 1
-	ld [wBuffer + wProcCaveLoopY], a
+	; Both passes walk the interior (1-18, 1-18) in reading order by pointer,
+	; testing the block id in place (2026-11-21: was PCReadCell per cell, about
+	; 374,000 cycles a cave, nearly all on rejected cells). Same cells, same
+	; Rangerandom draws in the same order, same writes; Random and Rangerandom
+	; keep bc/de/hl. d = Y, e = X.
+	call PCTargetBase
+	ld bc, PC_STRIDE + 1
+	add hl, bc                          ; cell (1, 1)
+	ld d, 1
 .fillYLoop
-	ld a, 1
-	ld [wBuffer + wProcCaveLoopX], a
+	ld e, 1
 .fillXLoop
-	ld a, [wBuffer + wProcCaveLoopX]
-	ld [wBuffer + wProcCaveCurX], a
-	ld a, [wBuffer + wProcCaveLoopY]
-	ld [wBuffer + wProcCaveCurY], a
-	call PCReadCell
+	ld a, [hl]
 	cp 25
 	jr nz, .fillSkipCell
 	; skip the 3x3 area around the sign at block (9,17)
-	ld a, [wBuffer + wProcCaveLoopX]
-	cp 8
-	jr c, .fillNotNearSign
-	cp 11
+	ld a, e
+	sub 8
+	cp 3
 	jr nc, .fillNotNearSign
-	ld a, [wBuffer + wProcCaveLoopY]
-	cp 16
-	jr c, .fillNotNearSign
-	cp 19
-	jr nc, .fillNotNearSign
-	jr .fillSkipCell
+	ld a, d
+	sub 16
+	cp 3
+	jr c, .fillSkipCell
 .fillNotNearSign
 
 	ld c, 40
@@ -4479,36 +4478,36 @@ PCDecorateLast:
 
 	ld c, NUM_PC_OBSTACLES
 	call Rangerandom
+	push hl
 	ld hl, PCObstacleTable
 	ld c, a
 	ld b, 0
 	add hl, bc
 	ld a, [hl]
-	call PCWriteCell
+	pop hl
+	ld [hl], a
 .fillSkipCell
-	ld a, [wBuffer + wProcCaveLoopX]
-	inc a
-	ld [wBuffer + wProcCaveLoopX], a
+	inc hl
+	inc e
+	ld a, e
 	cp PC_SIZE - 1
 	jr nz, .fillXLoop
-	ld a, [wBuffer + wProcCaveLoopY]
-	inc a
-	ld [wBuffer + wProcCaveLoopY], a
+	ld bc, PC_STRIDE - (PC_SIZE - 2)
+	add hl, bc                          ; the next row's X 1
+	inc d
+	ld a, d
 	cp PC_SIZE - 1
 	jr nz, .fillYLoop
 
 	; Pass 2: 117 as a rare decorative variant of existing 21s
-	ld a, 1
-	ld [wBuffer + wProcCaveLoopY], a
+	call PCTargetBase
+	ld bc, PC_STRIDE + 1
+	add hl, bc
+	ld d, PC_SIZE - 2                   ; rows
 .wallYLoop
-	ld a, 1
-	ld [wBuffer + wProcCaveLoopX], a
+	ld e, PC_SIZE - 2                   ; columns
 .wallXLoop
-	ld a, [wBuffer + wProcCaveLoopX]
-	ld [wBuffer + wProcCaveCurX], a
-	ld a, [wBuffer + wProcCaveLoopY]
-	ld [wBuffer + wProcCaveCurY], a
-	call PCReadCell
+	ld a, [hl]
 	cp 21
 	jr nz, .wallSkipCell
 
@@ -4517,19 +4516,22 @@ PCDecorateLast:
 	and a
 	jr nz, .wallSkipCell
 
-	ld a, 117
-	call PCWriteCell
+	ld [hl], 117
 .wallSkipCell
-	ld a, [wBuffer + wProcCaveLoopX]
+	inc hl
+	dec e
+	jr nz, .wallXLoop
+	ld bc, PC_STRIDE - (PC_SIZE - 2)
+	add hl, bc
+	dec d
+	jr nz, .wallYLoop
+	; The loop variables as the coordinate loops left them.
+	ld a, PC_SIZE - 2
+	ld [wBuffer + wProcCaveCurX], a
+	ld [wBuffer + wProcCaveCurY], a
 	inc a
 	ld [wBuffer + wProcCaveLoopX], a
-	cp PC_SIZE - 1
-	jr nz, .wallXLoop
-	ld a, [wBuffer + wProcCaveLoopY]
-	inc a
 	ld [wBuffer + wProcCaveLoopY], a
-	cp PC_SIZE - 1
-	jr nz, .wallYLoop
 	ret
 
 ; obstacle block IDs for PCDecorateLast's fill pass. 60/61 are classified as

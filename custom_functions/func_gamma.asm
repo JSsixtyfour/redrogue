@@ -497,7 +497,7 @@ GBCFadeInFromWhite::
 ; (facility_deep_floor.asm), which decide that this warp is that descent.
 ; ------------------------------------------------------------
 DEF FAST_FADE_GBC_STEP  EQU 4 ; the smooth fade's step (2 in the ordinary fade)
-DEF FAST_FADE_DMG_DELAY EQU 4 ; frames per DMG palette step (8 in the ordinary fade)
+DEF FAST_FADE_DMG_DELAY EQU 2 ; frames per DMG palette step (8 in the ordinary fade; 4 until 2026-11-21)
 
 FastWarpFadeOutToWhite::
 	call GBCFadeOutToWhiteFast

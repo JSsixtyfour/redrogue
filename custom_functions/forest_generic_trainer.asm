@@ -1567,30 +1567,19 @@ WGTCavePick::
 	inc c
 	jr .quadrant
 .haveQuadrant
+	; The facing: the first direction (down, up, left, right) whose exact
+	; adjacent step the player can stand on (WGTCaveSightOk). Measured
+	; 2026-11-21: testing the neighbouring block for any walkable quadrant left
+	; 2 of 40 floor-1 caves facing a wall (seed 12 at (0,2), seed 37 at
+	; (38,10)), so he could never see the player.
 	ld b, 0                             ; b = the facing
-	inc e
-	call WGTCaveBlockMask               ; below
-	dec e
-	and a
+.facing
+	call WGTCaveSightOk
 	jr nz, .haveFacing
 	inc b
-	dec e
-	call WGTCaveBlockMask               ; above
-	inc e
-	and a
-	jr nz, .haveFacing
-	inc b
-	dec d
-	call WGTCaveBlockMask               ; left
-	inc d
-	and a
-	jr nz, .haveFacing
-	inc b
-	inc d
-	call WGTCaveBlockMask               ; right
-	dec d
-	and a
-	jr nz, .haveFacing
+	ld a, b
+	cp 4
+	jr c, .facing
 	ld b, 0
 .haveFacing
 	ld a, c
@@ -1618,6 +1607,153 @@ WGTCavePick::
 .none
 	ld a, FGT_CELL_NONE
 	ld [sWildGenericCell], a
+	ret
+
+; b = a facing (0 down, 1 up, 2 left, 3 right), c = his quadrant (bit 0 x,
+; bit 1 y), d/e = his block. Out: nz = the step he faces is walkable. Facing
+; down or up flips the quadrant's row, left or right its column; the block
+; changes only when he stands on the edge he faces. Keeps bc/de; clobbers a/hl.
+WGTCaveStepOpen:
+	push de
+	ld a, b
+	cp 2
+	ld a, c
+	jr nc, .horizontal
+	xor %10                             ; the other row
+	ld l, a
+	ld a, b                             ; 0 down, 1 up
+	bit 1, c
+	jr nz, .bottomRow
+	and a
+	jr z, .read                         ; top row, down: the same block
+	dec e
+	jr .read
+.bottomRow
+	and a
+	jr nz, .read                        ; bottom row, up: the same block
+	inc e
+	jr .read
+.horizontal
+	xor %01                             ; the other column
+	ld l, a
+	ld a, b                             ; 2 left, 3 right
+	bit 0, c
+	jr nz, .rightColumn
+	cp 3
+	jr z, .read                         ; left column, right: the same block
+	dec d
+	jr .read
+.rightColumn
+	cp 2
+	jr z, .read                         ; right column, left: the same block
+	inc d
+.read
+	push bc
+	ld c, l
+	call WGTCaveQuadWalk
+	pop bc
+	pop de
+	ret
+
+; b = a facing, c = his quadrant, d/e = his block. Out: nz = he may face it:
+; the step is walkable and, when it is in his own block, it reaches out of the
+; block without crossing him. Measured 2026-11-21, audit seed 62: he stood in
+; the only doorway of a three-step pocket of his own block and faced into it.
+; Of the block's other quadrants, S (the step) touches D (his diagonal), and D
+; touches O (the last one), so S's side is S, plus D and O when D is walkable.
+; Keeps bc/de; clobbers a/hl.
+WGTCaveSightOk:
+	call WGTCaveStepOpen
+	ret z
+	ld a, b
+	cp 2
+	jr nc, .horizontal
+	ld a, c
+	srl a                               ; his row
+	xor b                               ; 0 = down from the top, up from the bottom
+	ret nz                              ; it leaves the block
+	ld a, c
+	xor %10
+	jr .inside
+.horizontal
+	ld a, c
+	xor b
+	and 1                               ; 0 = left from the left, right from the right
+	jr z, .leaves
+	ld a, c
+	xor %01
+.inside
+	; S = his quadrant xor k (k = %10 facing down/up, %01 left/right), so
+	; D = S xor (k xor %11) and O = D xor k.
+	push bc
+	ld c, a                             ; S
+	call WGTCaveQuadOut
+	jr nz, .done
+	call .flip                          ; D
+	call WGTCaveQuadWalk
+	jr z, .done
+	call WGTCaveQuadOut
+	jr nz, .done
+	call .flip
+	ld a, c
+	xor %11
+	ld c, a                             ; O
+	call WGTCaveQuadWalk
+	call nz, WGTCaveQuadOut
+.done
+	pop bc
+	ret
+.leaves
+	or 1                                ; nz
+	ret
+; c ^= k xor %11 (the bit the facing does not flip). Keeps b.
+.flip
+	ld a, b
+	cp 2
+	ld a, c
+	jr nc, .flipRow
+	xor %01
+	ld c, a
+	ret
+.flipRow
+	xor %10
+	ld c, a
+	ret
+
+; c = a quadrant, d/e = its block. Out: nz = one of its two steps out of the
+; block (up or down, left or right, away from the block's middle) is walkable.
+; Keeps bc/de; clobbers a/hl.
+WGTCaveQuadOut:
+	push bc
+	ld a, c
+	srl a
+	xor 1                               ; row 0 faces up (1), row 1 down (0)
+	ld b, a
+	call WGTCaveStepOpen
+	jr nz, .done
+	ld a, c
+	and 1
+	add 2                               ; column 0 faces left (2), 1 right (3)
+	ld b, a
+	call WGTCaveStepOpen
+.done
+	pop bc
+	ret
+
+; c = a quadrant, d/e = a block. Out: nz = that quadrant is walkable.
+; Keeps bc/de; clobbers a/hl.
+WGTCaveQuadWalk:
+	call WGTCaveBlockMask               ; keeps bc/de; off the grid reads 0
+	ld h, a
+	ld a, c
+	inc a
+.bit
+	dec a
+	jr z, .test
+	srl h
+	jr .bit
+.test
+	bit 0, h                            ; z = solid
 	ret
 
 ; d/e = a block. Carry = WGTCaveCellOk passes, it is more than one block from

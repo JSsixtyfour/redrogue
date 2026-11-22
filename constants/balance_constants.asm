@@ -263,14 +263,23 @@ DEF START_MONEY EQU $3000
 
 ; --- Wild areas ---------------------------------------------------------
 ; Encounter chance per step = rate/256. Read by data/wild/maps/Procedural*.asm.
-DEF WILD_AREA_ENCOUNTER_RATE EQU 10
+DEF WILD_AREA_ENCOUNTER_RATE EQU 10 ; the Facility's rate, and the base the others scale from
+; Per-stage rates are tuned so a visit that collects all four balls yields about
+; the same number of wild encounters everywhere (~5). Measured 2026-11-21 over 60
+; generated layouts per stage (shortest route entrance -> all balls -> exit, exact
+; expected count): at rate 10 the Cave gave 4.1 and the Facility 5.0; Forest and
+; Cemetery figures are with their own rates, below. The Cave's caverns route
+; shorter (~106 steps vs the Facility's ~128), hence its higher rate: 13 -> ~5.4.
+DEF WILD_CAVE_ENCOUNTER_RATE EQU 13
+ASSERT WILD_AREA_ENCOUNTER_RATE <= WILD_CAVE_ENCOUNTER_RATE && WILD_CAVE_ENCOUNTER_RATE < 256
 ; The Forest only rolls on grass tiles (FOREST tileset, see TryDoWildEncounter),
 ; while Cave/Facility/Cemetery roll on every floor tile. Measured 2026-11-21 in
 ; generated Forest layouts: 47.4% of all reachable steps are grass (100 layouts),
 ; and 31% (grass-avoiding) to 58% (grass-ignoring) of the shortest entrance-to-
 ; exit route (60 layouts). Parity with the other stages per step walked would be
 ; 10/0.47 = 21 for a wanderer and 10/0.31 = 32 for a path-follower; 20 is a
-; deliberately conservative pick between Route 4 (20) and Route 1 (25).
+; deliberately conservative pick between Route 4 (20) and Route 1 (25). Collecting
+; all balls at 20: 3.8 encounters (grass-avoiding) to 6.6 (grass-ignoring), mean 5.2.
 ; Re-measure if the Forest generator's grass density changes.
 DEF WILD_FOREST_ENCOUNTER_RATE EQU 20
 ASSERT WILD_AREA_ENCOUNTER_RATE <= WILD_FOREST_ENCOUNTER_RATE && WILD_FOREST_ENCOUNTER_RATE < 256
@@ -280,6 +289,9 @@ ASSERT WILD_AREA_ENCOUNTER_RATE <= WILD_FOREST_ENCOUNTER_RATE && WILD_FOREST_ENC
 ; 1219 (Cave). Less to explore means fewer steps walked per visit, so the rate
 ; is raised to compensate: 13 matches the Facility's area, 20 the Cave/Facility
 ; mean; 15 sits between (the Cave's open caverns overstate what gets walked).
+; Collecting all four floors' balls at 15: ~22.5 steps per floor, ~5.2 encounters
+; (floor 1 measured, x4 estimated: the harness cannot enter floors 2-4 directly).
+; This is the figure the other stages' rates were tuned to.
 ; Its budget is shared across all four floors, so the cap is unchanged.
 DEF WILD_CEMETERY_ENCOUNTER_RATE EQU 15
 ASSERT WILD_AREA_ENCOUNTER_RATE <= WILD_CEMETERY_ENCOUNTER_RATE && WILD_CEMETERY_ENCOUNTER_RATE < 256

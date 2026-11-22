@@ -6462,10 +6462,11 @@ PFacFinalize::
     ld a, HIGH(wOverworldMap + PFAC_BASE)
     ld [wBuffer + wPFacTargetBaseHi], a
 
-    ; Seed the whole player area with the untouched sentinel, then run the
-    ; room-tree pipeline. On return the map holds only real block IDs and
-    ; sProcFacilityGenScratch[0..7] / wPFacItemTemp hold the ball coords + items.
-    call PFacFillUntouched
+    ; Run the room-tree pipeline; each layout attempt seeds the whole player
+    ; area with the untouched sentinel first (a second fill here, removed
+    ; 2026-11-21, repeated the first attempt's). On return the map holds only
+    ; real block IDs and sProcFacilityGenScratch[0..7] / wPFacItemTemp hold the
+    ; ball coords + items.
     call PFacGenerateFacility
 
     ; Save 4 ball positions as tile coords (Y,X order) to sProcFacilityBallXY.
