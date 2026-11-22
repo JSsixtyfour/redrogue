@@ -930,8 +930,9 @@ AIRun_BombTrade:
 ; enemy is slower (it auto-misses in this engine per the Engine-truth table),
 ; so this plan does not need to re-check speed as a legality gate - only as a
 ; genuine precondition for it to be worth qualifying at all, which
-; AIPlanClassMoveLands plus the explicit AIEnemyIsFaster check below both
-; enforce before fitness is ever nonzero.
+; AIPlanClassMoveLands plus the explicit AIEnemyOHKOCanLand check below both
+; enforce before fitness is ever nonzero. A speed tie counts: the OHKO lands.
+; (This used AIEnemyIsFaster, a strict turn-order test, and skipped ties.)
 
 AIFit_OhkoFish:
 	ld de, AICLASS_OHKO
@@ -939,7 +940,7 @@ AIFit_OhkoFish:
 	ret nc
 	farcall AIPlayerWouldKO
 	jr nc, .no ; only a losing-position gamble, per the plan document's rank 11
-	farcall AIEnemyIsFaster
+	farcall AIEnemyOHKOCanLand
 	jr nc, .no ; slower means the move auto-misses; nothing to gamble on
 	ld a, AI_FITNESS_OHKO_FISH
 	ret

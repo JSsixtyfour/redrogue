@@ -521,23 +521,23 @@
    }
   },
   "AIRedundant_OHKO": {
-   "summary": "AI_REDUNDANT handler: OHKO moves unless strictly faster.",
+   "summary": "AI_REDUNDANT handler: OHKO moves when slower (a tie connects).",
    "positive": {
-    "requirement": "slower or tied: eliminated",
+    "requirement": "slower: eliminated",
     "tests": [
-     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_ohko_needs_strictly_faster_equal_speed_eliminated"
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_ohko_slower_eliminated_tie_legal"
     ]
    },
    "negative": {
-    "requirement": "strictly faster: legal",
+    "requirement": "faster: legal",
     "tests": [
-     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_ohko_needs_strictly_faster_equal_speed_eliminated"
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_ohko_slower_eliminated_tie_legal"
     ]
    },
    "boundary": {
-    "requirement": "equal Speed",
+    "requirement": "equal Speed: legal",
     "tests": [
-     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_ohko_needs_strictly_faster_equal_speed_eliminated"
+     "test_ai_heuristic_gaps.AIRedundantGapsTest.test_ohko_slower_eliminated_tie_legal"
     ]
    }
   },
@@ -1014,27 +1014,6 @@
     "requirement": "ordinary turn: small penalty",
     "tests": [
      "test_ai_heuristic_gaps.AISmartGapsTest.test_invulnerable_charge_boosted_back_when_stalling"
-    ]
-   }
-  },
-  "AISmart_OHKO": {
-   "summary": "AI_SMART handler: OHKO needs our level above the target's.",
-   "positive": {
-    "requirement": "equal or higher level: not discouraged",
-    "tests": [
-     "test_ai_heuristic_gaps.AISmartGapsTest.test_ohko_level_gate"
-    ]
-   },
-   "negative": {
-    "requirement": "strictly lower level: discouraged",
-    "tests": [
-     "test_ai_heuristic_gaps.AISmartGapsTest.test_ohko_level_gate"
-    ]
-   },
-   "boundary": {
-    "requirement": "equal levels",
-    "tests": [
-     "test_ai_heuristic_gaps.AISmartGapsTest.test_ohko_level_gate"
     ]
    }
   },

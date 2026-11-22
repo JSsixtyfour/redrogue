@@ -6267,8 +6267,8 @@ _AIEstimateForTurn:
 	            ; JumpToOHKOMoveEffect, which CALLS JumpMoveEffect - i.e. it
 	            ; executes the real move effect. Running that here would fire a
 	            ; move in the middle of scoring. OHKO legality is already owned
-	            ; by AIRedundant_OHKO (speed) and AISmart_OHKO (level), so report
-	            ; zero and leave the scoring to them.
+	            ; by AIRedundant_OHKO (speed; Gen 1 has no level rule), so report
+	            ; zero and leave the scoring to it.
 	ld a, [hl]
 	and a
 	jr z, .done ; status move: nothing to estimate

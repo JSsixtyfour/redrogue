@@ -8,6 +8,9 @@
 ; RogueStageMapTable and IsRogueStageMap live here (rogue bank) so that
 ; _PickRandomUnvisitedStage can read the table directly without a bank switch.
 DEF NUM_STAGE_MAPS EQU 22
+; GAME_CORNER is a route stand-in (Gambler's Paradise) that is deliberately not
+; in this table. A change applied to every route here must be applied to
+; scripts/GameCorner.asm and data/maps/objects/GameCorner.asm as well.
 
 RogueStageMapTable:
 	db ROUTE_1

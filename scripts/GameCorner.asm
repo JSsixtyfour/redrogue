@@ -3,6 +3,11 @@ DEF GAME_CORNER_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_GAME_CORNER_TRAINER_0 % 
 	| (1 << (EVENT_BEAT_GAME_CORNER_TRAINER_2 % 8)) \
 	| (1 << (EVENT_BEAT_GAME_CORNER_TRAINER_3 % 8))
 
+; NOT A STANDARD ROUTE, BUT KEEP IT IN STEP WITH THEM. Gambler's Paradise
+; (witch challenge 13) swaps this map in for one route, so it is not in
+; RogueStageMapTable and a sweep over the route scripts will not find it. When
+; every route's entry block, reward check or warps change, change this map and
+; data/maps/objects/GameCorner.asm to match.
 GameCorner_Script:
 	; Skip slot machine setup when used as Gambler's Paradise rogue stage
     CheckEvent EVENT_ENTER_ROOM

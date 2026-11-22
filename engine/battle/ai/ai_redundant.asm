@@ -551,26 +551,26 @@ AIRedundant_Heal:
 	xor a
 	ret
 
-; OHKO moves (Horn Drill etc.) auto-miss unless the user is strictly faster
-; than the target. Mirrors the exact 16-bit compare already established in
-; AIMoveChoiceModification5 (trainer_ai.asm), but this needs the OPPOSITE
-; outcome and a strict (not >=) threshold: OHKO needs enemySpeed > playerSpeed
-; to have any chance at all.
+; OHKO moves (Horn Drill etc.) auto-miss when the user is slower than the
+; target. A TIE connects: OneHitKOEffect_ subtracts target speed from user speed
+; and misses only on a borrow. Same >= threshold as AIMoveChoiceModification5
+; (trainer_ai.asm). This used to treat a tie as a miss too.
 AIRedundant_OHKO:
 	ld a, [wEnemyMonSpeed]
 	ld b, a
 	ld a, [wBattleMonSpeed]
 	cp b
-	jr z, .notFaster ; high bytes equal -> check low bytes
 	jr c, .faster     ; player_hi < enemy_hi -> enemy is faster
-	jr .notFaster      ; player_hi > enemy_hi -> enemy is not faster
-.notFaster
-	ld a, [wEnemyMonSpeed + 1]
+	jr nz, .slower    ; player_hi > enemy_hi -> enemy is not faster (this used
+	                  ; to fall into the low-byte compare below)
+	ld a, [wEnemyMonSpeed + 1] ; high bytes equal -> check low bytes
 	ld b, a
 	ld a, [wBattleMonSpeed + 1]
 	cp b
 	jr c, .faster ; player_lo < enemy_lo -> enemy is faster
-	; equal or player faster: OHKO auto-fails either way
+	jr z, .faster ; tie -> the OHKO still connects
+	; player faster: OHKO auto-fails
+.slower
 	ld a, AI_REDUNDANT_HEAVY
 	ret
 .faster

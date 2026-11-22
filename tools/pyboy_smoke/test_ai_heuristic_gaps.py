@@ -184,15 +184,19 @@ class AIRedundantGapsTest(_MoveLayerGapsBase):
         self.assertEqual(self.redundant_score(
             "MIST", {"wEnemyBattleStatus2": 1 << self.battle["PROTECTED_BY_MIST"]}), 79)
 
-    def test_ohko_needs_strictly_faster_equal_speed_eliminated(self):
-        # AIRedundant_OHKO: slower or TIED auto-misses (eliminated); only
-        # strictly faster keeps it legal.
+    def test_ohko_slower_eliminated_tie_legal(self):
+        # AIRedundant_OHKO: slower auto-misses (eliminated). A tie connects
+        # in OneHitKOEffect_ (it misses only on a borrow), so it stays legal.
         self.assertEqual(self.redundant_score(
             "HORN_DRILL", {"wEnemyMonSpeed": (100,), "wBattleMonSpeed": (150,)}), 79)
         self.assertEqual(self.redundant_score(
-            "HORN_DRILL", {"wEnemyMonSpeed": (100,), "wBattleMonSpeed": (100,)}), 79)
+            "HORN_DRILL", {"wEnemyMonSpeed": (100,), "wBattleMonSpeed": (100,)}), 20)
         self.assertEqual(self.redundant_score(
             "HORN_DRILL", {"wEnemyMonSpeed": (150,), "wBattleMonSpeed": (100,)}), 20)
+        # High bytes differ, low bytes point the other way ($00C8 vs $012C).
+        # The old compare fell through to the low bytes and called this legal.
+        self.assertEqual(self.redundant_score(
+            "HORN_DRILL", {"wEnemyMonSpeed": (200,), "wBattleMonSpeed": (300,)}), 79)
 
     def test_poison_blocked_target_eliminated(self):
         self.assertEqual(self.redundant_score("POISONPOWDER"), 20)
@@ -382,16 +386,14 @@ class AISmartGapsTest(_MoveLayerGapsBase):
         self.assertEqual(self.smart_score(
             "HYPER_BEAM", {"wEnemyMonHP": (40,), "wBattleMonHP": (10,)}), 20)
 
-    def test_ohko_level_gate(self):
-        # AISmart_OHKO: our level must STRICTLY exceed the target's; equal
-        # levels retain OHKO's normal chance (no extra penalty) per the
-        # handler's own comment - only a strictly LOWER level is discouraged.
-        self.assertEqual(self.smart_score(
-            "HORN_DRILL", {"wEnemyMonLevel": 60, "wBattleMonLevel": 50}), 20)
-        self.assertEqual(self.smart_score(
-            "HORN_DRILL", {"wEnemyMonLevel": 50, "wBattleMonLevel": 50}), 20)  # boundary
-        self.assertEqual(self.smart_score(
-            "HORN_DRILL", {"wEnemyMonLevel": 40, "wBattleMonLevel": 50}), 30)
+    def test_ohko_has_no_level_gate(self):
+        # Gen 1's OneHitKOEffect_ checks speed only, so AI_SMART must not
+        # penalize an OHKO from a lower-level user. The old pokecrystal level
+        # rule scored the last case 30, and route trainers sit below the
+        # player's level by design, so it vetoed nearly every OHKO.
+        for enemy_level in (60, 50, 40):
+            self.assertEqual(self.smart_score(
+                "HORN_DRILL", {"wEnemyMonLevel": enemy_level, "wBattleMonLevel": 50}), 20)
 
     def test_poison_healthy_toxic_encouraged_dying_target_no_bonus(self):
         self.assertEqual(self.smart_score(
@@ -1198,6 +1200,11 @@ class AIPlanGapsTest(_AIGapsBase):
         self.assertNotEqual(
             self.select_plan(["HORN_DRILL"], enemy_hp=(1, 200), enemy_speed=100,
                              player_speed=200), self.ai["AI_PLAN_OHKO_FISH"])
+        # Boundary: a speed tie still lands an OHKO (OneHitKOEffect_ misses
+        # only when slower), so the gamble is on.
+        self.assertEqual(
+            self.select_plan(["HORN_DRILL"], enemy_hp=(1, 200), enemy_speed=150,
+                             player_speed=150), self.ai["AI_PLAN_OHKO_FISH"])
 
     # --- AI review CP6 (2026-11-13): the setup gate per plan slot --------------
     def plan_scores(self, moves, gate_bits=(), hurts=True, writes=None):

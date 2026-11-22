@@ -15,12 +15,19 @@
 GameCorner_Object:
 	db $f ; border block
 
+	; NOT A STANDARD ROUTE, BUT KEEP IT IN STEP WITH THEM. The Game Corner is
+	; only reached through Gambler's Paradise (witch challenge 13), which
+	; replaces one route with it, so it is absent from RogueStageMapTable and
+	; easy to miss. Any change made to every route's warps, entry script
+	; (scripts/GameCorner.asm) or reward flow must be made here too.
+	; Route convention (e.g. RocketHideoutB1F): the arrival door is
+	; WARP_NO_RETURN and the exit is an explicit Lobby warp.
 	def_warp_events
-	warp_event 15, 17, LAST_MAP, 8
-	warp_event 16, 17, LAST_MAP, 8
-	; Was ROCKET_HIDEOUT_B1F: a walkable tile that skipped the Lobby (and the
-	; gym it had queued) straight into another route. Every exit returns.
-	warp_event  0,  5, LAST_MAP, 8
+	warp_event 15, 17, WARP_NO_RETURN, 1
+	warp_event 16, 17, WARP_NO_RETURN, 1
+	; The exit. Was ROCKET_HIDEOUT_B1F: it skipped the Lobby (and the gym it
+	; had queued) straight into another route.
+	warp_event  0,  5, INDIGO_PLATEAU_LOBBY, 1
 
 	def_bg_events
 	bg_event  9,  4, TEXT_GAMECORNER_POSTER

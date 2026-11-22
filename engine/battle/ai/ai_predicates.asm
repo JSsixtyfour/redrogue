@@ -822,6 +822,24 @@ AIEnemyIsFaster::
 	sbc b   ; carry set iff de < bc, i.e. player is slower
 	ret
 
+; Carry SET if our OHKO move can land: our live Speed >= the player's. Not the
+; same question as AIEnemyIsFaster (turn order, where a tie is a coin flip):
+; OneHitKOEffect_ misses only when the user is slower, so a tie connects.
+; Clobbers af, bc, de.
+AIEnemyOHKOCanLand::
+	ld a, [wBattleMonSpeed]
+	ld b, a
+	ld a, [wBattleMonSpeed + 1]
+	ld c, a ; bc = player speed
+	ld a, [wEnemyMonSpeed]
+	ld d, a
+	ld a, [wEnemyMonSpeed + 1]
+	sub c   ; enemy - player, the same subtraction OneHitKOEffect_ makes
+	ld a, d
+	sbc b   ; carry iff enemy < player: the OHKO misses
+	ccf     ; carry iff enemy >= player: it can land
+	ret
+
 ; Carry SET if paralysing the player would FLIP turn order: the player strictly
 ; outspeeds us now, and its quartered Speed would be strictly below ours.
 ; Mirrors QuarterSpeedDueToParalysis exactly (Speed / 4, minimum 1). A tie is a

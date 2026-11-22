@@ -183,7 +183,8 @@ AISmartCrossCutting::
 	ai_dispatch SUBSTITUTE_EFFECT, AISmart_Substitute
 	ai_dispatch POISON_EFFECT, AISmart_Poison
 	ai_dispatch HYPER_BEAM_EFFECT, AISmart_HyperBeam
-	ai_dispatch OHKO_EFFECT, AISmart_OHKO
+; No OHKO_EFFECT row: pokecrystal's AI_Smart_Ohko level rule is a Gen 2
+; mechanic. Gen 1's OneHitKOEffect_ checks speed only (AIRedundant_OHKO).
 	ai_dispatch SUPER_FANG_EFFECT, AISmart_SuperFang
 	ai_dispatch DRAIN_HP_EFFECT, AISmart_DrainHP
 	ai_dispatch PARALYZE_EFFECT, AISmart_Paralyze
@@ -399,23 +400,6 @@ AISmart_HyperBeam:
 	call AIMoveWouldKO ; max roll reaches the player's HP
 	jr c, .noChange
 	ld a, AI_NUDGE
-	and a
-	ret
-.noChange
-	xor a
-	ret
-
-; OHKO moves need the user's level to exceed the target's, on top of the speed
-; requirement AI_Redundant already checks. Source: pokecrystal AI_Smart_Ohko.
-AISmart_OHKO:
-	ld a, [wBattleMonLevel]
-	ld b, a
-	ld a, [wEnemyMonLevel]
-	cp b
-	jr nc, .noChange ; enemy level >= player level -> OHKO retains its normal
-	                 ; chance; AI_Redundant's speed check is the main gate,
-	                 ; this only adds the level check on top of it
-	ld a, AI_HEAVY
 	and a
 	ret
 .noChange
