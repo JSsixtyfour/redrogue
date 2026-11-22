@@ -18,7 +18,9 @@ GameCorner_Object:
 	def_warp_events
 	warp_event 15, 17, LAST_MAP, 8
 	warp_event 16, 17, LAST_MAP, 8
-	warp_event  0,  5, ROCKET_HIDEOUT_B1F, 2
+	; Was ROCKET_HIDEOUT_B1F: a walkable tile that skipped the Lobby (and the
+	; gym it had queued) straight into another route. Every exit returns.
+	warp_event  0,  5, LAST_MAP, 8
 
 	def_bg_events
 	bg_event  9,  4, TEXT_GAMECORNER_POSTER

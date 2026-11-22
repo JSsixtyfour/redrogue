@@ -87,9 +87,18 @@ KarateDojoRewardMenu::
 .noChoice
 	and a
 .restore
+	; Re-enabling sprite updates lets VBlank rebuild OAM from each actor's last
+	; visibility pass, which ran before this box was drawn, so the Master and
+	; the player were drawn over the menu until CloseTextDisplay dropped the
+	; window (31 frames after a pick, measured; for as long as the box waited
+	; after NO THANKS). Run a pass right away while wTileMap still holds the
+	; box, which hides everyone under it. DelayFrame first, still frozen, so the
+	; pass finishes before the next VBlank reads the result.
+	call DelayFrame
 	pop bc                       ; b = saved hUpdateSpritesEnabled
 	ld a, b
 	ldh [hUpdateSpritesEnabled], a
+	call UpdateSprites
 	pop bc                       ; b = saved hJoyIgnore
 	ld a, b
 	ldh [hJoyIgnore], a

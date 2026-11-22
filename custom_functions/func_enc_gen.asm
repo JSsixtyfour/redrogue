@@ -383,14 +383,9 @@ GetRandRosterLoop:
 ; Kabutops would pass a pre-evolve test and then become a second Kabutops (the
 ; NO_DUPES bug class, rogue_build_party.asm). Eevee needs no special case, the
 ; evolve above was the real one. Bounded, then accepted, so a small pool cannot
-; hang. Gamblers keep their themed pool as drawn.
-	ld a, [wTrainerClass]
-	cp GAMBLER
-	jr nz, .checkUnique
-	ld a, [wMoneyMatchState]        ; a Money Match Gambler is a route
-	bit BIT_MONEY_MATCH_ACTIVE, a   ; trainer: no duplicates either
-	jr z, .rosterUnique
-.checkUnique
+; hang. Gamblers too: their pool holds 21 species, and exempting them let one
+; Gambler field two Rhydon and two Steelix. A redraw goes back through the
+; Gambler pool at .rerollMon, so the themed roster is kept.
 	call RosterSpeciesAlreadyUsed
 	jr nc, .rosterUnique
 	pop af                  ; retry budget

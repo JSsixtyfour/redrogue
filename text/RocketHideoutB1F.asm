@@ -1,7 +1,3 @@
-_RocketHideoutB1FRocket5EndBattleText::
-	text "Why...?@"
-	text_end
-
 _RocketHideoutB1FRocket1BattleText::
 	text "Who are you? How"
 	line "did you get here?"
@@ -51,8 +47,13 @@ _RocketHideoutB1FRocket5BattleText::
 	text "Are you lost, you"
 	line "little rat?"
 	done
+    
+_RocketHideoutB1FRocket5EndBattleText::
+	text "Why...?@"
+	text_end
 
 _RocketHideoutB1FRocket5AfterBattleText::
-	text "Uh-oh, that fight"
-	line "opened the door!"
+	text "Do you have"
+	line "something against"
+	cont "TEAM ROCKET?"
 	done

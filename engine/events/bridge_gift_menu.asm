@@ -480,8 +480,13 @@ BridgeGiftMenu::
 	call BridgeDoGift
 	; fall through to clear BIT_NO_TEXT_DELAY before returning
 .noChoice
+	; Same as KarateDojoRewardMenu's .restore: re-enabled, VBlank would draw
+	; each actor from its pre-menu visibility pass, over this box, until the
+	; window closes. A pass now, while wTileMap still holds the box, hides them.
+	call DelayFrame
 	pop af
 	ldh [hUpdateSpritesEnabled], a
+	call UpdateSprites
 	ld hl, wStatusFlags5
 	res BIT_NO_TEXT_DELAY, [hl]
 	ret

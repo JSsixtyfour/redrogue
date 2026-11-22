@@ -1312,14 +1312,16 @@ AIMoveChoiceModification3:
 ;
 ; The signature play is a one-hit KO (Fissure/Horn Drill/Guillotine), but Gen 1
 ; auto-misses OHKO moves when the user is slower - so this AI only reaches for
-; the OHKO when it can actually connect (fast enough, target not immune, target
-; not higher level), and otherwise sets up the speed check first (Agility, or a
+; the OHKO when it can actually connect (fast enough, target not immune), and
+; otherwise sets up the speed check first (Agility, or a
 ; paralysis move to quarter the target's speed) before firing next turn. Trap
 ; moves, sleep, speed-drops and Metronome fill in as secondary gambles.
 ;
 ; Shared conditions are precomputed once into c as bit flags:
 ;   bit 0 = enemy is fast enough for an OHKO to connect (speed >= player)
-;   bit 1 = enemy level >= player level (design gate on the OHKO)
+;   bit 1 = unused. Was "enemy level >= player level", a Gen 2 rule: Gen 1's
+;           OneHitKOEffect_ checks speed only. Route trainers sit below the
+;           player's level by design, so the gate vetoed nearly every OHKO.
 ;   bit 2 = player has no status (room to inflict paralysis/sleep)
 ;   bit 3 = enemy's moveset contains an OHKO move (worth setting up for)
 AIMoveChoiceModification5:
@@ -1342,14 +1344,6 @@ AIMoveChoiceModification5:
 .enemyFastEnough              ; equal speed also counts as "fast enough"
 	set 0, c
 .speedChecked
-	; bit 1: enemy level >= player level
-	ld a, [wBattleMonLevel]
-	ld b, a
-	ld a, [wEnemyMonLevel]
-	cp b
-	jr c, .levelChecked
-	set 1, c
-.levelChecked
 	; bit 2: player has no status
 	ld a, [wBattleMonStatus]
 	and a
@@ -1410,8 +1404,6 @@ AIMoveChoiceModification5:
 	jp .nextMove              ; neutral
 .ohko
 	bit 0, c                  ; fast enough?
-	jr z, .ohkoAvoid
-	bit 1, c                  ; level ok?
 	jr z, .ohkoAvoid
 	push hl                   ; not type-immune?
 	push bc
