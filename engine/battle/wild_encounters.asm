@@ -63,24 +63,17 @@ TryDoWildEncounter:
 .gotEncounterSlot
 ; determine which wild pokemon (grass or water) can appear in the half-block we're standing in
 	ld c, [hl]
-; Procedural cave: ignore the static wild table; roll a battlecount-scaled
+; Procedural areas: ignore the static wild table; roll a battlecount-scaled
 ; species + level from the rarity-class pool instead.
-	ldh a, [hCurMap]
-	cp PROCEDURAL_CAVE_1
-	jr z, .isProcedural
-	cp PROCEDURAL_FOREST
-	jr z, .isProcedural
-	cp PROCEDURAL_CEMETERY_1
-	jr z, .isProcedural
-	cp PROCEDURAL_CEMETERY_2
-	jr z, .isProcedural
-	cp PROCEDURAL_CEMETERY_3
-	jr z, .isProcedural
-	cp PROCEDURAL_CEMETERY_4
-	jr z, .isProcedural
-	cp PROCEDURAL_FACILITY
-	jr nz, .normalEncounterData
-.isProcedural
+	call IsProcWildMap
+	jr nc, .normalEncounterData
+.procEncounter ; test seam (test_wild_budget), no code
+; A calmed area (budget 0) rejects here, before the species roll. It used to
+; roll first and reject at .willEncounter, ~17.7k cycles and ~5 Random draws
+; spent on every step that passed the rate roll (measured 2026-11-22).
+	ld a, [wProcCaveWildBudget]
+	and a
+	jr z, .CantEncounter2   ; already 0 - silent, no repeat message
 	farcall PCRollWildEncounter ; battlecount-scaled species/level, no ownership check
 	jr .afterEncounterData
 .normalEncounterData
@@ -131,73 +124,57 @@ ENDC
 	and a
 	ret
 .willEncounter
-; Procedural areas: enforce per-visit wild-battle budget.
+; Procedural areas: spend one battle of the per-visit wild-battle budget. It is
+; nonzero here: the zero case was rejected before the species roll, and nothing
+; since has written it.
+	call IsProcWildMap
+	jr nc, .commitEncounter
+	ld hl, wProcCaveWildBudget
+	dec [hl]
+	jr nz, .commitEncounter
+; Last battle: the map script shows the calmed message after it returns.
+; Cave, Forest and Facility share EVENT_PC_BUDGET_ENDED, safe because they
+; never run concurrently and Pallet Town entry resets it before any stage reads
+; it (see PFPreloadForest). The Cemetery has its own event.
 	ldh a, [hCurMap]
 	cp PROCEDURAL_CAVE_1
-	jr z, .checkCaveBudget
-	cp PROCEDURAL_FOREST
-	jr z, .checkForestBudget
-	cp PROCEDURAL_CEMETERY_1
-	jr z, .checkCemBudget
-	cp PROCEDURAL_CEMETERY_2
-	jr z, .checkCemBudget
-	cp PROCEDURAL_CEMETERY_3
-	jr z, .checkCemBudget
-	cp PROCEDURAL_CEMETERY_4
-	jr z, .checkCemBudget
-	cp PROCEDURAL_FACILITY
-	jr z, .checkFacilityBudget
-	jr .commitEncounter
-.checkCemBudget
-	ld a, [wProcCemWildBudget]
-	and a
-	jr z, .CantEncounter2   ; already 0, silent
-	dec a
-	ld [wProcCemWildBudget], a
-	jr nz, .commitEncounter
+	jr c, .cemBudgetEnded   ; every Cemetery floor is below the $F1-$F3 block
+	SetEvent EVENT_PC_BUDGET_ENDED
+	jr .signalCalmed
+.cemBudgetEnded
 	SetEvent EVENT_PC_CEM_BUDGET_ENDED
-	ld hl, wCurrentMapScriptFlags
-	set BIT_CUR_MAP_LOADED_1, [hl]
-	jr .commitEncounter
-.checkCaveBudget
-	ld a, [wProcCaveWildBudget]
-	and a
-	jr z, .CantEncounter2 ; already 0 - silent, no repeat message
-	dec a
-	ld [wProcCaveWildBudget], a
-	jr nz, .commitEncounter
-	SetEvent EVENT_PC_BUDGET_ENDED
-	ld hl, wCurrentMapScriptFlags   ; signal map script to show calmed message
-	set BIT_CUR_MAP_LOADED_1, [hl]  ; after this battle returns
-	jr .commitEncounter
-.checkForestBudget
-	; Reuses EVENT_PC_BUDGET_ENDED (cave's event) — safe, see PFPreloadForest's
-	; comment: cave/forest never run concurrently and this event is always
-	; reset at Pallet Town entry before either stage could read it.
-	ld a, [wProcForestWildBudget]
-	and a
-	jr z, .CantEncounter2
-	dec a
-	ld [wProcForestWildBudget], a
-	jr nz, .commitEncounter
-	SetEvent EVENT_PC_BUDGET_ENDED
-	ld hl, wCurrentMapScriptFlags
-	set BIT_CUR_MAP_LOADED_1, [hl]
-	jr .commitEncounter
-.checkFacilityBudget
-	; Reuses EVENT_PC_BUDGET_ENDED like the forest (never concurrent).
-	ld a, [wProcFacilityWildBudget]
-	and a
-	jr z, .CantEncounter2
-	dec a
-	ld [wProcFacilityWildBudget], a
-	jr nz, .commitEncounter
-	SetEvent EVENT_PC_BUDGET_ENDED
+.signalCalmed
 	ld hl, wCurrentMapScriptFlags
 	set BIT_CUR_MAP_LOADED_1, [hl]
 .commitEncounter
 	xor a
     ld [wIsTrainerBattle], a
+	ret
+
+; IsProcWildMap: carry set when hCurMap is a procedural wild area (Cave,
+; Forest, Facility, Cemetery floors 1-4). Clobbers a only; bc, de, hl survive,
+; and c (the encounter slot) is live in TryDoWildEncounter across the call.
+; All four areas keep their wild-battle budget in one shared byte.
+ASSERT wProcCemWildBudget == wProcCaveWildBudget
+ASSERT wProcForestWildBudget == wProcCaveWildBudget
+ASSERT wProcFacilityWildBudget == wProcCaveWildBudget
+ASSERT PROCEDURAL_FOREST == PROCEDURAL_CAVE_1 + 1
+ASSERT PROCEDURAL_FACILITY == PROCEDURAL_CAVE_1 + 2
+ASSERT PROCEDURAL_CEMETERY_2 == PROCEDURAL_CEMETERY_1 + 1
+ASSERT PROCEDURAL_CEMETERY_3 == PROCEDURAL_CEMETERY_1 + 2
+ASSERT PROCEDURAL_CEMETERY_4 < PROCEDURAL_CAVE_1
+IsProcWildMap:
+	ldh a, [hCurMap]
+	cp PROCEDURAL_CEMETERY_4
+	jr z, .yes
+	sub PROCEDURAL_CAVE_1
+	cp PROCEDURAL_FACILITY - PROCEDURAL_CAVE_1 + 1
+	ret c
+	add PROCEDURAL_CAVE_1 - PROCEDURAL_CEMETERY_1
+	cp PROCEDURAL_CEMETERY_3 - PROCEDURAL_CEMETERY_1 + 1
+	ret
+.yes
+	scf
 	ret
 
 INCLUDE "data/wild/probabilities.asm"

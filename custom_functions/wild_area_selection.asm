@@ -69,7 +69,8 @@ ENDC
 ; THE FALLBACK CHAIN IS mon -> item -> nothing. The two mon thieves fall back
 ; to robbing the bag when either guard refuses them:
 ;   1. party size < 2 - never leave the player with an empty party
-;   2. every eligible mon is FUSED - see below
+;   2. no mon is eligible: each is FUSED (see below), or is the last one
+;      with HP - taking it would leave the player nothing able to fight
 ; Only when the bag is ALSO empty of Recovery, Stat, Valuable items and
 ; TMs/HMs does nothing get stolen. That is close to unreachable in practice,
 ; but it is a defined outcome, not an unhandled one: the villain still speaks,
@@ -133,7 +134,8 @@ StageEventDoTheft::
 	; FALL THROUGH, and this is the point of the chain: a mon thief who cannot
 	; find an eligible victim settles for an item rather than leaving
 	; empty-handed. Only when the bag is ALSO empty does nothing get stolen,
-	; which needs a one-mon (or all-fused) party AND not a single Recovery,
+	; which needs no eligible mon (one-mon party, or every mon fused or the
+	; last conscious one) AND not a single Recovery,
 	; Stat or Valuable item - rare enough to be a curiosity, but it is a
 	; defined outcome rather than an unhandled one.
 .stealItem
@@ -170,7 +172,8 @@ StageEventStealMon:
 .countDone
 	ld a, b
 	and a
-	ret z                         ; every mon is fused - carry clear, so the
+	ret z                         ; nothing eligible (fused, or the last
+	                              ; conscious mon) - carry clear, so the
 	                              ; caller falls back to an item
 	; --- pick the k-th eligible slot ---
 	ld c, b                       ; c = population for Rangerandom
@@ -504,7 +507,13 @@ StageEventRecordItem:
 	ret
 
 ; INPUT:  c = party slot index (0-based).
-; OUTPUT: carry SET = this mon may be stolen (it is not a fusion).
+; OUTPUT: carry SET = this mon may be stolen: it is not a fusion, AND taking it
+; still leaves at least one conscious mon in the party. A fainted mon always
+; passes the HP test (removing it costs no fighter); a conscious one passes
+; only if some OTHER slot has HP. Injured mons are as stealable as healthy
+; ones - the guard is "never the last one able to fight", not "never a healthy
+; one". With 1 conscious + N fainted, only the fainted are eligible; if they
+; are all fused too, the count is 0 and the caller falls back to an item.
 ; Preserves bc. Clobbers a/de/hl.
 ;
 ; bc is pushed around the farcall because Bankswitch destroys a/b/c/h/l on BOTH
@@ -522,9 +531,43 @@ StageEventSlotEligible:
 	ld e, l                       ; de = struct base, IsFusionMon's input
 	farcall IsFusionMon           ; Z set = NOT a fusion
 	pop bc                        ; does not disturb the flags
-	jr z, .eligible
-	and a                         ; carry clear = fused, skip this slot
+	jr z, .notFused
+.ineligible
+	and a                         ; carry clear = skip this slot
 	ret
+.notFused
+	; --- last-conscious-mon guard ---
+	push bc
+	ld a, c
+	ld hl, wPartyMon1HP
+	ld bc, PARTYMON_STRUCT_LENGTH
+	call AddNTimes                ; hl = this slot's HP (big-endian word)
+	ld a, [hli]
+	or [hl]
+	pop bc
+	jr z, .eligible               ; fainted: taking it leaves every fighter
+	; Conscious: eligible only if another slot is conscious too.
+	ld hl, wPartyMon1HP
+	ld d, 0                       ; d = slot being scanned
+	ld a, [wPartyCount]
+	ld e, a                       ; e = slots left to scan (party >= 2 here)
+.scanLoop
+	ld a, d
+	cp c
+	jr z, .scanNext               ; skip the candidate itself
+	ld a, [hli]
+	or [hl]
+	dec hl                        ; 16-bit dec: flags untouched
+	jr nz, .eligible              ; another conscious mon exists
+.scanNext
+	push bc
+	ld bc, PARTYMON_STRUCT_LENGTH
+	add hl, bc
+	pop bc
+	inc d
+	dec e
+	jr nz, .scanLoop
+	jr .ineligible                ; it is the last mon able to fight
 .eligible
 	scf
 	ret

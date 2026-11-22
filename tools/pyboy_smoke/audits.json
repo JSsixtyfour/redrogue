@@ -39,6 +39,8 @@
      "guards": "Phase 7e give-back returning the stolen mon damaged"},
     {"script": "audit_cave_stage_theft.py", "args": [], "kind": "guard",
      "guards": "Phase 7d theft taking the wrong mon or losing fidelity"},
+    {"script": "audit_cave_stage_theft.py", "args": ["--force-party", "4", "--hp-mask", "0100", "--seeds", "24"], "kind": "guard",
+     "guards": "a mon thief taking the last conscious mon (pre-fix build: 6/24 seeds)"},
     {"script": "audit_cave_water_stranding.py", "args": [], "kind": "guard",
      "guards": "cave river cutting a pokeball or the boss off from the player"},
     {"script": "audit_cemetery_stage_event.py", "args": [], "kind": "guard",

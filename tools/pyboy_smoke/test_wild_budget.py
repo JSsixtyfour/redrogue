@@ -51,36 +51,114 @@ class WildBudgetTest(HarnessTestCase):
                 self.assertEqual(clerk_headers, {0xFE})
                 self.assertEqual(h.read8(budget), 8 + 11 // 4)
 
+    def _fake_map_during_encounter(self, state):
+        """Show IsProcWildMap state["map"] as hCurMap, only inside the call.
+
+        The real map is put back at both exits of TryDoWildEncounter, so the
+        frame call_routine lets the parked game finish never runs on a faked
+        hCurMap (memory: fixture fake state is layout-fragile)."""
+        h = self.harness
+
+        def enter(_context):
+            state.setdefault("real", h.read8("hCurMap"))
+            h.write8("hCurMap", state["map"])
+
+        def leave(_context):
+            if "real" in state:
+                h.write8("hCurMap", state.pop("real"))
+
+        def rolled(_context):
+            state["rolls"] += 1
+
+        hooks = (("IsProcWildMap", enter),
+                 ("TryDoWildEncounter.commitEncounter", leave),
+                 ("TryDoWildEncounter.CantEncounter2", leave),
+                 ("PCRollWildEncounter", rolled))
+        for label, callback in hooks:
+            h.register_hook(label, callback)
+        return hooks
+
     def test_each_area_consumes_budget_and_blocks_at_zero(self):
+        """From the procedural branch: a zero budget rejects before the species
+        roll; any other spends one battle and the last one signals calmed."""
         h = self.harness
         assert h is not None
         events = parse_rgbds_constants(REPO_ROOT / "constants/event_constants.asm")
+        maps = parse_map_constants(REPO_ROOT / "constants/map_constants.asm")
         h.boot_fight2(seed=1)
         h.park_before_hijack()
         baseline = io.BytesIO()
         h.save_state(baseline)
-        seams = (
-            ("checkCaveBudget", "wProcCaveWildBudget", "EVENT_PC_BUDGET_ENDED"),
-            ("checkForestBudget", "wProcForestWildBudget", "EVENT_PC_BUDGET_ENDED"),
-            ("checkCemBudget", "wProcCemWildBudget", "EVENT_PC_CEM_BUDGET_ENDED"),
-            ("checkFacilityBudget", "wProcFacilityWildBudget", "EVENT_PC_BUDGET_ENDED"),
+        areas = (
+            ("PROCEDURAL_CAVE_1", "wProcCaveWildBudget", "EVENT_PC_BUDGET_ENDED"),
+            ("PROCEDURAL_FOREST", "wProcForestWildBudget", "EVENT_PC_BUDGET_ENDED"),
+            ("PROCEDURAL_CEMETERY_1", "wProcCemWildBudget", "EVENT_PC_CEM_BUDGET_ENDED"),
+            ("PROCEDURAL_CEMETERY_2", "wProcCemWildBudget", "EVENT_PC_CEM_BUDGET_ENDED"),
+            ("PROCEDURAL_CEMETERY_3", "wProcCemWildBudget", "EVENT_PC_CEM_BUDGET_ENDED"),
+            ("PROCEDURAL_CEMETERY_4", "wProcCemWildBudget", "EVENT_PC_CEM_BUDGET_ENDED"),
+            ("PROCEDURAL_FACILITY", "wProcFacilityWildBudget", "EVENT_PC_BUDGET_ENDED"),
         )
+        state = {"rolls": 0}
+        hooks = self._fake_map_during_encounter(state)
         try:
-            for seam, budget, event_name in seams:
+            for map_name, budget, event_name in areas:
+                state["map"] = maps[map_name]
                 event = events[event_name]
-                event_address = h.address("wEventFlags") + event // 8
-                event_mask = 1 << (event % 8)
+                # The other area's event must stay clear, so check both.
+                other = events["EVENT_PC_CEM_BUDGET_ENDED" if event_name == "EVENT_PC_BUDGET_ENDED"
+                               else "EVENT_PC_BUDGET_ENDED"]
                 for remaining in range(18, -1, -1):
-                    with self.subTest(area=seam, remaining=remaining):
+                    with self.subTest(area=map_name, remaining=remaining):
                         h.load_state(baseline)
+                        state["rolls"] = 0
                         h.write8(budget, remaining)
+                        h.write8("wRepelRemainingSteps", 0)
                         h.write8("wIsTrainerBattle", 1)  # cleared only by successful commit
-                        h.pyboy.memory[event_address] &= ~event_mask & 0xFF
-                        h.call_routine(f"TryDoWildEncounter.{seam}", limit=300)
+                        for flag in (event, other):
+                            h.pyboy.memory[h.address("wEventFlags") + flag // 8] &= ~(1 << (flag % 8)) & 0xFF
+                        h.call_routine("TryDoWildEncounter.procEncounter", limit=300)
+                        self.assertNotIn("real", state, "an exit hook did not restore hCurMap")
                         self.assertEqual(h.read8(budget), max(0, remaining - 1))
                         self.assertEqual(h.read8("wIsTrainerBattle"), int(remaining == 0))
+                        self.assertEqual(state["rolls"], int(remaining > 0),
+                                         "species roll ran on a calmed area" if remaining == 0
+                                         else "species roll skipped")
                         self.assertEqual(h.event_is_set(event), remaining == 1)
+                        self.assertFalse(h.event_is_set(other))
         finally:
+            for label, callback in hooks:
+                h.unregister_hook(label, callback)
+            h.load_state(baseline)
+
+    def test_only_procedural_maps_spend_the_budget(self):
+        """IsProcWildMap over every map id, through the decrement it gates."""
+        h = self.harness
+        assert h is not None
+        maps = parse_map_constants(REPO_ROOT / "constants/map_constants.asm")
+        procedural = {maps[name] for name in (
+            "PROCEDURAL_CAVE_1", "PROCEDURAL_FOREST", "PROCEDURAL_FACILITY",
+            "PROCEDURAL_CEMETERY_1", "PROCEDURAL_CEMETERY_2",
+            "PROCEDURAL_CEMETERY_3", "PROCEDURAL_CEMETERY_4")}
+        h.boot_fight2(seed=1)
+        h.park_before_hijack()
+        baseline = io.BytesIO()
+        h.save_state(baseline)
+        state = {"rolls": 0}
+        hooks = self._fake_map_during_encounter(state)
+        try:
+            for map_id in range(256):
+                with self.subTest(map_id=map_id):
+                    h.load_state(baseline)
+                    state["map"] = map_id
+                    h.write8("wProcCaveWildBudget", 5)
+                    h.write8("wIsTrainerBattle", 1)
+                    h.call_routine("TryDoWildEncounter.willEncounter", limit=300)
+                    self.assertNotIn("real", state)
+                    self.assertEqual(h.read8("wProcCaveWildBudget"), 4 if map_id in procedural else 5)
+                    self.assertEqual(h.read8("wIsTrainerBattle"), 0)
+        finally:
+            for label, callback in hooks:
+                h.unregister_hook(label, callback)
             h.load_state(baseline)
 
     def test_all_generator_budget_initializers_cover_every_count(self):

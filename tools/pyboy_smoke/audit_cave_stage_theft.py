@@ -18,13 +18,21 @@ Fidelity is checked by comparison against a snapshot rather than by asserting
 specific values, so it cannot pass by accident on a party that happens to be
 all-default.
 
+  6. the theft never leaves the party with no conscious mon: the last mon
+     with HP is never the victim (it can still be taken when another mon has
+     HP, injured or not). --hp-mask sets which slots are conscious, and
+     --seeds replays the same lobby state under many RNG seeds so a 1-in-4
+     pick cannot pass by luck.
+
 Usage:
     python3 tools/pyboy_smoke/audit_cave_stage_theft.py [--type N]
+    python3 tools/pyboy_smoke/audit_cave_stage_theft.py --hp-mask 0100 --seeds 24
 """
 
 from __future__ import annotations
 
 import argparse
+import io
 import re
 import sys
 from pathlib import Path
@@ -59,6 +67,7 @@ PARTYMON_STRUCT_LENGTH = 0x2C
 NAME_LENGTH = 11
 RECORD_BANK = 1
 STOLEN_MON = 1
+MON_HP = 1   # big-endian HP word, offset 1 of the box/party struct
 
 
 def pocket_lengths():
@@ -120,6 +129,156 @@ def read_party(h):
     return mons
 
 
+def party_hp(h, slot):
+    base = h.address("wPartyMons") + slot * PARTYMON_STRUCT_LENGTH + MON_HP
+    return (h.pyboy.memory[base] << 8) | h.pyboy.memory[base + 1]
+
+
+def apply_hp_mask(h, mask):
+    """Slot i fainted when mask[i] == '0'; a '1' slot keeps its HP (forced to
+    at least 1 so a mask cannot be defeated by a party that boots fainted)."""
+    count = h.read8("wPartyCount")
+    if len(mask) != count:
+        raise SystemExit("--hp-mask has %d slot(s) but the party has %d"
+                         % (len(mask), count))
+    for slot, flag in enumerate(mask):
+        base = h.address("wPartyMons") + slot * PARTYMON_STRUCT_LENGTH + MON_HP
+        if flag == "0":
+            h.pyboy.memory[base] = 0
+            h.pyboy.memory[base + 1] = 0
+        elif party_hp(h, slot) == 0:
+            h.pyboy.memory[base + 1] = 1
+
+
+def run_once(h, args, map_id, lengths):
+    """One arrival theft from the current (lobby) state. Returns
+    (failures, outcome) where outcome names what was taken."""
+    failures = []
+    pockets_before = read_pockets(h, lengths)
+    tms_before = read_tms(h)
+    before = read_party(h)
+    hp_before = [party_hp(h, slot) for slot in range(len(before))]
+    print("party before: %d mon(s), species %s, HP %s"
+          % (len(before), [m["box"][0] for m in before], hp_before))
+    print("owned stacks before: %d count-array + %d TM(s)"
+          % (sum(1 for v in pockets_before.values() for c in v if c),
+             len(owned_tm_indexes(tms_before))))
+    if len(before) < 2:
+        print("  (party of %d - the >=2 guard should REFUSE this theft)" % len(before))
+
+    h.preload_and_enter_wild_area(map_id, "Procedural Cave")
+    # The theft already happened during the load above; the taps below
+    # just close the greeting and the new loot line.
+    for _ in range(6):
+        h.tap("a", frames=12)
+        h.tick(40)
+
+    after = read_party(h)
+    kind = h.read_sram_bytes("sStolenKind", 1, bank=RECORD_BANK)[0]
+    box = h.read_sram_bytes("sStolenBoxMon", BOXMON_STRUCT_LENGTH, bank=RECORD_BANK)
+    nick = h.read_sram_bytes("sStolenNickname", NAME_LENGTH, bank=RECORD_BANK)
+    ot = h.read_sram_bytes("sStolenOTName", NAME_LENGTH, bank=RECORD_BANK)
+    print("party after : %d mon(s), species %s"
+          % (len(after), [m["box"][0] for m in after]))
+    print("sStolenKind = %d, stolen species = %d, catch-rate byte = $%02x"
+          % (kind, box[0], box[6]))
+
+    pockets_after = read_pockets(h, lengths)
+    item = h.read_sram_bytes("sStolenItem", 1, bank=RECORD_BANK)[0]
+    dropped = []
+    for label, counts in pockets_before.items():
+        for index, count in enumerate(counts):
+            if pockets_after[label][index] < count:
+                dropped.append((label, index, count, pockets_after[label][index]))
+
+    tms_after = read_tms(h)
+    lost_tms = sorted(set(owned_tm_indexes(tms_before))
+                      - set(owned_tm_indexes(tms_after)))
+
+    # No HM assertion here, deliberately. An earlier version asserted HMs
+    # were never touched, on the vanilla reasoning that losing Surf or
+    # Strength can strand a run. Red Rogue has no field moves, so that is
+    # not true and HMs are ordinary theft targets; the bit checks below
+    # cover them like any TM.
+
+    conscious_before = sum(1 for hp in hp_before if hp)
+    if conscious_before and not any(party_hp(h, s) for s in range(len(after))):
+        failures.append("the theft left the party with NO conscious mon "
+                        "(had %d before)" % conscious_before)
+
+    outcome = "nothing"
+    if kind == STOLEN_ITEM or args.expect_item:
+        outcome = "item"
+        # Either the Burglar, or a mon thief that fell back to the bag.
+        # A stolen TM shows up as a cleared bit, not a shrunken stack, so
+        # exactly one of the two has to have moved - never both, never
+        # neither.
+        print("item theft: sStolenItem = %d, pocket deltas = %s, TM bits lost = %s"
+              % (item, dropped, lost_tms))
+        if kind != STOLEN_ITEM:
+            failures.append("expected an ITEM theft, got sStolenKind = %d" % kind)
+        if item == 0:
+            failures.append("sStolenItem is 0 with an item theft recorded")
+        if len(dropped) + len(lost_tms) != 1:
+            failures.append("expected exactly ONE thing to leave the bag, got "
+                            "%d stack(s) and %d TM(s)" % (len(dropped), len(lost_tms)))
+        elif dropped and dropped[0][2] - dropped[0][3] != 1:
+            failures.append("stack fell by %d, expected 1" % (dropped[0][2] - dropped[0][3]))
+        if lost_tms:
+            # The recorded id must name the bit that actually cleared. This
+            # is the check that catches a wrong TM/HM index->id conversion,
+            # which would otherwise record one item while removing another.
+            want = item_id_for_bit(lost_tms[0])
+            if item != want:
+                failures.append("recorded item %d but bit index %d (id %d) was removed"
+                                % (item, lost_tms[0], want))
+            kind_word = "HM" if lost_tms[0] >= NUM_TMS else "TM"
+            print("  (%s taken: bit %d -> id %d)" % (kind_word, lost_tms[0], want))
+        if len(after) != len(before):
+            failures.append("an item theft also changed the party size")
+    elif len(before) < 2:
+        if kind != 0 or len(after) != len(before):
+            failures.append("the >=2 party guard did not hold")
+        else:
+            print("guard held: nothing stolen from a party of %d" % len(before))
+    else:
+        if kind != STOLEN_MON:
+            failures.append("sStolenKind = %d, expected STOLEN_MON" % kind)
+        if len(after) != len(before) - 1:
+            failures.append("party went %d -> %d, expected one fewer"
+                            % (len(before), len(after)))
+
+        # Which one vanished? Identify by matching the surviving structs.
+        survivors = [m["box"] for m in after]
+        missing = [i for i, m in enumerate(before) if m["box"] not in survivors]
+        if len(missing) != 1:
+            failures.append("could not identify exactly one missing mon (%d candidates)"
+                            % len(missing))
+        else:
+            slot = missing[0]
+            victim = before[slot]
+            outcome = "slot %d (%s)" % (slot, "conscious" if hp_before[slot] else "fainted")
+            if hp_before[slot] and conscious_before == 1:
+                failures.append("stole slot %d, the LAST conscious mon" % slot)
+            if box != victim["box"]:
+                failures.append("stolen box struct differs from the victim's")
+                for i, (g, w) in enumerate(zip(box, victim["box"])):
+                    if g != w:
+                        failures.append("  byte %d: record=$%02x party=$%02x" % (i, g, w))
+            if nick != victim["nick"]:
+                failures.append("stolen nickname differs: %s vs %s" % (nick, victim["nick"]))
+            if ot != victim["ot"]:
+                failures.append("stolen OT name differs: %s vs %s" % (ot, victim["ot"]))
+            expected = [m["box"] for m in before if m["box"] != victim["box"]]
+            if survivors != expected:
+                failures.append("surviving party order changed; RemovePokemon's "
+                                "compaction scrambled it")
+            if not failures:
+                print("victim species %d (slot %d) matched byte-for-byte across "
+                      "struct, nickname and OT" % (victim["box"][0], slot))
+    return failures, outcome
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--type", type=int, default=2,
@@ -135,10 +294,18 @@ def main() -> int:
     parser.add_argument("--force-party", type=int, default=0,
                         help="shrink wPartyCount to this before the theft, to "
                              "exercise the >=2 guard (the plan's explicit test)")
+    parser.add_argument("--hp-mask", default="",
+                        help="one char per party slot (after --force-party): "
+                             "'0' = fainted, '1' = conscious. e.g. 0100 puts the "
+                             "only conscious mon in slot 1")
+    parser.add_argument("--seeds", type=int, default=0,
+                        help="replay the same lobby state under this many RNG "
+                             "seeds (0 = one run on the boot's own RNG)")
     args = parser.parse_args()
 
     map_id = parse_map_constants(REPO_ROOT / "constants" / "map_constants.asm")["PROCEDURAL_CAVE_1"]
     failures = []
+    outcomes = {}
 
     h = RedRogueHarness(REPO_ROOT, ARTIFACTS)
     try:
@@ -154,6 +321,8 @@ def main() -> int:
         # reduced wPartyCount when it fires during the load.
         if args.force_party:
             h.write8("wPartyCount", args.force_party)
+        if args.hp_mask:
+            apply_hp_mask(h, args.hp_mask)
 
         if args.only_hm:
             # Strip every count pocket and every TM, keeping HM03 (bit
@@ -170,117 +339,20 @@ def main() -> int:
                   % (target, item_id_for_bit(target)))
 
         lengths = pocket_lengths()
-        pockets_before = read_pockets(h, lengths)
-        tms_before = read_tms(h)
-        before = read_party(h)
-        print("party before: %d mon(s), species %s"
-              % (len(before), [m["box"][0] for m in before]))
-        print("owned stacks before: %d count-array + %d TM(s)"
-              % (sum(1 for v in pockets_before.values() for c in v if c),
-                 len(owned_tm_indexes(tms_before))))
-        if len(before) < 2:
-            print("  (party of %d - the >=2 guard should REFUSE this theft)" % len(before))
-
-
-        h.preload_and_enter_wild_area(map_id, "Procedural Cave")
-        # The theft already happened during the load above; the taps below
-        # just close the greeting and the new loot line.
-        for _ in range(6):
-            h.tap("a", frames=12)
-            h.tick(40)
-
-        after = read_party(h)
-        kind = h.read_sram_bytes("sStolenKind", 1, bank=RECORD_BANK)[0]
-        box = h.read_sram_bytes("sStolenBoxMon", BOXMON_STRUCT_LENGTH, bank=RECORD_BANK)
-        nick = h.read_sram_bytes("sStolenNickname", NAME_LENGTH, bank=RECORD_BANK)
-        ot = h.read_sram_bytes("sStolenOTName", NAME_LENGTH, bank=RECORD_BANK)
-        print("party after : %d mon(s), species %s"
-              % (len(after), [m["box"][0] for m in after]))
-        print("sStolenKind = %d, stolen species = %d, catch-rate byte = $%02x"
-              % (kind, box[0], box[6]))
-
-        pockets_after = read_pockets(h, lengths)
-        item = h.read_sram_bytes("sStolenItem", 1, bank=RECORD_BANK)[0]
-        dropped = []
-        for label, counts in pockets_before.items():
-            for index, count in enumerate(counts):
-                if pockets_after[label][index] < count:
-                    dropped.append((label, index, count, pockets_after[label][index]))
-
-        tms_after = read_tms(h)
-        lost_tms = sorted(set(owned_tm_indexes(tms_before))
-                          - set(owned_tm_indexes(tms_after)))
-
-        # No HM assertion here, deliberately. An earlier version asserted HMs
-        # were never touched, on the vanilla reasoning that losing Surf or
-        # Strength can strand a run. Red Rogue has no field moves, so that is
-        # not true and HMs are ordinary theft targets; the bit checks below
-        # cover them like any TM.
-
-        if kind == STOLEN_ITEM or args.expect_item:
-            # Either the Burglar, or a mon thief that fell back to the bag.
-            # A stolen TM shows up as a cleared bit, not a shrunken stack, so
-            # exactly one of the two has to have moved - never both, never
-            # neither.
-            print("item theft: sStolenItem = %d, pocket deltas = %s, TM bits lost = %s"
-                  % (item, dropped, lost_tms))
-            if kind != STOLEN_ITEM:
-                failures.append("expected an ITEM theft, got sStolenKind = %d" % kind)
-            if item == 0:
-                failures.append("sStolenItem is 0 with an item theft recorded")
-            if len(dropped) + len(lost_tms) != 1:
-                failures.append("expected exactly ONE thing to leave the bag, got "
-                                "%d stack(s) and %d TM(s)" % (len(dropped), len(lost_tms)))
-            elif dropped and dropped[0][2] - dropped[0][3] != 1:
-                failures.append("stack fell by %d, expected 1" % (dropped[0][2] - dropped[0][3]))
-            if lost_tms:
-                # The recorded id must name the bit that actually cleared. This
-                # is the check that catches a wrong TM/HM index->id conversion,
-                # which would otherwise record one item while removing another.
-                want = item_id_for_bit(lost_tms[0])
-                if item != want:
-                    failures.append("recorded item %d but bit index %d (id %d) was removed"
-                                    % (item, lost_tms[0], want))
-                kind_word = "HM" if lost_tms[0] >= NUM_TMS else "TM"
-                print("  (%s taken: bit %d -> id %d)" % (kind_word, lost_tms[0], want))
-            if len(after) != len(before):
-                failures.append("an item theft also changed the party size")
-        elif len(before) < 2:
-            if kind != 0 or len(after) != len(before):
-                failures.append("the >=2 party guard did not hold")
-            else:
-                print("guard held: nothing stolen from a party of %d" % len(before))
+        if args.seeds <= 0:
+            failures, outcome = run_once(h, args, map_id, lengths)
+            outcomes[outcome] = 1
         else:
-            if kind != STOLEN_MON:
-                failures.append("sStolenKind = %d, expected STOLEN_MON" % kind)
-            if len(after) != len(before) - 1:
-                failures.append("party went %d -> %d, expected one fewer"
-                                % (len(before), len(after)))
-
-            # Which one vanished? Identify by matching the surviving structs.
-            survivors = [m["box"] for m in after]
-            missing = [m for m in before if m["box"] not in survivors]
-            if len(missing) != 1:
-                failures.append("could not identify exactly one missing mon (%d candidates)"
-                                % len(missing))
-            else:
-                victim = missing[0]
-                if box != victim["box"]:
-                    failures.append("stolen box struct differs from the victim's")
-                    for i, (g, w) in enumerate(zip(box, victim["box"])):
-                        if g != w:
-                            failures.append("  byte %d: record=$%02x party=$%02x" % (i, g, w))
-                if nick != victim["nick"]:
-                    failures.append("stolen nickname differs: %s vs %s" % (nick, victim["nick"]))
-                if ot != victim["ot"]:
-                    failures.append("stolen OT name differs: %s vs %s" % (ot, victim["ot"]))
-                expected = [m["box"] for m in before if m["box"] != victim["box"]]
-                if survivors != expected:
-                    failures.append("surviving party order changed; RemovePokemon's "
-                                    "compaction scrambled it")
-                if not failures:
-                    print("victim species %d matched byte-for-byte across "
-                          "struct, nickname and OT" % victim["box"][0])
+            baseline = io.BytesIO()
+            h.save_state(baseline)
+            for seed in range(args.seeds):
+                baseline.seek(0)
+                h.load_state(baseline)
+                h.seed_rng([seed, 0x5A, seed * 7 + 3, 0xC3])
+                print("--- seed %d ---" % seed)
+                seed_failures, outcome = run_once(h, args, map_id, lengths)
+                outcomes[outcome] = outcomes.get(outcome, 0) + 1
+                failures.extend("seed %d: %s" % (seed, f) for f in seed_failures)
     finally:
         try:
             h.close()
@@ -288,6 +360,7 @@ def main() -> int:
             pass
 
     print()
+    print("outcomes: %s" % ", ".join("%s x%d" % kv for kv in sorted(outcomes.items())))
     if failures:
         for line in failures:
             print("  FAIL: %s" % line)
