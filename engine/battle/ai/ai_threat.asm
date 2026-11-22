@@ -452,15 +452,16 @@ ENDC
 ; B5's half question from the same scan (Codex review 2026-10-22: it used to
 ; rescan, ~43k cycles): a full scan that found no KO leaves de = the largest
 ; delivery, so the reserve keeps more than half iff de < HP / 2, the comparison
-; the half scan makes per move. Super Fang is left out of de, so a scan that
-; met one leaves the answer to that rescan. (In that rescan's own mode HP is
-; already halved and what is stored here is not read.)
+; the half scan makes per move. Super Fang is left out of de, but it takes
+; max(1, floor(HP / 2)), which always meets the half bar, so a scan that met one
+; is a NO without rescanning (measured 2026-11-21: same verdict as the rescan on
+; every board, 7-15 rescans saved). (In the rescan's own mode HP is already
+; halved and what is stored here is not read.)
 	ld a, AI_RESERVE_HALF_NO
 	jr c, .storeHalf ; KO'd, and the scan stopped early: never asked
-	ld a, AI_RESERVE_HALF_UNKNOWN
 	inc b
 	dec b
-	jr nz, .storeHalf
+	jr nz, .storeHalf ; a Super Fang was scanned: takes half
 ; B5 v2 (2026-11-12): a reserve SLOWER than the player takes the entry hit and
 ; then next turn's before it acts, so it must survive two hits with room for a
 ; crit: keep 3de < HP. Measured on 250 autoplay seeds: 18% of slower reserves
@@ -588,6 +589,9 @@ _AIBestReserveThreatScan.reserveIsFaster:
 ; e = 1 if the best-ranked reserve would keep MORE than half its current HP
 ; through every believed player move, e = 0 if one would take half or more.
 ; Same staging and contract as AIBestReserveSurvivesThreat. Clobbers af, bc, d, hl.
+; No ROM caller since the Super Fang fallback went (2026-11-21): the B4 scan
+; derives this answer. Kept as the reference the PyBoy tests pin that derivation
+; to (test_ai_switching.py, half_answers).
 AIBestReserveKeepsHalf:
 	ld a, 1
 	jp _AIBestReserveThreatScan
@@ -620,13 +624,8 @@ AISacrificeBeatsSwitch::
 	ld a, d
 	sbc [hl] ; carry iff HP * 4 < MaxHP
 	ret c ; below a quarter: sacrifice
-	ld a, [wBuffer + AI_BUF_RESERVEHALF] ; from the B4 scan just before
-	ld e, a
-	inc a ; AI_RESERVE_HALF_UNKNOWN -> 0
-	ASSERT AI_RESERVE_HALF_UNKNOWN == $ff
-	call z, AIBestReserveKeepsHalf ; e = 1 keeps half, 0 = takes half or more
-	ld a, e
-	cp 1 ; carry iff e = 0: the hit would take half or more
+	ld a, [wBuffer + AI_BUF_RESERVEHALF] ; from the B4 scan just before:
+	cp AI_RESERVE_HALF_KEEPS ; carry iff NO: the hit would take half or more
 	ret
 
 ; Shared scan. Compares every believed player move against whatever HP total

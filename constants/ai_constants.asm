@@ -326,7 +326,6 @@ DEF AI_BUF_SLOTDMG    EQU AI_BUF_PLANCLASS
 DEF AI_BUF_RESERVEHALF EQU AI_BUF_PLANCLASS
 DEF AI_RESERVE_HALF_NO      EQU 0 ; takes half or more (or was KO'd)
 DEF AI_RESERVE_HALF_KEEPS   EQU 1
-DEF AI_RESERVE_HALF_UNKNOWN EQU $ff ; a Super Fang was scanned: rescan at half HP
 ; AI_SETUP's usefulness gate (2026-09-01). Set once per AI_SETUP pass, BEFORE
 ; its move loop starts, to 1 if this mon owns a physical damaging move and 0 if
 ; it does not. It has to live here rather than in a register because the loop

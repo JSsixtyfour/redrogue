@@ -828,7 +828,8 @@ class AIShouldSwitchTest(unittest.TestCase):
     # from its largest delivery instead of B5 rescanning at half HP. These pin
     # the derived answer to the rescan (AIBestReserveKeepsHalf, the reference)
     # at the rounding boundaries, and Super Fang, which the delivery leaves out,
-    # to the rescan fallback.
+    # to a NO with no rescan. UNKNOWN ($FF) was the old Super Fang marker; the
+    # ROM no longer stores it, and the asserts keep it out.
     RESERVE_HALF = {"NO": 0, "KEEPS": 1, "UNKNOWN": 0xFF}
 
     def half_answers(self, player_moves: list[str], reserve_hps, reserve: str = "WIGGLYTUFF") -> list[dict[str, int]]:
@@ -998,19 +999,19 @@ class AIShouldSwitchTest(unittest.TestCase):
         self.assert_derived_matches_rescan(results)
         self.assertEqual(results[0]["derived"], self.RESERVE_HALF["NO"], results)
 
-    def test_super_fang_leaves_the_half_answer_to_the_rescan(self) -> None:
-        # Super Fang takes half the reserve's own HP, so the delivery (which
-        # leaves it out) cannot answer: UNKNOWN, and B5's gate rescans once and
-        # finds it takes half, odd HP or even. Body Slam alone would keep half
-        # here, which is what makes the fallback matter.
+    def test_super_fang_is_a_half_no_without_a_rescan(self) -> None:
+        # Super Fang takes max(1, floor(HP / 2)) of the reserve's own HP, which
+        # always meets the half bar, so the scan answers NO itself, odd HP or
+        # even, and B5's gate never rescans. Body Slam alone would keep half
+        # here, so the NO must come from Super Fang. The reference rescan agrees.
         results = self.half_answers(
             ["SUPER_FANG", "BODY_SLAM"], lambda hit: (4 * hit, 4 * hit + 1))
         for r in results:
             with self.subTest(hp=r["hp"]):
                 self.assertLess(2 * r["delivery"], r["hp"], r)  # Body Slam keeps half
-                self.assertEqual(r["derived"], self.RESERVE_HALF["UNKNOWN"], r)
+                self.assertEqual(r["derived"], self.RESERVE_HALF["NO"], r)
                 self.assertEqual(r["rescan"], 0, r)
-                self.assertEqual(r["gate_rescans"], 1, r)
+                self.assertEqual(r["gate_rescans"], 0, r)
 
     def test_baseline_healthy_no_threat_stays(self) -> None:
         # Splash is revealed: with no type guess left, there is no threat.
