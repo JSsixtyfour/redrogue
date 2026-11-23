@@ -674,9 +674,9 @@ AIGuessLo_48: ; JYNX
 	db $ff
 AIGuessLo_49: ; MOLTRES
 	db (0 << 6) | (3 << 3) | 1
-	db FIRE_BLAST, 51
-	db FLAMETHROWER, 45
-	db EMBER, 6
+	db FIRE_BLAST, 48
+	db FLAMETHROWER, 43
+	db EMBER, 1
 	db PECK, 1
 	db (1 << 6) | (6 << 3) | 2
 	db HYPER_BEAM, $80 | 3
@@ -690,8 +690,8 @@ AIGuessLo_49: ; MOLTRES
 	db $ff
 AIGuessLo_4a: ; ARTICUNO
 	db (0 << 6) | (3 << 3) | 1
-	db BLIZZARD, 51
-	db ICE_BEAM, 45
+	db BLIZZARD, 50
+	db ICE_BEAM, 43
 	db AURORA_BEAM, 16
 	db PECK, 1
 	db (1 << 6) | (3 << 3) | 1
@@ -702,7 +702,7 @@ AIGuessLo_4a: ; ARTICUNO
 	db $ff
 AIGuessLo_4b: ; ZAPDOS
 	db (0 << 6) | (2 << 3) | 2
-	db THUNDERBOLT, 45
+	db THUNDERBOLT, 43
 	db THUNDERSHOCK, 1
 	db DRILL_PECK, 40
 	db PECK, 1
