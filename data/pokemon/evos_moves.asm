@@ -1857,13 +1857,13 @@ MoltresEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
-    db 6,  EMBER
+	db 8, LEER ; Red/Blue level-up move restored
+	db 20, WING_ATTACK
 	db 35, AGILITY
-	db 45, FLAMETHROWER
-	db 51, FIRE_BLAST
-	db 51, LEER ; Red/Blue level-up move restored
-	db 53, SKY_ATTACK
-	db 55, FIRE_SPIN
+	db 43, FLAMETHROWER
+	db 48, FIRE_BLAST
+	db 50, FIRE_SPIN
+	db 52, SKY_ATTACK
 	db 0
 ; Tutoring Learnset  
     db 2, WING_ATTACK
@@ -1873,12 +1873,13 @@ ArticunoEvosMoves:
 	db 0
 ; Learnset
     db 8,  GUST
+	db 13, MIST
     db 16, AURORA_BEAM
 	db 35, AGILITY
-	db 45, ICE_BEAM
-	db 51, BLIZZARD
-	db 53, SKY_ATTACK
-	db 55, MIST
+	db 43, ICE_BEAM
+	db 48, REFLECT
+	db 50, BLIZZARD
+	db 52, SKY_ATTACK
 	db 0
  ; Tutoring Learnset  
     db 2, GUST
@@ -1888,11 +1889,12 @@ ZapdosEvosMoves:
 ; Evolutions
 	db 0
 ; Learnset
+	db 13, THUNDER_WAVE
 	db 35, AGILITY
 	db 40, DRILL_PECK
-	db 45, THUNDERBOLT
-	db 51, THUNDER
-	db 54, LIGHT_SCREEN
+	db 43, THUNDERBOLT
+	db 50, THUNDER
+	db 52, LIGHT_SCREEN
 	db 0
     
 ; Tutoring Learnset  
