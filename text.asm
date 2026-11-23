@@ -347,3 +347,9 @@ INCLUDE "text/KarensRoom.asm"
 SECTION "Stage Event Text", ROMX
 
 INCLUDE "text/StageEvents.asm"
+
+; Pinned: bank $3A has kilobytes free, and pinning keeps first-fit floaters
+; from reshuffling around a new section.
+SECTION "Text Lobby Victory Road Sign", ROMX, BANK[$3A]
+
+INCLUDE "text/LobbyVictoryRoadSign.asm"

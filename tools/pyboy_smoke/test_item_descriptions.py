@@ -324,6 +324,70 @@ class MartDescriptionRuntimeTest(ItemDescriptionRuntimeBase):
         self.assertEqual(self.tile_row(1, 16, 18), "")
 
 
+class BagQuantityRuntimeTest(ItemDescriptionRuntimeBase):
+    """PrintListMenuEntries prints "×NN" one row under each bag entry, except in
+    the key item and TM pockets. POCKET_STAT is index 3 (%011), so the old
+    single-bit pocket tests read it as the TM pocket and hid PP UP / RARE CANDY
+    counts. IsKeyItem must also call every count-pocket item an ordinary item:
+    items past KeyItemFlags' range used to read code bytes as flag bits."""
+
+    POCKET_KEY_ITEMS, POCKET_STAT, POCKET_VALUABLE = 1, 3, 4
+
+    def quantity_tiles(self) -> str:
+        # first entry name at (6, 4); quantity one row down, 8 columns right
+        return self.tile_row(14, 5, 3).replace("<F1>", "×")
+
+    def list_quantity(self, pocket: int, item: int) -> str:
+        self.open_bag(pocket, [item], cursor=0)
+        self.h.write8("wPrintItemPrices", 0)
+        self.h.write8("wMenuItemToSwap", 0)
+        self.run_routine("PrintListMenuEntries")
+        return self.quantity_tiles()
+
+    def test_count_pockets_show_quantity(self) -> None:
+        path = Path("custom_functions/pocket_items.asm")
+        cases = [(POCKET_RECOVERY, "POTION")]
+        cases += [(self.POCKET_STAT, name) for name in sorted(table_items(path, "StatItemTable"))]
+        cases += [(self.POCKET_VALUABLE, name)
+                  for name in sorted(table_items(path, "ValuableItemTable"))]
+        for pocket, name in cases:
+            with self.subTest(item=name):
+                self.assertEqual(self.list_quantity(pocket, item_id(name)), "× 1")
+
+    def test_m_gene_and_m_tome_list_at_10000(self) -> None:
+        # selling halves the listed price (hHalveItemPrices), so these sell for 5000
+        h = self.h
+        _, prices = h.symbols.get("ItemPrices")
+        h.write8("wItemPrices", prices & 0xFF)
+        h.write8("wItemPrices", prices >> 8, offset=1)
+        for name in ("M_GENE", "M_TOME"):
+            with self.subTest(item=name):
+                h.write8("wCurItem", item_id(name))
+                self.run_routine("GetItemPrice")
+                base = h.address("hItemPrice")
+                self.assertEqual(list(h.pyboy.memory[base:base + 3]), [0x01, 0x00, 0x00])
+
+    def test_key_and_tm_pockets_hide_quantity(self) -> None:
+        self.assertEqual(self.list_quantity(self.POCKET_KEY_ITEMS, item_id("LEFTOVERS")), "")
+        self.assertEqual(self.list_quantity(POCKET_TM_PACK, machine_item_id()), "")
+
+    def test_count_pocket_items_are_not_key_items(self) -> None:
+        h = self.h
+        path = Path("custom_functions/pocket_items.asm")
+        names = set()
+        for table in ("StatItemTable", "ValuableItemTable", "RecoveryItemTable"):
+            names |= table_items(path, table)
+        names.discard("POKE_FLUTE")  # infinite use: a key item on purpose
+        for name in sorted(names):
+            with self.subTest(item=name):
+                h.write8("wCurItem", item_id(name))
+                self.run_routine("IsKeyItem")
+                self.assertEqual(h.read8("wIsKeyItem"), 0)
+        h.write8("wCurItem", item_id("LEFTOVERS"))
+        self.run_routine("IsKeyItem")
+        self.assertEqual(h.read8("wIsKeyItem"), 1)
+
+
 def table_items(path: Path, label: str, first_only: bool = False) -> set[str]:
     """Item constants in the `db` lines of one $FF-terminated table."""
     items: set[str] = set()

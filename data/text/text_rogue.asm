@@ -335,40 +335,13 @@ _NoSlotPullsLeftText::
 	cont "next run."
 	done
     
-; Mini-boss framework (see MINIBOSS_FRAMEWORK.md): shared Rival mini-boss
-; dialogue, callable from any route's 5th-trainer encounter, not tied to a
-; specific map's text file.
-_RivalMiniBossBattleText::
-	text "<RIVAL>: Yo!"
-	line "<PLAYER>!"
-
-	para "You're still"
-	line "struggling along"
-	cont "back here?"
-
-	para "I'm doing great!"
-	line "I caught a bunch"
-	cont "of strong and"
-	cont "smart #MON!"
-
-	para "Here, let me see"
-	line "what you caught,"
-	cont "<PLAYER>!"
-	done
-
-_RivalMiniBossEndBattleText::
-	text "Awww!"
-	line "You just lucked"
-	cont "out!"
-	prompt
-
-; Mini-boss framework: shared Giovanni mini-boss dialogue, callable from any
-; of his 3 dungeon maps' 4th-trainer encounter.
-_GiovanniMiniBossBattleText::
-	text "So! I must say, I"
-	line "am impressed you"
-	cont "got here!"
-	done
+; Mini-boss framework (MINIBOSS_FRAMEWORK.md): the Rival and Giovanni mini-boss
+; lines are vanilla's own, so the route scripts text_far the vanilla copies
+; instead of duplicating them here:
+;   Rival battle  _CeruleanCityRivalPreBattleText  (text/CeruleanCity.asm)
+;   Rival defeat  _Route22Rival1DefeatedText       (text/Route22.asm)
+;   Giovanni      _RocketHideoutB4FGiovanniImpressedYouGotHereText
+; Their after-battle lines are in custom_functions/rogue_boss_after_battle.asm.
 
 ; Final sequence: shared "go to the Champion" dialogue, shown as the
 ; AFTER-battle text (re-talk) of whichever Elite Four member ends up last

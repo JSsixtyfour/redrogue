@@ -1,3 +1,13 @@
+DEF VICTORYROAD1F_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_VICTORY_ROAD_1_TRAINER_0 % 8)) 	| (1 << (EVENT_BEAT_VICTORY_ROAD_1_TRAINER_1 % 8)) 	| (1 << (EVENT_BEAT_VICTORY_ROAD_1_TRAINER_2 % 8)) 	| (1 << (EVENT_BEAT_VICTORY_ROAD_1_TRAINER_3 % 8))
+
+; NOT A STANDARD ROUTE, BUT KEEP IT IN STEP WITH THEM. Victory Road is the
+; fixed pre-Elite-Four stage, so it is not in RogueStageMapTable and a sweep
+; over the route scripts will not find it (the same is true of Game Corner's
+; Gambler's Paradise and the Fighting Dojo mini-boss stage). When every
+; route's entry block, reward auto-offer, boss after-battle gate or warps
+; change, change this map and data/maps/objects/VictoryRoad1F.asm to match.
+; Deliberate deviations: the static Rival boss (OPP_RIVAL_MINIBOSS in the
+; object list, not MiniBossApplyStageTrainer) and the fixed item pickups.
 VictoryRoad1F_Script:
 
     CheckEvent EVENT_ENTER_ROOM
@@ -9,12 +19,31 @@ VictoryRoad1F_Script:
     set BIT_MINIBOSS_ACTIVE, [hl] ; Victory Road's Rival always gets mini-boss rarity (pokemon + item rolls)
 
     ResetEvent EVENT_GOT_ROGUE_POKEMON
+    ResetEvent EVENT_ROGUE_POKEMON_OFFERED
 
     farcall rogue_pokemon_randomized_batch
     farcall Random_Item_Selection
     farcall RogueRefresh
 
     .normal
+    ; Standard route auto-offer (Route1_Script's shape): once all four
+    ; trainers, Rival included, are beaten, open the reward menu by itself.
+    CheckEvent EVENT_ROGUE_POKEMON_OFFERED
+    jr nz, .afterRewardCheck
+    ld a, [wStatusFlags3]
+    bit BIT_PRINT_END_BATTLE_TEXT, a
+    jr nz, .afterRewardCheck
+    ld a, [wEventFlags + (EVENT_BEAT_VICTORY_ROAD_1_TRAINER_0 / 8)]
+    and VICTORYROAD1F_ALL_TRAINERS_MASK
+    cp VICTORYROAD1F_ALL_TRAINERS_MASK
+    jr nz, .afterRewardCheck
+    SetEvent EVENT_ROGUE_POKEMON_OFFERED
+    call Delay3
+    ld a, TEXT_VICTORYROAD1F_REWARD_VENDOR_1
+    ldh [hTextID], a
+    call DisplayTextID
+    call DisableWaitingAfterTextDisplay
+    .afterRewardCheck
 	; ld hl, wCurrentMapScriptFlags
 	; bit BIT_CUR_MAP_LOADED_1, [hl]
 	; res BIT_CUR_MAP_LOADED_1, [hl]
@@ -139,23 +168,26 @@ VictoryRoad1FCooltrainerMAfterBattleText:
 	text_end
 
 VictoryRoad1FCooltrainerM2BattleText:
-	text_far _VictoryRoad1FCooltrainerMBattleText
+	text_far _VictoryRoad3FCooltrainerM2BattleText
 	text_end
 
 VictoryRoad1FCooltrainerM2EndBattleText:
-	text_far _VictoryRoad1FCooltrainerMEndBattleText
+	text_far _VictoryRoad3FCooltrainerM2EndBattleText
 	text_end
 
 VictoryRoad1FCooltrainerM2AfterBattleText:
-	text_far _VictoryRoad1FCooltrainerMAfterBattleText
+	text_far _VictoryRoad3FCooltrainerM2AfterBattleText
 	text_end
 
+; The Rival here speaks Route 22's pre-League lines (vanilla's second Route 22
+; battle), not the shared roaming mini-boss lines, since this is his last
+; stand before the Elite Four.
 VictoryRoad1FCooltrainerM4BattleText:
-	text_far _RivalMiniBossBattleText
+	text_far _Route22RivalBeforeBattleText2
 	text_end
 
 VictoryRoad1FCooltrainerM4EndBattleText:
-	text_far _RivalMiniBossEndBattleText
+	text_far _Route22Rival2DefeatedText
 	text_asm
 	SetEvent EVENT_VICTORY_ROAD_CLEARED   ; clobbers hl only, like the ld hl/set it replaces
 	                                       ; - safe in a text_asm, where bc is the live cursor
@@ -168,13 +200,16 @@ VictoryRoad1FCooltrainerM4EndBattleText:
 	jp TextScriptEnd
 
 VictoryRoad1FCooltrainerM4AfterBattleText:
-	; See custom_functions/rogue_boss_after_battle.asm. Deliberately UNGATED
-	; (e = 0): Victory Road has no all-trainers auto-offer, so re-talking the
-	; Rival is its only reward trigger, as before. The Rival's class makes the
-	; shared routine print his after-battle line itself once the reward is
-	; claimed, so the wrapper below is only reached if that ever changes.
+	; See custom_functions/rogue_boss_after_battle.asm. Gated like every
+	; route's boss: re-talking the Rival reopens the reward menu only once all
+	; four trainers are beaten (the map script's auto-offer fires first).
+	; On this map the shared routine skips its mini-boss line, so the
+	; wrapper below prints the Rival's Route 22 after-battle line.
 	text_asm
-	ld e, 0                       ; never gated on the other trainers
+	ld a, [wEventFlags + (EVENT_BEAT_VICTORY_ROAD_1_TRAINER_0 / 8)]
+	and VICTORYROAD1F_ALL_TRAINERS_MASK
+	sub VICTORYROAD1F_ALL_TRAINERS_MASK
+	ld e, a                       ; e = 0 iff all four beaten
 	farcall RogueBossAfterBattle  ; d = 0 normal / 1 reward / 2 already printed
 	dec d
 	jr z, .reward
@@ -213,5 +248,5 @@ farcall Rogue_Reward_Script_PokeballText_3
 jp TextScriptEnd
 
 VictoryRoad1FBossAfterText:
-	text_far _VictoryRoad1FCooltrainerMAfterBattleText
+	text_far _Route22RivalAfterBattleText2
 	text_end

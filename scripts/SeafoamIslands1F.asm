@@ -188,7 +188,7 @@ SeafoamIslands1FPokemaniacBattleText:
 	text_far _SeafoamIslands1FPokemaniacBattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossBattleText
+	text_far _CeruleanCityRivalPreBattleText
 	text_end
 
 SeafoamIslands1FPokemaniacEndBattleText:
@@ -203,7 +203,7 @@ SeafoamIslands1FPokemaniacEndBattleText:
 	text_far _SeafoamIslands1FPokemaniacEndBattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossEndBattleText
+	text_far _Route22Rival1DefeatedText
 	text_end
 
 SeafoamIslands1FPokemaniacAfterBattleText:

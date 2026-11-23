@@ -184,7 +184,7 @@ Route3JrTrainerFBattleText:
 	text_far _Route3CooltrainerF3BattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossBattleText
+	text_far _CeruleanCityRivalPreBattleText
 	text_end
 
 Route3JrTrainerFEndBattleText:
@@ -199,7 +199,7 @@ Route3JrTrainerFEndBattleText:
 	text_far _Route3Youngster4EndBattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossEndBattleText
+	text_far _Route22Rival1DefeatedText
 	text_end
 
 Route3JrTrainerFAfterBattleText:

@@ -358,16 +358,19 @@ ChampionsRoomOakCongratulatesPlayerScript:
 ; RIVAL3: Oak is disappointed with the rival. LANCE: full epilogue, same beat,
 ; rewritten to be about Lance instead (HANDOFF spec). PROF_OAK
 ; never reaches this state.
+; Only the rival beat turns Oak right toward the Champion's tile: the Lance
+; text is addressed to the player, so Oak keeps facing down from the
+; congratulations beat instead of turning to Lance.
 ChampionsRoomOakDisappointedWithRivalScript:
+	ld a, [wRunChampion]
+	cp LANCE
+	ld a, TEXT_CHAMPIONSROOM_OAK_DISAPPOINTED_WITH_LANCE
+	jr z, .textChosen
 	ld a, CHAMPIONSROOM_OAK
 	ldh [hSpriteIndex], a
 	ld a, SPRITE_FACING_RIGHT
 	ldh [hSpriteFacingDirection], a
 	call SetSpriteFacingDirectionAndDelay
-	ld a, [wRunChampion]
-	cp LANCE
-	ld a, TEXT_CHAMPIONSROOM_OAK_DISAPPOINTED_WITH_LANCE
-	jr z, .textChosen
 	ld a, TEXT_CHAMPIONSROOM_OAK_DISAPPOINTED_WITH_RIVAL
 .textChosen
 	ldh [hTextID], a

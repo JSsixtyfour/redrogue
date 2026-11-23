@@ -290,7 +290,7 @@ PokemonMansion1FScientist2BattleText:
 	text_far _PokemonMansion1FScientist2BattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossBattleText
+	text_far _CeruleanCityRivalPreBattleText
 	text_end
 
 PokemonMansion1FScientist2EndBattleText:
@@ -305,7 +305,7 @@ PokemonMansion1FScientist2EndBattleText:
 	text_far _PokemonMansion1FScientist2EndBattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossEndBattleText
+	text_far _Route22Rival1DefeatedText
 	text_end
 
 PokemonMansion1FScientist2AfterBattleText:

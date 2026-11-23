@@ -268,7 +268,7 @@ LobbyDoor2SignText:
 ; badges are obtained, both doors lead to the same place: Victory Road
 ; (still a real per-door item choice - the category rolls happen
 ; unconditionally in SelectAndPatchLobbyExit, same as a normal route, so the
-; sign keeps the "MINIBOSS" + category framing, mirroring LobbyMiniBossSign),
+; sign keeps the destination + category framing, mirroring LobbyMiniBossSign),
 ; then the Elite Four (no item rewards at all, so no category line).
 ; INPUT: a = this door's item category (0-3, from wRogueDoor1/wRogueDoor2) -
 ;        only consulted for the Victory Road case.
@@ -408,7 +408,7 @@ LobbyFinaleSignCheck:
 	CheckEvent EVENT_VICTORY_ROAD_CLEARED
 	jr nz, .eliteFour
 	ld a, e                       ; restore item category
-	call LobbyMiniBossVictoryRoadSign ; hl -> "MINIBOSS" + category combined text
+	call LobbyMiniBossVictoryRoadSign ; hl -> "VICTORY ROAD" + category text
 	jr .isFinale
 .eliteFour
 	ld hl, .EliteFourSign
@@ -423,9 +423,10 @@ LobbyFinaleSignCheck:
 	line "AWAITS@"
 	text_end
 
-; Victory Road door sign: line 1 = "MINIBOSS", line 2 = the door's item
+; Victory Road door sign: line 1 = "VICTORY ROAD", line 2 = the door's item
 ; reward category (still shown - Victory Road offers a real choice per door,
-; unlike the Elite Four). Mirrors LobbyMiniBossSign's structure/table shape.
+; unlike the Elite Four), then "RIVAL BATTLE" scrolls in on a third line.
+; Mirrors LobbyMiniBossSign's structure/table shape.
 ; INPUT: a = item category (0-3). Returns hl -> combined text.
 LobbyMiniBossVictoryRoadSign:
 	ld hl, .ptrs
@@ -443,20 +444,24 @@ LobbyMiniBossVictoryRoadSign:
 	dw .tm
 	dw .money
 .healing
-	text "MINIBOSS"
-	line "HEALING ITEMS@"
+	text_far _LobbyVictoryRoadHeadingText
+	text "HEALING ITEMS@"
+	text_far _LobbyVictoryRoadRivalText
 	text_end
 .stat
-	text "MINIBOSS"
-	line "STAT BOOSTS@"
+	text_far _LobbyVictoryRoadHeadingText
+	text "STAT BOOSTS@"
+	text_far _LobbyVictoryRoadRivalText
 	text_end
 .tm
-	text "MINIBOSS"
-	line "TM ITEMS@"
+	text_far _LobbyVictoryRoadHeadingText
+	text "TM ITEMS@"
+	text_far _LobbyVictoryRoadRivalText
 	text_end
 .money
-	text "MINIBOSS"
-	line "MONEY@"
+	text_far _LobbyVictoryRoadHeadingText
+	text "MONEY@"
+	text_far _LobbyVictoryRoadRivalText
 	text_end
 
 ; a = this door's stage map. If it's a wild-area entry map, returns hl -> the matching

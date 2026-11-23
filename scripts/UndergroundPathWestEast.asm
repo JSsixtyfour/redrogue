@@ -152,7 +152,7 @@ UndergroundPathWestEastCueBallBattleText:
 	text_far _UndergroundPathWestEastCueBallBattleText
 	text_end
 .GiovanniMiniBoss
-	text_far _GiovanniMiniBossBattleText
+	text_far _RocketHideoutB4FGiovanniImpressedYouGotHereText
 	text_end
 UndergroundPathWestEastCueBallEndBattleText:
 	text_asm

@@ -216,7 +216,7 @@ PowerPlantCooltrainerMBattleText:
 	text_far _PowerPlantScientist4BattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossBattleText
+	text_far _CeruleanCityRivalPreBattleText
 	text_end
 
 PowerPlantCooltrainerMEndBattleText:
@@ -231,7 +231,7 @@ PowerPlantCooltrainerMEndBattleText:
 	text_far _PowerPlantScientist4EndBattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossEndBattleText
+	text_far _Route22Rival1DefeatedText
 	text_end
 
 PowerPlantCooltrainerMAfterBattleText:

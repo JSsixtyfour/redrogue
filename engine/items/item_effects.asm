@@ -2982,7 +2982,12 @@ IsKeyItem_::
 	ld [wIsKeyItem], a
 	ret
 .notPearl
-	cp HM01 ; is the item an HM or TM?
+	; Anything past KeyItemFlags' range that the explicit list above did not
+	; claim is an ordinary item. The flag test below copies 15 bytes, and bytes
+	; past the table are code, so SUN/DUSK/ICE STONE and M.GENE/M.TOME used to
+	; read layout-dependent garbage bits (DUSK, ICE and M.TOME came out "key").
+	; Also covers TMs/HMs, since HM01 > NUM_ITEMS.
+	cp NUM_ITEMS + 1
 	jr nc, .checkIfItemIsHM
 ; if the item is not an HM or TM
 	push af

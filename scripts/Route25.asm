@@ -208,7 +208,7 @@ Route25CooltrainerMBattleText:
 	text_far _Route25CooltrainerMBattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossBattleText
+	text_far _CeruleanCityRivalPreBattleText
 	text_end
 
 Route25CooltrainerMEndBattleText:
@@ -223,7 +223,7 @@ Route25CooltrainerMEndBattleText:
 	text_far _Route25CooltrainerMEndBattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossEndBattleText
+	text_far _Route22Rival1DefeatedText
 	text_end
 
 Route25CooltrainerMAfterBattleText:

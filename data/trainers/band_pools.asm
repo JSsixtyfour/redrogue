@@ -3487,33 +3487,13 @@
 	band_mon HAUNTER
 	band_mon GENGAR
 	band_mon ARBOK
-	band_mon BEEDRILL
-	band_mon BELLSPROUT
 	band_mon BULBASAUR
-	band_mon EKANS
-	band_mon GLOOM
 	band_mon GOLBAT
 	band_mon GRIMER
 	band_mon IVYSAUR
-	band_mon KAKUNA
 	band_mon KOFFING
 	band_mon MUK
-	band_mon NIDOKING
-	band_mon NIDOQUEEN
-	band_mon NIDORAN_F
-	band_mon NIDORAN_M
-	band_mon NIDORINA
-	band_mon NIDORINO
-	band_mon ODDISH
-	band_mon TENTACOOL
-	band_mon TENTACRUEL
-	band_mon VENOMOTH
-	band_mon VENONAT
 	band_mon VENUSAUR
-	band_mon VICTREEBEL
-	band_mon VILEPLUME
-	band_mon WEEDLE
-	band_mon WEEPINBELL
 	band_mon WEEZING
 	band_mon ZUBAT
 	band_mon MAROWAK
@@ -3523,10 +3503,7 @@
 	band_mon GYARADOS
 	band_johto
 	band_mon MISDREAVUS
-	band_mon ARIADOS
 	band_mon CROBAT
-	band_mon QWILFISH
-	band_mon SPINARAK
 	band_warp
 	band_mon ANNIHILAPE
 	band_mon MAROWAK, 1
@@ -3537,7 +3514,6 @@
 	band_warp_johto
 	band_mon MISMAGIUS
 	band_mon SLOWKING, 1
-	band_mon WOOPER, 1
 	band_end
 
 ; --- Lance -------------------------------------------------------------------

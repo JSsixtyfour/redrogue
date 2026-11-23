@@ -845,11 +845,15 @@ PartyGenPreRollAce:
 	ret z
 	dec a
 	ld b, a
-	push bc
+; No push/pop around this call: it PRESERVES b and returns the override's flags
+; in c, which PartyGenFieldPtr needs. A `pop bc` here used to overwrite c with a
+; stale value, so the species-pin test read garbage flags and usually bailed:
+; the ace was never pre-rolled, the fodder could not dedupe against it, and the
+; ace slot drew last from its own small pool, already used up by the fodder
+; (measured 2026-11-22: Bruno 7/96 teams with two Hitmontop or two Machamp).
 	call PartyGenFindOverrideForSlot
-	pop bc
 	ret nc                         ; no override on the last slot
-	push bc
+	push bc                        ; b = the last slot, c = its flags
 	ld b, BIT_POVR_SPECIES
 	call PartyGenFieldPtr
 	pop bc

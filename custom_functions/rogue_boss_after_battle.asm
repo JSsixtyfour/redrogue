@@ -19,8 +19,9 @@
 ;
 ; The mini-boss test reads the TALKING sprite's trainer class, the byte
 ; MiniBossApplyStageTrainer patches (wMapSpriteExtraData + (slot-1)*2), not
-; BIT_MINIBOSS_ACTIVE. That covers Victory Road's static Rival too, and needs
-; no list of which maps Giovanni can appear on.
+; BIT_MINIBOSS_ACTIVE, so it needs no list of which maps Giovanni can appear
+; on. Victory Road 1F is the one exception: its static Rival speaks Route 22's
+; pre-League lines, so on that map the caller prints its own line (NORMAL).
 ;
 ; INPUT:  e = 0 iff all of the route's trainers are beaten
 ;         hSpriteIndex = the talking sprite (set by DisplayTextID / the caller)
@@ -48,6 +49,9 @@ RogueBossAfterBattle::
 
 .talk
 	ld d, BOSS_AFTER_NORMAL
+	ldh a, [hCurMap]
+	cp VICTORY_ROAD_1F
+	ret z                           ; its Rival has his own after-battle line
 	ldh a, [hSpriteIndex]
 	and a
 	ret z                           ; no sprite (defensive): normal line
@@ -70,33 +74,11 @@ RogueBossAfterBattle::
 	ret
 
 
+; Both lines are vanilla's own, reused rather than copied into this bank.
 RivalMiniBossAfterBattleText:
-	text "I heard #MON"
-	line "LEAGUE has many"
-	cont "tough trainers!"
-
-	para "I have to figure"
-	line "out how to get"
-	cont "past them!"
-
-	para "You should quit"
-	line "dawdling and get"
-	cont "a move on!"
-	done
+	text_far _Route22RivalAfterBattleText1
+	text_end
 
 GiovanniMiniBossAfterBattleText:
-	text "I see that you"
-	line "raise #MON"
-	cont "with utmost care."
-
-	para "A child like you"
-	line "would never"
-	cont "understand what I"
-	cont "hope to achieve."
-
-	para "I shall step"
-	line "aside this time!"
-
-	para "I hope we meet"
-	line "again..."
-	done
+	text_far _RocketHideoutB4FGiovanniHopeWeMeetAgainText
+	text_end

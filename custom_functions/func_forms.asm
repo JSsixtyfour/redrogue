@@ -929,14 +929,30 @@ BridgeResolveEvolveSpeciesFar::
 DEF FAMILY_WALK_BUDGET EQU 16   ; expansions; Eevee's 8 duplicate branches cost 9
 
 AllSpeciesCheckFar::
-	ASSERT PARTY_LENGTH + MONS_PER_BOX + 1 <= $40, \
-	       "wAllSpecies (ds $40, ram/wram.asm) must hold a full party, a full box and the terminator"
+	ASSERT PARTY_LENGTH + MONS_PER_BOX + 2 + 1 <= $40, \
+	       "wAllSpecies (ds $40, ram/wram.asm) must hold a full party, a full box, both daycare mons and the terminator"
 	push de
 	ld bc, wAllSpecies
 	ld hl, wPartySpecies
 	call .appendList
 	ld hl, wBoxSpecies
 	call .appendList
+	; A mon left at either daycare is still owned. Without these the lobby
+	; trader offered a Hitmonchan while the player's Hitmonchan sat in a daycare.
+	ld a, [wDayCareInUse]
+	and a
+	jr z, .noDayCare1
+	ld a, [wDayCareMonSpecies]
+	ld [bc], a
+	inc bc
+.noDayCare1
+	ld a, [wDayCareInUse2]
+	and a
+	jr z, .noDayCare2
+	ld a, [wDayCareMon2Species]
+	ld [bc], a
+	inc bc
+.noDayCare2
 	ld a, $ff
 	ld [bc], a
 

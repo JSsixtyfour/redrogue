@@ -226,7 +226,7 @@ ViridianForestYoungster5BattleText:
 	text_far _ViridianForestYoungster5BattleText
 	text_end
 .GiovanniMiniBoss
-	text_far _GiovanniMiniBossBattleText
+	text_far _RocketHideoutB4FGiovanniImpressedYouGotHereText
 	text_end
 
 ViridianForestYoungster5EndBattleText:

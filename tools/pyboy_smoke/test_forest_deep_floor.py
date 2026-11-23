@@ -437,7 +437,11 @@ class ForestDeepFloorTest(unittest.TestCase):
         import forest_walk as fw
         budget = lambda: h.write8("wProcForestWildBudget", 0)
         y, x = h.warp_entries()[FG_WARP][:2]
-        blocked = fw.sprite_tiles(h)
+        # Slot 15 is the follower, which never blocks the player (the collision
+        # scan stops at the authored objects, follower_yellow_test.asm). After a
+        # Continue it spawns one step behind, and a save taken in a dead end put
+        # it on the only way out, failing a walk the game allows (2026-11-22).
+        blocked = fw.sprite_tiles(h, skip=(15,))
         if h.read8("wSprite09StateData1"):
             gx, gy = h.read8("wSprite09StateData2MapX") - 4, h.read8("wSprite09StateData2MapY") - 4
             dx, dy = {0: (0, 1), 4: (0, -1), 8: (-1, 0), 12: (1, 0)}[h.read8("wSprite09StateData1FacingDirection")]

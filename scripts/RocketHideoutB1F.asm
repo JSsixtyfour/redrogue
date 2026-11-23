@@ -237,7 +237,7 @@ RocketHideoutB1FRocket5BattleText:
 	text_far _RocketHideoutB1FRocket5BattleText
 	text_end
 .GiovanniMiniBoss
-	text_far _GiovanniMiniBossBattleText
+	text_far _RocketHideoutB4FGiovanniImpressedYouGotHereText
 	text_end
 
 RocketHideoutB1FRocket5AfterBattleText:

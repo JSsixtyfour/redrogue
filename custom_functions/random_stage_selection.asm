@@ -11,6 +11,9 @@ DEF NUM_STAGE_MAPS EQU 22
 ; GAME_CORNER is a route stand-in (Gambler's Paradise) that is deliberately not
 ; in this table. A change applied to every route here must be applied to
 ; scripts/GameCorner.asm and data/maps/objects/GameCorner.asm as well.
+; The same goes for the other route-shaped stages outside this table:
+; VICTORY_ROAD_1F (the fixed pre-Elite-Four stage, scripts/VictoryRoad1F.asm)
+; and FIGHTING_DOJO (the Karate Master mini-boss stage, scripts/FightingDojo.asm).
 
 RogueStageMapTable:
 	db ROUTE_1

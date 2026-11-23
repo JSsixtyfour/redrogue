@@ -299,7 +299,7 @@ PokemonTower2FChanneler4BattleText:
 	text_far _PokemonTower2FChanneler4BattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossBattleText
+	text_far _CeruleanCityRivalPreBattleText
 	text_end
 
 PokemonTower2FChanneler4EndBattleText:
@@ -314,7 +314,7 @@ PokemonTower2FChanneler4EndBattleText:
 	text_far _PokemonTower2FChanneler4EndBattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossEndBattleText
+	text_far _Route22Rival1DefeatedText
 	text_end
 
 PokemonTower2FChanneler4AfterBattleText:

@@ -113,8 +113,8 @@ ItemPrices::
 	bcd3 0     ; MON_DICE
 	bcd3 0     ; ITEM_DICE
 	bcd3 0     ; ELEMENT_PRISM
-	bcd3 0     ; M_GENE
-	bcd3 0     ; M_TOME
+	bcd3 10000 ; M_GENE - no mart stocks it; sells for half, 5000
+	bcd3 10000 ; M_TOME - no mart stocks it; sells for half, 5000
 	bcd3 3500  ; SUN_STONE
 	bcd3 3500  ; DUSK_STONE
 	bcd3 3500  ; ICE_STONE

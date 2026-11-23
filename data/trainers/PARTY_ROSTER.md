@@ -773,7 +773,7 @@ Aces: the two signature aces the old records pinned (variant A and C), now one i
 
 **Band 1: every tier**
 - Aces: Gengar, Alolan Marowak (warp)
-- Fodder: Gastly, Haunter, Gengar, Arbok, Beedrill, Bellsprout, Bulbasaur, Ekans, Gloom, Golbat, Grimer, Ivysaur, Kakuna, Koffing, Muk, Nidoking, Nidoqueen, Nidoran F, Nidoran M, Nidorina, Nidorino, Oddish, Tentacool, Tentacruel, Venomoth, Venonat, Venusaur, Victreebel, Vileplume, Weedle, Weepinbell, Weezing, Zubat, Marowak, Ninetales, Jynx, Alakazam, Gyarados, Misdreavus (johto), Ariados (johto), Crobat (johto), Qwilfish (johto), Spinarak (johto), Annihilape (warp), Mismagius (warp), Alolan Marowak (warp), Alolan Grimer (warp), Alolan Muk (warp), Galarian Slowbro (warp), Galarian Slowking (warp), Galarian Weezing (warp), Paldean Wooper (warp)
+- Fodder: Gastly, Haunter, Gengar, Arbok, Bulbasaur, Golbat, Grimer, Ivysaur, Koffing, Muk, Venusaur, Weezing, Zubat, Marowak, Ninetales, Jynx, Alakazam, Gyarados, Misdreavus (johto), Crobat (johto), Annihilape (warp), Mismagius (warp), Alolan Marowak (warp), Alolan Grimer (warp), Alolan Muk (warp), Galarian Slowbro (warp), Galarian Slowking (warp), Galarian Weezing (warp)
 
 ### Lance (DRAGON)
 

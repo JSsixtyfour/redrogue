@@ -182,7 +182,7 @@ MtMoon1FHikerBattleText:
 	text_far _MtMoon1FHikerBattleText
 	text_end
 .GiovanniMiniBoss
-	text_far _GiovanniMiniBossBattleText
+	text_far _RocketHideoutB4FGiovanniImpressedYouGotHereText
 	text_end
 
 MtMoon1FHikerEndBattleText:

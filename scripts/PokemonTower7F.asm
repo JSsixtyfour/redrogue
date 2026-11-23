@@ -554,7 +554,7 @@ PokemonTower7FRocket5BattleText:
 	text_far _PokemonTower7FRocket2BattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossBattleText
+	text_far _CeruleanCityRivalPreBattleText
 	text_end
 
 PokemonTower7FRocket5EndBattleText:
@@ -569,7 +569,7 @@ PokemonTower7FRocket5EndBattleText:
 	text_far _PokemonTower7FRocket2EndBattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossEndBattleText
+	text_far _Route22Rival1DefeatedText
 	text_end
 
 PokemonTower7FRocket5AfterBattleText:

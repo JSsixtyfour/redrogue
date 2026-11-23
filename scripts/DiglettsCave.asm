@@ -174,7 +174,7 @@ DiglettsCaveCooltrainerFBattleText:
 	text_far _DiglettsCaveCoolTrainerFBattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossBattleText
+	text_far _CeruleanCityRivalPreBattleText
 	text_end
 
 DiglettsCaveCooltrainerFEndBattleText:
@@ -189,7 +189,7 @@ DiglettsCaveCooltrainerFEndBattleText:
 	text_far _DiglettsCaveCoolTrainerFEndBattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossEndBattleText
+	text_far _Route22Rival1DefeatedText
 	text_end
 
 DiglettsCaveCooltrainerFAfterBattleText:

@@ -173,7 +173,7 @@ RockTunnel1FCooltrainerMBattleText:
 	text_far _RockTunnel1FCooltrainerF1BattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossBattleText
+	text_far _CeruleanCityRivalPreBattleText
 	text_end
 
 RockTunnel1FCooltrainerMEndBattleText:
@@ -188,7 +188,7 @@ RockTunnel1FCooltrainerMEndBattleText:
 	text_far _RockTunnel1FCooltrainerF1EndBattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossEndBattleText
+	text_far _Route22Rival1DefeatedText
 	text_end
 
 RockTunnel1FCooltrainerMAfterBattleText:

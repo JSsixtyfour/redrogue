@@ -378,7 +378,7 @@ INCLUDE "data/events/pool_recycle.asm"
 ; Challenge 11's per-leader pools, minus the species the player already owns,
 ; so a recurring gym (Endless) never trades a second copy of the same
 ; legendary, and the witch never offers a bargain whose only prize is owned.
-; Ownership is AllSpeciesCheck's scope, the party and the current box. Every
+; Ownership is AllSpeciesCheck's scope, the party, current box and daycares. Every
 ; pool species is single-stage, so family-wide is the species itself, and this
 ; needs none of AllSpeciesCheck's wAllSpecies buffer: that shares a UNION with
 ; live battle state, and the ace roll runs during party generation.
@@ -430,7 +430,7 @@ LegendaryPoolUnowned::
 	ret
 
 ; a = species -> carry SET if disabled for this run, or in the party/current
-; box (the lists AllSpeciesCheck reads). Preserves bc/de/hl.
+; box or either daycare (the lists AllSpeciesCheck reads). Preserves bc/de/hl.
 LegendarySpeciesOwned:
 	push hl
 	push bc
@@ -447,6 +447,25 @@ LegendarySpeciesOwned:
 	jr c, .done
 	ld hl, wBoxCount
 	call .scan
+	jr c, .done
+	; either daycare's mon, the same lists AllSpeciesCheck reads
+	ld a, [wDayCareInUse]
+	and a
+	jr z, .noDayCare1
+	ld a, [wDayCareMonSpecies]
+	cp b
+	scf
+	jr z, .done
+.noDayCare1
+	ld a, [wDayCareInUse2]
+	and a
+	jr z, .notOwned                ; `and a` cleared carry
+	ld a, [wDayCareMon2Species]
+	cp b
+	scf
+	jr z, .done
+.notOwned
+	and a                          ; not found: clear carry
 .done
 	pop bc
 	pop hl

@@ -3,6 +3,9 @@ DEF ROUTE1_ALL_TRAINERS_MASK EQU (1 << (EVENT_BEAT_ROUTE_1_TRAINER_0 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_1_TRAINER_2 % 8)) \
 	| (1 << (EVENT_BEAT_ROUTE_1_TRAINER_3 % 8))
 
+; Route-shaped stages outside RogueStageMapTable must be kept in step with the
+; routes by hand: scripts/GameCorner.asm (Gambler's Paradise),
+; scripts/FightingDojo.asm (Karate mini-boss) and scripts/VictoryRoad1F.asm.
 Route1_Script:
 	; One-time setup on first map entry
 	CheckEvent EVENT_ENTER_ROOM
@@ -189,7 +192,7 @@ Route1JrTrainerMBattleText:
 	text_far _Route1JrTrainerMBattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossBattleText
+	text_far _CeruleanCityRivalPreBattleText
 	text_end
 
 Route1JrTrainerMEndBattleText:
@@ -204,7 +207,7 @@ Route1JrTrainerMEndBattleText:
 	text_far _Route1JrTrainerMEndBattleText
 	text_end
 .RivalMiniBoss
-	text_far _RivalMiniBossEndBattleText
+	text_far _Route22Rival1DefeatedText
 	text_end
 
 Route1JrTrainerMAfterBattleText:

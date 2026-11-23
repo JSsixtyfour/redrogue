@@ -563,11 +563,15 @@ PrintListMenuEntries::
 	cp ITEMLISTMENU
 	jr nz, .nextListEntry
 ; print item quantity
+	; Compare the whole pocket index, not the legacy single bits: POCKET_STAT
+	; is 3 (%011), so a bit test read it as the TM pocket and hid its counts.
 	ld a, [wBagPocketsFlags]
-	bit BIT_TM_POCKET, a
-	jr nz, .skipPrintingItemQuantity ; TMs: binary owned/not-owned, no qty
-	bit BIT_KEY_ITEMS_POCKET, a
-	jr nz, .skipPrintingItemQuantity ; key items: binary active/not, no qty
+	and POCKET_INDEX_MASK
+	ASSERT POCKET_KEY_ITEMS == 1 && POCKET_TM_PACK == 2
+	dec a
+	jr z, .skipPrintingItemQuantity ; key items: binary active/not, no qty
+	dec a
+	jr z, .skipPrintingItemQuantity ; TMs: binary owned/not-owned, no qty
 	ld a, [wNamedObjectIndex]
 	ld [wCurItem], a
 	call IsKeyItem ; check if item is unsellable
