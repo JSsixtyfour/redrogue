@@ -1382,26 +1382,26 @@ AIMoveChoiceModification5:
 	call ReadMove
 	ld a, [wEnemyMoveEffect]
 	cp OHKO_EFFECT
-	jp z, .ohko
+	jr z, .ohko
 	cp TRAPPING_EFFECT
-	jp z, .trap
+	jr z, .trap
 	cp SLEEP_EFFECT
-	jp z, .sleep
+	jr z, .sleep
 	cp SPEED_UP2_EFFECT
-	jp z, .agility
+	jr z, .agility
 	cp PARALYZE_EFFECT
-	jp z, .paralyze
+	jr z, .paralyze
 	cp PARALYZE_SIDE_EFFECT1
-	jp z, .paralyze
+	jr z, .paralyzeSide
 	cp PARALYZE_SIDE_EFFECT2
-	jp z, .paralyze
+	jr z, .paralyzeSide
 	cp SPEED_DOWN1_EFFECT
 	jp z, .speedDown
 	cp SPEED_DOWN_SIDE_EFFECT
 	jp z, .speedDown
 	cp METRONOME_EFFECT
 	jp z, .metronome
-	jp .nextMove              ; neutral
+	jr .nextMove              ; neutral
 .ohko
 	bit 0, c                  ; fast enough?
 	jr z, .ohkoAvoid
@@ -1450,6 +1450,11 @@ AIMoveChoiceModification5:
 	add 2
 	ld [hl], a
 	jp .nextMove
+.paralyzeSide
+	push bc                   ; keep loop counter and setup flags
+	call AISmartParaSideBlocked
+	pop bc
+	jp c, .nextMove
 .paralyze
 	bit 0, c                  ; already fast enough - no setup needed
 	jp nz, .nextMove

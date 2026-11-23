@@ -124,6 +124,32 @@ class AIPersonalityTest(unittest.TestCase):
     def scores(self):
         return list(self.h.read_bytes("wBuffer", 4))
 
+    def test_gambler_skips_same_type_paralysis_bonus(self):
+        h = self.h
+        h.write8("wTrainerClass", self.trainer_classes["GAMBLER"])
+        h.write8("wMoneyMatchState", 0)
+        h.write8("wPlayerBattleStatus2", 0)
+        h.write8("wBattleMonStatus", 0)
+        for label, speed in (("wBattleMonSpeed", 150), ("wEnemyMonSpeed", 100)):
+            h.write8(label, 0)
+            h.write8(label, speed, offset=1)
+
+        base = self.ai["AI_SCORE_BASE"]
+        for type1, type2, slam_bonus, bolt_bonus in (
+            ("NORMAL", "FLYING", 0, 5),
+            ("FLYING", "NORMAL", 0, 5),
+            ("WATER", "ELECTRIC", 5, 0),
+            ("WATER", "FLYING", 5, 5),
+        ):
+            with self.subTest(type1=type1, type2=type2):
+                self.prime(("HORN_DRILL", "BODY_SLAM", "THUNDERBOLT", "GLARE"))
+                h.write8("wBattleMonType1", self.types[type1])
+                h.write8("wBattleMonType2", self.types[type2])
+                h.call_routine("AIRunPersonality")
+                self.assertEqual(
+                    self.scores(),
+                    [base + 5, base - slam_bonus, base - bolt_bonus, base - 5],
+                )
 
     def call_counting_random(self, routine):
         """Count generator calls while the injected routine executes."""
