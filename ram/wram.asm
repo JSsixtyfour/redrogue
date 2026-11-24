@@ -697,13 +697,11 @@ NEXTU
 wAllSpecies::
 ds $40
 
-UNION
-; the amount of damage accumulated by the enemy while biding
-wEnemyBideAccumulatedDamage:: dw
-NEXTU
-; number of hits by enemy in attacks like Double Slap, etc.
-wEnemyNumHits:: db
-ENDU
+	; Was wEnemyBideAccumulatedDamage/wEnemyNumHits. When the 2026-05-11 NEXTU above
+	; cut the battle branch in two, they slid down to $cc98, under the fifth mon's
+	; entry in wMonPartySpritesSavedOAM: opening the party menu with 5+ mons wrote
+	; OAM over the Bide tally. Kept as padding so wMiscBattleDataEnd does not move.
+	ds 2
 
 	; NOTE: this pad is in the wAllSpecies union branch, which is NOT the branch
 	; InitBattleVariables zeroes, and it aliases wNPCMovementDirections2. It is
@@ -1718,7 +1716,15 @@ NEXTU
 wPlayerNumHits:: db
 ENDU
 
-	ds 2
+UNION
+; the amount of damage accumulated by the enemy while biding. Must survive menus:
+; keep it out of the scratch union holding wMonPartySpritesSavedOAM.
+wEnemyBideAccumulatedDamage:: dw
+
+NEXTU
+; number of hits by enemy in attacks like Double Slap, etc.
+wEnemyNumHits:: db
+ENDU
 wBattleStatusDataEnd::
 
 ; non-zero when an item or move that allows escape from battle was used

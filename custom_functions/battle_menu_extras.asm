@@ -409,9 +409,8 @@ BattleItemInfoTable:
 ; to the ITEM list rather than on to the enemy's move.
 ;   TURN REWIND  restores last turn's snapshot here (the battle menu's old UNDO slot).
 ;   Dice         refused: rerolling a stage's item mid-battle would really fire.
-;   Others       "<ITEM> is always active!". Their own handlers print the field
-;                description, but it ends in `done`, not `prompt`, so in battle
-;                it would vanish at once; the list's box already describes them.
+;   Others       "<ITEM> is always active!". The battle list already shows
+;                the item's description while the cursor is on it.
 ; POKE FLUTE is not a key pocket item, so it keeps the vanilla path and its turn cost.
 ;
 ; OUTPUT: carry set = handled here, UseItem_ returns at once.

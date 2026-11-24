@@ -18,19 +18,27 @@ Suites (all by default, in this order):
     lobby      run_autoplay: Debug 2 seeds 1-24, with branching
     newgame    run_autoplay: new-game seeds 1-16, 2 runs, --vary, save checks, coverage map
     cgb        run_autoplay: CGB seeds 1-4, --vary, save checks, branches, coverage map
+    cgb_full   CGB full circuits with save checks
+    menus      varied real-input item use and directed PC, rental and lobby menus
+    room_menu  cold-start Room PC exercises across blackouts
+    discovery  rotating stronger-player cold starts
+    directed   Endless and key-item save/Continue integration checks
+    stack      runtime stack headroom and SRAM latch checks on DMG and CGB
     builds     compare_builds: seeds 1-8 on the debug, Blue and Red builds
     sram       sram_fuzz: seeds 1-4
+    guards     one rotating share of standalone guards, all on Sunday
 
 Each night writes <reports>/<date>_<sha>/ (default ../redrogue_nightly_reports):
 the logs, each suite's summary JSON, copies of every failed seed's report,
-state and screenshot (the next suite overwrites artifacts/), report.json, and
+state and screenshot when available, report.json, and
 report.md with a replay command for each finding, pinned to the commit. The
 previous night's report.json is the baseline: a smoke test that newly fails,
 an anomaly or failure kind not seen before, a champion rate or coverage drop
 are listed as regressions. Coverage loss requires the same routine to have
 been reached on each of three prior nights.
 
-Exits 1 for new regressions and 2 for runner failures. The Windows task uses
+Regular nights have a 60-minute budget. Sunday has three hours for the full
+standalone guard registry. Exits 1 for new regressions and 2 for runner failures. The Windows task uses
 nightly_windows.ps1 with --force so the scheduled run stays daily.
 """
 from __future__ import annotations
@@ -41,11 +49,15 @@ import html
 import json
 import os
 import re
+import shlex
 import shutil
+import signal
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
+from collections import Counter
 from contextlib import contextmanager
 from urllib.parse import quote
 from pathlib import Path
@@ -56,6 +68,17 @@ ARTIFACTS = SMOKE_DIR / "artifacts"
 FAILURES = ("stalled", "frame_limit", "error", "crashed", "hung")
 CHAMPION_DROP = 0.15  # a champion rate this far below last night's counts as a regression
 COVERAGE_NIGHTS = 3
+DAILY_BUDGET = 3600
+WEEKLY_BUDGET = 10800
+LEGACY_SUITES = ("build", "smoke", "audit", "lobby", "newgame", "cgb", "builds", "sram")
+AUTOPLAY_COMMAND = ["python3", str(SMOKE_DIR / "run_autoplay.py")]
+DIRECTED_TESTS = [
+    "integration_endless_journey",
+    "integration_endless_save_boundaries",
+    "integration_key_item_persistence",
+    "integration_service_history.DirectedServiceHistoryIntegrationTest."
+    "test_three_natural_runs_clerk_nurse_clerk_with_exact_transaction_deltas",
+]
 
 # name -> (command, timeout in seconds, summary files to keep)
 SUITES = {
@@ -72,18 +95,75 @@ SUITES = {
              "--stages", "12", "--vary", "--save-checks", "--coverage", "--cgb",
              "--branches", "2", "--snapshots", "1", "--branch-frames", "900", "--timeout", "2400"],
             5400, ["autoplay_summary_cgb.json", "coverage_summary_cgb.json"]),
+    "cgb_full": (AUTOPLAY_COMMAND + ["--seeds", "1-16", "--jobs", "4", "--cgb",
+                    "--difficulty", "NORMAL", "--player", "strong",
+                    "--save-checks", "--coverage", "--timeout", "600"], 1200,
+                 ["autoplay_summary_cgb.json", "coverage_summary_cgb.json"]),
+    "menus": (AUTOPLAY_COMMAND + ["--seeds", "1-16", "--jobs", "6", "--runs", "2",
+                  "--stages", "10", "--vary", "--errands", "all", "--save-checks",
+                  "--max-frames", "750000", "--timeout", "450"], 1200, ["autoplay_summary.json"]),
+    "room_menu": (AUTOPLAY_COMMAND + ["--seeds", "1-4", "--jobs", "4", "--runs", "2",
+                     "--new-game", "--vary", "--errands", "roompc", "--save-checks",
+                     "--max-frames", "500000", "--timeout", "300"], 600, ["autoplay_summary.json"]),
+    "discovery": (AUTOPLAY_COMMAND + ["--seeds", "17-40", "--jobs", "6", "--new-game",
+                      "--runs", "2", "--vary", "--player", "strong", "--save-checks",
+                      "--coverage", "--max-frames", "2500000", "--timeout", "450"], 1200,
+                  ["autoplay_summary.json", "coverage_summary.json"]),
+    "directed": (["python3", "-m", "unittest", "-v", *DIRECTED_TESTS], 900, []),
+    "stack": (["python3", str(SMOKE_DIR / "audit_runtime_stack_sram.py")], 480, []),
     "builds": (["python3", str(SMOKE_DIR / "compare_builds.py"), "--seeds", "1-8", "--jobs", "6",
                 "--max-frames", "1000000"], 7200, ["build_compare.json"]),
     "sram": (["python3", str(SMOKE_DIR / "sram_fuzz.py"), "--seeds", "1-4", "--matched-controls"], 3600, ["sram_fuzz_summary.json"]),
-}
+    "guards": (["python3", str(SMOKE_DIR / "run_audits.py")], 5400, []),}
 # --quick: a few seeds per suite, to check the runner itself.
 QUICK = {"lobby": {"--seeds": "1-2"}, "newgame": {"--seeds": "1-2", "--runs": "1"},
          "cgb": {"--seeds": "1-2", "--stages": "3", "--branches": "1",
                  "--snapshots": "1", "--branch-frames": "300"},
+         "cgb_full": {"--seeds": "1-2"},
+         "menus": {"--seeds": "1-2", "--stages": "3"},
+         "room_menu": {"--seeds": "1-2"},
+         "discovery": {"--seeds": "17-18", "--runs": "1"},
          "builds": {"--seeds": "1-2"}, "sram": {"--seeds": "1"}}
-# The flags a replay of one autoplay seed needs, per suite.
-REPLAY_FLAGS = {"lobby": "", "newgame": " --new-game --runs 2 --vary --save-checks",
-                "cgb": " --cgb --stages 12 --vary --save-checks --branches 2 --snapshots 1 --branch-frames 900"}
+AUTOPLAY_SUITES = {"lobby", "newgame", "cgb", "cgb_full", "menus", "room_menu", "discovery"}
+MENU_MILESTONES = {"pc": "pc_main_menu", "rental": "offer", "roompc": "top_menu"}
+
+
+def suite_command(name: str, worktree: Path, day: dt.date, quick: bool) -> list[str]:
+    command = list(SUITES[name][0])
+    for flag, value in (QUICK.get(name, {}) if quick else {}).items():
+        command[command.index(flag) + 1] = value
+    if name == "discovery" and not quick:
+        first = 17 + 24 * (day.toordinal() % 1000)
+        command[command.index("--seeds") + 1] = f"{first}-{first + 23}"
+    if name == "directed":
+        command[0:0] = ["env", f"PYTHONPATH={SMOKE_DIR}"]
+        if quick:
+            command[-len(DIRECTED_TESTS):] = [
+                "integration_endless_journey.EndlessJourneyIntegrationTest.test_accept_reaches_and_exits_playable_stage"]
+    if name == "guards":
+        registry = json.loads((worktree / SMOKE_DIR / "audits.json").read_text(encoding="utf-8"))
+        guards = sorted({row["script"] for row in registry["audits"]
+                         if row["kind"] == "guard" and not row.get("in_smoke")})
+        if quick:
+            guards = ["audit_stage_defeat_text.py"]
+        elif day.weekday() < 6:
+            guards = guards[day.weekday()::6]
+        else:
+            return command  # Sunday runs the whole guard registry.
+        for script in guards:
+            command += ["--only", script]
+    return command
+
+
+def replay_command(seed: int, command: list[str]) -> str:
+    flags = iter(command[2:])
+    replay = ["python3", str(SMOKE_DIR / "autoplay.py"), "--seed", str(seed)]
+    for flag in flags:
+        if flag in ("--seeds", "--jobs", "--timeout"):
+            next(flags)
+        else:
+            replay.append(flag)
+    return shlex.join(replay)
 
 
 def git(*args: str, cwd: Path = ROOT) -> str:
@@ -100,33 +180,95 @@ def prepare_worktree(worktree: Path, ref: str) -> str:
     return sha
 
 
-def run_suite(name: str, worktree: Path, night: Path, quick: bool = False) -> dict[str, object]:
-    command, timeout, keep = SUITES[name]
-    command = list(command)
-    for flag, value in (QUICK.get(name, {}) if quick else {}).items():
-        command[command.index(flag) + 1] = value
-    for file in keep:
-        (worktree / ARTIFACTS / file).unlink(missing_ok=True)
-    started = time.monotonic()
+def run_suite(name: str, worktree: Path, night: Path, day: dt.date,
+              quick: bool = False, remaining: float = DAILY_BUDGET) -> dict[str, object]:
+    _, timeout, keep = SUITES[name]
+    command = suite_command(name, worktree, day, quick)
     log = night / f"{name}.log"
+    if name == "sram":
+        artifacts = night / "sram_evidence"
+        artifacts.mkdir()
+        result = execute_suite(name, command, worktree, night, log, min(timeout, remaining), keep, artifacts)
+        if not has_issue(result):
+            shutil.rmtree(artifacts)
+    elif name in AUTOPLAY_SUITES or name in ("builds", "stack"):
+        # Keep suites and attempts separate, including failure snapshots with the same seed.
+        with tempfile.TemporaryDirectory(prefix=f".{name}-", dir=night) as scratch:
+            result = execute_suite(name, command, worktree, night, log, min(timeout, remaining),
+                                   keep, Path(scratch))
+    else:
+        result = execute_suite(name, command, worktree, night, log, min(timeout, remaining), keep)
+    if name == "guards":
+        result["rotation"] = day.weekday()
+    if name == "discovery":
+        result["rotating_seeds"] = True
+    return result
+
+
+def stop_suite(process: subprocess.Popen) -> None:
     try:
-        with open(log, "w", encoding="utf-8") as out:
-            code = subprocess.run(command, cwd=worktree, stdout=out, stderr=subprocess.STDOUT,
-                                  timeout=timeout).returncode
-    except subprocess.TimeoutExpired:
-        code = "timeout"
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    process.wait()
+
+
+def copy_inventory_cache(source: Path, destination: Path) -> None:
+    """Reuse the worker's symbol-hash-keyed cache across suites on this ROM build."""
+    for cache in source.glob("coverage_inventory_*_v*_*.json"):
+        target = destination / cache.name
+        if cache.is_file() and not target.exists():
+            destination.mkdir(exist_ok=True)
+            shutil.copyfile(cache, target)
+
+
+def execute_suite(name, command, worktree, night, log, timeout, keep, artifacts=None):
+    started = time.monotonic()
+    env = os.environ.copy()
+    if artifacts is not None:
+        env["REDROGUE_AUTOPLAY_ARTIFACTS"] = str(artifacts)
+        copy_inventory_cache(night / ".inventory", artifacts)
+    with log.open("w", encoding="utf-8") as out:
+        process = subprocess.Popen(command, cwd=worktree, stdout=out, stderr=subprocess.STDOUT,
+                                   env=env, start_new_session=True)
+        try:
+            code = process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            stop_suite(process)
+            code = "timeout"
+        except BaseException:
+            stop_suite(process)
+            raise
     result = {"suite": name, "exit": code, "seconds": round(time.monotonic() - started),
-              "command": " ".join(command)}
+              "command": shlex.join(command)}
+    if artifacts is not None:
+        copy_inventory_cache(artifacts, night / ".inventory")
     for file in keep:
-        source = worktree / ARTIFACTS / file
+        source = artifacts / file
         if source.exists():
             shutil.copy(source, night / f"{name}_{file}")
     text = log.read_text(encoding="utf-8", errors="replace")
     result["tail"] = text.splitlines()[-15:]
     if name == "smoke":
         result["failing"] = sorted(set(re.findall(r"^\s+(?:FAIL|ERROR|TIMEOUT|CRASH)\w*\s+(\S+)$", text, re.M)))
-    if name in REPLAY_FLAGS:
-        result.update(autoplay_findings(name, worktree, night))
+    if name in AUTOPLAY_SUITES:
+        result.update(autoplay_findings(name, worktree, night, command, artifacts))
+    if name == "stack":
+        result["stack_spare_bytes"] = [int(value) for value in re.findall(r"(\d+) B spare above", text)]
+    if name == "guards":
+        counts = re.search(r"^(\d+)/(\d+) passed,", text, re.M)
+        if counts:
+            result["guards_passed"], result["guards_run"] = map(int, counts.groups())
+        result["findings"] = [{"kind": f"guard {script}", "what": f"{status}: {script}", "replay": None}
+                              for status, script in re.findall(r"^  (TIMEOUT|FAIL\(\d+\)) +([^\s]+)", text, re.M)]
+    if name == "directed":
+        result["failing"] = re.findall(r"^(?:FAIL|ERROR): (.+)$", text, re.M)
+        recorded = re.search(r"^Ran (\d+) tests? in ", text, re.M)
+        if recorded:
+            skipped = re.search(r"^.*\bskipped=(\d+)\)", text, re.M)
+            skipped_count = int(skipped[1]) if skipped else 0
+            cases = int(recorded[1])
+            result["test_counts"] = {"run": cases, "skipped": skipped_count}
     if name == "builds":
         result.update(build_findings(night / "builds_build_compare.json"))
     if name == "sram":
@@ -134,43 +276,107 @@ def run_suite(name: str, worktree: Path, night: Path, quick: bool = False) -> di
     return result
 
 
-def autoplay_findings(name: str, worktree: Path, night: Path) -> dict[str, object]:
-    summary_name = "autoplay_summary_cgb.json" if name == "cgb" else "autoplay_summary.json"
+def autoplay_findings(name: str, worktree: Path, night: Path, command=None,
+                      artifacts: Path | None = None) -> dict[str, object]:
+    command = command or SUITES[name][0]
+    artifacts = artifacts or worktree / ARTIFACTS
+    summary_name = "autoplay_summary_cgb.json" if "--cgb" in command else "autoplay_summary.json"
     path = night / f"{name}_{summary_name}"
     if not path.exists():
         return {"findings": [{"kind": "no summary", "what": "no summary written", "replay": None}]}
     summary = json.loads(path.read_text(encoding="utf-8"))
     findings, kept = [], night / f"{name}_seeds"
+    menu_counts = Counter()
+    menu_targets = Counter()
+    menu_choices = Counter()
     for row in summary["runs"]:
         seed = row["seed"]
-        problems = ([(row["outcome"], row["detail"])] if row["outcome"] in FAILURES else []) + \
-            [(a["check"], f"{a['check']}: {a['detail']}") for a in row["anomalies"]] + \
-            [(f"save {f['check']}", f"save {f['check']}") for f in row.get("save_findings") or []]
+        if name in ("menus", "room_menu"):
+            raw = artifacts / f"autoplay_seed{seed}.json"
+            events = json.loads(raw.read_text(encoding="utf-8"))["events"] if raw.exists() else []
+            count_menu_exposure(row, events, menu_counts, menu_targets, menu_choices)
+        problems = ([(row["outcome"], row["detail"], row["map"])] if row["outcome"] in FAILURES else []) + \
+            [(a["check"], f"{a['check']}: {a['detail']}", a.get("map") or row["map"])
+             for a in row["anomalies"]] + \
+            [(f"save {f['check']}", f"save {f['check']}", row["map"]) for f in row.get("save_findings") or []]
         branches = (row.get("branches") or {}).get("findings", [])
         if not problems and not branches:
             continue
         kept.mkdir(exist_ok=True)
-        for file in (worktree / ARTIFACTS).glob(f"autoplay_seed{seed}[._]*"):
+        for file in artifacts.glob(f"autoplay_seed{seed}[._]*"):
             if file.is_dir():
                 # Save checks retain complete packages, including nested cold
                 # boot states. A seed can have several finding rows.
                 shutil.copytree(file, kept / file.name, dirs_exist_ok=True)
             else:
                 shutil.copy(file, kept / file.name)
-        replay = f"python3 tools/pyboy_smoke/autoplay.py --seed {seed}{REPLAY_FLAGS[name]}"
-        for kind, what in problems:
-            findings.append({"seed": seed, "kind": kind, "what": what, "map": row["map"], "replay": replay})
+        replay = replay_command(seed, command)
+        for kind, what, map_name in problems:
+            findings.append({"seed": seed, "kind": kind, "what": what, "map": map_name, "replay": replay})
         for branch in branches:
-            command = branch["replay"].replace(str(ARTIFACTS), f"<night>/{name}_seeds")
+            command = branch["replay"].replace(str(artifacts), f"<night>/{name}_seeds").replace(str(ARTIFACTS), f"<night>/{name}_seeds")
             first = branch["anomalies"][0]["check"] if branch["anomalies"] else None
             findings.append({"seed": seed, "kind": f"branch {first or branch['outcome']}",
                              "what": f"branch {branch['key']}: {branch['outcome']} {branch['detail']}".rstrip()
                              + "".join(f"; {a['check']}: {a['detail']}" for a in branch["anomalies"][:2]),
                              "map": branch["at"].get("map"), "replay": command})
     balance = summary.get("balance") or {}
-    return {"findings": findings, "outcomes": summary.get("outcomes"),
+    rows = summary["runs"]
+    outcomes = summary.get("outcomes") or {}
+    exposure = {"seeds": len(rows), "frames": sum(row.get("frames", 0) for row in rows),
+                "champions": sum(run["outcome"] == "champion"
+                                 for row in rows for run in row.get("run_records", [])),
+                "power_cuts": sum(len(row.get("power_cuts") or []) for row in rows),
+                "palette_samples": sum((row.get("screen_checks") or {}).get("samples", 0) for row in rows),
+                "branches": sum(t["branches"] for t in ((summary.get("branching") or {}).get("totals") or {}).values())}
+    if "--coverage" in command:
+        coverage_path = night / f"{name}_{summary_name.replace('autoplay', 'coverage')}"
+        if coverage_path.exists():
+            totals = json.loads(coverage_path.read_text(encoding="utf-8"))["totals"]
+            exposure["routines_reached"] = totals["routines_run"]
+            exposure["routines_total"] = totals["routines"]
+    unreached = []
+    if name in ("menus", "room_menu"):
+        exposure["item_events"] = {
+            key: menu_counts[key] for key in ("heal", "buy", "battle_item_attempts", "bag_attempts")}
+        exposure["menu_choices"] = dict(menu_choices)
+        exposure["errands_reached"] = {key: menu_targets[key] for key in (*MENU_MILESTONES, "lobby")}
+        exposure["lobby_menus_reached"] = {key.removeprefix("lobby:"): count
+                                          for key, count in menu_targets.items() if key.startswith("lobby:")}
+        expected_errands = ("pc", "rental", "lobby") if name == "menus" else ("roompc",)
+        unreached.extend(label for label in expected_errands if not menu_targets[label])
+        if name == "menus":
+            for key, label in (("heal", "field healing"), ("battle_item_attempts", "battle item menu"),
+                               ("bag_attempts", "bag menu")):
+                if not menu_counts[key]:
+                    unreached.append(label)
+    if name == "cgb_full" and not exposure["champions"]:
+        unreached.append("CGB Hall of Fame")
+    return {"findings": findings, "outcomes": outcomes, "exposure": exposure, "unreached": unreached,
             "champion_rate": balance.get("champion_rate"),
             "stages_mean": (balance.get("stages_cleared") or {}).get("mean")}
+
+
+def count_menu_exposure(row, events, item_counts, errand_counts, choices):
+    for event in events:
+        kind = event["kind"]
+        if kind in ("heal", "buy"):
+            item_counts[kind] += 1
+        elif kind == "errand" and event["phase"] == "start":
+            if event["errand"] == "battle":
+                item_counts["battle_item_attempts"] += 1
+            elif event["errand"] == "bag":
+                item_counts["bag_attempts"] += 1
+    for errand in row.get("directed_errands") or []:
+        kind, reached = errand["errand"], errand["reached"]
+        if MENU_MILESTONES.get(kind) in reached or (
+                kind == "lobby" and any(step.startswith("menu:") or step in
+                                        ("party_menu", "accepted", "declined") for step in reached)):
+            errand_counts[kind] += 1
+            if kind == "lobby" and errand.get("target"):
+                errand_counts[f"lobby:{errand['target']}"] += 1
+    for menu, counts in row.get("menus", {}).items():
+        choices[menu] += counts["choices"]
 
 
 def build_findings(path: Path) -> dict[str, object]:
@@ -215,11 +421,31 @@ def report_history(reports: Path, current: Path):
         yield night, report
 
 
-def previous_reports(reports: Path, current: Path, quick: bool, suites: list[str]):
+def previous_reports(reports: Path, current: Path, quick: bool):
     for folder, report in report_history(reports, current):
-        requested = report.get("requested_suites", [s["suite"] for s in report["suites"]])
-        if not report.get("runner_error") and report.get("quick", False) == quick and requested == suites:
+        if not report.get("runner_error") and report.get("quick", False) == quick:
             yield folder, report
+
+
+def comparison_report(report: dict, history: list[tuple[Path, dict]]) -> dict:
+    """Keep each suite's last comparable result as suites are added or rotated."""
+    previous = []
+    for current in report["suites"]:
+        for _, old in history:
+            match = next((suite for suite in old["suites"]
+                          if suite["suite"] == current["suite"]
+                          and suite.get("rotation") == current.get("rotation")), None)
+            if match is not None:
+                previous.append(match)
+                break
+    return {"suites": previous}
+
+
+def is_full_report(report: dict) -> bool:
+    suites = [suite["suite"] for suite in report["suites"]]
+    return (not report.get("quick") and not report.get("runner_error") and
+            ((report.get("full_run") and suites == report.get("requested_suites"))
+             or tuple(suites) == LEGACY_SUITES))
 
 
 def regressions(report: dict[str, object], previous: dict[str, object] | None) -> list[str]:
@@ -231,17 +457,21 @@ def regressions(report: dict[str, object], previous: dict[str, object] | None) -
     for suite in report["suites"]:
         before = old.get(suite["suite"])
         if before is None:
+            if has_issue(suite):
+                found.append(f"{suite['suite']}: issue has no baseline")
             continue
         if suite["exit"] != 0 and before["exit"] == 0:
             found.append(f"{suite['suite']}: passed last night, fails now (exit {suite['exit']})")
         elif suite["exit"] != 0 and suite["exit"] != before["exit"]:
             found.append(f"{suite['suite']}: exit changed from {before['exit']} to {suite['exit']}")
         for test in sorted(set(suite.get("failing", [])) - set(before.get("failing", []))):
-            found.append(f"smoke: newly failing {test}")
+            found.append(f"{suite['suite']}: newly failing {test}")
         kinds = lambda s: {f["kind"] for f in s.get("findings", [])}
         for kind in sorted(kinds(suite) - kinds(before)):
             found.append(f"{suite['suite']}: new kind of finding: {kind}")
-        if suite.get("champion_rate") is not None and before.get("champion_rate") is not None \
+        for label in sorted(set(suite.get("unreached", [])) - set(before.get("unreached", []))):
+            found.append(f"{suite['suite']}: no exposure to {label}")
+        if not suite.get("rotating_seeds") and suite.get("champion_rate") is not None and before.get("champion_rate") is not None \
                 and suite["champion_rate"] < before["champion_rate"] - CHAMPION_DROP:
             found.append(f"{suite['suite']}: champion rate {before['champion_rate']:.0%} -> {suite['champion_rate']:.0%}")
     return found
@@ -251,8 +481,6 @@ def coverage_regression(night: Path, history: list[Path]) -> tuple[dict, list[st
     """Intersect proven losses against three distinct prior calendar nights."""
     from contextlib import redirect_stdout
     from io import StringIO
-    import autoplay_coverage
-
     if len(history) != COVERAGE_NIGHTS:
         return {}, []
     maps = []
@@ -275,7 +503,7 @@ def coverage_regression(night: Path, history: list[Path]) -> tuple[dict, list[st
 
 
 def has_issue(suite: dict) -> bool:
-    return bool(suite["exit"] != 0 or suite.get("failing") or suite.get("findings"))
+    return bool(suite["exit"] != 0 or suite.get("failing") or suite.get("findings") or suite.get("unreached"))
 
 
 def status(report: dict) -> str:
@@ -292,13 +520,45 @@ def write_markdown(report: dict[str, object], night: Path) -> None:
              "| Suite | Exit | Minutes | Notes |", "| --- | --- | --- | --- |"]
     for suite in report["suites"]:
         notes = []
+        if "guards_run" in suite:
+            notes.append(f"{suite['guards_passed']}/{suite['guards_run']} guards passed")
+        if suite.get("stack_spare_bytes"):
+            notes.append(f"{min(suite['stack_spare_bytes'])} B minimum observed stack spare")
+        if suite.get("test_counts"):
+            notes.append(", ".join(f"{count} {status}" for status, count in suite["test_counts"].items()))
         if suite.get("failing"):
             notes.append(f"{len(suite['failing'])} failing")
         if suite.get("findings"):
             notes.append(f"{len(suite['findings'])} findings")
         if suite.get("champion_rate") is not None:
             notes.append(f"champion {suite['champion_rate']:.0%}, stages {suite['stages_mean']}")
+        exposure = suite.get("exposure") or {}
+        if exposure:
+            notes.append(", ".join(f"{exposure[key]:,} {label}" for key, label in (
+                ("seeds", "seeds"), ("frames", "frames"), ("champions", "champions"),
+                ("power_cuts", "power cuts"), ("palette_samples", "palette samples"),
+                ("branches", "branches")) if exposure.get(key)))
+            if "routines_reached" in exposure:
+                notes.append(f"routines {exposure['routines_reached']}/{exposure['routines_total']}")
+        if suite.get("unreached"):
+            notes.append("Unreached: " + ", ".join(suite["unreached"]))
         lines.append(f"| {suite['suite']} | {suite['exit']} | {suite['seconds'] // 60} | {'; '.join(notes)} |")
+    for suite in report["suites"]:
+        menu = suite.get("exposure", {})
+        if "item_events" not in menu:
+            continue
+        lines += ["", f"## Item and menu exposure ({suite['suite']})", "",
+                  "- Confirmed field heals and purchases: "
+                  f"{menu['item_events']['heal']} heals, {menu['item_events']['buy']} purchases",
+                  "- Menu attempts: "
+                  f"{menu['item_events']['battle_item_attempts']} battle item, {menu['item_events']['bag_attempts']} bag",
+                  "- Directed menus reached: " + ", ".join(
+                      f"{name} {count}" for name, count in menu["errands_reached"].items()),
+                  "- Choices by menu: " + (", ".join(
+                      f"{name} {count}" for name, count in sorted(menu["menu_choices"].items())) or "none")]
+        if menu["lobby_menus_reached"]:
+            lines.append("- Lobby menus reached: " + ", ".join(
+                f"{name} {count}" for name, count in sorted(menu["lobby_menus_reached"].items())))
     if report.get("runner_error"):
         lines += ["", f"Runner failure: {report['runner_error']}"]
     if report.get("coverage_delta"):
@@ -361,11 +621,12 @@ def write_index(reports: Path) -> None:
     for folder, report in report_history(reports, reports):
         if report.get("quick"):
             continue
-        if (not latest and not report.get("runner_error") and
-                [s["suite"] for s in report["suites"]] == list(SUITES)):
+        if not latest and is_full_report(report):
             latest = report.get("finished_at") or dt.datetime.fromtimestamp(
                 (folder / "report.json").stat().st_mtime, dt.timezone.utc).isoformat()
-        outcomes = {s["suite"]: ("Issue" if has_issue(s) else "Pass") for s in report["suites"]}
+        outcomes = {s["suite"]: ("Incomplete" if s.get("unreached") and s["exit"] == 0
+                                  and not s.get("findings") else "Issue" if has_issue(s) else "Pass")
+                    for s in report["suites"]}
         headline = report.get("status") or ("Historical issues" if report.get("failed") else "clean")
         cells = "".join(f"<td>{outcomes.get(name, '-')}</td>" for name in SUITES)
         rows.append(f'<tr><th scope="row"><a href="{quote(folder.name)}/report.md">'
@@ -406,6 +667,12 @@ setInterval(updateFreshness, 60000);
 
 
 def finish_report(report: dict, night: Path, started: float) -> None:
+    inventory = night / ".inventory"
+    if inventory.is_dir():
+        for cache in inventory.glob("coverage_inventory_*_v*_*.json"):
+            cache.unlink()
+        if not any(inventory.iterdir()):
+            inventory.rmdir()
     report["seconds"] = round(time.monotonic() - started)
     report["finished_at"] = timestamp()
     report["failed"] = bool(report.get("runner_error")) or any(has_issue(s) for s in report["suites"])
@@ -433,22 +700,24 @@ def main(argv: list[str] | None = None) -> int:
     if "build" not in suites:
         suites.insert(0, "build")  # every suite reads the ROMs
 
+    args.reports = args.reports.resolve()
     args.reports.mkdir(parents=True, exist_ok=True)
     if args.index_only:
         write_index(args.reports)
         return 0
     started = time.monotonic()
     now = dt.datetime.now()
+    budget = WEEKLY_BUDGET if now.weekday() == 6 and "guards" in suites and not args.quick else DAILY_BUDGET
     worktree = args.worktree.resolve()
     report = {"date": f"{now:%Y-%m-%d %H:%M}", "sha": "unknown", "quick": args.quick,
               "subject": "", "ref": args.ref, "worktree": str(worktree),
-              "suites": [], "requested_suites": suites, "regressions": []}
+              "suites": [], "requested_suites": suites, "full_run": suites == list(SUITES), "regressions": []}
     night = None
     try:
         with nightly_lock(args.reports):
             sha = git("rev-parse", "--verify", f"{args.ref}^{{commit}}")
-            history = list(previous_reports(args.reports, args.reports, args.quick, suites))
-            last = history[0][1] if history else None
+            history = list(previous_reports(args.reports, args.reports, args.quick))
+            last = next((old for _, old in history if [s["suite"] for s in old["suites"]] == suites), None)
             if last and last["sha"] == sha and not args.force:
                 print(f"{sha[:8]} already has a report ({last['night']}); --force to run again")
                 return 0
@@ -457,15 +726,19 @@ def main(argv: list[str] | None = None) -> int:
             report.update(sha=sha, subject=git("log", "-1", "--format=%s", sha), night=str(night))
             prepare_worktree(worktree, sha)
             for name in suites:
+                remaining = budget - (time.monotonic() - started)
+                if remaining <= 0:
+                    report["runner_error"] = f"Run budget exhausted before {name}"
+                    break
                 print(f"[{dt.datetime.now():%H:%M}] {name} ...", flush=True)
-                result = run_suite(name, worktree, night, args.quick)
+                result = run_suite(name, worktree, night, now.date(), args.quick, remaining)
                 report["suites"].append(result)
                 print(f"    exit {result['exit']} in {result['seconds'] // 60} min"
                       + (f", {len(result.get('findings', []))} findings" if "findings" in result else "")
                       + (f", {len(result['failing'])} failing" if result.get("failing") else ""), flush=True)
                 if name == "build" and result["exit"] != 0:
                     break
-            report["regressions"] = regressions(report, last)
+            report["regressions"] = regressions(report, comparison_report(report, history))
             prior_nights = {}
             today = now.date().isoformat()
             for folder, old in history:
@@ -477,7 +750,7 @@ def main(argv: list[str] | None = None) -> int:
                 report["coverage_delta"] = delta
                 report["regressions"].extend(missed)
             finish_report(report, night, started)
-            return 1 if report["regressions"] else 0
+            return 2 if report.get("runner_error") else 1 if report["regressions"] else 0
     except Exception as error:
         if not isinstance(error, NightlyBusy):
             traceback.print_exc()
@@ -489,5 +762,10 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
 
+def on_terminate(_signal, _frame):
+    raise SystemExit(143)
+
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGTERM, on_terminate)
     sys.exit(main())

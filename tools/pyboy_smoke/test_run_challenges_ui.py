@@ -77,13 +77,13 @@ class RunChallengesUITest(unittest.TestCase):
         h = self.h
         self.open_challenges()
         self.assertEqual(self.row(1, 12), text("POOR REWARDS"))
-        self.assertEqual(self.row(1, 3, 16), text("OFF"))
+        self.assertEqual(self.row(1, 2, 17), text("--"))
         self.assertEqual(h.read8("wMaxMenuItem"), 7)
         self.shot("run_challenges_page1.png")
 
         self.press("a", 20)                       # toggle POOR REWARDS
         self.assertEqual(h.read8("wRunChallenges") & 1, 1)
-        self.assertEqual(self.row(1, 2, 16), text("ON"))
+        self.assertEqual(self.row(1, 2, 17), text("ON"))
         self.press("down")
         self.press("a", 20)                       # RARER FOES
         self.assertEqual(h.read8("wRunChallenges") & 3, 3)
@@ -102,6 +102,8 @@ class RunChallengesUITest(unittest.TestCase):
         h.set_event(EVENTS["EVENT_GOT_STARTER"])  # a run begins: the list locks
         self.press("a", 20)
         self.assertEqual(h.read8("wRunChallenges", offset=1) & 1, 1, "locked list changed")
+        self.assertEqual(self.row(14, 12, 1), text("Locked until"), "a locked row must say why")
+        self.press("up", 20)                      # redrawn on page 1
         self.assertEqual(self.row(9, 6, 9), text("LOCKED"))
         self.shot("run_challenges_locked.png")
 

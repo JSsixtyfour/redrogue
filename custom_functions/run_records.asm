@@ -430,8 +430,15 @@ FurthestRunsShow::
 	db "A/B: BACK@"
 
 RoomRecordsMenu::
+	xor a
 .menu
+	push af                      ; the cursor's row, kept across the pages
 	call LoadScreenTilesFromBuffer2
+	; Two-row entries. The Dorm PC's own menu leaves this bit set while TOGGLES
+	; makes it single-spaced (the bit's sense is inverted from its name).
+	ldh a, [hUILayoutFlags]
+	res BIT_DOUBLE_SPACED_MENU, a
+	ldh [hUILayoutFlags], a
 	hlcoord 0, 0
 	lb bc, 10, 14
 	ld a, [wNumHoFTeams]
@@ -445,6 +452,7 @@ RoomRecordsMenu::
 	dec a
 	ld [wMaxMenuItem], a
 	call TextBoxBorder
+	call UpdateSprites
 	hlcoord 2, 2
 	ld de, .Times
 	call PlaceString
@@ -469,9 +477,11 @@ RoomRecordsMenu::
 	add hl, bc
 	ld de, .Back
 	call PlaceString
-	xor a
+	pop af
 	ldh [hCurrentMenuItem], a
+	xor a
 	ld [wMenuWatchMovingOutOfBounds], a
+	ld [wLastMenuItem], a
 	ld hl, wTopMenuItemY
 	ld a, 2
 	ld [hli], a
@@ -486,36 +496,29 @@ RoomRecordsMenu::
 	ld hl, wMaxMenuItem
 	cp [hl]
 	ret z
+	push af
+	call .open
+	pop af
+	jp .menu
+.open
 	inc a
 	cp [hl]
-	jr z, .challenges            ; the row above BACK
+	jp z, RunChallengesRecordsShow ; the row above BACK
 	dec a
-	cp 3
-	jr z, .special
-	cp 2
-	jr z, .hallOrSpecial
-	and a
-	jr nz, .furthest
-	call RunRecordsShow
-	jp .menu
-.furthest
-	call FurthestRunsShow
-	jp .menu
-.challenges
-	call RunChallengesRecordsShow
-	jp .menu
-.hallOrSpecial
+	jp z, RunRecordsShow
+	dec a
+	jp z, FurthestRunsShow
+	dec a
+	jr nz, .special
 	ld a, [wNumHoFTeams]
 	and a
-	jr nz, .hof
+	jr z, .special
+	farcall PKMNLeaguePC
+	jr .reload
 .special
 	farcall SpecialCollectionMenu
-	jr .reload
-.hof
-	farcall PKMNLeaguePC
 .reload
-	call ReloadMapData ; restore Dorm tiles overwritten by the Pokemon pictures
-	jp .menu
+	jp ReloadMapData ; restore Dorm tiles overwritten by the Pokemon pictures
 .Times
 	db "RUN TIMES@"
 .Furthest

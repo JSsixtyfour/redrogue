@@ -103,7 +103,7 @@ OaksLab_TextPointers:
 
 ; Z permits starter selection. Bridge offers reuse the starter buffers, so
 ; a remaining ball must never read them, even when Debug 2 skipped the intro.
-OaksLabCheckStarterSelection:
+OaksLabCheckStarterSelection::
 	ld a, [wWarpedFromWhichMap]
 	cp INDIGO_PLATEAU_LOBBY
 	jr z, .blocked

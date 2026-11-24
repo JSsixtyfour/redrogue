@@ -3,6 +3,8 @@ import json
 import os
 from pathlib import Path
 
+from nightly import is_full_report
+
 reports = Path(os.environ["USERPROFILE"]) / "redrogue_nightly_reports"
 latest = reports / "latest_attempt.txt"
 try:
@@ -15,8 +17,7 @@ for path in sorted(reports.glob("*/report.json"), reverse=True):
         run = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         continue
-    if (not run.get("quick") and not run.get("runner_error") and
-            len(run["suites"]) == 8):
+    if is_full_report(run):
         last_full = path
         break
 if last_full is None:

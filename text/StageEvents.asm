@@ -211,10 +211,19 @@ _StageEventDefeatJennyText::
 ; PrintEndBattleText, so there is no "<CLASS>: " prefix eating line 1 and no
 ; need for a trailing `prompt` - AfterDisplayingTextID waits.
 
-_StageEventAfterJessieJamesText::
-	text "JESSE: We'll get"
+; The pair speak separately: StageEventPrintAfterLine picks by which of the two
+; sprites is being talked to.
+_StageEventAfterJessieText::
+	text "JESSIE: We'll get"
 	line "you next time,"
 	cont "twerp!@"
+	text_end
+
+_StageEventAfterJamesText::
+	text "JAMES: You have"
+	line "disgraced the"
+	cont "disgraceful Team"
+	cont "Rocket!@"
 	text_end
 
 _StageEventAfterPsychicText::

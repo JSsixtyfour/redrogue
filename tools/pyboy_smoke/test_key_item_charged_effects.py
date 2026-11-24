@@ -1,7 +1,7 @@
 """Exact charged-item transactions in configured ROM routine fixtures.
 
-Dialogue, sound waits and HUD drawing are bypassed, not effect code. These
-fixtures complement real-input journeys and do not establish visual acceptance.
+Transaction fixtures bypass dialogue, sound waits and HUD drawing. The field
+bag prompt test uses real button presses and the normal text engine.
 """
 from routine_session import isolated_routine_calls
 from source_constants import parse_map_constants, parse_rgbds_constants
@@ -19,6 +19,55 @@ TOGGLES=parse_rgbds_constants(REPO_ROOT/'constants/toggle_constants.asm')
 
 
 class ChargedKeyItemEffectTest(HarnessTestCase):
+    def test_mon_dice_only_reroll_unclaimed_lab_starters(self):
+        h = self.harness
+        h.boot_to_lobby(battle_count=1)
+        self.bypass('PrintText')
+        h.write8('hCurMap', MAPS['OAKS_LAB'])
+        h.write8('wDiceCharges', 0x19)
+        starter = EVENTS['EVENT_GOT_STARTER']
+        addr = h.address('wEventFlags') + starter // 8
+        h.pyboy.memory[addr] &= ~(1 << (starter % 8)) & 255
+        rolls = h.hook_flag('rogue_pokemon_randomized_batch')
+        with isolated_routine_calls(h):
+            h.write8('wWarpedFromWhichMap', MAPS['INDIGO_PLATEAU_LOBBY'])
+            h.call_routine('RogueItemUseMonDice')
+            self.assertEqual((rolls['count'], h.read8('wDiceCharges')), (0, 0x19))
+            h.write8('wWarpedFromWhichMap', MAPS['PALLET_TOWN'])
+            h.call_routine('RogueItemUseMonDice')
+            self.assertEqual((rolls['count'], h.read8('wDiceCharges')), (1, 0x15))
+            h.set_event(starter)
+            h.call_routine('RogueItemUseMonDice')
+            self.assertEqual((rolls['count'], h.read8('wDiceCharges')), (1, 0x15))
+
+    def test_dice_message_waits_for_input_before_the_field_bag_redraws(self):
+        h = self.harness
+        h.boot_to_lobby(battle_count=1)
+        h.tick(60)
+        dice = ['DOOR_DICE']
+        h.write_sram_bytes('sKeyItemsBitfield', bits(dice, dice))
+        h.write8('wDiceCharges', 0)
+        h.write8('wBagPocketsFlags', RAM['POCKET_KEY_ITEMS'])
+        h.write8('wBagSavedMenuItem', 0)
+        dex = EVENTS['EVENT_GOT_POKEDEX']
+        has_dex = h.read8('wEventFlags', offset=dex // 8) & (1 << (dex % 8))
+        h.write8('wBattleAndStartSavedMenuItem', 2 if has_dex else 1)
+        menu = h.hook_flag('HandleMenuInput_.getJoypadState')
+        bag = h.hook_flag('DisplayListMenuID')
+        prompt = h.hook_flag('PromptText')
+
+        h.tap('start')
+        h.wait_until(lambda: menu['count'], 'start menu input', 180)
+        h.tap('a')
+        h.wait_until(lambda: bag['count'], 'key pocket', 180)
+        h.tick(30)
+        h.tap('a')
+        h.wait_until(lambda: prompt['count'], 'final dice prompt', 180)
+        h.tick(120)
+        self.assertEqual(bag['count'], 1, 'bag redrew without input')
+        h.tap('b')
+        h.wait_until(lambda: bag['count'] == 2, 'bag after dismissal', 180)
+
     def test_three_equipped_dice_spend_only_their_own_packed_charge_bits(self):
         h=self.harness
         h.boot_to_lobby(battle_count=1)

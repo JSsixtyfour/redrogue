@@ -36,19 +36,11 @@ RoomVendorMenu::
 	ld hl, wStatusFlags5
 	set BIT_NO_TEXT_DELAY, [hl]
 	call SaveScreenTilesToBuffer2
-
+	xor a
 .menu
-	call LoadScreenTilesFromBuffer2
-	; 2-row-spaced category entries; see room_pc.asm's RoomPC for why this
-	; bit's sense (inverted from its name) can't be assumed clear on entry.
-	ldh a, [hUILayoutFlags]
-	res BIT_DOUBLE_SPACED_MENU, a
-	ldh [hUILayoutFlags], a
-	hlcoord 0, 0
-	ld b, 10
-	ld c, 14
-	call TextBoxBorder
-	call UpdateSprites
+	push af                      ; the cursor's row
+	lb bc, 10, 14
+	call RoomOpenMenuBox
 	hlcoord 2, 2
 	ld de, .TopString
 	call PlaceString
@@ -64,66 +56,49 @@ RoomVendorMenu::
 	hlcoord 2, 10
 	ld de, .PalsString
 	call PlaceString
-	xor a
-	ldh [hCurrentMenuItem], a
-	ld hl, wTopMenuItemY
-	ld a, 2
-	ld [hli], a
-	dec a
-	ld [hli], a
-	inc hl
-	ld a, 4
-	ld [hli], a
-	ld a, PAD_A | PAD_B
-	ld [hli], a
-	xor a
-	ld [hl], a
-	ld hl, wListScrollOffset
-	ld [hli], a
-	ld [hl], a
-	call HandleMenuInput
-	call PlaceUnfilledArrowMenuCursor
-	bit B_PAD_B, a
+	pop af
+	ld c, 4
+	call RoomRunMenu             ; custom_functions/room_pc.asm, same bank
 	jr nz, .exit
-	ldh a, [hCurrentMenuItem]
-	cp ROOM_VENDOR_TOP
-	jr nz, .notTop
-	ld hl, RoomVendorTopNames
-	ld de, RoomVendorTopPrices
-	ld bc, RoomVendorTopIds
+	push af
+.category
+	pop af
+	push af
+	ld c, a
+	add a
+	add c
+	add a                        ; 6 bytes per row
+	ld c, a
+	ld b, 0
+	ld hl, .Categories
+	add hl, bc
+	ld a, [hli]
+	ld e, a
+	ld a, [hli]
+	ld d, a
+	push de                      ; names
+	ld a, [hli]
+	ld e, a
+	ld a, [hli]
+	ld d, a                      ; de = prices
+	ld a, [hli]
+	ld b, [hl]
+	ld c, a                      ; bc = piece ids
+	pop hl
 	call RoomVendorCategory
-	jp .menu
-.notTop
-	cp ROOM_VENDOR_MIDDLE
-	jr nz, .notMiddle
-	ld hl, RoomVendorMiddleNames
-	ld de, RoomVendorMiddlePrices
-	ld bc, RoomVendorMiddleIds
-	call RoomVendorCategory
-	jp .menu
-.notMiddle
-	cp ROOM_VENDOR_DESK
-	jr nz, .notDesk
-	ld hl, RoomVendorDeskNames
-	ld de, RoomVendorDeskPrices
-	ld bc, RoomVendorDeskIds
-	call RoomVendorCategory
-	jp .menu
-.notDesk
-	cp ROOM_VENDOR_PLANT
-	jr nz, .notPlant
-	ld hl, RoomVendorPlantNames
-	ld de, RoomVendorPlantPrices
-	ld bc, RoomVendorPlantIds
-	call RoomVendorCategory
-	jp .menu
-.notPlant
-	; ROOM_VENDOR_PALS
-	ld hl, RoomVendorPalsNames
-	ld de, RoomVendorPalsPrices
-	ld bc, RoomVendorPalsIds
-	call RoomVendorCategory
-	jp .menu
+	jr nc, .category             ; bought or declined: back to the same list
+	pop af
+	jr .menu                     ; B: back to the category list
+
+; One row per category: names, prices, piece ids.
+.Categories
+	dw RoomVendorTopNames, RoomVendorTopPrices, RoomVendorTopIds
+	dw RoomVendorMiddleNames, RoomVendorMiddlePrices, RoomVendorMiddleIds
+	dw RoomVendorDeskNames, RoomVendorDeskPrices, RoomVendorDeskIds
+	dw RoomVendorPlantNames, RoomVendorPlantPrices, RoomVendorPlantIds
+	dw RoomVendorPalsNames, RoomVendorPalsPrices, RoomVendorPalsIds
+	ASSERT ROOM_VENDOR_TOP == 0 && ROOM_VENDOR_MIDDLE == 1 && ROOM_VENDOR_DESK == 2
+	ASSERT ROOM_VENDOR_PLANT == 3 && ROOM_VENDOR_PALS == 4
 .exit
 	ld hl, wStatusFlags5
 	res BIT_NO_TEXT_DELAY, [hl]
@@ -139,6 +114,7 @@ RoomVendorMenu::
 ; RoomVendorCategory — show one category's pieces, handle the purchase.
 ; INPUT: hl = name table (dw per piece), de = price table (bcd2 per piece),
 ;        bc = piece-id table (a count byte, then one sRoomOwned bit per piece).
+; OUTPUT: carry set if B left the list; clear after a purchase or a refusal.
 ; This category state lives at wBuffer + 8..13, clear of RoomDrawPickList's
 ; + 0..6 (RoomDrawEntries' scratch plus RoomSetPickListOpts' row and
 ; description pointer). Sharing + 4..6 drew these lists at the owned-bit
@@ -157,11 +133,8 @@ RoomVendorCategory:
 	ld b, a                      ; b = piece count
 	push hl
 	push bc
-	hlcoord 0, 0
-	ld b, 12
-	ld c, 16                     ; wide enough for "DINOSAUR POSTER" (15 chars from col 2)
-	call TextBoxBorder
-	call UpdateSprites
+	lb bc, 12, 16                ; wide enough for "DINOSAUR POSTER" (15 chars from col 2)
+	call RoomOpenBox             ; the last purchase's message goes with it
 	ld hl, 0                     ; no description box
 	ld a, 2
 	call RoomSetPickListOpts
@@ -185,7 +158,7 @@ RoomVendorCategory:
 	call RoomIsPieceOwned
 	jr nc, .notOwned
 	ld hl, .AlreadyOwnedText
-	jp PrintText
+	jr .print
 .notOwned
 	ld a, [wBuffer + 10]
 	ld l, a
@@ -225,10 +198,13 @@ RoomVendorCategory:
 	call PlaySoundWaitForCurrent
 	call WaitForSoundToFinish
 	ld hl, .BoughtText
-	jp PrintText
+	jr .print
 .notEnough
 	ld hl, .NotEnoughText
-	jp PrintText
+.print
+	call PrintText
+	and a                        ; carry clear: stay in this list
+	ret
 
 .AlreadyOwnedText:
 	text_far _RoomVendorAlreadyOwnedText

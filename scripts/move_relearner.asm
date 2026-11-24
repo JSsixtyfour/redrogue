@@ -66,7 +66,7 @@ MoveRelearnerText1:
 	ld [wPrintItemPrices], a ; don't print prices
 	call DisplayListMenuID
 	pop bc
-	jr c, .exit  ; exit if player chose cancel
+	jr c, .backToParty ; B: one stage back
 	push bc
 	; Save the selected move id.
 	ld a, [wCurListMenuItem]
@@ -81,7 +81,7 @@ MoveRelearnerText1:
 	push af
 	xor a
 	ld [wLetterPrintingDelayFlags], a
-	predef LearnMove
+	call LearnMoveOverMap
 	pop af
 	ld [wLetterPrintingDelayFlags], a
 	ld a, b
@@ -100,6 +100,9 @@ MoveRelearnerText1:
 	ld hl, MoveRelearnerByeText
 	call PrintText
 	jp TextScriptEnd
+.backToParty
+	call LoadScreenTilesFromBuffer2 ; the move list goes
+	jp .enoughMoney
 .exit
 	ld hl, MoveRelearnerByeText
 	call PrintText

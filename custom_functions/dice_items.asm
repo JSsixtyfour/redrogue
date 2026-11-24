@@ -114,22 +114,21 @@ DoorDiceRefuseText:
 
 RogueItemUseMonDice::
 	ldh a, [hCurMap]
+	cp OAKS_LAB
+	jr nz, .rewardRoom
+	farcall OaksLabCheckStarterSelection
+	jr .checkClaim
+.rewardRoom
 	cp REWARD_ROOM
 	jr nz, .refuseLocation
 	CheckEvent EVENT_GOT_ROGUE_POKEMON
+.checkClaim
 	jr nz, .refuseLocation         ; already claimed - nothing to reroll
 	ld a, [wDiceCharges]
 	and %00001100
 	jr z, .refuseCharges
-	srl a
-	srl a                          ; a = charge value (1-3)
-	dec a
-	sla a
-	sla a                          ; shift back into bits 2-3
-	ld b, a
 	ld a, [wDiceCharges]
-	and %11110011
-	or b
+	sub %00000100                  ; nonzero field: no borrow into adjacent charges
 	ld [wDiceCharges], a
 	call rogue_pokemon_randomized_batch
 	ld hl, MonDiceRerolledText

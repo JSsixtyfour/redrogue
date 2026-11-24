@@ -1460,7 +1460,7 @@ PCMoveTutorTalk::
 	xor a
 	ld [wLetterPrintingDelayFlags], a
 .learnMove
-	predef LearnMove
+	call LearnMoveOverMap
 	ld e, b ; LearnMove returns b = 1 only when the move was learned
 	pop af
 	ld [wLetterPrintingDelayFlags], a

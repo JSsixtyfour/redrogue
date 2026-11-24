@@ -448,11 +448,11 @@ RewardChallengeFlags::
 ; ============================================================
 ; RunChallengesMenu - the Dorm PC's CHALLENGES list, farcalled from RoomPC
 ; (custom_functions/room_pc.asm), which restores its own screen on return.
-; One row per RUN_CH_* id with an ON/OFF column, RUN_CH_PAGE rows to a page
+; One row per RUN_CH_* id with an ON/-- column, RUN_CH_PAGE rows to a page
 ; (UP past the first row or DOWN past the last turns the page), the heat of
 ; the choice, and the highlighted row's description in the text box through
 ; RoomPrintDescription's cursor hook. A toggles the row, B leaves. While a run
-; is in progress (EVENT_GOT_STARTER) the list is read only.
+; is in progress (EVENT_GOT_STARTER) the list is read only, and A says so.
 ; wBuffer: +29 nonzero (the description hook), +8 page, +9 cursor row, +10 rows on this
 ; page, +11 row being drawn, +12 scratch, +14 page's first id (the scroll offset
 ; RoomPrintDescription adds to the cursor), +27/+28 = 0 (no ownership filter).
@@ -521,8 +521,8 @@ RunChallengesMenu::
 	push hl
 	call PlaceString
 	pop hl
-	ld bc, 14
-	add hl, bc                    ; the ON/OFF column
+	ld bc, 15
+	add hl, bc                    ; the ON/-- column, clear of 14-letter names
 	push hl                       ; RunChallengeIsOn returns its own hl
 	ld a, [wBuffer + 12]
 	call RunChallengeIsOn
@@ -586,9 +586,10 @@ RunChallengesMenu::
 	ld [hl], a
 	inc a
 	ld [wMenuWatchMovingOutOfBounds], a ; a push past the ends turns the page
+	call RunChallengePrintDescription
+.input
 	ld hl, wBagPocketsFlags
 	set BIT_ROOM_DESC_BOX, [hl]
-	call RunChallengePrintDescription
 	call HandleMenuInput
 	ld hl, wBagPocketsFlags
 	res BIT_ROOM_DESC_BOX, [hl]   ; leaves a alone - it still holds the keys pressed
@@ -628,7 +629,7 @@ RunChallengesMenu::
 	ldh a, [hCurrentMenuItem]
 	ld [wBuffer + 9], a
 	CheckEvent EVENT_GOT_STARTER
-	jp nz, .redraw                ; locked: the list is only shown
+	jr nz, .locked
 	ld a, [wBuffer + 9]
 	ld b, a
 	ld a, [wBuffer + 14]
@@ -637,23 +638,33 @@ RunChallengesMenu::
 	xor [hl]
 	ld [hl], a
 	jp .redraw
+.locked
+	; The list is only shown during a run. Say so, or A looks broken. The text
+	; stays until the cursor moves.
+	ld a, SFX_DENIED
+	call PlaySound
+	ld de, .LockedDesc
+	call RunChallengePlaceDescription
+	call EraseMenuCursor          ; or the outline arrow is saved as the tile behind it
+	ld a, 1
+	ld [wMenuWatchMovingOutOfBounds], a
+	jr .input
 
+.LockedDesc:
+	db "Locked until this<NEXT>run is over.@"
 .HeatText:
 	db "HEAT@"
 .LockedText:
 	db "LOCKED@"
 .OnText:
-	db "ON @"
+	db "ON@"
 .OffText:
-	db "OFF@"
+	db "--@"
 
 ; The highlighted row's description, drawn into the text box. The cursor-move
 ; hook reaches it through RoomPrintDescription (bank $2D), which cannot read
 ; strings in this bank, while wBuffer + 29 is nonzero. Clobbers af, bc, de, hl.
 RunChallengePrintDescription::
-	hlcoord 1, 14
-	lb bc, 3, SCREEN_WIDTH - 2
-	call ClearScreenArea
 	ldh a, [hCurrentMenuItem]
 	ld c, a
 	ld a, [wBuffer + 14]          ; the page's first id
@@ -666,6 +677,15 @@ RunChallengePrintDescription::
 	ld a, [hli]
 	ld d, [hl]
 	ld e, a
+	; fall through
+
+; de = a string in this bank -> the text box, replacing what it held.
+RunChallengePlaceDescription:
+	push de
+	hlcoord 1, 14
+	lb bc, 3, SCREEN_WIDTH - 2
+	call ClearScreenArea
+	pop de
 	hlcoord 1, 14
 	jp PlaceString
 

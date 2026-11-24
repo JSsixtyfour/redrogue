@@ -1,8 +1,11 @@
 """Nightly regression bookkeeping (nightly.py): what counts as worse than last
 night. Source-only: synthetic reports, no emulator."""
+import datetime as dt
+import shlex
 import tempfile
 import json
 import unittest
+from collections import Counter
 from pathlib import Path
 
 import nightly
@@ -84,6 +87,82 @@ class QuickModeTest(unittest.TestCase):
         for name, flags in nightly.QUICK.items():
             for flag in flags:
                 self.assertIn(flag, nightly.SUITES[name][0], (name, flag))
+
+
+class ExpandedNightlyTest(unittest.TestCase):
+    def test_only_coverage_inventory_is_shared_across_suite_artifacts(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            source, shared, destination = (root / name for name in ("source", "shared", "destination"))
+            source.mkdir()
+            cache = "coverage_inventory_pokered_v2_0123456789abcdef.json"
+            (source / cache).write_text("[]")
+            (source / "autoplay_seed1.json").write_text("{}")
+            nightly.copy_inventory_cache(source, shared)
+            nightly.copy_inventory_cache(shared, destination)
+            self.assertEqual([path.name for path in destination.iterdir()], [cache])
+            self.assertEqual((destination / cache).read_text(), "[]")
+
+    def test_discovery_changes_seeds_and_replay_keeps_gameplay_flags(self):
+        date = dt.date(2026, 11, 24)
+        command = nightly.suite_command("discovery", Path(), date, False)
+        next_night = nightly.suite_command("discovery", Path(), date + dt.timedelta(days=1), False)
+        self.assertNotEqual(command, next_night)
+        replay = shlex.split(nightly.replay_command(124, command))
+        self.assertEqual(replay[2:4], ["--seed", "124"])
+        for flag in ("--new-game", "--player", "--save-checks", "--coverage", "--max-frames"):
+            self.assertIn(flag, replay)
+        for flag in ("--timeout", "--jobs", "--seeds"):
+            self.assertNotIn(flag, replay)
+
+    def test_weekday_guard_rotation_covers_registry_then_sunday_runs_all(self):
+        monday = dt.date(2026, 11, 23)
+        with tempfile.TemporaryDirectory() as root:
+            worktree = Path(root)
+            registry = worktree / nightly.SMOKE_DIR / "audits.json"
+            registry.parent.mkdir(parents=True)
+            guards = {f"audit_{i}.py" for i in range(19)}
+            registry.write_text(json.dumps({"audits": [
+                *({"script": guard, "kind": "guard"} for guard in guards),
+                {"script": "probe.py", "kind": "probe"},
+                {"script": "already.py", "kind": "guard", "in_smoke": True},
+            ]}))
+            seen = []
+            for day in range(6):
+                command = nightly.suite_command("guards", worktree, monday + dt.timedelta(days=day), False)
+                seen.extend(command[i + 1] for i, value in enumerate(command) if value == "--only")
+            self.assertCountEqual(seen, guards)
+            sunday = nightly.suite_command("guards", worktree, monday + dt.timedelta(days=6), False)
+            self.assertNotIn("--only", sunday)
+
+    def test_menu_attempts_and_exposure_are_distinct(self):
+        items, errands, menus = Counter(), Counter(), Counter()
+        nightly.count_menu_exposure(
+            {"menus": {"battle_menu": {"choices": 8}},
+             "directed_errands": [{"errand": "pc", "reached": ["budget_exhausted"]},
+                                  {"errand": "roompc", "reached": ["top_menu"]}]},
+            [{"kind": "heal"}, {"kind": "buy"},
+             {"kind": "errand", "phase": "start", "errand": "battle"},
+             {"kind": "errand", "phase": "end", "errand": "battle"}], items, errands, menus)
+        self.assertEqual(items, {"heal": 1, "buy": 1, "battle_item_attempts": 1})
+        self.assertEqual(errands, {"roompc": 1})
+        self.assertEqual(menus, {"battle_menu": 8})
+
+    def test_old_full_report_still_counts_and_rotations_use_like_baseline(self):
+        historical = {"suites": [suite(name) for name in nightly.LEGACY_SUITES]}
+        self.assertTrue(nightly.is_full_report(historical))
+        self.assertFalse(nightly.is_full_report({"suites": historical["suites"][:-1]}))
+        current = {"suites": [suite("guards", exit=1) | {"rotation": 2}]}
+        other_day = {"suites": [suite("guards") | {"rotation": 1}]}
+        same_day = {"suites": [suite("guards", exit=1) | {"rotation": 2}]}
+        history = [(Path("other"), other_day), (Path("same"), same_day)]
+        self.assertEqual(nightly.regressions(current, nightly.comparison_report(current, history)), [])
+
+    def test_lost_menu_exposure_is_visible_even_with_zero_exit(self):
+        current = suite("menus") | {"unreached": ["roompc"]}
+        self.assertTrue(nightly.has_issue(current))
+        self.assertEqual(nightly.regressions({"suites": [current]}, {"suites": [suite("menus")]}),
+                         ["menus: no exposure to roompc"])
 
 
 class ArtifactRetentionTest(unittest.TestCase):

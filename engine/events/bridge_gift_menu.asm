@@ -781,7 +781,7 @@ BridgeTeachMoveToCurrent:
 	push af
 	xor a
 	ld [wLetterPrintingDelayFlags], a
-	predef LearnMove
+	call LearnMoveOverMap
 	pop af
 	ld [wLetterPrintingDelayFlags], a
 	ld a, b                      ; LearnMove: b = 1 learned, b = 0 rejected

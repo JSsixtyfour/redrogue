@@ -290,6 +290,13 @@ EnemyRanText:
 	text_end
 
 MainInBattleLoop:
+; Last round's damage is stale: Counter reflected it onto a mon that just switched in.
+; A trapping move keeps it, since its continuation turns deal the same damage again.
+	ld a, [wEnemyBattleStatus1]
+	ld hl, wPlayerBattleStatus1
+	or [hl]
+	bit USING_TRAPPING_MOVE, a
+	call z, ZeroLastDamage
 	call ReadPlayerMonCurHPAndStatus
 	ld hl, wBattleMonHP
 	ld a, [hli]
@@ -3915,17 +3922,7 @@ CheckPlayerStatusConditions:
 	jr z, .ThrashingAboutCheck
 	xor a
 	ld [wPlayerMoveNum], a
-	ld hl, wDamage
-	ld a, [hli]
-	ld b, a
-	ld c, [hl]
-	ld hl, wPlayerBideAccumulatedDamage + 1
-	ld a, [hl]
-	add c ; accumulate damage taken
-	ld [hld], a
-	ld a, [hl]
-	adc b
-	ld [hl], a
+	; damage taken is accumulated as each hit lands (BideStoreDamage)
 	ld hl, wPlayerNumAttacksLeft
 	dec [hl] ; did Bide counter hit 0?
 	jr z, .UnleashEnergy
@@ -4138,7 +4135,8 @@ HandleSelfConfusionDamage:
 	call DrawPlayerHUDAndHPBar
 	xor a
 	ldh [hWhoseTurn], a
-	jp ApplyDamageToPlayerPokemon.directDamage
+	call ApplyDamageToPlayerPokemon.directDamage
+	jp ZeroLastDamage
 
 INCLUDE "engine/battle/used_move_text.asm"
 
@@ -4206,9 +4204,17 @@ ENDC
 	ldh a, [hWhoseTurn]
 	and a
 	jr nz, .enemyTurn
-	jp ApplyDamageToPlayerPokemon.directDamage
+	call ApplyDamageToPlayerPokemon.directDamage
+	jr ZeroLastDamage
 .enemyTurn
-	jp ApplyDamageToEnemyPokemon.directDamage
+	call ApplyDamageToEnemyPokemon.directDamage
+	; fallthrough
+; Damage a mon does to itself, or dealt in an earlier round, is not for Counter to reflect.
+ZeroLastDamage:
+	xor a
+	ld [wDamage], a
+	ld [wDamage + 1], a
+	ret
 
 AttackMissedText:
 	text_far _AttackMissedText
@@ -5337,6 +5343,12 @@ ApplyDamageToEnemyPokemon:
 	ld a, [hl]
 	or b
 	jr z, ApplyAttackToEnemyPokemonDone ; we're done if damage is 0
+	ld c, [hl] ; bc = damage
+	ld a, [wEnemyBattleStatus1]
+	ASSERT STORING_ENERGY == 0
+	rrca
+	ld hl, wEnemyBideAccumulatedDamage + 1
+	call c, BideStoreDamage
 	ld a, [wEnemyBattleStatus2]
 	bit HAS_SUBSTITUTE_UP, a ; does the enemy have a substitute?
 	jp nz, AttackSubstitute
@@ -5467,6 +5479,12 @@ ApplyDamageToPlayerPokemon:
 	ld a, [hl]
 	or b
 	jr z, ApplyAttackToPlayerPokemonDone ; we're done if damage is 0
+	ld c, [hl] ; bc = damage
+	ld a, [wPlayerBattleStatus1]
+	ASSERT STORING_ENERGY == 0
+	rrca
+	ld hl, wPlayerBideAccumulatedDamage + 1
+	call c, BideStoreDamage
 	ld a, [wPlayerBattleStatus2]
 	bit HAS_SUBSTITUTE_UP, a ; does the player have a substitute?
 	jp nz, AttackSubstitute
@@ -5514,6 +5532,17 @@ ApplyDamageToPlayerPokemon:
 	predef UpdateHPBar2 ; animate the HP bar shortening
 ApplyAttackToPlayerPokemonDone:
 	jp DrawHUDsAndHPBars
+
+; Add this hit (bc) to the Bide tally whose low byte is at hl. Adding wDamage once per
+; turn instead, as vanilla did, counted a hit again on any turn nobody attacked.
+BideStoreDamage:
+	ld a, [hl]
+	add c
+	ld [hld], a
+	ld a, [hl]
+	adc b
+	ld [hl], a
+	ret
 
 AttackSubstitute:
 ; Unlike the two ApplyAttackToPokemon functions, Attack Substitute is shared by player and enemy.
@@ -7068,6 +7097,7 @@ CheckEnemyStatusConditions:
 	ld a, $1
 	ldh [hWhoseTurn], a
 	call ApplyDamageToEnemyPokemon.directDamage
+	call ZeroLastDamage
 	jr .monHurtItselfOrFullyParalysed
 .checkIfTriedToUseDisabledMove
 ; prevents a disabled move that was selected before being disabled from being used
@@ -7115,17 +7145,7 @@ CheckEnemyStatusConditions:
 	jr z, .checkIfThrashingAbout
 	xor a
 	ld [wEnemyMoveNum], a
-	ld hl, wDamage
-	ld a, [hli]
-	ld b, a
-	ld c, [hl]
-	ld hl, wEnemyBideAccumulatedDamage + 1
-	ld a, [hl]
-	add c ; accumulate damage taken
-	ld [hld], a
-	ld a, [hl]
-	adc b
-	ld [hl], a
+	; damage taken is accumulated as each hit lands (BideStoreDamage)
 	ld hl, wEnemyNumAttacksLeft
 	dec [hl] ; did Bide counter hit 0?
 	jr z, .unleashEnergy

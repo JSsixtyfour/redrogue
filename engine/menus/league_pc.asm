@@ -51,6 +51,7 @@ PKMNLeaguePC:
 	call GBPalWhiteOutWithDelay3
 	call ClearScreen
 	call RunDefaultPaletteCommand
+	call UpdateSprites           ; sprites just un-froze with the visibility they had on entry
 	jp GBPalNormal
 
 LeaguePCShowTeam:

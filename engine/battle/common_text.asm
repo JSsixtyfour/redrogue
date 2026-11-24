@@ -122,6 +122,11 @@ PlayerMon1Text:
 	text_end
 
 RetreatMon:
+; A trapping move keeps wDamage past the top of the round (MainInBattleLoop). Once its
+; user leaves, that damage is stale and Counter must not reflect it onto the replacement.
+	xor a
+	ld [wDamage], a
+	ld [wDamage + 1], a
 	ld hl, PlayerMon2Text
 	jp PrintText
 

@@ -30,8 +30,9 @@ DEF ROOM_PC_TOGGLES     EQU 5  ; only when wBuffer + 7 says TOGGLES is present;
 ; ============================================================
 RoomPC::
 	call SaveScreenTilesToBuffer2
-
+	xor a
 .menu
+	push af                      ; the cursor's row: 0, or the submenu just left
 	; Re-assert on every pass, not once on entry: PlayerPC (KEY ITEMS) clears
 	; BIT_NO_TEXT_DELAY on exit, and the descriptions then typed out letter by
 	; letter for the rest of the visit.
@@ -126,7 +127,7 @@ RoomPC::
 	cp b
 	jr nc, .labelLoop
 .inputSetup
-	xor a
+	pop af
 	ldh [hCurrentMenuItem], a
 	ld hl, wTopMenuItemY
 	ld a, [wBuffer + 9]
@@ -179,6 +180,7 @@ RoomPC::
 	bit B_PAD_B, a
 	jr nz, .logOff
 	ldh a, [hCurrentMenuItem]
+	push af                      ; the row to come back to
 	cp ROOM_PC_KEY_ITEMS
 	jr nz, .notKeyItems
 	ld hl, wMiscFlags
@@ -186,38 +188,42 @@ RoomPC::
 	farcall PlayerPC
 	ld hl, wMiscFlags            ; farcall returns PlayerPC's hl (wStatusFlags5)
 	res BIT_USING_GENERIC_PC, [hl]
-	jp .menu
+	jr .back
 .notKeyItems
 	cp ROOM_PC_FURNITURE
 	jr nz, .notFurniture
 	call RoomFurnitureMenu
-	jp .menu
+	jr .back
 .notFurniture
 	cp ROOM_PC_DECORATIONS
 	jr nz, .notDecorations
 	call RoomDecorationsMenu
-	jp .menu
+	jr .back
 .notDecorations
 	cp ROOM_PC_RECORDS           ; a still holds the selected row
 	jr nz, .notRecords
 	rfarcall RoomRecordsMenu
 	; The submenu restores map graphics after using the Hall of Fame viewer.
-	jp .menu
+	jr .back
 .notRecords
 	cp ROOM_PC_CHALLENGES
 	jr nz, .notChallenges
 	farcall RunChallengesMenu
-	jp .menu
+	jr .back
 .notChallenges
 	ld c, a
 	ld a, [wBuffer + 7]
 	and a
-	jr z, .logOff                ; no TOGGLES row: this is LOG OFF
+	jr z, .logOffRow             ; no TOGGLES row: this is LOG OFF
 	ld a, c
 	cp ROOM_PC_TOGGLES
-	jr nz, .logOff
+	jr nz, .logOffRow
 	call RogueGroupToggleMenu
+.back
+	pop af
 	jp .menu
+.logOffRow
+	pop af
 .logOff
 	; The top menu is single-spaced while TOGGLES is present (BIT_DOUBLE_SPACED_MENU
 	; set, inverted name). Every vanilla menu assumes it clear: left set, the
@@ -289,7 +295,8 @@ RoomPC::
 
 ; ============================================================
 ; RoomFurnitureMenu — TOP / MIDDLE / PC / BOTTOM category select, then an
-; option picker per category. Writes sRoomFurniture directly.
+; option picker per category. Writes sRoomFurniture directly. A picker's choice
+; and its B both come back to the category list; only B here leaves it.
 ; ============================================================
 ; Menu order is top-of-room downward: PC, TOP, MIDDLE, BOTTOM. The dispatch
 ; chain below tests by constant, not by position, so only these values and the
@@ -300,17 +307,11 @@ DEF ROOM_FURN_MIDDLE EQU 2
 DEF ROOM_FURN_BOTTOM EQU 3
 
 RoomFurnitureMenu:
-	call LoadScreenTilesFromBuffer2
-	; 2-row-spaced entries; see the note in RoomPC about this bit's inverted
-	; sense and why it can't be assumed clear on entry.
-	ldh a, [hUILayoutFlags]
-	res BIT_DOUBLE_SPACED_MENU, a
-	ldh [hUILayoutFlags], a
-	hlcoord 0, 0
-	ld b, 10
-	ld c, 10
-	call TextBoxBorder
-	call UpdateSprites
+	xor a
+.menu
+	push af                      ; the cursor's row
+	lb bc, 10, 10
+	call RoomOpenMenuBox
 	hlcoord 2, 2
 	ld de, .PcString
 	call PlaceString
@@ -323,36 +324,19 @@ RoomFurnitureMenu:
 	hlcoord 2, 8
 	ld de, .BottomString
 	call PlaceString
-	xor a
-	ldh [hCurrentMenuItem], a
-	ld hl, wTopMenuItemY
-	ld a, 2
-	ld [hli], a
-	dec a
-	ld [hli], a
-	inc hl
-	ld a, 3
-	ld [hli], a
-	ld a, PAD_A | PAD_B
-	ld [hli], a
-	xor a
-	ld [hl], a
-	ld hl, wListScrollOffset
-	ld [hli], a
-	ld [hl], a
-	call HandleMenuInput
-	call PlaceUnfilledArrowMenuCursor
-	bit B_PAD_B, a
-	ret nz
-	ldh a, [hCurrentMenuItem]
+	pop af
+	ld c, 3
+	call RoomRunMenu
+	ret nz                       ; B: back to the PC's own menu
+	push af
+	call .open
+	pop af
+	jr .menu
+.open
 	cp ROOM_FURN_TOP
 	jr nz, .notTop
-	call LoadScreenTilesFromBuffer2
-	hlcoord 0, 0
-	ld b, 10
-	ld c, 16                     ; wide enough for "DINOSAUR POSTER" (15 chars from col 2)
-	call TextBoxBorder
-	call UpdateSprites
+	lb bc, 10, 16                     ; wide enough for "DINOSAUR POSTER" (15 chars from col 2)
+	call RoomOpenBox
 	ld hl, RoomTopDescTable
 	ld a, 1                      ; 10 entries: row 2 would run into the box's bottom border
 	call RoomSetPickListOpts
@@ -362,17 +346,12 @@ RoomFurnitureMenu:
 	ld b, 10
 	call RoomDrawPickList
 	ret c
-	call RoomWriteFurnitureTop
-	ret
+	jp RoomWriteFurnitureTop
 .notTop
 	cp ROOM_FURN_MIDDLE
 	jr nz, .notMiddle
-	call LoadScreenTilesFromBuffer2
-	hlcoord 0, 0
-	ld b, 7
-	ld c, 14
-	call TextBoxBorder
-	call UpdateSprites
+	lb bc, 7, 14
+	call RoomOpenBox
 	ld hl, RoomMiddleDescTable
 	ld a, 2
 	call RoomSetPickListOpts
@@ -382,17 +361,12 @@ RoomFurnitureMenu:
 	ld b, 6
 	call RoomDrawPickList
 	ret c
-	call RoomWriteFurnitureMiddle
-	ret
+	jp RoomWriteFurnitureMiddle
 .notMiddle
 	cp ROOM_FURN_PC
 	jr nz, .notPc
-	call LoadScreenTilesFromBuffer2
-	hlcoord 0, 0
-	ld b, 4
-	ld c, 14
-	call TextBoxBorder
-	call UpdateSprites
+	lb bc, 4, 14
+	call RoomOpenBox
 	ld hl, RoomPcDescTable
 	ld a, 2
 	call RoomSetPickListOpts
@@ -402,16 +376,11 @@ RoomFurnitureMenu:
 	ld b, 2
 	call RoomDrawPickList
 	ret c
-	call RoomWriteFurniturePc
-	ret
+	jp RoomWriteFurniturePc
 .notPc
 	; ROOM_FURN_BOTTOM
-	call LoadScreenTilesFromBuffer2
-	hlcoord 0, 0
-	ld b, 4
-	ld c, 14
-	call TextBoxBorder
-	call UpdateSprites
+	lb bc, 4, 14
+	call RoomOpenBox
 	ld hl, RoomBottomDescTable
 	ld a, 2
 	call RoomSetPickListOpts
@@ -421,8 +390,7 @@ RoomFurnitureMenu:
 	ld b, 3
 	call RoomDrawPickList
 	ret c
-	call RoomWriteFurnitureBottom
-	ret
+	jp RoomWriteFurnitureBottom
 
 .TopString:
 	db "TOP@"
@@ -432,6 +400,53 @@ RoomFurnitureMenu:
 	db "PC@"
 .BottomString:
 	db "BOTTOM@"
+
+; ============================================================
+; RoomOpenMenuBox - RoomOpenBox for a menu of two-row entries. The spacing bit
+; must be CLEAR for those and can't be assumed clear on entry (see RoomPC).
+; RoomOpenBox - back to the screen behind the PC, then a box in the top left
+; corner with the sprites under it hidden. IN: b/c = interior height/width.
+; Both clobber everything.
+; ============================================================
+RoomOpenMenuBox:
+	ldh a, [hUILayoutFlags]
+	res BIT_DOUBLE_SPACED_MENU, a
+	ldh [hUILayoutFlags], a
+RoomOpenBox:
+	push bc
+	call LoadScreenTilesFromBuffer2
+	pop bc
+	hlcoord 0, 0
+	call TextBoxBorder
+	jp UpdateSprites
+
+; ============================================================
+; RoomRunMenu - input for a list of two-row entries drawn from (2,2).
+; IN: a = the cursor's row, c = the last row.
+; OUT: NZ if B was pressed; else Z and a = the chosen row. Clobbers everything.
+; ============================================================
+RoomRunMenu:
+	ldh [hCurrentMenuItem], a
+	ld hl, wTopMenuItemY
+	ld a, 2
+	ld [hli], a
+	dec a
+	ld [hli], a                  ; wTopMenuItemX
+	inc hl                       ; skip wTileBehindCursor
+	ld a, c
+	ld [hli], a                  ; wMaxMenuItem
+	ld a, PAD_A | PAD_B
+	ld [hli], a                  ; wMenuWatchedKeys
+	xor a
+	ld [hl], a                   ; wLastMenuItem
+	ld hl, wListScrollOffset
+	ld [hli], a
+	ld [hl], a
+	call HandleMenuInput
+	call PlaceUnfilledArrowMenuCursor
+	bit B_PAD_B, a
+	ldh a, [hCurrentMenuItem]    ; keeps the flags
+	ret
 
 RoomTopNameTable:
 	dw .Wall, .Bookshelf, .AwardShelf, .Window, .Chalkboard, .Tv, .TvGame, .Map, .Couch, \
@@ -692,6 +707,8 @@ RoomWriteFurniturePc:
 ; RoomDecorationsMenu — BEDSIDE / BOTTOM / TOP / MIDDLE / PC area select.
 ; MIDDLE/PC may resolve to more than one live slot depending on furniture;
 ; when so, a small "SPOT 1/2/3" picker runs first. Writes sRoomDecorSlots.
+; Each stage's choice or B comes back to the one before it: the decoration list
+; to the spot picker (or here), the spot picker to here.
 ; ============================================================
 ; Same top-of-room-downward order as RoomFurnitureMenu; BEDSIDE has no
 ; furniture counterpart so it trails the four shared areas.
@@ -702,17 +719,11 @@ DEF ROOM_DECOR_BOTTOM  EQU 3
 DEF ROOM_DECOR_BEDSIDE EQU 4
 
 RoomDecorationsMenu:
-	call LoadScreenTilesFromBuffer2
-	; 2-row-spaced entries; see the note in RoomPC about this bit's inverted
-	; sense and why it can't be assumed clear on entry.
-	ldh a, [hUILayoutFlags]
-	res BIT_DOUBLE_SPACED_MENU, a
-	ldh [hUILayoutFlags], a
-	hlcoord 0, 0
-	ld b, 12
-	ld c, 10
-	call TextBoxBorder
-	call UpdateSprites
+	xor a
+.menu
+	push af                      ; the cursor's row
+	lb bc, 12, 10
+	call RoomOpenMenuBox
 	hlcoord 2, 2
 	ld de, .PcString
 	call PlaceString
@@ -728,31 +739,18 @@ RoomDecorationsMenu:
 	hlcoord 2, 10
 	ld de, .BedsideString
 	call PlaceString
-	xor a
-	ldh [hCurrentMenuItem], a
-	ld hl, wTopMenuItemY
-	ld a, 2
-	ld [hli], a
-	dec a
-	ld [hli], a
-	inc hl
-	ld a, 4
-	ld [hli], a
-	ld a, PAD_A | PAD_B
-	ld [hli], a
-	xor a
-	ld [hl], a
-	ld hl, wListScrollOffset
-	ld [hli], a
-	ld [hl], a
-	call HandleMenuInput
-	call PlaceUnfilledArrowMenuCursor
-	bit B_PAD_B, a
-	ret nz
-	ldh a, [hCurrentMenuItem]
+	pop af
+	ld c, 4
+	call RoomRunMenu
+	ret nz                       ; B: back to the PC's own menu
+	push af
+	call .open
+	pop af
+	jr .menu
+.open
 	cp ROOM_DECOR_BEDSIDE
 	jr nz, .notBedside
-	ld a, 0
+	xor a
 	jp RoomPickDecorationForSlot
 .notBedside
 	cp ROOM_DECOR_BOTTOM
@@ -770,7 +768,7 @@ RoomDecorationsMenu:
 	jp RoomDecorMiddleSpotPicker
 .notMiddle
 	; ROOM_DECOR_PC
-	jp RoomDecorPcSpotPicker
+	jr RoomDecorPcSpotPicker
 
 .BedsideString: db "BEDSIDE@"
 .BottomString:  db "BOTTOM@"
@@ -809,27 +807,33 @@ RoomDecorMiddleSpotPicker:
 	ld a, 3
 	jp RoomPickDecorationForSlot
 .twoSpots
-	ld a, 2                        ; SPACESHIP: slots 3, 4
-	jr .spotPicker
+	lb bc, 2, 3                    ; SPACESHIP: slots 3, 4
+	jr RoomDecorSpotPicker
 .threeSpots
-	ld a, 3
-.spotPicker
-	push af                        ; [spot count]
-	call LoadScreenTilesFromBuffer2
-	hlcoord 0, 0
-	ld b, 8
-	ld c, 10
-	call TextBoxBorder
-	call UpdateSprites
+	lb bc, 3, 3                    ; slots 3, 4, 5
+	; fall through
+
+; The small SPOT list. IN: b = how many spots, c = the first one's
+; sRoomDecorSlots index. Runs the decoration list for the chosen spot and comes
+; back here; B returns to RoomDecorationsMenu.
+RoomDecorSpotPicker:
+	push bc
+	lb bc, 6, 10
+	call RoomOpenBox
 	ld hl, 0                     ; spot pickers get no description box
 	ld a, 2
 	call RoomSetPickListOpts
-	pop bc                         ; b = spot count
-	ld hl, RoomThreeSpotNameTable  ; its first two rows serve the two-spot case
+	pop bc
+	push bc
+	ld hl, RoomSpotNameTable     ; its first two rows serve the two-spot case
 	call RoomDrawPickList
+	pop bc
 	ret c
-	add 3                          ; slot index 3, 4 or 5
-	jp RoomPickDecorationForSlot
+	push bc
+	add c                        ; the spot's slot index
+	call RoomPickDecorationForSlot
+	pop bc
+	jr RoomDecorSpotPicker
 
 ; Reads sRoomFurniture's PC field; 1 live slot (index 6) unless LONG DESK(1),
 ; which has 2 (indices 6,7) and needs a spot picker.
@@ -856,47 +860,25 @@ RoomDecorPcSpotPicker:
 	ld a, 6
 	jp RoomPickDecorationForSlot
 .twoSpots
-	call LoadScreenTilesFromBuffer2
-	hlcoord 0, 0
-	ld b, 6
-	ld c, 10
-	call TextBoxBorder
-	call UpdateSprites
-	ld hl, 0                     ; spot pickers get no description box
-	ld a, 2
-	call RoomSetPickListOpts
-	ld hl, RoomTwoSpotNameTable
-	ld b, 2
-	call RoomDrawPickList
-	ret c
-	add 6                          ; slot index 6 or 7
-	jp RoomPickDecorationForSlot
+	lb bc, 2, 6                    ; slots 6, 7
+	jr RoomDecorSpotPicker
 
-RoomThreeSpotNameTable:
+RoomSpotNameTable:
 	dw .Spot1, .Spot2, .Spot3
 .Spot1: db "SPOT 1@"
 .Spot2: db "SPOT 2@"
 .Spot3: db "SPOT 3@"
 
-RoomTwoSpotNameTable:
-	dw .Spot1, .Spot2
-.Spot1: db "SPOT 1@"
-.Spot2: db "SPOT 2@"
-
 ; INPUT: a = sRoomDecorSlots index (0-7). Shows the 45-decoration + NONE
 ; picker and writes the choice back to that slot.
 RoomPickDecorationForSlot:
 	push af
-	call LoadScreenTilesFromBuffer2
 	; The longest list here, so it starts on row 1 and its box is full width,
 	; ending at row 13 - flush against the text box's first text row (14) and
 	; covering the box's own top border so the two read as one frame. Rows
 	; 1-12 show 12 of the 46 entries; RoomDrawPickList scrolls the rest.
-	hlcoord 0, 0
-	ld b, 12
-	ld c, 18
-	call TextBoxBorder
-	call UpdateSprites
+	lb bc, 12, 18
+	call RoomOpenBox
 	ld hl, RoomDecorationDescTable
 	ld a, 1
 	call RoomSetPickListOpts
@@ -908,14 +890,12 @@ RoomPickDecorationForSlot:
 	jr c, .cancelled
 	; a = 0 (NONE) or 1-45 (decoration id) - RoomDrawPickList's index already
 	; matches sRoomDecorSlots' own encoding (0=empty, 1-45=decoration).
-	; Stash it in e (survives the slot-index pop and bc rebuild below - the
-	; SRAM-open sequence and the bc/hl addressing math never touch e).
+	; Stash it in e (survives the slot-index pop, the SRAM-open sequence and the
+	; bc/hl addressing math below).
 	ld e, a
 	pop af                        ; a = slot index
 	ld c, a
 	ld b, 0
-	ld hl, sRoomDecorSlots
-	add hl, bc                    ; hl = sRoomDecorSlots + slot index
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	ld a, BMODE_ADVANCED
@@ -923,8 +903,9 @@ RoomPickDecorationForSlot:
 	ASSERT BANK("Save Data") == 1
 	ld a, 1
 	ld [rRAMB], a
-	ld a, e                       ; a = decoration id
-	ld [hl], a
+	ld hl, sRoomDecorSlots
+	add hl, bc                    ; hl = sRoomDecorSlots + slot index
+	ld [hl], e                    ; the decoration id
 	xor a
 	ld [rRAMB], a               ; restore the ambient bank-0 selection (see file header)
 	ld a, BMODE_SIMPLE

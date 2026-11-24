@@ -384,6 +384,7 @@ PlayerPCWithdrawKeyItems:
 	ld a, [wKeyItemPocketBuf]
 	and a
 	jr nz, .withdrawHasItems
+	call ClearScreen ; the list still shows the last item, already moved out
 	ld hl, .nothingToWithdrawText
 	call PrintText
 	jp PlayerPCMenu
@@ -450,6 +451,7 @@ PlayerPCDepositKeyItems:
 	ld a, [wKeyItemPocketBuf]
 	and a
 	jr nz, .depositHasItems
+	call ClearScreen ; the list still shows the last item, already moved out
 	ld hl, .bagEmptyText
 	call PrintText
 	jp PlayerPCMenu

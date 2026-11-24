@@ -29,14 +29,16 @@ UpdatePlayerSprite:
 	dec a
 	ld [wSpritePlayerStateData2WalkAnimationCounter], a
 	jr .disableSprite
-; check if a text box is in front of the sprite by checking if the lower left
-; background tile the sprite is standing on is past the map's tiles
-; (GetMapTileLimit)
+; check if a text box is in front of the sprite by checking if any of the four
+; background tiles the sprite is standing on is past the map's tiles
+; (GetMapTileLimit), the same test NPCs get. Testing only the lower left one let
+; the player's head draw over a box ending on the row above it, and the right
+; half over a box starting at column 9.
 .checkIfTextBoxInFrontOfSprite
-	call GetMapTileLimit
-	lda_coord 8, 9
+	hlcoord 8, 9
+	ld a, [hl]
 	ldh [hTilePlayerStandingOn], a
-	cp d
+	call CheckSpriteAvailability.VisibilityTest
 	jr c, .lowerLeftTileIsMapTile
 .disableSprite
 	ld a, $ff

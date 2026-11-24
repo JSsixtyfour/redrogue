@@ -1169,7 +1169,11 @@ StageEventArmStolenStatGift:
 ;    surviving partner can do: beating either one ends the encounter, and the
 ;    recovery block sets BOTH beat flags precisely so the other gives this
 ;    instead of starting a second battle with nothing left to win.
+;    James has his own; the table's JESSIE_JAMES row is Jessie's. He is told
+;    apart by picture, not slot: the pair's slots differ per stage (6-7, 10-11,
+;    2-3). No other stage-event type uses SPRITE_JAMES.
 ;
+; INPUT: hActiveSpriteIndex (the sprite talked to; DisplayTextID sets it).
 ; Clobbers a/bc/de/hl.
 ; ============================================================
 StageEventPrintAfterLine::
@@ -1180,6 +1184,16 @@ StageEventPrintAfterLine::
 	call StageEventGiveBack       ; in-bank: -> wStageEventScratch
 	jp StageEventPrintRecoverLine
 .idle
+	ASSERT SPRITESTATEDATA1_PICTUREID == 0
+	ASSERT LOW(wSpriteStateData1) == 0
+	ld h, HIGH(wSpriteStateData1)
+	ldh a, [hActiveSpriteIndex]
+	swap a                        ; 16 bytes per sprite; a slot is 0-15
+	ld l, a
+	ld a, [hl]
+	cp SPRITE_JAMES
+	ld hl, StageEventAfterJames
+	jp z, PrintText
 	ld a, [wStageEvent]
 	and STAGE_EVENT_TYPE_MASK
 	dec a                         ; type is 1-based; the table is 0-based
@@ -1235,7 +1249,7 @@ StageEventPrintRecoverLine::
 	ret
 
 StageEventAfterTexts:
-	dw StageEventAfterJessieJames ; STAGE_EVENT_JESSIE_JAMES
+	dw StageEventAfterJessie      ; STAGE_EVENT_JESSIE_JAMES (James: see .idle)
 	dw StageEventAfterPsychic     ; STAGE_EVENT_PSYCHIC
 	dw StageEventAfterBurglar     ; STAGE_EVENT_BURGLAR
 	dw StageEventAfterJoy         ; STAGE_EVENT_JOY
@@ -1255,8 +1269,11 @@ StageEventRecoverTexts:
 	dw StageEventRecoverToBoxBill   ; STAGE_GIVEBACK_TO_BOX
 	ASSERT NUM_STAGE_GIVEBACK_RESULTS == 5, "StageEventRecoverTexts needs a row per give-back result"
 
-StageEventAfterJessieJames:
-	text_far _StageEventAfterJessieJamesText
+StageEventAfterJessie:
+	text_far _StageEventAfterJessieText
+	text_end
+StageEventAfterJames:
+	text_far _StageEventAfterJamesText
 	text_end
 StageEventAfterPsychic:
 	text_far _StageEventAfterPsychicText

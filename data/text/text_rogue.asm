@@ -36,7 +36,7 @@ _LeftoversDescriptionText::
 	line "team a bit"
 	cont "after each"
 	cont "battle!"
-	done
+	prompt
 
 
 ; Shared by CHALLENGE_RECOIL_ATTACKS, _RECOIL_PHYSICAL and _RECOIL_SPECIAL.
@@ -52,7 +52,7 @@ _RecoilChallengeText::
     
 	para "<USER> was hit"
 	cont "by recoil!"
-	done
+	prompt
 
 ; <USER> expands to the player's mon nick, up to 10 characters, so it needs a
 ; line largely to itself - "repetition! <USER>" reached 21 with a long nick.
@@ -62,25 +62,25 @@ _SameMovePenaltyText::
 	cont "repetition."
 	
     para "<USER> hurt!"
-	done
+	prompt
 
 _NoHealingChallengeText::
 	text "The challenge"
 	line "prevents healing"
 	cont "outside battle."
-	done
+	prompt
 
 _TurnLimitDrainText::
 	text "The challenge"
 	line "drains your"
 	cont "#MON's HP."
-	done
+	prompt
 
 _PPTonicDescriptionText::
 	text "Restores PP"
 	line "slightly after"
 	cont "each battle."
-	done
+	prompt
 
 ; EXP_ALL is an option now (BIT_EXP_SHARE); its bag description is unused.
 ;_ExpAllDescriptionText::
@@ -95,7 +95,7 @@ _KODefianceDescriptionText::
 	line "last mon if"
 	cont "it would"
 	cont "faint!"
-	done
+	prompt
 
 _KODefianceActivatedText::
 	text "KO DEFIANCE"
@@ -106,43 +106,43 @@ _ShinyCharmDescriptionText::
 	text "Ups the odds"
 	line "of finding"
 	cont "shiny Pokémon."
-	done
+	prompt
 
 _AmuletCoinDescriptionText::
 	text "Increases"
 	line "money earned"
 	cont "from battles."
-	done
+	prompt
 
 _TurnRewindDescriptionText::
 	text "Rewinds to"
 	line "the prior turn"
 	cont "in battle."
-	done
+	prompt
 
 _RareScopeDescriptionText::
 	text "Increases the"
 	line "rarity of reward"
 	cont "#MON."
-	done
+	prompt
 
 _RareLensDescriptionText::
 	text "Increases the"
 	line "rarity of"
 	cont "items found."
-	done
+	prompt
 
 _DVBoosterDescriptionText::
 	text "Increases DVs"
 	line "of reward"
 	cont "Pokémon."
-	done
+	prompt
 
 _StatBoosterDescriptionText::
 	text "Increases stat"
 	line "experience"
 	cont "gained."
-	done
+	prompt
 
 _DoorDiceDescriptionText::
 	text "Lets you"
@@ -229,38 +229,38 @@ _PrismCartridgeReceivedText::
 _DiceOutOfChargesText::
 	text "No rerolls"
 	line "left!"
-	done
+	prompt
 
 _DoorDiceRefuseText::
 	text "Can only be"
 	line "used in the"
 	cont "lobby."
-	done
+	prompt
 
 _DoorDiceRerolledText::
 	text "Doors"
 	line "rerolled!"
-	done
+	prompt
 
 _MonDiceRefuseText::
 	text "Nothing to"
 	line "reroll here."
-	done
+	prompt
 
 _MonDiceRerolledText::
 	text "Pokémon"
 	line "rerolled!"
-	done
+	prompt
 
 _ItemDiceRefuseText::
 	text "Nothing to"
 	line "reroll here."
-	done
+	prompt
 
 _ItemDiceRerolledText::
 	text "Item"
 	line "rerolled!"
-	done
+	prompt
 
 ; Credit Exchange vendors (engine/events/credit_mart.asm)
 _CreditVendorGreetingText::

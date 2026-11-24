@@ -733,6 +733,7 @@ CRIronman:
 	ld b, a
 	ld c, SCREEN_WIDTH - 2
 	call TextBoxBorder
+	call UpdateSprites
 	ld b, 0
 .row
 	ld hl, sp + CR_FRAME_ORDER

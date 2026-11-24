@@ -231,8 +231,8 @@ class TutorTransactionRomTest(unittest.TestCase):
                 for label in ("hItemPrice", "hMoney", "wPriceTemp"):
                     for offset in range(3):
                         h.write8(label, 0x99, offset=offset)
-            # `predef LearnMove` is ld a, id / rst $28, exactly three bytes.
-            # The byte pattern assertion below catches a changed macro shape.
+            # `call LearnMoveOverMap` (predef LearnMove behind it) is three bytes.
+            # The byte pattern assertion below catches a changed call.
             h.pyboy.register_file.PC = h.address("PCMoveTutorTalk.learnMove") + 3
 
         def capture(harness: RedRogueHarness) -> dict[str, object]:
@@ -275,8 +275,8 @@ class TutorTransactionRomTest(unittest.TestCase):
         actual = self._try_teach(confirm_choice=0, learned=1, balance=15000)
         self.assertEqual(actual["confirm_quotes"], [bcd3(15000)])
         self.assertEqual(actual["learn_calls"], 1)
-        self.assertEqual(actual["learn_predef_bytes"][0], 0x3E)
-        self.assertEqual(actual["learn_predef_bytes"][2], 0xEF)
+        target = self.harness.address("LearnMoveOverMap")
+        self.assertEqual(actual["learn_predef_bytes"], [0xCD, target & 0xFF, target >> 8])
         self.assertTrue(actual["success"])
         self.assertEqual(actual["money"], [0, 0, 0])
         self.assertEqual(actual["price_temp"], bcd3(15000))

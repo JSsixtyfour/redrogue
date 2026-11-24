@@ -121,8 +121,7 @@ class RoomPCHallOfFameTest(unittest.TestCase):
         h.pyboy.memory[start:start + 2] = table[8:]
         h.write8("wEndlessDepth", 1)
         h.write8("wBattleCount", 12)
-        self.press("down")       # every page returns to the top row
-        self.press("a", 30)
+        self.press("a", 30)      # the cursor stayed on FURTHEST RUNS
         h.tick(3, render=True)
         h.pyboy.screen.image.save(ARTIFACTS / "furthest_runs_full.png")
         self.assertEqual(h.read_bytes("wTileMap", 17, 3 * 20 + 2), text("   CIRC RND  WINS"))
@@ -138,8 +137,7 @@ class RoomPCHallOfFameTest(unittest.TestCase):
 
         self.press("b", 30)      # leave RECORDS to redraw with a recorded team
         h.write8("wNumHoFTeams", 1)
-        for _ in range(ROOM_PC_HOF_ROW):
-            self.press("down")
+        self.assertEqual(h.read8("hCurrentMenuItem"), ROOM_PC_HOF_ROW, "the cursor stays on RECORDS")
         self.press("a", 30)
         self.assertEqual(h.read8("wMaxMenuItem"), 5)
         self.press("down")

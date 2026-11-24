@@ -288,7 +288,7 @@ class AfterBattleTextContractTest(unittest.TestCase):
         source = STAGE_EVENTS.read_text()
         after = routine(source, "StageEventAfterTexts:", end="StageEventRecoverTexts:")
         recover = routine(source, "StageEventRecoverTexts:",
-                          end="StageEventAfterJessieJames:")
+                          end="StageEventAfterJessie:")
         self.assertEqual(after.count("\tdw "), const("NUM_STAGE_EVENT_TYPES"))
         self.assertEqual(recover.count("\tdw "), const("NUM_STAGE_GIVEBACK_RESULTS"))
         self.assertIn(f"ASSERT NUM_STAGE_EVENT_TYPES == {const('NUM_STAGE_EVENT_TYPES')}", after)
@@ -388,7 +388,7 @@ class BoxTransferReusesTheCapturePathTest(unittest.TestCase):
     def test_new_strings_fit_the_box(self) -> None:
         source = STAGE_TEXT.read_text()
         names = ["_StageEventAfter%sText" % n for n in
-                 ("JessieJames", "Psychic", "Burglar", "Joy", "Jenny")]
+                 ("Jessie", "James", "Psychic", "Burglar", "Joy", "Jenny")]
         names += ["_StageEventRecoverToBoxBillText",
                   "_StageEventRecoverNoRoomText"]
         for name in names:

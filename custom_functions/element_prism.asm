@@ -695,6 +695,7 @@ RoguePrismCartridgeMenu::
 	ld b, a                       ; interior rows: one per UNLOCKED cartridge
 	ld c, 10                      ; interior cols: fits "FIGHTING"/"ELECTRIC" at x=2
 	call TextBoxBorder
+	call UpdateSprites
 
 	hlcoord 2, 1                  ; hl = screen cursor, advanced a row per entry
 	ld c, 0                       ; c = type index under test
