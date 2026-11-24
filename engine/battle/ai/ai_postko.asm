@@ -428,6 +428,8 @@ AIActiveCanDoNothing::
 	ld a, [wEnemySelectedMove]
 	and a
 	jr z, .scan
+	cp NUM_ATTACKS + 1 ; $ff means the enemy could not select a move
+	jr nc, .scan
 	ld b, a
 	ld e, MOVE_EFFECT
 	call .moveByte

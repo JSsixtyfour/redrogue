@@ -14,15 +14,12 @@ def suite(name, exit=0, failing=(), kinds=(), champion=None):
 
 
 class RegressionsTest(unittest.TestCase):
-    def setUp(self) -> None:
-        self.night = Path(tempfile.mkdtemp())
-
     def regressions(self, old_suites, new_suites):
-        previous = {"night": str(self.night / "old"), "suites": old_suites}
-        return nightly.regressions({"suites": new_suites}, previous, self.night)
+        previous = {"suites": old_suites}
+        return nightly.regressions({"suites": new_suites}, previous)
 
-    def test_no_previous_night_is_no_regression(self) -> None:
-        self.assertEqual(nightly.regressions({"suites": [suite("smoke", exit=1)]}, None, self.night), [])
+    def test_failure_without_baseline_is_visible(self) -> None:
+        self.assertEqual(nightly.regressions({"suites": [suite("smoke", exit=1)]}, None), ["smoke: issue has no baseline"])
 
     def test_newly_failing_test_and_suite(self) -> None:
         found = self.regressions([suite("smoke", failing=["a.A.test_old"])],
@@ -40,6 +37,46 @@ class RegressionsTest(unittest.TestCase):
         self.assertEqual(self.regressions([suite("lobby", champion=0.5)], [suite("lobby", champion=0.45)]), [])
         found = self.regressions([suite("lobby", champion=0.5)], [suite("lobby", champion=0.2)])
         self.assertEqual(found, ["lobby: champion rate 50% -> 20%"])
+
+
+class ReportingTest(unittest.TestCase):
+    def test_headlines(self):
+        self.assertEqual(nightly.status({"failed": False}), "clean")
+        self.assertEqual(nightly.status({"failed": True}), "known issues only")
+        self.assertEqual(nightly.status({"failed": False, "regressions": ["coverage"]}), "NEW regression")
+        self.assertEqual(nightly.status({"runner_error": "blocked"}), "NEW regression")
+
+    def test_stale_marker_recovers_and_live_lock_blocks(self):
+        try:
+            import fcntl
+        except ImportError:
+            self.skipTest("nightly uses a WSL file lock")
+        with tempfile.TemporaryDirectory() as root:
+            reports = Path(root)
+            marker = reports / "nightly.lock"
+            marker.touch()
+            with nightly.nightly_lock(reports):
+                owner = json.loads(marker.read_text())
+                self.assertIn("started_at", owner)
+                with self.assertRaises(nightly.NightlyBusy):
+                    with nightly.nightly_lock(reports):
+                        self.fail("second owner acquired the lock")
+            self.assertFalse(marker.exists())
+
+    def test_coverage_requires_three_comparable_maps(self):
+        with tempfile.TemporaryDirectory() as root:
+            folders = [Path(root) / str(index) for index in range(4)]
+            for index, folder in enumerate(folders):
+                counts = {"src::Persistent": int(index > 0), "src::Intermittent": int(index in (1, 2))}
+                folder.mkdir()
+                (folder / "newgame_coverage_summary.json").write_text(json.dumps({
+                    "routine_identity": "source-name-v1", "routine_run_counts": counts,
+                    "files": {}, "totals": {"routines_run": sum(counts.values())},
+                }))
+            delta, messages = nightly.coverage_regression(folders[0], folders[1:])
+            self.assertEqual(delta["persistent_lost"], ["src::Persistent"])
+            self.assertEqual(len(messages), 1)
+            self.assertEqual(nightly.coverage_regression(folders[0], folders[1:3]), ({}, []))
 
 
 class QuickModeTest(unittest.TestCase):

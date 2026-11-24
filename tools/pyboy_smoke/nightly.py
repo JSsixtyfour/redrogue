@@ -27,21 +27,17 @@ state and screenshot (the next suite overwrites artifacts/), report.json, and
 report.md with a replay command for each finding, pinned to the commit. The
 previous night's report.json is the baseline: a smoke test that newly fails,
 an anomaly or failure kind not seen before, a champion rate or coverage drop
-are listed as regressions. The bot's seeds play differently whenever the ROM
-changes (VBlank's RNG), so balance and coverage moves are reported, not failed
-on, unless large.
+are listed as regressions. Coverage loss requires the same routine to have
+been reached on each of three prior nights.
 
-Exits non-zero when anything failed. A night whose commit matches the last
-report is skipped unless --force.
-
-Scheduling (Windows Task Scheduler, from PowerShell; adjust the time):
-
-    schtasks /Create /TN "Red Rogue nightly" /SC DAILY /ST 03:00 /TR "wsl.exe bash -lc 'cd /mnt/c/Users/justi/redrogue && python3 tools/pyboy_smoke/nightly.py'"
+Exits 1 for new regressions and 2 for runner failures. The Windows task uses
+nightly_windows.ps1 with --force so the scheduled run stays daily.
 """
 from __future__ import annotations
 
 import argparse
 import datetime as dt
+import html
 import json
 import os
 import re
@@ -49,6 +45,9 @@ import shutil
 import subprocess
 import sys
 import time
+import traceback
+from contextlib import contextmanager
+from urllib.parse import quote
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -56,7 +55,7 @@ SMOKE_DIR = Path("tools/pyboy_smoke")
 ARTIFACTS = SMOKE_DIR / "artifacts"
 FAILURES = ("stalled", "frame_limit", "error", "crashed", "hung")
 CHAMPION_DROP = 0.15  # a champion rate this far below last night's counts as a regression
-COVERAGE_DROP = 100   # routines no longer reached, beyond which it counts as a regression
+COVERAGE_NIGHTS = 3
 
 # name -> (command, timeout in seconds, summary files to keep)
 SUITES = {
@@ -75,7 +74,7 @@ SUITES = {
             5400, ["autoplay_summary_cgb.json", "coverage_summary_cgb.json"]),
     "builds": (["python3", str(SMOKE_DIR / "compare_builds.py"), "--seeds", "1-8", "--jobs", "6",
                 "--max-frames", "1000000"], 7200, ["build_compare.json"]),
-    "sram": (["python3", str(SMOKE_DIR / "sram_fuzz.py"), "--seeds", "1-4"], 3600, ["sram_fuzz_summary.json"]),
+    "sram": (["python3", str(SMOKE_DIR / "sram_fuzz.py"), "--seeds", "1-4", "--matched-controls"], 3600, ["sram_fuzz_summary.json"]),
 }
 # --quick: a few seeds per suite, to check the runner itself.
 QUICK = {"lobby": {"--seeds": "1-2"}, "newgame": {"--seeds": "1-2", "--runs": "1"},
@@ -106,6 +105,8 @@ def run_suite(name: str, worktree: Path, night: Path, quick: bool = False) -> di
     command = list(command)
     for flag, value in (QUICK.get(name, {}) if quick else {}).items():
         command[command.index(flag) + 1] = value
+    for file in keep:
+        (worktree / ARTIFACTS / file).unlink(missing_ok=True)
     started = time.monotonic()
     log = night / f"{name}.log"
     try:
@@ -190,26 +191,41 @@ def sram_findings(path: Path) -> dict[str, object]:
     if not path.exists():
         return {"findings": [{"kind": "no summary", "what": "no SRAM fuzz summary written", "replay": None}]}
     report = json.loads(path.read_text(encoding="utf-8"))
-    return {"findings": [{"seed": d["seed"], "kind": "sram divergence", "what": f"SRAM fill {d['fill']} plays differently",
-                          "replay": f"python3 tools/pyboy_smoke/sram_fuzz.py --seeds {d['seed']} --bisect"}
-                         for d in report["divergences"]]}
+    findings = [{"seed": d["seed"], "kind": "sram divergence", "what": f"SRAM fill {d['fill']} plays differently",
+                          "replay": f"python3 tools/pyboy_smoke/sram_fuzz.py --seeds {d['seed']} --matched-controls"}
+                for d in report["divergences"]]
+    findings.extend({"kind": "SRAM evidence incomplete", "what": error, "replay": None}
+                    for error in report.get("comparison_errors", []))
+    for row in report.get("initialization_comparisons", []):
+        if row["status"] not in ("equivalent", "divergent"):
+            findings.append({"seed": row["seed"], "kind": "SRAM evidence incomplete",
+                             "what": f"SRAM fill {row['fill']}: {row['status']}",
+                             "replay": f"python3 tools/pyboy_smoke/sram_fuzz.py --seeds {row['seed']} --matched-controls"})
+    return {"findings": findings}
 
 
-def previous_report(reports: Path, current: Path, quick: bool = False) -> dict[str, object] | None:
-    """The latest earlier night of the same size (a --quick night is no baseline for a full one)."""
-    for night in sorted((p for p in reports.iterdir() if p.is_dir() and p != current), reverse=True):
+def report_history(reports: Path, current: Path):
+    for night in sorted(reports.iterdir(), reverse=True):
+        if not night.is_dir() or night == current:
+            continue
         try:
             report = json.loads((night / "report.json").read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        if report.get("quick", False) == quick:
-            return report
-    return None
+        yield night, report
 
 
-def regressions(report: dict[str, object], previous: dict[str, object] | None, night: Path) -> list[str]:
+def previous_reports(reports: Path, current: Path, quick: bool, suites: list[str]):
+    for folder, report in report_history(reports, current):
+        requested = report.get("requested_suites", [s["suite"] for s in report["suites"]])
+        if not report.get("runner_error") and report.get("quick", False) == quick and requested == suites:
+            yield folder, report
+
+
+def regressions(report: dict[str, object], previous: dict[str, object] | None) -> list[str]:
     if previous is None:
-        return []
+        return [f"{suite['suite']}: issue has no baseline"
+                for suite in report["suites"] if has_issue(suite)]
     found = []
     old = {s["suite"]: s for s in previous["suites"]}
     for suite in report["suites"]:
@@ -218,6 +234,8 @@ def regressions(report: dict[str, object], previous: dict[str, object] | None, n
             continue
         if suite["exit"] != 0 and before["exit"] == 0:
             found.append(f"{suite['suite']}: passed last night, fails now (exit {suite['exit']})")
+        elif suite["exit"] != 0 and suite["exit"] != before["exit"]:
+            found.append(f"{suite['suite']}: exit changed from {before['exit']} to {suite['exit']}")
         for test in sorted(set(suite.get("failing", [])) - set(before.get("failing", []))):
             found.append(f"smoke: newly failing {test}")
         kinds = lambda s: {f["kind"] for f in s.get("findings", [])}
@@ -226,29 +244,50 @@ def regressions(report: dict[str, object], previous: dict[str, object] | None, n
         if suite.get("champion_rate") is not None and before.get("champion_rate") is not None \
                 and suite["champion_rate"] < before["champion_rate"] - CHAMPION_DROP:
             found.append(f"{suite['suite']}: champion rate {before['champion_rate']:.0%} -> {suite['champion_rate']:.0%}")
-    old_coverage = Path(previous["night"]) / "newgame_coverage_summary.json"
-    new_coverage = night / "newgame_coverage_summary.json"
-    if old_coverage.exists() and new_coverage.exists():
-        sys.path.insert(0, str(ROOT / SMOKE_DIR))
-        import autoplay_coverage
-        with open(os.devnull, "w") as quiet:
-            stdout, sys.stdout = sys.stdout, quiet
-            try:
-                delta = autoplay_coverage.compare(json.loads(old_coverage.read_text(encoding="utf-8")),
-                                                  json.loads(new_coverage.read_text(encoding="utf-8")))
-            finally:
-                sys.stdout = stdout
-        report["coverage_delta"] = {"gained": len(delta["gained"]), "lost": len(delta["lost"]),
-                                    "lost_sample": delta["lost"][:20]}
-        if len(delta["lost"]) - len(delta["gained"]) > COVERAGE_DROP:
-            found.append(f"coverage: {len(delta['lost'])} routines no longer reached, {len(delta['gained'])} newly")
     return found
+
+
+def coverage_regression(night: Path, history: list[Path]) -> tuple[dict, list[str]]:
+    """Intersect proven losses against three distinct prior calendar nights."""
+    from contextlib import redirect_stdout
+    from io import StringIO
+    import autoplay_coverage
+
+    if len(history) != COVERAGE_NIGHTS:
+        return {}, []
+    maps = []
+    for folder in [night, *history]:
+        try:
+            summary = json.loads((folder / "newgame_coverage_summary.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}, []
+        if summary.get("routine_identity") != "source-name-v1" or not isinstance(summary.get("routine_run_counts"), dict):
+            return {}, []
+        maps.append(summary)
+    import autoplay_coverage
+
+    with redirect_stdout(StringIO()):
+        deltas = [autoplay_coverage.compare(old, maps[0]) for old in maps[1:]]
+    lost = sorted(set.intersection(*(set(delta["lost"]) for delta in deltas)))
+    return {"gained": len(deltas[0]["gained"]), "lost": len(deltas[0]["lost"]),
+            "persistent_lost": lost}, ([f"coverage: {len(lost)} routines reached on all three prior nights were missed"]
+                                      if lost else [])
+
+
+def has_issue(suite: dict) -> bool:
+    return bool(suite["exit"] != 0 or suite.get("failing") or suite.get("findings"))
+
+
+def status(report: dict) -> str:
+    if report.get("runner_error") or report.get("regressions"):
+        return "NEW regression"
+    return "known issues only" if report["failed"] else "clean"
 
 
 def write_markdown(report: dict[str, object], night: Path) -> None:
     sha = report["sha"]
     lines = [f"# Nightly {report['date']}: {sha[:8]} {report['subject']}", "",
-             f"Status: **{'FAILED' if report['failed'] else 'clean'}**, "
+             f"Status: **{status(report)}**, "
              f"{report['seconds'] // 60} min. Worktree `{report['worktree']}`.", "",
              "| Suite | Exit | Minutes | Notes |", "| --- | --- | --- | --- |"]
     for suite in report["suites"]:
@@ -260,9 +299,14 @@ def write_markdown(report: dict[str, object], night: Path) -> None:
         if suite.get("champion_rate") is not None:
             notes.append(f"champion {suite['champion_rate']:.0%}, stages {suite['stages_mean']}")
         lines.append(f"| {suite['suite']} | {suite['exit']} | {suite['seconds'] // 60} | {'; '.join(notes)} |")
+    if report.get("runner_error"):
+        lines += ["", f"Runner failure: {report['runner_error']}"]
     if report.get("coverage_delta"):
         delta = report["coverage_delta"]
         lines += ["", f"Coverage versus last night: {delta['gained']} routines newly reached, {delta['lost']} lost."]
+        missed = delta["persistent_lost"]
+        if missed:
+            lines += ["", f"Missed after three prior nights: {', '.join(missed)}"]
     lines += ["", "## Regressions since last night", ""]
     lines += [f"- {r}" for r in report["regressions"]] or ["None (or no previous night)."]
     lines += ["", "## Findings", "",
@@ -281,6 +325,97 @@ def write_markdown(report: dict[str, object], night: Path) -> None:
     (night / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+class NightlyBusy(Exception):
+    pass
+
+
+@contextmanager
+def nightly_lock(reports: Path):
+    """A kernel-held lock survives PID reuse and releases when WSL kills the runner."""
+    import fcntl
+
+    marker = reports / "nightly.lock"
+    with (reports / "nightly.guard").open("a") as guard:
+        try:
+            fcntl.flock(guard, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            try:
+                owner = marker.read_text(encoding="utf-8").strip()
+            except OSError:
+                owner = "owner metadata unavailable"
+            raise NightlyBusy(f"another nightly is running ({owner})") from None
+        marker.write_text(json.dumps({"pid": os.getpid(), "started_at": timestamp()}) + "\n", encoding="utf-8")
+        try:
+            yield
+        finally:
+            marker.unlink(missing_ok=True)
+
+
+def timestamp() -> str:
+    return dt.datetime.now(dt.timezone.utc).isoformat()
+
+
+def write_index(reports: Path) -> None:
+    rows = []
+    latest = ""
+    for folder, report in report_history(reports, reports):
+        if report.get("quick"):
+            continue
+        if (not latest and not report.get("runner_error") and
+                [s["suite"] for s in report["suites"]] == list(SUITES)):
+            latest = report.get("finished_at") or dt.datetime.fromtimestamp(
+                (folder / "report.json").stat().st_mtime, dt.timezone.utc).isoformat()
+        outcomes = {s["suite"]: ("Issue" if has_issue(s) else "Pass") for s in report["suites"]}
+        headline = report.get("status") or ("Historical issues" if report.get("failed") else "clean")
+        cells = "".join(f"<td>{outcomes.get(name, '-')}</td>" for name in SUITES)
+        rows.append(f'<tr><th scope="row"><a href="{quote(folder.name)}/report.md">'
+                    f'{html.escape(report["date"])}</a></th>'
+                    f'<td data-status="{html.escape(headline)}">{html.escape(headline)}</td>{cells}</tr>')
+    headings = "".join(f'<th scope="col">{name}</th>' for name in SUITES)
+    document = f"""<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Red Rogue nightly</title>
+<style>
+body {{font: 1rem system-ui; margin: 2rem; color: #212529}}
+table {{border-collapse: collapse}} th, td {{text-align: left; padding: .55rem; border-bottom: 1px solid #ddd}}
+.warning, [data-status="NEW regression"] {{color: #a11322; font-weight: bold}}
+[data-status="known issues only"] {{color: #765300}}
+</style>
+<h1>Red Rogue nightly</h1>
+<p id="freshness" data-latest="{html.escape(latest)}">Checking report age...</p>
+<table><thead><tr><th scope="col">Run</th><th scope="col">Status</th>{headings}</tr></thead>
+<tbody>{''.join(rows)}</tbody></table>
+<script>
+const banner = document.getElementById("freshness");
+function updateFreshness() {{
+    const latest = Date.parse(banner.dataset.latest);
+    const age = (Date.now() - latest) / 3600000;
+    const stale = !Number.isFinite(age) || age > 30;
+    banner.classList.toggle("warning", stale);
+    banner.textContent = Number.isFinite(age)
+        ? `Latest full report is ${{Math.max(0, Math.floor(age))}} hours old${{stale ? " (overdue)" : ""}}.`
+        : "No complete nightly report is available.";
+}}
+updateFreshness();
+setInterval(updateFreshness, 60000);
+</script></html>
+"""
+    # A blocked attempt can write concurrently with the active runner.
+    temporary = reports / f".index.{os.getpid()}.html"
+    temporary.write_text(document, encoding="utf-8")
+    temporary.replace(reports / "index.html")
+
+
+def finish_report(report: dict, night: Path, started: float) -> None:
+    report["seconds"] = round(time.monotonic() - started)
+    report["finished_at"] = timestamp()
+    report["failed"] = bool(report.get("runner_error")) or any(has_issue(s) for s in report["suites"])
+    report["status"] = status(report)
+    write_markdown(report, night)
+    (night / "report.json").write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
+    write_index(night.parent)
+    print(f"{report['status']} -> {night / 'report.md'}", flush=True)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Test one commit with every long-running check.")
     parser.add_argument("--ref", default="master", help="branch, tag or commit to test")
@@ -288,6 +423,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--reports", type=Path, default=ROOT.parent / "redrogue_nightly_reports")
     parser.add_argument("--suites", default=",".join(SUITES), help=f"from {', '.join(SUITES)}")
     parser.add_argument("--force", action="store_true", help="run even if this commit already has a report")
+    parser.add_argument("--index-only", action="store_true", help="refresh the dashboard without running suites")
     parser.add_argument("--quick", action="store_true", help="a few seeds per suite, to check the runner")
     args = parser.parse_args(argv)
     suites = [s.strip() for s in args.suites.split(",") if s.strip()]
@@ -298,45 +434,59 @@ def main(argv: list[str] | None = None) -> int:
         suites.insert(0, "build")  # every suite reads the ROMs
 
     args.reports.mkdir(parents=True, exist_ok=True)
-    lock = args.reports / "nightly.lock"
+    if args.index_only:
+        write_index(args.reports)
+        return 0
+    started = time.monotonic()
+    now = dt.datetime.now()
+    worktree = args.worktree.resolve()
+    report = {"date": f"{now:%Y-%m-%d %H:%M}", "sha": "unknown", "quick": args.quick,
+              "subject": "", "ref": args.ref, "worktree": str(worktree),
+              "suites": [], "requested_suites": suites, "regressions": []}
+    night = None
     try:
-        lock.touch(exist_ok=False)
-    except FileExistsError:
-        print(f"another nightly run holds {lock}; remove it if none is running")
+        with nightly_lock(args.reports):
+            sha = git("rev-parse", "--verify", f"{args.ref}^{{commit}}")
+            history = list(previous_reports(args.reports, args.reports, args.quick, suites))
+            last = history[0][1] if history else None
+            if last and last["sha"] == sha and not args.force:
+                print(f"{sha[:8]} already has a report ({last['night']}); --force to run again")
+                return 0
+            night = args.reports / f"{now:%Y-%m-%d_%H%M%S_%f}_{sha[:8]}"
+            night.mkdir()
+            report.update(sha=sha, subject=git("log", "-1", "--format=%s", sha), night=str(night))
+            prepare_worktree(worktree, sha)
+            for name in suites:
+                print(f"[{dt.datetime.now():%H:%M}] {name} ...", flush=True)
+                result = run_suite(name, worktree, night, args.quick)
+                report["suites"].append(result)
+                print(f"    exit {result['exit']} in {result['seconds'] // 60} min"
+                      + (f", {len(result.get('findings', []))} findings" if "findings" in result else "")
+                      + (f", {len(result['failing'])} failing" if result.get("failing") else ""), flush=True)
+                if name == "build" and result["exit"] != 0:
+                    break
+            report["regressions"] = regressions(report, last)
+            prior_nights = {}
+            today = now.date().isoformat()
+            for folder, old in history:
+                day = old["date"][:10]
+                if day < today and any(s["suite"] == "newgame" and s["exit"] == 0 for s in old["suites"]):
+                    prior_nights.setdefault(day, folder)
+            if next((s["exit"] for s in report["suites"] if s["suite"] == "newgame"), None) == 0:
+                delta, missed = coverage_regression(night, list(prior_nights.values())[:COVERAGE_NIGHTS])
+                report["coverage_delta"] = delta
+                report["regressions"].extend(missed)
+            finish_report(report, night, started)
+            return 1 if report["regressions"] else 0
+    except Exception as error:
+        if not isinstance(error, NightlyBusy):
+            traceback.print_exc()
+        if night is None:
+            night = args.reports / f"{now:%Y-%m-%d_%H%M%S_%f}_runner"
+            night.mkdir()
+        report.update(runner_error=str(error), night=str(night))
+        finish_report(report, night, started)
         return 2
-    try:
-        sha = git("rev-parse", "--verify", f"{args.ref}^{{commit}}")
-        last = previous_report(args.reports, Path("/nonexistent"), args.quick)
-        if last and last["sha"] == sha and not args.force:
-            print(f"{sha[:8]} already has a report ({last['night']}); --force to run again")
-            return 0
-        started = time.monotonic()
-        worktree = args.worktree.resolve()
-        prepare_worktree(worktree, args.ref)
-        now = dt.datetime.now()
-        night = args.reports / f"{now:%Y-%m-%d_%H%M}_{sha[:8]}"
-        night.mkdir()
-        report = {"date": f"{now:%Y-%m-%d %H:%M}", "sha": sha, "quick": args.quick, "subject": git("log", "-1", "--format=%s", sha),
-                  "ref": args.ref, "worktree": str(worktree), "night": str(night), "suites": []}
-        for name in suites:
-            print(f"[{dt.datetime.now():%H:%M}] {name} ...", flush=True)
-            result = run_suite(name, worktree, night, args.quick)
-            report["suites"].append(result)
-            print(f"    exit {result['exit']} in {result['seconds'] // 60} min"
-                  + (f", {len(result.get('findings', []))} findings" if "findings" in result else "")
-                  + (f", {len(result['failing'])} failing" if result.get("failing") else ""), flush=True)
-            if name == "build" and result["exit"] != 0:
-                break
-        report["seconds"] = round(time.monotonic() - started)
-        report["failed"] = any(s["exit"] != 0 for s in report["suites"])
-        report["regressions"] = regressions(report, previous_report(args.reports, night, args.quick), night)
-        (night / "report.json").write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
-        write_markdown(report, night)
-        print(f"{'FAILED' if report['failed'] else 'clean'}; {len(report['regressions'])} regression(s) "
-              f"-> {night / 'report.md'}")
-        return 1 if report["failed"] else 0
-    finally:
-        lock.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
