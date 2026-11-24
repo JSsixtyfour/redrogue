@@ -165,6 +165,36 @@ class ExpandedNightlyTest(unittest.TestCase):
                          ["menus: no exposure to roompc"])
 
 
+class BattleFuzzSuiteTest(unittest.TestCase):
+    def test_seeds_rotate_daily_and_quick_stays_small(self) -> None:
+        def seeds(day, quick=False):
+            command = nightly.suite_command("battle_fuzz", Path("."), dt.date(2026, 11, day), quick)
+            return command[command.index("--seeds") + 1]
+        self.assertNotEqual(seeds(24), seeds(25))
+        self.assertEqual(seeds(24, quick=True), "1-12")
+
+    def test_a_suite_newer_than_the_tested_commit_is_skipped_not_failed(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            worktree, night = Path(folder) / "tree", Path(folder) / "night"
+            worktree.mkdir()
+            night.mkdir()
+            result = nightly.run_suite("battle_fuzz", worktree, night, dt.date(2026, 11, 24))
+            self.assertIn("not in the tested commit", result["skipped"])
+            self.assertFalse(nightly.has_issue(result))
+            self.assertTrue((night / "battle_fuzz.log").exists())
+
+    def test_findings_name_a_seed_and_no_turns_is_unreached(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "battle_fuzz.json"
+            self.assertEqual(nightly.battle_fuzz_findings(path)["findings"][0]["kind"], "no summary")
+            path.write_text(json.dumps({"findings": {"move_lookup: move id 0 at X": [7, 9]}, "outcomes": {"ok": 2},
+                                        "played": 2, "frames": 10, "exposure": {}}), encoding="utf-8")
+            result = nightly.battle_fuzz_findings(path)
+        self.assertEqual(result["findings"][0]["kind"], "battle move_lookup")
+        self.assertIn("--seeds 7", result["findings"][0]["replay"])
+        self.assertEqual(result["unreached"], ["any battle turn"])
+
+
 class ArtifactRetentionTest(unittest.TestCase):
     def test_failed_seed_keeps_nested_save_packages_and_repeated_findings(self):
         with tempfile.TemporaryDirectory() as root:

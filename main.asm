@@ -691,6 +691,13 @@ SECTION "AI Paralysis Hit", ROMX
 INCLUDE "engine/battle/ai/ai_para_hit.asm"
 
 
+; TryKODefiance's revival (2026-11-24), out of the full Battle Core. Pinned in
+; layout.link so it does not reshuffle the first-fit floaters.
+SECTION "KO Defiance Revive", ROMX
+
+INCLUDE "custom_functions/ko_defiance_revive.asm"
+
+
 SECTION "Battle Engine 9", ROMX
 
 INCLUDE "engine/battle/experience.asm"

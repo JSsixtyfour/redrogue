@@ -203,6 +203,7 @@ AIGetPlayerMoveN::
 	farcall AIGuessLearnsetHi
 .gotGuess
 	ld a, e
+.returnA
 	jr .exit ; every return goes through .exit, the hookable result point
 ; No type is pending for this slot. The FIRST such slot (d still AI_GUESS_NO_TYPE,
 ; not AI_GUESS_CRIT_TAKEN) is believed to hold the high-crit move its species
@@ -212,16 +213,18 @@ AIGetPlayerMoveN::
 	cp AI_GUESS_NO_TYPE
 	jr nz, .unknown
 	farcall AIGuessCritMove ; e = the move, 0 if none
-	ld a, e
-	jp .exit
+	jr .gotGuess
 .unknown
 	xor a
-	jp .exit
+	jr .returnA
 
-; INPUT:  a = move id (nonzero).
+; INPUT:  a = move id. 0 counts as no damage: a slot revealed while transformed
+;         can be empty once the mon has switched back.
 ; OUTPUT: a = its type if it deals damage (fixed damage included), else
 ;         AI_GUESS_NO_TYPE. Preserves bc, de. Clobbers hl.
 AIMoveDamagingType:
+	and a
+	jr z, .noDamage
 	push de
 	dec a
 	ld l, a
@@ -242,6 +245,7 @@ AIMoveDamagingType:
 	ld a, [hl]
 	and a
 	jr nz, .damaging
+.noDamage
 	ld a, AI_GUESS_NO_TYPE
 	ret
 .damaging

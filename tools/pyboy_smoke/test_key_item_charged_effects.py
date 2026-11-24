@@ -19,7 +19,7 @@ TOGGLES=parse_rgbds_constants(REPO_ROOT/'constants/toggle_constants.asm')
 
 
 class ChargedKeyItemEffectTest(HarnessTestCase):
-    def test_mon_dice_only_reroll_unclaimed_lab_starters(self):
+    def test_mon_and_item_dice_use_the_current_unclaimed_offer(self):
         h = self.harness
         h.boot_to_lobby(battle_count=1)
         self.bypass('PrintText')
@@ -31,14 +31,68 @@ class ChargedKeyItemEffectTest(HarnessTestCase):
         rolls = h.hook_flag('rogue_pokemon_randomized_batch')
         with isolated_routine_calls(h):
             h.write8('wWarpedFromWhichMap', MAPS['INDIGO_PLATEAU_LOBBY'])
+            h.set_event(EVENTS['EVENT_BRIDGE_RECEIVE_GIFT'])
             h.call_routine('RogueItemUseMonDice')
             self.assertEqual((rolls['count'], h.read8('wDiceCharges')), (0, 0x19))
             h.write8('wWarpedFromWhichMap', MAPS['PALLET_TOWN'])
+            gift_event = EVENTS['EVENT_BRIDGE_RECEIVE_GIFT']
+            h.pyboy.memory[h.address('wEventFlags') + gift_event // 8] &= ~(1 << (gift_event % 8)) & 255
+            for area in ('OAKS_LAB', 'REDS_HOUSE_1F'):
+                h.write8('hCurMap', MAPS[area])
+                h.call_routine('RogueItemUseItemDice')
+                self.assertEqual(h.read8('wDiceCharges'), 0x19)
+            h.write8('hCurMap', MAPS['OAKS_LAB'])
             h.call_routine('RogueItemUseMonDice')
             self.assertEqual((rolls['count'], h.read8('wDiceCharges')), (1, 0x15))
             h.set_event(starter)
             h.call_routine('RogueItemUseMonDice')
             self.assertEqual((rolls['count'], h.read8('wDiceCharges')), (1, 0x15))
+
+            # Discover offer rooms independently from the die's dispatch tables.
+            cases = []
+            map_names = {key.replace('_', '').lower(): key for key in MAPS}
+            for script in sorted((REPO_ROOT / 'scripts').glob('*.asm')):
+                body = script.read_text(encoding='utf-8')
+                for producer, claim in (
+                    ('rogue_pokemon_randomized_batch', 'EVENT_GOT_ROGUE_POKEMON'),
+                    ('rogue_gift_randomized_batch', 'EVENT_BRIDGE_RECEIVE_GIFT'),
+                ):
+                    if 'farcall ' + producer not in body:
+                        continue
+                    area = map_names[script.stem.lower()]
+                    if area == 'OAKS_LAB' and claim == 'EVENT_GOT_ROGUE_POKEMON':
+                        continue  # the starter path was exercised above
+                    cases.append((area, producer, claim))
+            cases.append(('FIGHTING_DOJO', 'FightingDojoRerollRewards', 'EVENT_DEFEATED_FIGHTING_DOJO'))
+            self.assertTrue({'GAME_CORNER', 'VICTORY_ROAD_1F', 'BILLS_HOUSE', 'OAKS_LAB'} <= {area for area, _, _ in cases})
+            h.write8('wWarpedFromWhichMap', MAPS['INDIGO_PLATEAU_LOBBY'])
+            for area, producer, claim in cases:
+                with self.subTest(area=area):
+                    h.write8('hCurMap', MAPS[area])
+                    for event in (EVENTS[claim], EVENTS['EVENT_GOT_ROGUE_POKEMON']):
+                        h.pyboy.memory[h.address('wEventFlags') + event // 8] &= ~(1 << (event % 8)) & 255
+                    h.write8('wDiceCharges', 0x19)
+                    observed = h.hook_flag(producer)
+                    routine, remaining = 'RogueItemUseMonDice', 0x15
+                    if claim == 'EVENT_BRIDGE_RECEIVE_GIFT':
+                        gifts = h.read_bytes('wGift1', 3)
+                        h.call_routine('RogueItemUseMonDice')
+                        self.assertEqual(h.read_bytes('wGift1', 3), gifts)
+                        self.assertEqual((observed['count'], h.read8('wDiceCharges')), (0, 0x19))
+                        h.write8('wDiceCharges', 0x09)
+                        h.call_routine('RogueItemUseItemDice')
+                        self.assertEqual((observed['count'], h.read8('wDiceCharges')), (0, 0x09))
+                        h.write8('wDiceCharges', 0x29)
+                        routine, remaining = 'RogueItemUseItemDice', 0x19
+                    h.call_routine(routine, limit=200000)
+                    self.assertEqual((observed['count'], h.read8('wDiceCharges')), (1, remaining))
+                    if area == 'FIGHTING_DOJO':
+                        first, second, third = h.read_bytes('wRoguePokemon1', 3)
+                        self.assertTrue(first and second and first != second)
+                        self.assertEqual(third, 0)
+                    h.set_event(EVENTS[claim])
+                    h.call_routine(routine)
+                    self.assertEqual((observed['count'], h.read8('wDiceCharges')), (1, remaining))
 
     def test_dice_message_waits_for_input_before_the_field_bag_redraws(self):
         h = self.harness

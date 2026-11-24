@@ -398,7 +398,7 @@ BattleItemInfoTable:
 .StatBooster:  db "Earn more stat EXP@", "from each battle@"
 .DoorDice:     db "Rerolls the doors@",  "in the lobby@"
 .MonDice:      db "Rerolls the reward@", "#MON@"
-.ItemDice:     db "Rerolls the items@",  "in a stage@"
+.ItemDice:     db "Rerolls items@",      "or gift options@"
 .ElementPrism: db "Powers up moves@",    "matching its type@"
 .PokeFlute:    db "Wakes all #MON@",     "Uses up your turn@"
 

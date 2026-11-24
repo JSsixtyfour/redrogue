@@ -202,14 +202,14 @@ class BranchDriver:
         limit, frame = self.long_sequence
         return max(self.freeze_frames, limit) if frame >= self.joypad_frame else self.freeze_frames
 
-    def run(self, state: bytes, key: str, frames: int) -> dict[str, object]:
+    def run(self, state: bytes, key: str, frames: int, *, buttons=BUTTONS) -> dict[str, object]:
         h = self.h
         h.load_state(io.BytesIO(state))
         self.checks.reset()
         self.events = []
         h.hook_errors.clear()
         rng = random.Random(key)
-        buttons, weights = zip(*BUTTONS)
+        buttons, weights = zip(*buttons)
         start = h.pyboy.frame_count
         self.joypad_frame = start  # frame_count is not part of a state: it never goes back
         self.long_sequence = (0, -1)

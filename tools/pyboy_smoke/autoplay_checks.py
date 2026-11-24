@@ -28,6 +28,7 @@ import io
 from detector_health import observed_check, CORE
 from pathlib import Path
 
+import autoplay_battle_checks
 import autoplay_screen
 from source_constants import parse_map_constants, parse_rgbds_constants
 
@@ -65,12 +66,17 @@ MOVE_LENGTH, MOVE_PP = 6, 5  # data/moves/moves.asm, constants/battle_constants.
 class GameChecks:
     def __init__(self, agent, root: Path):
         self.agent = agent
+        self.root = root
         self.detector_health = {}
         self.h = agent.h
         # The parser leaves `const_value - 1` unresolved: NUM_POKEMON_INDEXES is
         # the last species constant and NUM_ATTACKS is STRUGGLE, the last move.
-        species = parse_rgbds_constants(root / "constants/pokemon_constants.asm")
-        self.species = {value for value in species.values() if value}
+        # A species is an internal id with a Pokedex number: pokemon_constants.asm
+        # also holds counts and a skipped id.
+        rows = [line.split(";")[0].split() for line in
+                (root / "data/pokemon/dex_order.asm").read_text(encoding="utf-8").splitlines()]
+        rows = [row for row in rows if row and row[0] == "db"]
+        self.species = {index + 1 for index, row in enumerate(rows) if row[1] != "0"}
         self.num_moves = parse_rgbds_constants(root / "constants/move_constants.asm")["STRUGGLE"]
         self.num_maps = len(parse_map_constants(root / "constants/map_constants.asm"))
         # The player's party stops at MAX_LEVEL (235), enemies at ENEMY_MAX_LEVEL
@@ -120,6 +126,7 @@ class GameChecks:
         self.h.register_hook("JoypadOverworld", self._on_overworld_poll)
         self.h.register_hook("DisplayBattleMenu", self._on_battle_menu)
         self.screen = autoplay_screen.ScreenChecks(self)  # garbled text and graphics
+        self.battle = autoplay_battle_checks.BattleChecks(self)  # table lookups and menu round trips
 
     def reset(self) -> None:
         """Forget findings, for a new branch from a loaded state
@@ -133,6 +140,7 @@ class GameChecks:
         self.crash = None
         self.world_pending = True
         self.battle_party_checked = False
+        self.battle.reset()
 
     # -------------------------------------------------------------- reporting
 
@@ -159,6 +167,7 @@ class GameChecks:
                 **self.detector_health.get(name, {"attempted": 0, "returned": 0, "errors": 0})}
                 for name in CORE},
             "crash": self.crash,
+            "battle_checks": self.battle.summary(),
             "crash_vector_hook": {'enabled': True, 'available': True, 'status': 'armed'},
             "overworld_sp": {f"${sp:04X}": n for sp, n in sorted(self.overworld_sp.items())},
             "lowest_sp_seen": f"${self.lowest_sp:04X}",

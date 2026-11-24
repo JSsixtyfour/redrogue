@@ -114,34 +114,74 @@ DoorDiceRefuseText:
 
 RogueItemUseMonDice::
 	ldh a, [hCurMap]
-	cp OAKS_LAB
-	jr nz, .rewardRoom
-	farcall OaksLabCheckStarterSelection
-	jr .checkClaim
-.rewardRoom
+	cp FIGHTING_DOJO
+	jr z, .dojo
 	cp REWARD_ROOM
+	jr z, .standard
+	cp GAME_CORNER
+	jr z, .standard
+	call IsRogueStageMap
+	jr nz, .standard
+	ldh a, [hCurMap]
+	cp OAKS_LAB
 	jr nz, .refuseLocation
+	ld a, [wWarpedFromWhichMap]
+	cp INDIGO_PLATEAU_LOBBY
+	jr z, .refuseLocation
+	CheckEvent EVENT_GOT_STARTER
+	jr .normalBatch
+.dojo
 	CheckEvent EVENT_GOT_ROGUE_POKEMON
+	jr nz, .refuseLocation
+	CheckEvent EVENT_DEFEATED_FIGHTING_DOJO
+	ld e, 1
+	jr .checkClaim
+.standard
+	CheckEvent EVENT_GOT_ROGUE_POKEMON
+.normalBatch
+	ld e, 0
 .checkClaim
-	jr nz, .refuseLocation         ; already claimed - nothing to reroll
+	jr nz, .refuseLocation
 	ld a, [wDiceCharges]
 	and %00001100
 	jr z, .refuseCharges
 	ld a, [wDiceCharges]
 	sub %00000100                  ; nonzero field: no borrow into adjacent charges
 	ld [wDiceCharges], a
+	dec e
+	jr z, .rollDojo
 	call rogue_pokemon_randomized_batch
+	ldh a, [hCurMap]
+	cp OAKS_LAB
+	jr z, .rolled
+	; Swap the first ball and trader only if that reward is already visible.
+	; SS Anne keeps both hidden until its trainers have been defeated.
+	ASSERT TOGGLE_ROGUE_REWARD_POKEBALL_1 / 8 == TOGGLE_ROGUE_TRADE_NPC / 8
+	ld hl, wToggleableObjectFlags + TOGGLE_ROGUE_TRADE_NPC / 8
+	bit TOGGLE_ROGUE_REWARD_POKEBALL_1 % 8, [hl]
+	jr z, .syncFirst
+	bit TOGGLE_ROGUE_TRADE_NPC % 8, [hl]
+	jr nz, .rolled
+.syncFirst
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_ROGUE_TRADE_ACTIVE, a
+	set TOGGLE_ROGUE_TRADE_NPC % 8, [hl]
+	res TOGGLE_ROGUE_REWARD_POKEBALL_1 % 8, [hl]
+	jr z, .rolled
+	res TOGGLE_ROGUE_TRADE_NPC % 8, [hl]
+	set TOGGLE_ROGUE_REWARD_POKEBALL_1 % 8, [hl]
+	jr .rolled
+.rollDojo
+	farcall FightingDojoRerollRewards
+.rolled
 	ld hl, MonDiceRerolledText
-	call PrintText
-	ret
+	jp PrintText
 .refuseLocation
 	ld hl, MonDiceRefuseText
-	call PrintText
-	ret
+	jp PrintText
 .refuseCharges
 	ld hl, DiceOutOfChargesText
-	call PrintText
-	ret
+	jp PrintText
 
 MonDiceRerolledText:
 	text_far _MonDiceRerolledText
@@ -153,7 +193,7 @@ MonDiceRefuseText:
 
 RogueItemUseItemDice::
 	call IsRogueStageMap           ; Z clear = a standard route/gym stage
-	jr z, .refuseLocation
+	jr z, .tryBridge
 ; Scope limit (v1): procedural stages (cave/forest/cemetery/wild areas) stage
 ; their ball contents in SRAM, not wRogueItem alone - IsRogueStageMap already
 ; excludes those maps (they're not in RogueStageMapTable), so this handler
@@ -161,30 +201,56 @@ RogueItemUseItemDice::
 	ld a, [wToggleableObjectFlags + (TOGGLE_STAGE_RANDOM_ITEM / 8)]
 	bit TOGGLE_STAGE_RANDOM_ITEM % 8, a
 	jr nz, .refuseLocation         ; already collected - nothing to reroll
+	ld e, 0
+	jr .charge
+.tryBridge
+	ldh a, [hCurMap]
+	cp OAKS_LAB
+	jr z, .checkEntrance
+	cp REDS_HOUSE_1F
+	jr nz, .findGiver
+.checkEntrance
+	ld a, [wWarpedFromWhichMap]
+	cp INDIGO_PLATEAU_LOBBY
+	jr nz, .refuseLocation
+.findGiver
+	ld hl, BridgeRoomMaps
+	ld b, NUM_BRIDGE_ROOMS
+	ldh a, [hCurMap]
+.findBridge
+	cp [hl]
+	jr z, .bridge
+	inc hl
+	dec b
+	jr nz, .findBridge
+	jr .refuseLocation
+.bridge
+	CheckEvent EVENT_BRIDGE_RECEIVE_GIFT
+	jr nz, .refuseLocation
+	ld e, 1
+.charge
 	ld a, [wDiceCharges]
 	and %00110000
 	jr z, .refuseCharges
-	swap a                         ; bits 4-5, nibble-aligned -> a = charge value (1-3)
-	dec a
-	swap a                         ; shift back into bits 4-5
-	ld b, a
 	ld a, [wDiceCharges]
-	and %11001111
-	or b
+	sub %00010000
 	ld [wDiceCharges], a
+	dec e
+	jr nz, .stageItem
+	farcall rogue_gift_randomized_batch
+	ld hl, MonDiceRerolledText ; "Choices rerolled!"
+	jp PrintText
+.stageItem
 	farcall Random_Item_Selection     ; re-rolls wRogueItem using wRogueDoorSelection
 	farcall RefreshBallRarityCache    ; recolour the item ball for the new contents
 	ld hl, ItemDiceRerolledText
-	call PrintText
-	ret
+	jp PrintText
 .refuseLocation
 	ld hl, ItemDiceRefuseText
-	call PrintText
-	ret
+	jp PrintText
 .refuseCharges
 	ld hl, DiceOutOfChargesText
-	call PrintText
-	ret
+	jp PrintText
 
 ItemDiceRerolledText:
 	text_far _ItemDiceRerolledText

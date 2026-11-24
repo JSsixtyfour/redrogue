@@ -26,6 +26,7 @@ Suites (all by default, in this order):
     stack      runtime stack headroom and SRAM latch checks on DMG and CGB
     builds     compare_builds: seeds 1-8 on the debug, Blue and Red builds
     sram       sram_fuzz: seeds 1-4
+    battle_fuzz  random battles of unusual moves with random input, rotating seeds
     guards     one rotating share of standalone guards, all on Sunday
 
 Each night writes <reports>/<date>_<sha>/ (default ../redrogue_nightly_reports):
@@ -114,6 +115,8 @@ SUITES = {
     "builds": (["python3", str(SMOKE_DIR / "compare_builds.py"), "--seeds", "1-8", "--jobs", "6",
                 "--max-frames", "1000000"], 7200, ["build_compare.json"]),
     "sram": (["python3", str(SMOKE_DIR / "sram_fuzz.py"), "--seeds", "1-4", "--matched-controls"], 3600, ["sram_fuzz_summary.json"]),
+    "battle_fuzz": (["python3", str(SMOKE_DIR / "battle_fuzz.py"), "--seeds", "1-2000", "--jobs", "6",
+                     "--minutes", "5"], 900, ["battle_fuzz.json"]),
     "guards": (["python3", str(SMOKE_DIR / "run_audits.py")], 5400, []),}
 # --quick: a few seeds per suite, to check the runner itself.
 QUICK = {"lobby": {"--seeds": "1-2"}, "newgame": {"--seeds": "1-2", "--runs": "1"},
@@ -123,7 +126,7 @@ QUICK = {"lobby": {"--seeds": "1-2"}, "newgame": {"--seeds": "1-2", "--runs": "1
          "menus": {"--seeds": "1-2", "--stages": "3"},
          "room_menu": {"--seeds": "1-2"},
          "discovery": {"--seeds": "17-18", "--runs": "1"},
-         "builds": {"--seeds": "1-2"}, "sram": {"--seeds": "1"}}
+         "builds": {"--seeds": "1-2"}, "sram": {"--seeds": "1"}, "battle_fuzz": {"--seeds": "1-12"}}
 AUTOPLAY_SUITES = {"lobby", "newgame", "cgb", "cgb_full", "menus", "room_menu", "discovery"}
 MENU_MILESTONES = {"pc": "pc_main_menu", "rental": "offer", "roompc": "top_menu"}
 
@@ -135,6 +138,9 @@ def suite_command(name: str, worktree: Path, day: dt.date, quick: bool) -> list[
     if name == "discovery" and not quick:
         first = 17 + 24 * (day.toordinal() % 1000)
         command[command.index("--seeds") + 1] = f"{first}-{first + 23}"
+    if name == "battle_fuzz" and not quick:
+        first = 100_001 + 2000 * (day.toordinal() % 1000)
+        command[command.index("--seeds") + 1] = f"{first}-{first + 1999}"
     if name == "directed":
         command[0:0] = ["env", f"PYTHONPATH={SMOKE_DIR}"]
         if quick:
@@ -185,13 +191,21 @@ def run_suite(name: str, worktree: Path, night: Path, day: dt.date,
     _, timeout, keep = SUITES[name]
     command = suite_command(name, worktree, day, quick)
     log = night / f"{name}.log"
+    # The scheduled runner is the shared tree's nightly.py, but the tested commit can be
+    # older than a suite just added there. A script missing from both still runs and fails.
+    newer = [part for part in command if part.startswith(f"{SMOKE_DIR}/")
+             and (ROOT / part).exists() and not (worktree / part).exists()]
+    if newer:
+        log.write_text(f"skipped: {newer[0]} is not in the tested commit\n", encoding="utf-8")
+        return {"suite": name, "exit": 0, "seconds": 0, "command": shlex.join(command),
+                "skipped": f"{newer[0]} is not in the tested commit", "tail": []}
     if name == "sram":
         artifacts = night / "sram_evidence"
         artifacts.mkdir()
         result = execute_suite(name, command, worktree, night, log, min(timeout, remaining), keep, artifacts)
         if not has_issue(result):
             shutil.rmtree(artifacts)
-    elif name in AUTOPLAY_SUITES or name in ("builds", "stack"):
+    elif name in AUTOPLAY_SUITES or name in ("builds", "stack", "battle_fuzz"):
         # Keep suites and attempts separate, including failure snapshots with the same seed.
         with tempfile.TemporaryDirectory(prefix=f".{name}-", dir=night) as scratch:
             result = execute_suite(name, command, worktree, night, log, min(timeout, remaining),
@@ -200,7 +214,7 @@ def run_suite(name: str, worktree: Path, night: Path, day: dt.date,
         result = execute_suite(name, command, worktree, night, log, min(timeout, remaining), keep)
     if name == "guards":
         result["rotation"] = day.weekday()
-    if name == "discovery":
+    if name in ("discovery", "battle_fuzz"):
         result["rotating_seeds"] = True
     return result
 
@@ -273,6 +287,8 @@ def execute_suite(name, command, worktree, night, log, timeout, keep, artifacts=
         result.update(build_findings(night / "builds_build_compare.json"))
     if name == "sram":
         result.update(sram_findings(night / "sram_sram_fuzz_summary.json"))
+    if name == "battle_fuzz":
+        result.update(battle_fuzz_findings(night / "battle_fuzz_battle_fuzz.json"))
     return result
 
 
@@ -391,6 +407,19 @@ def build_findings(path: Path) -> dict[str, object]:
                   "replay": f"python3 tools/pyboy_smoke/autoplay.py --seed {seed} --new-game --rom {rom}"}
                  for rom, total in report["totals"].items() for seed in total["failed_seeds"]]
     return {"findings": findings, "only_in_one_build": report["only_in_one_build"]}
+
+
+def battle_fuzz_findings(path: Path) -> dict[str, object]:
+    if not path.exists():
+        return {"findings": [{"kind": "no summary", "what": "no battle fuzz summary written", "replay": None}]}
+    report = json.loads(path.read_text(encoding="utf-8"))
+    return {"findings": [{"seed": seeds[0], "kind": f"battle {what.split(':')[0]}", "what": f"battle fuzz: {what}",
+                          "replay": f"python3 tools/pyboy_smoke/battle_fuzz.py --seeds {seeds[0]} --jobs 1"}
+                         for what, seeds in report["findings"].items()],
+            "outcomes": report["outcomes"],
+            "exposure": {"seeds": report["played"], "frames": report["frames"],
+                         "turns": report["exposure"].get("turns", 0)},
+            "unreached": [] if report["exposure"].get("turns") else ["any battle turn"]}
 
 
 def sram_findings(path: Path) -> dict[str, object]:
@@ -520,6 +549,8 @@ def write_markdown(report: dict[str, object], night: Path) -> None:
              "| Suite | Exit | Minutes | Notes |", "| --- | --- | --- | --- |"]
     for suite in report["suites"]:
         notes = []
+        if suite.get("skipped"):
+            notes.append(f"SKIPPED: {suite['skipped']}")
         if "guards_run" in suite:
             notes.append(f"{suite['guards_passed']}/{suite['guards_run']} guards passed")
         if suite.get("stack_spare_bytes"):

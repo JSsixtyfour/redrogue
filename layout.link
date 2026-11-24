@@ -514,6 +514,9 @@ ROMX $3E
 	; AI_THREAT's paralysis test, out of the full $0E/$0F (2026-11-21). Reached
 	; only by farcall, so any bank with room would do.
 	"AI Paralysis Hit"
+	; TryKODefiance's revival body, out of the full $0F (2026-11-24). farcall
+	; only, WRAM only, so any bank with room would do.
+	"KO Defiance Revive"
 ROMX $3F
 	; "ProceduralCaveGen" relocated here 2026-09-16, out of ROMX $5.
 	;

@@ -111,7 +111,7 @@ ItemNames::
 	li "STAT BOOSTER"
 	li "DOOR DICE"
 	li "MON DICE"
-	li "ITEM DICE"
+	li "GIFT DICE"
 	li "ELEMENT BOY"
 	li "M.GENE"
 	li "M.TOME"

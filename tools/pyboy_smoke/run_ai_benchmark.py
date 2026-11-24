@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import csv
 import hashlib
 import io
@@ -145,16 +146,27 @@ def policy_rules() -> benchmark_policies.Rules:
     return _RULES
 
 
+def without_disabled(harness: RedRogueHarness, pp) -> tuple[int, ...]:
+    """The game refuses a Disabled move and reopens the menu without spending a turn, so a
+    policy that chose it would choose it forever (seed 9015, 2026-11-24). It counts as out
+    of PP here, as in autoplay's _on_move_menu."""
+    disabled = (harness.read8("wPlayerDisabledMove") >> 4) - 1  # high nibble: slot + 1
+    return tuple(0 if slot == disabled else value for slot, value in enumerate(pp))
+
+
 def choose_player_slot(
     harness: RedRogueHarness, policy: str, powers: dict[int, int]
 ) -> tuple[int, int]:
     """Return (slot, move) for the player's policy choice."""
     if policy not in ("first_slot", "best_power"):
         state = benchmark_policies.read_state(harness)
-        slot = benchmark_policies.choose_slot(policy_rules(), state, policy)
+        player = dataclasses.replace(
+            state.player, pp=without_disabled(harness, state.player.pp))
+        slot = benchmark_policies.choose_slot(
+            policy_rules(), dataclasses.replace(state, player=player), policy)
         return slot, state.player.moves[slot]
     moves = harness.read_bytes("wBattleMonMoves", 4)
-    pp = harness.read_bytes("wBattleMonPP", 4)
+    pp = without_disabled(harness, harness.read_bytes("wBattleMonPP", 4))
     legal = [
         (slot, move)
         for slot, (move, move_pp) in enumerate(zip(moves, pp))

@@ -699,7 +699,7 @@ class AutoplayAgent:
             self.text_wait_frame = -1
             self.press("a")
             return True
-        if self.menu_chaos and self.chaos_rng.random() < self.menu_chaos:
+        if self.menu_chaos and goal.chaos and self.chaos_rng.random() < self.menu_chaos:
             stats["stray"] += 1
             self.press(self.chaos_rng.choice(goal.chaos))
             return True

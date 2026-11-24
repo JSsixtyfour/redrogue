@@ -198,6 +198,7 @@ audit: $(addsuffix .gbc,$(AUDIT_ROMS))
 	python3 tools/catalog_audit.py
 	python3 tools/audit_end_battle_text.py
 	python3 tools/audit_text_columns.py
+	python3 tools/pyboy_smoke/audit_wram_overlaps.py
 	python3 tools/static_audit/test_rules.py
 	python3 tools/static_audit/run_all.py $(foreach rom,$(AUDIT_ROMS),--rom $(rom)) $(if $(INFO),--info)
 	python3 tools/pyboy_smoke/run_smoke.py --source-only
@@ -245,6 +246,11 @@ nightly:
 # differently (a read of SRAM the game never wrote). SRAM_FUZZ_ARGS='--bisect'.
 sram_fuzz: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/sram_fuzz.py $(SRAM_FUZZ_ARGS)
+
+# Random battles full of unusual moves, random input and every detector armed.
+# BATTLE_FUZZ_ARGS='--seeds 1-2000 --minutes 20'.
+battle_fuzz: pokeblue_debug.gbc
+	python3 tools/pyboy_smoke/battle_fuzz.py $(BATTLE_FUZZ_ARGS)
 
 balance_report:
 	python3 tools/balance/model.py --runs 200 --selfcheck

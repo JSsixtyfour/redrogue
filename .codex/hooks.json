@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/justi/AppData/Local/Programs/Python/Python314/python.exe\" \"C:/Users/justi/redrogue/tools/pyboy_smoke/nightly_session_status.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

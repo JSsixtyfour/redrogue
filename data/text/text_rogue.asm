@@ -248,7 +248,7 @@ _MonDiceRefuseText::
 	prompt
 
 _MonDiceRerolledText::
-	text "Pokémon"
+	text "#MON"
 	line "rerolled!"
 	prompt
 

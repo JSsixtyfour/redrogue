@@ -14,20 +14,7 @@ FightingDojo_Script:
 	ResetEvent EVENT_DEFEATED_FIGHTING_DOJO
 	SetEvent EVENT_FIGHTING_DOJO_VISITED ; once per run (MiniBossIsMapVisited)
 
-	; Roll which of the three Dojo #MON is NOT offered (0-2), stored in two
-	; event bits so NO THANKS and a second talk show the same pair.
-	ResetEvents EVENT_DOJO_EXCLUDED_BIT0, EVENT_DOJO_EXCLUDED_BIT1
-	ld c, 3
-	call Rangerandom
-	ld b, a
-	bit 0, b
-	jr z, .excludedBit1
-	SetEvent EVENT_DOJO_EXCLUDED_BIT0
-.excludedBit1
-	bit 1, b
-	jr z, .excludedDone
-	SetEvent EVENT_DOJO_EXCLUDED_BIT1
-.excludedDone
+	call FightingDojoRollPair
 
 	farcall Random_Item_Selection
 	call FightingDojoShowRandomItem
@@ -86,6 +73,28 @@ FightingDojo_ScriptPointers:
 FightingDojoShowOrHideExitBlock:
 	GymExitBlock EVENT_BEAT_KARATE_MASTER, $24, $74, 2, 0
 
+FightingDojoRerollRewards::
+	call FightingDojoRollPair
+	jp FightingDojoPublishRewards
+
+FightingDojoRollPair:
+	; Roll which of the three Dojo #MON is NOT offered (0-2), stored in two
+	; event bits so NO THANKS and a second talk show the same pair.
+	ResetEvents EVENT_DOJO_EXCLUDED_BIT0, EVENT_DOJO_EXCLUDED_BIT1
+	ld c, 3
+	call Rangerandom
+	ld b, a
+	bit 0, b
+	jr z, .excludedBit1
+	SetEvent EVENT_DOJO_EXCLUDED_BIT0
+.excludedBit1
+	bit 1, b
+	jr z, .excludedDone
+	SetEvent EVENT_DOJO_EXCLUDED_BIT1
+.excludedDone
+
+	ret
+
 FightingDojoInitRewards:
 	ld hl, wRogueFlagsBitfield
 	res BIT_ROGUE_TRADE_ACTIVE, [hl]
@@ -94,6 +103,10 @@ FightingDojoInitRewards:
 	jr z, .publish
 	SetEvent EVENT_GOT_ROGUE_POKEMON ; preserve a claim from an older save
 .publish
+	call FightingDojoPublishRewards
+	farjp RogueRefresh
+
+FightingDojoPublishRewards:
 	ld e, 0
 	call FightingDojoResolveRewardSpecies
 	ld [wRoguePokemon1], a
@@ -104,7 +117,7 @@ FightingDojoInitRewards:
 	ld [wRoguePokemon3], a
 	ld [wRoguePokemonForm1], a
 	ld [wRoguePokemonForm2], a
-	farjp RogueRefresh
+	ret
 
 FightingDojoResolveRewardSpecies:
 	farcall KarateDojoRewardSpecies

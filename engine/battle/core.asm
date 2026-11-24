@@ -1327,56 +1327,29 @@ TryKODefiance::
 	dec a
 	ld [wKODefianceUsages], a
 
-	; half of max HP, minimum 1
-	ld hl, wBattleMonMaxHP
-	ld a, [hli]
-	ld b, a                  ; b = max HP high byte
-	ld a, [hl]
-	ld c, a                  ; c = max HP low byte
-	srl b
-	rr c
-	ld a, b
-	or c
-	jr nz, .haveRevivalHP
-	ld c, 1
-.haveRevivalHP
-	ld hl, wBattleMonHP
-	ld [hl], b
-	inc hl
-	ld [hl], c
-	xor a
-	ld [wBattleMonStatus], a
-
-	; clear stat-stage modifiers (Attack/Defense/Speed/Special/Accuracy/
-	; Evasion drops or boosts) too, not just the major status - same reset
-	; LoadBattleMonFromParty does when a mon is freshly sent out
-	ld a, $7 ; default stat modifier
-	ld b, NUM_STAT_MODS
-	ld hl, wPlayerMonStatMods
-.statModResetLoop
-	ld [hli], a
-	dec b
-	jr nz, .statModResetLoop
+	; half HP, status and stat stages cleared, and a mon revived asleep does not
+	; act on a move it never chose (custom_functions/ko_defiance_revive.asm)
+	farcall KODefianceRevive
 
 	; sync the same HP/status to the party slot. Half of a Super Transform
 	; borrowed max HP can exceed the party mon's own max HP; the shared
-	; write-back caps it. b:c (the revival HP) is used below.
-	push bc
+	; write-back caps it.
 	call ReadPlayerMonCurHPAndStatus
-	pop bc
 
 	ld a, SFX_HEAL_HP
 	call PlaySoundWaitForCurrent
 
-	; animate the HP bar filling from empty up to b:c (the revival HP just
-	; written above), same predef Recover/Revive/etc. use for their bar fills
+	; animate the HP bar filling from empty up to the revival HP, same predef
+	; Recover/Revive/etc. use for their bar fills. Read back from the mon: the
+	; stat reset used b, which zeroed the high byte here until 2026-11-24.
 	xor a
 	ld [wHPBarOldHP], a
 	ld [wHPBarOldHP + 1], a
-	ld a, c
-	ld [wHPBarNewHP], a
-	ld a, b
+	ld hl, wBattleMonHP
+	ld a, [hli]
 	ld [wHPBarNewHP + 1], a
+	ld a, [hl]
+	ld [wHPBarNewHP], a
 	ld hl, wBattleMonMaxHP
 	ld a, [hli]
 	ld [wHPBarMaxHP + 1], a

@@ -43,7 +43,7 @@ ItemDescriptions:
 	item_desc STAT_BOOSTER,  "More stat EXP",  "from battles"
 	item_desc DOOR_DICE,     "Rerolls the",    "lobby doors"
 	item_desc MON_DICE,      "Rerolls the",    "reward #MON"
-	item_desc ITEM_DICE,     "Rerolls the",    "stage items"
+	item_desc ITEM_DICE,     "Rerolls items",  "or gifts"
 	item_desc ELEMENT_PRISM, "Boosts moves",   "of its type"
 
 ; Stat pocket

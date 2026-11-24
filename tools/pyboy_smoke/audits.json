@@ -15,6 +15,8 @@
      "guards": "rarity ball cache on cave/forest/cemetery/Facility disagreeing with the item each pickup gives, or colouring Facility fake balls (four CGB boots)"},
     {"script": "audit_bridge_gift_roll_range.py", "args": [], "kind": "guard", "in_smoke": true,
      "guards": "bridge gift roll picking entry indices past its giver's list (count cached in wBuffer+0, clobbered by FarCopyData) -> blank menu row that crashes on hover (RR-0011)"},
+    {"script": "audit_stale_move_matrix.py", "args": [], "kind": "guard",
+     "guards": "a move selected (or skipped) before the menu and executed after the state changed: 880 battles, held side x hold x turn x action, every detector armed (2026-11-24: frozen enemy or player thawed by a Fire move executed move 0 and crashed)"},
     {"script": "audit_boss_ball_overlap.py", "args": ["--layouts", "200"], "kind": "guard",
      "guards": "pokeball placed on the procedural boss's own cell (forest/cave). CLAUDE.md: run first on any forest failure."},
     {"script": "audit_cave_boss_distance.py", "args": [], "kind": "guard",
