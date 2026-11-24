@@ -69,7 +69,7 @@ AIDecideEnemyTurn:
 	xor a
 	ld [wAITurnPlan], a
 ; SelectEnemyMove leaves the move alone when the enemy is locked (asleep,
-; frozen, recharging, charging, thrashing, raging, wrapping, Bide), so a
+; recharging, charging, thrashing, raging, wrapping, Bide), so a
 ; sentinel tells a choice from a lock. The old move goes back at once: the
 ; switch decision below reads the selected move, and a continuing move needs it.
 	ld a, [wEnemySelectedMove]

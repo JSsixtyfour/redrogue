@@ -23,20 +23,30 @@ PP = 15
 
 
 class PlayerFrozenMoveMenuTest(unittest.TestCase):
-    def battle(self, enemy_species: str, enemy_move: str, status: int) -> tuple[RedRogueHarness, dict]:
+    def battle(self, enemy_species: str, enemy_move: str, status: int, *,
+               player_move="BODY_SLAM", frozen_enemy=False) -> tuple[RedRogueHarness, dict]:
         species = parse_rgbds_constants(ROOT / "constants/pokemon_constants.asm")
         moves = parse_rgbds_constants(ROOT / "constants/move_constants.asm")
         trainers = parse_trainer_constants(ROOT / "constants/trainer_constants.asm")
         h = RedRogueHarness(ROOT, ARTIFACTS)
         self.addCleanup(h.close)
         h.inject_fight2_spec(
-            [{"species": species["SNORLAX"], "level": 50, "moves": [moves["BODY_SLAM"]]}],
+            [{"species": species["JOLTEON" if frozen_enemy else "SNORLAX"],
+              "level": 50, "moves": [moves[player_move]]}],
             [{"species": species[enemy_species], "level": 50, "moves": [moves[enemy_move]]}],
             trainer_class=trainers["COOLTRAINER_M"], ai_tier=0)
         seen = {name: h.hook_flag(label) for name, label in (
             ("menu", "MoveSelectionMenu"), ("frozen", "CheckPlayerStatusConditions.FrozenCheck"),
             ("acted", "PlayerCanExecuteMove"), ("enemy", "ExecuteEnemyMove"),
             ("loop", "MainInBattleLoop.mainLoopPlayerAlive"))}
+        if frozen_enemy:
+            def freeze_enemy():
+                if setup["count"] != 1:
+                    return
+                h.write8("wEnemyMonStatus", 1 << FRZ_BIT)
+                h.write8("wEnemySelectedMove", 0)
+                h.write8("wEnemyMonPP", PP)
+            setup = h.hook_flag("AIPlanEnemyTurn", action=freeze_enemy)
         h.boot_fight2(seed=1)
         h.write8("wBattleMonStatus", status)
         h.write8("wBattleMonPP", PP)
@@ -77,6 +87,15 @@ class PlayerFrozenMoveMenuTest(unittest.TestCase):
         self.assertEqual(seen["menu"]["count"], 0, "a sleeping mon opened the move menu")
         self.assertEqual(seen["acted"]["count"], 0, "a sleeping mon acted")
         self.assertEqual(h.read8("wBattleMonPP") & 0x3F, PP)
+
+    def test_frozen_enemy_selects_and_only_spends_pp_if_thawed(self) -> None:
+        for attack, thawed in (("FLAMETHROWER", True), ("GROWL", False)):
+            with self.subTest(attack=attack):
+                h, seen = self.battle("SNORLAX", "POUND", 0, player_move=attack, frozen_enemy=True)
+                self.play_one_turn(h, seen)
+                self.assertEqual(h.read8("wEnemySelectedMove"), seen["moves"]["POUND"])
+                self.assertEqual(h.read8("wEnemyMonPP") & 0x3F, PP - int(thawed))
+                self.assertEqual(bool(h.read8("wEnemyMonStatus") & (1 << FRZ_BIT)), not thawed)
 
 
 if __name__ == "__main__":

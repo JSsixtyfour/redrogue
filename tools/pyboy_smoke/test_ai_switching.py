@@ -621,6 +621,18 @@ class AIShouldSwitchTest(unittest.TestCase):
         plan = self.stalemate_plan(["AMNESIA", "SELFDESTRUCT", "HAZE", "EXPLOSION"], ai_tier=2)
         self.assertTrue(plan >> 6 & 1, f"plan {plan:#04x}")
 
+    def test_trapped_enemy_scans_slots_without_reading_sentinel_move(self) -> None:
+        h = self.harness
+        scans, reads = [], []
+        h.hook_flag("AIPlanEnemyTurn", action=lambda: h.write8("wPlayerBattleStatus1", 1 << 5))
+        h.hook_flag("AIActiveCanDoNothing.scan",
+                    action=lambda: scans.append(h.read8("wEnemySelectedMove")))
+        h.hook_flag("AIActiveCanDoNothing.moveByte",
+                    action=lambda: reads.append(h.pyboy.register_file.B))
+        self.stalemate_plan(["AMNESIA", "SELFDESTRUCT", "HAZE", "EXPLOSION"])
+        self.assertIn(0xff, scans)
+        self.assertNotIn(0xff, reads)
+
     def test_a_chosen_status_move_is_not_a_stalemate(self) -> None:
         # A status user keeps its status move: Thunder Wave on a healthy Ekans is
         # progress, unlike seed 288's Amnesia/Haze loop.
