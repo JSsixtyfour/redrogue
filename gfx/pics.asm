@@ -413,8 +413,6 @@ BayleefPicFront::     INCBIN "gfx/pokemon/front/bayleef.lz"
 BayleefPicBack::      INCBIN "gfx/pokemon/back/bayleefb.lz"
 MeganiumPicFront::    INCBIN "gfx/pokemon/front/meganium.lz"
 MeganiumPicBack::     INCBIN "gfx/pokemon/back/meganiumb.lz"
-WeavilePicFront::     INCBIN "gfx/pokemon/front/weavile.lz"
-WeavilePicBack::      INCBIN "gfx/pokemon/back/weavileb.lz"
 MamoswinePicFront::   INCBIN "gfx/pokemon/front/mamoswine.lz"
 MamoswinePicBack::    INCBIN "gfx/pokemon/back/mamoswineb.lz"
 MismagiusPicFront::   INCBIN "gfx/pokemon/front/mismagius.lz"
@@ -798,6 +796,9 @@ WeedlePicFront::      INCBIN "gfx/pokemon/front/weedle.lz"
 WeedlePicBack::       INCBIN "gfx/pokemon/back/weedleb.lz"
 KakunaPicFront::      INCBIN "gfx/pokemon/front/kakuna.lz"
 KakunaPicBack::       INCBIN "gfx/pokemon/back/kakunab.lz"
+; Weavile moved from "Pics 6" ($34) 2026-11-23: the redrawn pics (+138 B) overflowed $34.
+WeavilePicFront::     INCBIN "gfx/pokemon/front/weavile.lz"
+WeavilePicBack::      INCBIN "gfx/pokemon/back/weavileb.lz"
 
 
 SECTION "Pics 17", ROMX ; pinned to $20 in layout.link
