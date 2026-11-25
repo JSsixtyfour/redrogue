@@ -34,6 +34,7 @@ Pokemon & Items are awarded based on a rarity system
 - And Much, Much More
 
 ## Battle Changes
+Full list with exact numbers: **[Battle changes guide](docs/BATTLE_CHANGES.md)**. The highlights:
 - **Advanced Trainer AI.** A ground-up rewrite with four skill tiers that ramp over a run: Must play Hard Mode to experience the highest level AI.
 - **Tougher teams.** Enemy Pokémon roll real DVs and stat experience that scale with the run. Gym
   leaders use signature moves and Yellow-style special movesets, and many trainers field curated
@@ -102,6 +103,7 @@ The is the most advanced RBY Trainer AI that actually plays in the game itself, 
 - Trainer switch timing was based on their Pokémon's speed stat in RBY. I changed this to match player battles and later games, switches always take priority now.
 - Enemy Trainers (and for the most part, Players) cannot use items in battle.
 
+- [Battle changes guide](docs/BATTLE_CHANGES.md): every battle rule that differs from Red and Blue, for nuzlockers and competitive players
 - [Evolution guide](docs/EVOLUTIONS.md): every evolution and how it works, with the Pokédex's last page showing what your run allows
 
 # Credits
