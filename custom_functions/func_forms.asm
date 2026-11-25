@@ -903,8 +903,88 @@ LoadEvoListForSpecies::
 	ld hl, wEvoDataBuffer	;we can now reference the evolution list by pointing HL to it
 	ret
 
-; Far worker for the bridge menu's level-resolved Pokemon gifts.
-; In: e = base species. Out: e = resolved species.
+; Bridge rooms reuse idle stage reward slots. Fuji owns species/form 1.
+; Form 3 is normally a small form index. The tag distinguishes an older
+; mid-room save, whose three cached offers are initialized on first use.
+BridgeGiftSpeciesSlot:
+	ld a, [wRoguePokemonForm3]
+	cp $ab
+	jr z, .ready
+	xor a
+	ld [wRoguePokemon2], a
+	ld [wRoguePokemon3], a
+	ld [wRoguePokemonForm2], a
+	ld a, $ab
+	ld [wRoguePokemonForm3], a
+.ready
+	ld hl, wRoguePokemon2
+	ld a, d
+	and a
+	ret z
+	inc hl
+	dec a
+	ret z
+	ld hl, wRoguePokemonForm2
+	ret
+
+BridgeCopyGiftSpeciesFar::
+	call BridgeGiftSpeciesSlot
+	ld e, [hl]
+	ld a, [wBuffer + 1]
+	ld d, a
+	call BridgeGiftSpeciesSlot
+	ld [hl], e
+	ret
+
+BridgeReadGiftSpeciesFar::
+	call BridgeGiftSpeciesSlot
+	ld a, [hl]
+	and a
+	jr z, BridgeRollGiftSpeciesFar
+	ld e, a
+	ret
+
+BridgeRollGiftSpeciesFar::
+	call BridgeGiftSpeciesSlot
+	push hl
+	call BridgeResolveEvolveSpeciesFar
+	pop hl
+	ld [hl], e
+	ret
+
+; d = slot, e = finalizer. PlaceString returns the end in bc.
+BridgePlaceSpeciesTitleFar::
+	hlcoord 2, 4
+	ld a, d
+	ld bc, 2 * SCREEN_WIDTH
+	call AddNTimes
+	push hl
+	ld hl, .prefixes
+	ld d, 0
+	add hl, de
+	add hl, de
+	ld a, [hli]
+	ld d, [hl]
+	ld e, a
+	pop hl
+	call PlaceString
+	ld h, b
+	ld l, c
+	ld de, wNameBuffer
+	jp PlaceString
+.prefixes
+	dw .plain, .power, .plain, .quick, .intimidate, .fang, .spore, .quake, .amnesia, .dragon
+.plain db "@"
+.power db "POWER @"
+.quick db "QUICK @"
+.intimidate db "INTIM. @"
+.fang db "SUPER FANG @"
+.spore db "SPORE @"
+.quake db "QUAKE @"
+.amnesia db "AMNESIA @"
+.dragon db "DRAGON @"
+
+; In: e = base species. Out: e = resolved species. Also used by the Dojo.
 BridgeResolveEvolveSpeciesFar::
 	ld d, e
 	ld a, [wCurPartySpecies]

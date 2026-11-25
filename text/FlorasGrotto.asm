@@ -13,7 +13,7 @@ _FlorasGrottoFloraAlreadyGotText::
 	done
 
 _FloraGift2Desc::
-	text "@"
+	text "A @"
 	text_ram wNameBuffer ; resolved species, filled by BridgePrintGiftDesc
 	text " with"
 	line "SPORE"

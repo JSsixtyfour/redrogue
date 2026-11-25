@@ -168,6 +168,9 @@ ENDC
 	add hl, de
 	ld a, [hl]
 	ld [wBuffer + 3], a
+	; Copy the accepted slot as well as its entry index.
+	ld d, e
+	farcall BridgeCopyGiftSpeciesFar
 	jr .accept
 .noEligible
 	; Nothing eligible exists, so there is no valid entry to repeat. Preserve a
@@ -176,6 +179,7 @@ ENDC
 	ld c, a
 	call Rangerandom
 	ld [wBuffer + 3], a
+	call BridgeGiftIsEligible ; resolve this fallback even if already owned
 .accept
 	ld a, [wBuffer + 1]
 	ld e, a
@@ -188,7 +192,7 @@ ENDC
 	inc [hl]
 	ld a, [hl]
 	cp BRIDGE_MENU_MAX_OFFERED
-	jr c, .nextSlot
+	jp c, .nextSlot
 	ret
 
 ; Return carry set when the candidate in wBuffer+3 is not already present in
@@ -270,7 +274,13 @@ BridgeGiftIsEligible:
 	jr BridgeSpeciesGiftEligible
 .monEvolve
 	ld a, [hli]                 ; base species (param low)
-	call BridgeResolveEvolveSpecies
+	ld e, a
+	push hl
+	ld a, [wBuffer + 1]
+	ld d, a
+	farcall BridgeRollGiftSpeciesFar
+	ld a, e
+	pop hl
 	ld e, [hl]                  ; finalizer id (param high)
 	ld d, a                     ; resolved species survives the farcall in d
 	ld a, e
@@ -510,15 +520,23 @@ BridgePlaceGiftNames:
 	ld a, [hl]                   ; kind byte (offset 0)
 	cp GIFT_MON_EVOLVE
 	jr nz, .fixedName
-	inc hl                       ; -> param low (offset 1) = base species
-	ld a, [hl]
-	push bc                      ; preserve index (c) + offered count (b)
-	call BridgeResolveEvolveSpecies  ; a = resolved species
+	inc hl
+	ld e, [hl]
+	inc hl
+	push bc
+	ld d, c
+	push hl
+	farcall BridgeReadGiftSpeciesFar
+	ld a, e
 	ld [wNamedObjectIndex], a
-	call GetMonName               ; name -> wNameBuffer (@-terminated)
+	call GetMonName
+	pop hl
+	ld e, [hl]                   ; finalizer selects the title prefix
 	pop bc
-	ld de, wNameBuffer
-	jr .haveName
+	push bc
+	ld d, c
+	farcall BridgePlaceSpeciesTitleFar
+	jr .next
 .fixedName
 	inc hl
 	inc hl
@@ -537,6 +555,7 @@ BridgePlaceGiftNames:
 	call BridgeCoordRow2         ; hl = coord(2, row)
 	pop de
 	call PlaceString
+.next
 	pop bc
 	inc c
 	jr .loop
@@ -572,6 +591,7 @@ BridgePrintGiftDesc:
 	pop af
 	cp b
 	jr z, .empty
+	ld c, a
 	ld hl, wGift1
 	add l
 	ld l, a
@@ -588,8 +608,10 @@ BridgePrintGiftDesc:
 	ld a, [hli]                  ; kind
 	cp GIFT_MON_EVOLVE
 	jr nz, .notEvolve
-	ld a, [hl]                   ; base species
-	call BridgeResolveEvolveSpecies
+	ld e, [hl]                   ; base species
+	ld d, c
+	farcall BridgeReadGiftSpeciesFar
+	ld a, e
 	ld [wNamedObjectIndex], a
 	call GetMonName              ; -> wNameBuffer (@-terminated)
 	jr .notRescue
@@ -622,6 +644,7 @@ BridgePrintGiftDesc:
 ; ---------------------------------------------------------------------------
 ; in: a = selected menu index ; performs the chosen gift.
 BridgeDoGift:
+	ld c, a
 	ld hl, wGift1
 	add l
 	ld l, a
@@ -677,8 +700,9 @@ BridgeDoGift:
 	jr .checkSuccess
 .monEvolve
 	push de                      ; d = flag byte, e = base species
+	ld d, c
+	farcall BridgeReadGiftSpeciesFar
 	ld a, e
-	call BridgeResolveEvolveSpecies  ; a = resolved species
 	call BridgeGiveMon           ; gives resolved species at reward level
 	pop de                       ; d = finalizer id (pop doesn't touch carry)
 	jr nc, .failed               ; nothing added (party+box full)
@@ -1312,17 +1336,6 @@ BridgeGetNewMonStruct:
 	ld de, wBoxMon1
 	ret
 
-; in:  a = base species
-; out: a = species after level-based evolution at this giver's reward level
-;      (base species itself if it doesn't evolve at that level).
-; Preserves wCurPartySpecies (EvolveMonByLevel uses it as scratch/output).
-; Clobbers af, bc, de, hl (and wCurEnemyLevel/wMonHeader as EvolveMonByLevel does).
-BridgeResolveEvolveSpecies:
-	ld e, a
-	farcall BridgeResolveEvolveSpeciesFar
-	ld a, e
-	ret
-
 ; Farcall-safe reward-level adapter. Bankswitch destroys a on return.
 GetBridgeRewardMonLevelFar::
 	call GetRewardMonLevel
@@ -1475,10 +1488,10 @@ FossilScientistGiftList:
 FanClubChairmanGiftList:
 	db 8
 	gift_entry GIFT_ITEM, PP_UP, FanClubGift1_Text, FanClubGift1_Desc
-	gift_entry GIFT_MON_EVOLVE,  PONYTA, FanClubGift2_Text, FanClubGift2_Desc
+	gift_entry GIFT_MON_EVOLVE,  PONYTA, NoThanksText, FanClubGift2_Desc
 	gift_entry GIFT_ITEM, RARE_CANDY,   FanClubGift3_Text, FanClubGift3_Desc
-    gift_entry GIFT_MON_EVOLVE,  DROWZEE, FanClubGift4_Text, FanClubGift4_Desc
-    gift_entry GIFT_MON_EVOLVE,  SPEAROW, FanClubGift5_Text, FanClubGift5_Desc
+    gift_entry GIFT_MON_EVOLVE,  DROWZEE, NoThanksText, FanClubGift4_Desc
+    gift_entry GIFT_MON_EVOLVE,  SPEAROW, NoThanksText, FanClubGift5_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_CUTE_BOOST, FanClubGift6_Text, FanClubGift6_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_REWARD_RARITY, FanClubGift7_Text, FanClubGift7_Desc
 	gift_entry GIFT_ITEM, MIST_STONE, FanClubGift8_Text, FanClubGift8_Desc
@@ -1507,8 +1520,8 @@ SchoolCooltrainerGiftList:
 
 OldManGiftList:
 	db 9
-	gift_entry GIFT_MON_EVOLVE,  WEEDLE,    OldManGift1_Text, OldManGift1_Desc
-	gift_entry GIFT_MON_EVOLVE,  RATTATA,   OldManGift2_Text, OldManGift2_Desc
+	gift_entry GIFT_MON_EVOLVE,  WEEDLE,    NoThanksText, OldManGift1_Desc
+	gift_entry GIFT_MON_EVOLVE,  RATTATA,   NoThanksText, OldManGift2_Desc
 	gift_entry GIFT_ITEM, TM_REST, OldManGift3_Text, OldManGift3_Desc
 	gift_entry GIFT_ITEM, TM_THUNDER_WAVE, OldManGift4_Text, OldManGift4_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_NO_RECOIL, OldManGift5_Text, OldManGift5_Desc
@@ -1520,7 +1533,7 @@ OldManGiftList:
 OfficerJennyGiftList:
 	db 8
 	gift_entry GIFT_ITEM, LEMONADE, TrashedGift1_Text, TrashedGift1_Desc
-	gift_entry GIFT_MON_EVOLVE,  SQUIRTLE, TrashedGift2_Text, TrashedGift2_Desc
+	gift_entry GIFT_MON_EVOLVE,  SQUIRTLE, NoThanksText, TrashedGift2_Desc
 	gift_entry GIFT_ITEM, TM_BODY_SLAM, TrashedGift3_Text, TrashedGift3_Desc
 	gift_entry GIFT_ITEM, TM_TAKE_DOWN, TrashedGift4_Text, TrashedGift4_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_ACCURACY, TrashedGift5_Text, TrashedGift5_Desc
@@ -1537,13 +1550,13 @@ RedsHouseMomGiftList:
 	gift_entry GIFT_ITEM, TM_SOFTBOILED, MomGift5_Text, MomGift5_Desc
 	gift_entry GIFT_ITEM, TM_REST, MomGift6_Text, MomGift6_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_HEALING, MomGift7_Text, MomGift7_Desc
-	gift_entry GIFT_MON_EVOLVE, MR_MIME, MomGift8_Text, MomGift8_Desc
+	gift_entry GIFT_MON_EVOLVE, MR_MIME, NoThanksText, MomGift8_Desc
 	gift_entry GIFT_SPECIAL, BridgeMomSecondChance, MomGift9_Text, MomGift9_Desc
 
 IgaGiftList:
 	db 8
 	gift_entry GIFT_MON_EVOLVE, EKANS | (BRIDGE_MON_FINALIZE_SUPER_FANG << 8), NoThanksText, IgaGift1_Desc
-	gift_entry GIFT_MON_EVOLVE,  GRIMER, IgaGift2_Text, IgaGift2_Desc
+	gift_entry GIFT_MON_EVOLVE,  GRIMER, NoThanksText, IgaGift2_Desc
 	gift_entry GIFT_ITEM, TM_TOXIC, IgaGift3_Text, IgaGift3_Desc
 	gift_entry GIFT_GLOBAL_EFFECT, BRIDGE_EFFECT_TOXIC_POISON, IgaGift4_Text, IgaGift4_Desc
 	gift_entry GIFT_SELECTED_EFFECT, BRIDGE_SELECTED_EFFECT_POISON_IMMUNITY, IgaGift5_Text, IgaGift5_Desc
@@ -1593,7 +1606,7 @@ BillGift7_Text: db "THUNDERBOLT TM@"
 MrFujiGift1_Text: db "POKé FLUTE@"
 MrFujiGift2_Text: db "#MON RESCUE@"
 MrFujiGift4_Text: db "GENE SPLICING@"
-MrFujiGift5_Text: db "NIGHTSHADE TUTOR@"
+MrFujiGift5_Text: db "NIGHT SHADE TUTOR@"
 MrFujiGift6_Text: db "CONFUSE RAY TUTOR@"
 MrFujiGift7_Text: db "LICK TUTOR@"
 MrFujiGift8_Text: db "M.GENE@"
@@ -1615,10 +1628,7 @@ FossilGift8_Text: db "SHRINK RAY@"
 FossilGift9_Text: db "GROWTH RAY@"
 
 FanClubGift1_Text: db "PP UP@"
-FanClubGift2_Text: db "PONYTA@"
 FanClubGift3_Text: db "RARE CANDY@"
-FanClubGift4_Text: db "DROWZEE@"
-FanClubGift5_Text: db "SPEAROW@"
 FanClubGift6_Text: db "CUTE BOOST@"
 FanClubGift7_Text: db "BETTER RARITY@"
 FanClubGift8_Text: db "MIST STONE@"
@@ -1639,18 +1649,15 @@ SchoolGift5_Text: db "STAB MASTERY@"
 SchoolGift6_Text: db "TYPE EXPERT@"
 SchoolGift7_Text: db "REPEAT!@"
 
-OldManGift1_Text: db "WEEDLE@"
-OldManGift2_Text: db "RATTATA@"
 OldManGift3_Text: db "REST TM@"
 OldManGift4_Text: db "THUNDER WAVE TM@"
 OldManGift5_Text: db "DULLED SENSES@"
 OldManGift6_Text: db "COFFEE BOOST@"
-OldManGift7_Text: db "DIZZY PUNCH@"
+OldManGift7_Text: db "DIZZY PUNCH TUTOR@"
 OldManGift8_Text: db "SPIKED DRINK@"
 OldManGift9_Text: db "ITEM DUPLICATION@"
 
 TrashedGift1_Text: db "LEMONADE@"
-TrashedGift2_Text: db "SQUIRTLE@"
 TrashedGift3_Text: db "BODY SLAM TM@"
 TrashedGift4_Text: db "TAKE DOWN TM@"
 TrashedGift5_Text: db "TARGET PRACTICE@"
@@ -1664,26 +1671,24 @@ MomGift4_Text: db "RECOVER TUTOR@"
 MomGift5_Text: db "SOFTBOILED TM@"
 MomGift6_Text: db "REST TM@"
 MomGift7_Text: db "NURTURING CARE@"
-MomGift8_Text: db "MR.MIME@"
 MomGift9_Text: db "SECOND CHANCE@"
 
-IgaGift2_Text: db "GRIMER@"
 IgaGift3_Text: db "TOXIC TM@"
 IgaGift4_Text: db "DEADLY VENOM@"
 IgaGift5_Text: db "POISON WARD@"
 IgaGift6_Text: db "LIFE ORB@"
 IgaGift7_Text: db "SHADOW STEP@"
-IgaGift8_Text: db "POISON GAS@"
+IgaGift8_Text: db "POISON GAS TUTOR@"
 
 FloraGift3_Text: db "MOON STONE@"
 FloraGift4_Text: db "BIG ROOT@"
 FloraGift5_Text: db "IMMUNITY@"
-FloraGift6_Text: db "LEECH SEED@"
+FloraGift6_Text: db "LEECH SEED TUTOR@"
 FloraGift7_Text: db "MEGA DRAIN TM@"
-FloraGift8_Text: db "PETAL DANCE@"
+FloraGift8_Text: db "PETAL DANCE TUTOR@"
 FloraGift9_Text: db "LEAF STONE@"
 
-OaksLabGift4_Text: db "LIGHT BALL PIKA@"
+OaksLabGift4_Text: db "LIGHTBALL PIKACHU@"
 OaksLabGift5_Text: db "EEVEE@"
 OaksLabGift6_Text: db "MIDAS TOUCH@"
 OaksLabGift7_Text: db "EXPERT TRAINING@"
