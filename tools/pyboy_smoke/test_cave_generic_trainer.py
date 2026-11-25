@@ -26,9 +26,9 @@ CELL_NONE = 0xFE
 # WGTCavePool, in order: (class, its sprite).
 POOL = [("HIKER", "SPRITE_HIKER"), ("SUPER_NERD", "SPRITE_SUPER_NERD"),
         ("POKEMANIAC", "SPRITE_SUPER_NERD"), ("BLACKBELT", "SPRITE_HIKER"),
-        ("JR_TRAINER_F", "SPRITE_COOLTRAINER_F"), ("COOLTRAINER_M", "SPRITE_COOLTRAINER_M")]
+        ("JR_TRAINER_F", "SPRITE_COOLTRAINER_F"), ("COOLTRAINER_F", "SPRITE_COOLTRAINER_F")]
 STEMS = {"HIKER": "Hiker", "SUPER_NERD": "SuperNerd", "POKEMANIAC": "Pokemaniac",
-         "BLACKBELT": "Blackbelt", "JR_TRAINER_F": "JrF", "COOLTRAINER_M": "CooltrainerM"}
+         "BLACKBELT": "Blackbelt", "JR_TRAINER_F": "JrF", "COOLTRAINER_F": "CooltrainerF"}
 LAYOUTS = 8
 
 
@@ -252,7 +252,7 @@ class CaveGenericTrainerTest(unittest.TestCase):
     def test_battle_win_and_his_own_flag(self) -> None:
         h = self.h
         offset = self.present(0)[0]
-        for row in (1, 5):                       # Super Nerd, Cooltrainer M
+        for row in (1, 5):                       # Super Nerd, Cooltrainer F
             with self.subTest(row=row):
                 self.enter(row + 1, offset)
                 self.assertEqual(self.flag(), 0, "a new cave finds him unbeaten")

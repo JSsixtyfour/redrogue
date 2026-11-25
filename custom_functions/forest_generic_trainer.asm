@@ -41,7 +41,7 @@ DEF FGT_CELL_NONE    EQU $fe ; the pick found no cell
 	const WGT_SUPER_NERD
 	const WGT_POKEMANIAC
 	const WGT_BLACKBELT
-	const WGT_COOLTRAINER_M
+	const WGT_COOLTRAINER_F
 	const WGT_CHANNELER
 	const WGT_GENTLEMAN
 	const WGT_SCIENTIST
@@ -67,7 +67,7 @@ WGTClasses:
 	wgt_class OPP_SUPER_NERD,    SPRITE_SUPER_NERD,    SuperNerd
 	wgt_class OPP_POKEMANIAC,    SPRITE_SUPER_NERD,    Pokemaniac
 	wgt_class OPP_BLACKBELT,     SPRITE_HIKER,         Blackbelt
-	wgt_class OPP_COOLTRAINER_M, SPRITE_COOLTRAINER_M, CooltrainerM
+	wgt_class OPP_COOLTRAINER_F, SPRITE_COOLTRAINER_F, CooltrainerF
 	wgt_class OPP_CHANNELER,     SPRITE_CHANNELER,     Channeler
 	wgt_class OPP_GENTLEMAN,     SPRITE_GENTLEMAN,     Gentleman
 	wgt_class OPP_SCIENTIST,     SPRITE_SCIENTIST,     Scientist
@@ -82,7 +82,7 @@ WGTClasses:
 WGTForestPool:
 	db 6, WGT_YOUNGSTER, WGT_BUG_CATCHER, WGT_LASS, WGT_HIKER, WGT_JR_TRAINER_M, WGT_JR_TRAINER_F
 WGTCavePool:
-	db 6, WGT_HIKER, WGT_SUPER_NERD, WGT_POKEMANIAC, WGT_BLACKBELT, WGT_JR_TRAINER_F, WGT_COOLTRAINER_M
+	db 6, WGT_HIKER, WGT_SUPER_NERD, WGT_POKEMANIAC, WGT_BLACKBELT, WGT_JR_TRAINER_F, WGT_COOLTRAINER_F
 WGTCemeteryPool:
 	db 2, WGT_CHANNELER, WGT_GENTLEMAN
 WGTFacilityPool:
@@ -1290,7 +1290,7 @@ ENDM
 	wgt_far_lines SuperNerd
 	wgt_far_lines Pokemaniac
 	wgt_far_lines Blackbelt
-	wgt_far_lines CooltrainerM
+	wgt_far_lines CooltrainerF
 	wgt_far_lines Channeler
 	wgt_far_lines Gentleman
 	wgt_far_lines Scientist
@@ -1395,19 +1395,19 @@ _FGTJrFAfter::
 
 ; route8 trainer 2, _Route8BattleText3
 _FGTSuperNerdIntro::
-	text "You need strategy"
-	line "to win at this!"
+	text "You look good at"
+	line "#MON, but"
+	cont "how's your chem?"
 	done
 ; route8 trainer 2, _Route8EndBattleText3
 _FGTSuperNerdDefeat::
-	text "It's"
-	line "not logical!"
+	text "Ow!"
+	line "Meltdown!"
 	prompt
 ; route8 trainer 2, _Route8AfterBattleText3
 _FGTSuperNerdAfter::
-	text "Go with GRIMER"
-	line "first...and..."
-	cont "...and...then..."
+	text "I am better at"
+	line "school than this!"
 	done
 
 ; rocktunnel2 trainer 7, _RockTunnel2BattleText9
@@ -1428,38 +1428,35 @@ _FGTPokemaniacAfter::
 
 ; fightingdojo trainer 2, _FightingDojoBattleText3
 _FGTBlackbeltIntro::
-	text "Nothing tough"
-	line "frightens me!"
-
-	para "I break boulders"
-	line "for training!"
+	text "I'm the KARATE"
+	line "KING! Your fate"
+	cont "rests with me!"
 	done
 ; fightingdojo trainer 2, _FightingDojoEndBattleText3
 _FGTBlackbeltDefeat::
-	text "Yow!"
-	line "Stubbed fingers!"
+	text "Ayah!"
 	prompt
 ; fightingdojo trainer 2, _FightingDojoAfterBattleText3
 _FGTBlackbeltAfter::
-	text "The only thing"
-	line "that frightens us"
-	cont "is psychic power!"
+	text "#MON LEAGUE?"
+	line "You? Don't get"
+	cont "cocky!"
 	done
 
-; victoryroad3 trainer 0, _VictoryRoad3BattleText2
-_FGTCooltrainerMIntro::
-	text "I heard rumors of"
-	line "a child prodigy!"
+; victoryroad3 trainer 1, _VictoryRoad3BattleText3
+_FGTCooltrainerFIntro::
+	text "I'll show you just"
+	line "how good you are!"
 	done
-; victoryroad3 trainer 0, _VictoryRoad3EndBattleText2
-_FGTCooltrainerMDefeat::
-	text "The"
-	line "rumors were true!"
+; victoryroad3 trainer 1, _VictoryRoad3EndBattleText3
+_FGTCooltrainerFDefeat::
+	text "I'm"
+	line "furious!"
 	prompt
-; victoryroad3 trainer 0, _VictoryRoad3AfterBattleText2
-_FGTCooltrainerMAfter::
-	text "You beat GIOVANNI"
-	line "of TEAM ROCKET?"
+; victoryroad3 trainer 1, _VictoryRoad3AfterBattleText3
+_FGTCooltrainerFAfter::
+	text "You showed me just"
+	line "how good I was!"
 	done
 
 ; pokemontower5 trainer 1, _PokemonTower5BattleText2

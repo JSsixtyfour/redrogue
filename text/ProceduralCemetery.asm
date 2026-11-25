@@ -4,16 +4,15 @@ _ProceduralCemeteryCalmedText::
 	text_end
 
 ; The Cemetery's resurrection NPC (custom_functions/cemetery_resurrector.asm).
-; TODO(final wording): every line below is a placeholder. Lines are at most 18
-; characters; a name or number printed by a command counts against that.
+
 _CemResNoSoulsText::
 	text "I sense no lost"
 	line "souls near you."
 	done
 
 _CemResWhichText::
-	text "Whom shall I call"
-	line "back?"
+	text "Whom shall I"
+	line "return to you?"
 	done
 
 _CemResConfirmText::
@@ -38,13 +37,13 @@ _CemResReturnedText::
 	prompt
 
 _CemResToBoxText::
-	text "Your party was"
+	text "Your party is"
 	line "full. It went to"
 	cont "the PC."
 	prompt
 
 _CemResEffectLostText::
-	text "Its bridge power"
+	text "Its special power"
 	line "faded away."
 	prompt
 
@@ -55,7 +54,7 @@ _CemResAfterText::
 
 _CemResNoFaintedText::
 	text "None of your"
-	line "#MON has"
+	line "#MON have"
 	cont "fainted."
 	done
 
@@ -81,6 +80,5 @@ _CemResReviveConfirmText::
 _CemResRevivedText::
 	text_ram wNameBuffer
 	text_start
-	line "is back on its"
-	cont "feet!"
+	line "is revitalized!"
 	prompt

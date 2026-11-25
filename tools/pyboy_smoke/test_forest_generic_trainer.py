@@ -277,7 +277,7 @@ class ForestGenericTrainerTest(unittest.TestCase):
     CLASSES = [("YOUNGSTER", "Youngster"), ("BUG_CATCHER", "BugCatcher"), ("LASS", "Lass"),
                ("HIKER", "Hiker"), ("JR_TRAINER_M", "JrM"), ("JR_TRAINER_F", "JrF"),
                ("SUPER_NERD", "SuperNerd"), ("POKEMANIAC", "Pokemaniac"), ("BLACKBELT", "Blackbelt"),
-               ("COOLTRAINER_M", "CooltrainerM"), ("CHANNELER", "Channeler"),
+               ("COOLTRAINER_F", "CooltrainerF"), ("CHANNELER", "Channeler"),
                ("GENTLEMAN", "Gentleman"), ("SCIENTIST", "Scientist"), ("ROCKET", "Rocket"),
                ("BURGLAR", "Burglar"), ("ENGINEER", "Engineer"), ("JUGGLER", "Juggler")]
     KINDS = ("Intro", "Defeat", "After")
