@@ -24,8 +24,8 @@ ProceduralCemetery4_Object:
 	ASSERT CEMETERY_4_CHANNELER == 4 ; the fourth object_event
 
 	; The resurrection NPC (custom_functions/cemetery_resurrector.asm): on one
-	; floor of 60% of Cemeteries; given his picture and cell there only.
-	object_event 5, 5, SPRITE_BALDING_GUY, STAY, DOWN, TEXT_PROCEDURALCEMETERY4_RESURRECTOR
+	; floor of 60% of Cemeteries; given her picture and cell there only.
+	object_event 5, 5, SPRITE_GRANNY, STAY, DOWN, TEXT_PROCEDURALCEMETERY4_RESURRECTOR
 	ASSERT CEMETERY_RESURRECTOR == 5 ; the fifth object_event
 	; The generic route trainer (custom_functions/forest_generic_trainer.asm,
 	; GENERIC_TRAINER_ALL_AREAS_SPEC.md): one per Cemetery, on one floor; picture

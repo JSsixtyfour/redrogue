@@ -494,7 +494,7 @@ CRIsHere:
 ; Clobbers a/de.
 CemResurrectorPatchSprite:
 	call CRIsHere
-	ld a, SPRITE_BALDING_GUY
+	ld a, SPRITE_GRANNY
 	jr c, .write
 	xor a
 .write

@@ -82,7 +82,7 @@ class CemeteryResurrectorPlacementTest(unittest.TestCase):
         cells = set()
         for offset in range(LAYOUTS):
             self.enter(0, offset)
-            self.assertEqual(self.picture(SLOT), self.sprites["SPRITE_BALDING_GUY"])
+            self.assertEqual(self.picture(SLOT), self.sprites["SPRITE_GRANNY"])
             bx, by = self.block(SLOT)
             self.assertTrue(0 <= bx < W and 0 <= by < H, (bx, by))
             cells.add((bx, by))
