@@ -92,6 +92,7 @@ def run_seed(seed: int, options: dict[str, object]) -> dict[str, object]:
         "save_findings": (data.get("save_checks") or {}).get("findings", []),
         "power_cuts": [(cut["cut"], cut["loads"]) for cut in (data.get("save_checks") or {}).get("power_cuts", [])],
         "coverage": (data.get("coverage") or {}).get("hit"),
+        "coverage_skipped": (data.get("coverage") or {}).get("skipped"),
         "ai_battles": data.get("ai_battles"),
         "ai_telemetry_errors": data.get("ai_telemetry_errors"),
         "directed_errands": data.get("directed_errands"),
@@ -396,6 +397,7 @@ def main(argv: list[str] | None = None) -> int:
                   + "".join(f"; {a['check']}: {a['detail']}" for a in finding["anomalies"][:2]))
     rows.sort(key=lambda row: row["seed"])
     # Each seed's label list goes to the coverage map, not the batch summary.
+    skips = [set(row.pop("coverage_skipped", None) or ()) for row in rows if row.get("coverage")]
     hit_lists = {f"seed{row['seed']}": row.pop("coverage") for row in rows if row.get("coverage")}
     # Likewise the AI battle records: they go to the summary's "ai" block, not each row.
     ai_battles = [battle for row in rows for battle in row.pop("ai_battles", None) or []]
@@ -460,7 +462,8 @@ def main(argv: list[str] | None = None) -> int:
 
         autoplay_coverage.SUMMARY = coverage_summary_path(args.cgb)
         if hit_lists:
-            autoplay_coverage.print_summary(autoplay_coverage.write_summary(hit_lists), top=12)
+            autoplay_coverage.print_summary(autoplay_coverage.write_summary(
+                hit_lists, set.intersection(*skips)), top=12)
             print(f"  coverage map -> {autoplay_coverage.SUMMARY}")
     for row in failures:
         flags = (" --new-game" * args.new_game + f" --runs {args.runs}" * (args.runs != 1)

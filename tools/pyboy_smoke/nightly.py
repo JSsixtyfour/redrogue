@@ -44,7 +44,7 @@ an anomaly or failure kind not seen before, a champion rate or coverage drop
 are listed as regressions. Coverage loss requires the same routine to have
 been reached on each of three prior nights.
 
-Regular nights have a 60-minute budget. Sunday has three hours for the full
+Regular nights have a two-hour budget, so menu_fuzz and the guards run. Sunday has three hours for the full
 standalone guard registry. Exits 1 for new regressions and 2 for runner failures. The Windows task uses
 nightly_windows.ps1 with --force so the scheduled run stays daily.
 """
@@ -76,7 +76,7 @@ ARTIFACTS = SMOKE_DIR / "artifacts"
 FAILURES = ("stalled", "frame_limit", "error", "crashed", "hung")
 CHAMPION_DROP = 0.15  # a champion rate this far below last night's counts as a regression
 COVERAGE_NIGHTS = 3
-DAILY_BUDGET = 3600
+DAILY_BUDGET = 7200  # 3600 ran out before menu_fuzz (2026-11-25): the suites up to battle_fuzz took 3192 s
 WEEKLY_BUDGET = 10800
 LEGACY_SUITES = ("build", "smoke", "audit", "lobby", "newgame", "cgb", "builds", "sram")
 AUTOPLAY_COMMAND = ["python3", str(SMOKE_DIR / "run_autoplay.py")]
@@ -583,9 +583,20 @@ def coverage_regression(night: Path, history: list[Path]) -> tuple[dict, list[st
 
     with redirect_stdout(StringIO()):
         deltas = [autoplay_coverage.compare(old, maps[0]) for old in maps[1:]]
-    lost = sorted(set.intersection(*(set(delta["lost"]) for delta in deltas)))
+    lost = set.intersection(*(set(delta["lost"]) for delta in deltas))
+    # Another suite reaching it tonight, or no hook on it tonight, is not a loss.
+    blind = set(maps[0].get("untracked") or ())
+    names = maps[0].get("routine_names") or {}
+    for path in night.glob("*coverage_summary*.json"):
+        try:
+            counts = json.loads(path.read_text(encoding="utf-8")).get("routine_run_counts") or {}
+        except (OSError, ValueError):
+            continue
+        lost -= {identity for identity, count in counts.items() if count}
+    lost = sorted(identity for identity in lost
+                  if names.get(identity, identity.rsplit("::", 1)[-1]) not in blind)
     return {"gained": len(deltas[0]["gained"]), "lost": len(deltas[0]["lost"]),
-            "persistent_lost": lost}, ([f"coverage: {len(lost)} routines reached on all three prior nights were missed"]
+            "persistent_lost": lost}, ([f"coverage: {len(lost)} routines reached on all three prior nights were missed by every suite"]
                                       if lost else [])
 
 
@@ -674,6 +685,51 @@ def write_markdown(report: dict[str, object], night: Path) -> None:
     (night / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def write_html(report: dict[str, object], night: Path) -> None:
+    """The page the Windows wrapper opens on a new regression: what is new, then the findings."""
+    e = html.escape
+    items = [f"<li>{e(line)}</li>" for line in report["regressions"]]
+    if report.get("runner_error"):
+        items.insert(0, f"<li>Runner failure: {e(report['runner_error'])}</li>")
+    found = []
+    for name, what, replay in finding_rows(report):
+        found.append(f"<li><b>{e(name)}</b>: {e(what)}" + (f"<pre>{e(replay)}</pre>" if replay else "") + "</li>")
+    rows = "".join(f"<tr><th scope=\"row\">{e(s['suite'])}</th><td>{'Issue' if has_issue(s) else 'Pass'}</td>"
+                   f"<td>{e(str(s['exit']))}</td><td>{s['seconds'] // 60}</td></tr>" for s in report["suites"])
+    headline = status(report)
+    document = f"""<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>Red Rogue nightly: {e(headline)}</title>
+<style>
+body {{font: 1rem/1.5 system-ui; margin: 2rem auto; max-width: 60rem; padding: 0 1rem; color: #212529; background: #fff}}
+table {{border-collapse: collapse}} th, td {{text-align: left; padding: .35rem .8rem; border-bottom: 1px solid #ddd}}
+pre {{background: #f3f3f3; padding: .5rem; overflow-x: auto}} .NEW {{color: #a11322}}
+</style>
+<h1 class="{headline.split()[0]}">{e(headline)}</h1>
+<p>{e(report['date'])}, commit {e(report['sha'][:8])}: {e(report['subject'])}.
+<a href="report.md">Full report</a>. <a href="../index.html">All nights</a>.</p>
+<h2>New since last night</h2><ul>{''.join(items) or '<li>Nothing.</li>'}</ul>
+<h2>Findings</h2><ul>{''.join(found) or '<li>None.</li>'}</ul>
+<h2>Suites</h2><table><thead><tr><th>Suite</th><th>Result</th><th>Exit</th><th>Minutes</th></tr></thead>
+<tbody>{rows}</tbody></table></html>
+"""
+    (night / "report.html").write_text(document, encoding="utf-8")
+
+
+def finding_rows(report: dict[str, object]) -> list[tuple[str, str, str | None]]:
+    """(suite, what happened, replay command or None), in report order."""
+    rows = []
+    for suite in report["suites"]:
+        rows += [(suite["suite"], test, f"make smoke TEST='{test}'") for test in suite.get("failing", [])]
+        for finding in suite.get("findings", []):
+            seed = f"seed {finding['seed']}, " if finding.get("seed") is not None else ""
+            place = f" on {finding['map']}" if finding.get("map") else ""
+            rows.append((suite["suite"], f"{seed}{finding['what']}{place}", finding.get("replay")))
+        if suite["exit"] not in (0, None) and not suite.get("failing") and not suite.get("findings"):
+            rows.append((suite["suite"], f"exit {suite['exit']}; see {suite['suite']}.log", None))
+    return rows
+
+
 class NightlyBusy(Exception):
     pass
 
@@ -718,7 +774,8 @@ def write_index(reports: Path) -> None:
                     for s in report["suites"]}
         headline = report.get("status") or ("Historical issues" if report.get("failed") else "clean")
         cells = "".join(f"<td>{outcomes.get(name, '-')}</td>" for name in SUITES)
-        rows.append(f'<tr><th scope="row"><a href="{quote(folder.name)}/report.md">'
+        page = "report.html" if (folder / "report.html").exists() else "report.md"
+        rows.append(f'<tr><th scope="row"><a href="{quote(folder.name)}/{page}">'
                     f'{html.escape(report["date"])}</a></th>'
                     f'<td data-status="{html.escape(headline)}">{html.escape(headline)}</td>{cells}</tr>')
     headings = "".join(f'<th scope="col">{name}</th>' for name in SUITES)
@@ -767,6 +824,7 @@ def finish_report(report: dict, night: Path, started: float) -> None:
     report["failed"] = bool(report.get("runner_error")) or any(has_issue(s) for s in report["suites"])
     report["status"] = status(report)
     write_markdown(report, night)
+    write_html(report, night)
     (night / "report.json").write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
     write_index(night.parent)
     print(f"{report['status']} -> {night / 'report.md'}", flush=True)
@@ -792,6 +850,9 @@ def main(argv: list[str] | None = None) -> int:
     args.reports = args.reports.resolve()
     args.reports.mkdir(parents=True, exist_ok=True)
     if args.index_only:
+        for folder, old in report_history(args.reports, args.reports):
+            if old.get("finished_at"):  # older reports lack fields the page needs
+                write_html(old, folder)
         write_index(args.reports)
         return 0
     started = time.monotonic()

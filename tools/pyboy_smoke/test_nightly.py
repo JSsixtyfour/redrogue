@@ -83,6 +83,80 @@ class ReportingTest(unittest.TestCase):
             self.assertEqual(len(messages), 1)
             self.assertEqual(nightly.coverage_regression(folders[0], folders[1:3]), ({}, []))
 
+            def tonight(name, **summary):
+                (folders[0] / name).write_text(json.dumps(
+                    {"routine_identity": "source-name-v1", "files": {}, "totals": {"routines_run": 0}} | summary))
+
+            # Reached by another suite tonight: not lost. The control has it unreached there too.
+            tonight("cgb_coverage_summary_cgb.json", routine_run_counts={"src::Persistent": 0})
+            self.assertEqual(len(nightly.coverage_regression(folders[0], folders[1:])[1]), 1)
+            tonight("cgb_coverage_summary_cgb.json", routine_run_counts={"src::Persistent": 2})
+            self.assertEqual(nightly.coverage_regression(folders[0], folders[1:])[1], [])
+            # Not hooked tonight: not lost.
+            (folders[0] / "cgb_coverage_summary_cgb.json").unlink()
+            tonight("newgame_coverage_summary.json", untracked=["Persistent"],
+                    routine_run_counts={"src::Persistent": 0, "src::Intermittent": 0})
+            self.assertEqual(nightly.coverage_regression(folders[0], folders[1:])[1], [])
+
+    def test_the_page_leads_with_what_is_new(self):
+        report = {"date": "2026-11-25 03:00", "sha": "70ec787e00", "subject": "A <b> subject", "regressions": ["lobby: crashed"],
+                  "suites": [suite("lobby", exit=1) | {"seconds": 60, "findings": [
+                      {"kind": "crashed", "what": "rst $38", "seed": 7, "map": "CAVE", "replay": "python3 x.py --seed 7"}]}]}
+        with tempfile.TemporaryDirectory() as root:
+            nightly.write_html(report, Path(root))
+            page = (Path(root) / "report.html").read_text(encoding="utf-8")
+        for text in ("NEW regression", "lobby: crashed", "seed 7, rst $38 on CAVE", "python3 x.py --seed 7", "A &lt;b&gt; subject"):
+            self.assertIn(text, page)
+        self.assertLess(page.index("lobby: crashed"), page.index("seed 7, rst"))
+
+
+class SessionStatusTest(unittest.TestCase):
+    def reports(self, root, regressions, *, name="2026-11-25_030001_0_70ec787e"):
+        night = Path(root) / name
+        night.mkdir()
+        (night / "report.json").write_text(json.dumps({
+            "date": "2026-11-25 03:00", "sha": "70ec787e", "subject": "", "regressions": regressions,
+            "status": "NEW regression" if regressions else "known issues only", "failed": True,
+            "suites": [suite("lobby", exit=1) | {"findings": [
+                {"kind": "crashed", "what": f"rst {i}", "seed": i, "replay": f"replay {i}"} for i in range(40)]}]}))
+        (Path(root) / "latest_attempt.txt").write_text("2026-11-25 03:54 headline")
+        return night
+
+    def test_new_findings_are_listed_until_seen(self):
+        import nightly_session_status as session
+        with tempfile.TemporaryDirectory() as root:
+            night = self.reports(root, ["lobby: new kind of finding: crashed"])
+            text = session.message(Path(root))
+            for expected in ("lobby: new kind of finding: crashed", "rst 0", "replay 0", "--seen", "Raise"):
+                self.assertIn(expected, text)
+            self.assertIn("more", text)
+            self.assertLess(len(text.splitlines()), 40, "a session start must stay short")
+            session.mark_seen(Path(root))
+            self.assertNotIn("replay 0", session.message(Path(root)))
+            self.assertEqual((Path(root) / "seen.txt").read_text(encoding="utf-8").strip(), night.name)
+            # The next night's regression is not covered by that.
+            self.reports(root, ["lobby: again"], name="2026-11-26_030001_0_70ec787e")
+            self.assertIn("lobby: again", session.message(Path(root)))
+
+    def test_a_blocked_attempt_does_not_hide_an_unseen_regression(self):
+        import nightly_session_status as session
+        with tempfile.TemporaryDirectory() as root:
+            self.reports(root, ["lobby: crashed"])
+            blocked = Path(root) / "2026-11-25_090000_0_runner"
+            blocked.mkdir()
+            (blocked / "report.json").write_text(json.dumps({
+                "date": "", "sha": "unknown", "subject": "", "suites": [], "regressions": [],
+                "runner_error": "another nightly is running", "status": "NEW regression", "failed": True}))
+            text = session.message(Path(root))
+            self.assertIn("lobby: crashed", text)
+            self.assertIn("2026-11-25_090000_0_runner", text)
+
+    def test_known_issues_give_only_the_headline(self):
+        import nightly_session_status as session
+        with tempfile.TemporaryDirectory() as root:
+            self.reports(root, [])
+            self.assertEqual(len(session.message(Path(root)).splitlines()), 1)
+
 
 class QuickModeTest(unittest.TestCase):
     def test_quick_flags_exist_in_their_suites(self) -> None:

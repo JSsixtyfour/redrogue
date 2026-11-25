@@ -91,3 +91,95 @@ class EnemyPPTest(HarnessTestCase):
 
     def test_player_side_is_unchanged(self) -> None:
         self.assertEqual(self.decrement(turn=0, battle=2), (9, 9))
+
+    # ------------------------------------------- wild mons have no party slot
+    # wEnemyMonPartyPos is also wEnemyMonBoxLevel, and no wild battle sets it: it
+    # keeps the last trainer mon's slot, or the level of a mon sent to the box.
+    # Measured 2026-11-25 (nightly seed 227678): a level 51 boxed mon, then a wild
+    # Fearow's Mirror Move: IncrementMovePP wrote wEnemyMon1PP + 51 * 44 = $DFF3,
+    # a return address on the stack.
+
+    STALE_SLOTS = (1, 20)  # a trainer's old slot; a boxed mon's level
+
+    def enemy_party_byte(self, label: str, slot: int, offset: int = 0) -> int:
+        stride = self.harness.address("wPartyMon2") - self.harness.address("wPartyMon1")
+        return self.harness.address(label) + slot * stride + offset
+
+    def increment(self, *, battle: int, party_pos: int, turn: int = 1) -> tuple[int, int]:
+        """Refund a called move's PP; (battle copy, party byte) afterwards, both from 10."""
+        h = self.harness
+        mon, party, index, number = (
+            ("wEnemyMonPP", "wEnemyMon1PP", "wEnemyMoveListIndex", "wEnemyMonPartyPos") if turn else
+            ("wBattleMonPP", "wPartyMon1PP", "wPlayerMoveListIndex", "wPlayerMonNumber"))
+        byte = self.enemy_party_byte(party, party_pos, 2)
+        h.write8(mon, 10, offset=2)
+        h.pyboy.memory[byte] = 10
+        h.write8(index, 2)
+        h.write8(number, party_pos)
+        h.write8("hWhoseTurn", turn)
+        h.write8("hIsInBattle", battle)
+        return h.call_routine("IncrementMovePP", capture=lambda h: (
+            h.read8(mon, offset=2), h.pyboy.memory[byte]))
+
+    def test_wild_metronome_refunds_only_the_battle_copy(self) -> None:
+        for slot in self.STALE_SLOTS:
+            with self.subTest(slot=slot):
+                self.assertEqual(self.increment(battle=1, party_pos=slot), (11, 10))
+
+    def test_trainer_metronome_refunds_both_copies(self) -> None:
+        self.assertEqual(self.increment(battle=2, party_pos=1), (11, 11))
+
+    def test_the_players_metronome_refunds_both_copies_in_a_wild_battle(self) -> None:
+        self.assertEqual(self.increment(battle=1, party_pos=1, turn=0), (11, 11))
+
+    def defrost(self, *, battle: int, party_pos: int, turn: int = 0) -> tuple[int, int]:
+        """A Fire move hits a frozen mon; (battle status, party status) afterwards."""
+        h = self.harness
+        status, party, number, move_type = (
+            ("wBattleMonStatus", "wPartyMon1Status", "wPlayerMonNumber", "wEnemyMoveType") if turn else
+            ("wEnemyMonStatus", "wEnemyMon1Status", "wEnemyMonPartyPos", "wPlayerMoveType"))
+        frozen = 1 << parse_rgbds_constants(REPO_ROOT / "constants/battle_constants.asm")["FRZ"]
+        fire = parse_rgbds_constants(REPO_ROOT / "constants/type_constants.asm")["FIRE"]
+        byte = self.enemy_party_byte(party, party_pos)
+        h.write8(status, frozen)
+        h.pyboy.memory[byte] = frozen
+        h.write8(number, party_pos)
+        h.write8(move_type, fire)
+        h.write8("hWhoseTurn", turn)
+        h.write8("hIsInBattle", battle)
+        printed = []
+
+        def frozen_in_a(_context) -> None:  # call_routine enters with a = bank
+            h.pyboy.register_file.A = frozen
+
+        def skip_text(_context) -> None:  # return to the caller at once
+            rf = h.pyboy.register_file
+            printed.append(rf.HL)
+            rf.PC = h.pyboy.memory[rf.SP] | h.pyboy.memory[rf.SP + 1] << 8
+            rf.SP += 2
+
+        h.register_hook("CheckDefrost", frozen_in_a)
+        h.register_hook("PrintText", skip_text)
+        try:
+            after = h.call_routine("CheckDefrost", capture=lambda h: (
+                h.read8(status), h.pyboy.memory[byte]))
+        finally:
+            h.unregister_hook("CheckDefrost", frozen_in_a)
+            h.unregister_hook("PrintText", skip_text)
+        self.assertEqual(h.hook_errors, [])
+        self.assertEqual(printed, [h.address("FireDefrostedText")])
+        return after
+
+    def test_thawing_a_wild_mon_touches_only_the_battle_copy(self) -> None:
+        frozen = 1 << parse_rgbds_constants(REPO_ROOT / "constants/battle_constants.asm")["FRZ"]
+        for slot in self.STALE_SLOTS:
+            with self.subTest(slot=slot):
+                self.assertEqual(self.defrost(battle=1, party_pos=slot), (0, frozen))
+
+    def test_thawing_a_trainers_mon_clears_both_copies(self) -> None:
+        self.assertEqual(self.defrost(battle=2, party_pos=1), (0, 0))
+
+    def test_thawing_the_player_clears_both_copies_in_either_battle(self) -> None:
+        for battle in (1, 2):
+            with self.subTest(battle=battle):
+                self.assertEqual(self.defrost(battle=battle, party_pos=1, turn=1), (0, 0))

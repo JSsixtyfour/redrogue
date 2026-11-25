@@ -115,6 +115,7 @@ to sleep* is still asleep.
 |---|---|---|---|
 | Sleep move on a recharging target | Never missed and overwrote other statuses | Normal accuracy and status checks | FIX |
 | Frozen Pokémon | Skipped move selection | Picks a move, so if a Fire move thaws it first, it acts that turn | FIX |
+| Your Fire move thawing a frozen wild Pokémon | Could change unrelated memory | Only thaws the wild Pokémon | FIX |
 | Freezing a recharging Pokémon | Could leave your Pokémon stuck | Recharge is cleared on both sides | FIX |
 | Full paralysis or confusion during Fly/Dig | Left the Pokémon invulnerable | Invulnerability ends | FIX |
 | Rest | Kept burn/paralysis stat drops and the Toxic counter | Clears both | FIX |
@@ -162,6 +163,7 @@ Hyper Beam still skips its recharge when it breaks a Substitute.
 | Transform, special forms | | The user keeps its own variant flags | RULE |
 | **Metronome** | Any move | Cannot pick Whirlwind, Teleport or Super Transform | RULE |
 | Metronome / Mirror Move while transformed | Could corrupt stored PP | Fixed | FIX |
+| A wild Pokémon's Metronome or Mirror Move | Could change unrelated memory, or crash the game | Only its own PP is refunded | FIX |
 | **Roar** | | Replaced by the gift-only **Super Transform**: Transform that also copies max HP, current HP and full PP | RUN |
 | **Whirlwind, Teleport** | | Unobtainable, no effect | RULE |
 | **Pay Day** | Wrong above level 127 | Fixed | FIX |
@@ -399,9 +401,10 @@ the commit until there is one.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-11-24 | - | **Trapping moves:** yours now check their own type against the target. They no longer hold a target they cannot damage (Wrap on a Ghost), and no longer fail because of the target's own move |
-| 2026-11-24 | - | **A trainer's burned or paralyzed Pokémon** keeps its Attack or Speed drop when sent back in. Rest on one no longer leaves it at 2x Attack or 4x Speed |
-| 2026-11-24 | - | **Transform:** the enemy AI knows a transformed Pokémon's copied moves, and using one no longer reveals one of its real moves |
+| 2026-11-25 | - | **Wild Metronome and Mirror Move** no longer change unrelated memory. After a Pokémon was sent to the PC box, it could crash the game at the end of a battle. Thawing a wild Pokémon with a Fire move had the same fault |
+| 2026-11-24 | [`9ba706d6`](https://github.com/JSsixtyfour/redrogue/commit/9ba706d6) | **Trapping moves:** yours now check their own type against the target. They no longer hold a target they cannot damage (Wrap on a Ghost), and no longer fail because of the target's own move |
+| 2026-11-24 | [`9ba706d6`](https://github.com/JSsixtyfour/redrogue/commit/9ba706d6) | **A trainer's burned or paralyzed Pokémon** keeps its Attack or Speed drop when sent back in. Rest on one no longer leaves it at 2x Attack or 4x Speed |
+| 2026-11-24 | [`9ba706d6`](https://github.com/JSsixtyfour/redrogue/commit/9ba706d6) | **Transform:** the enemy AI knows a transformed Pokémon's copied moves, and using one no longer reveals one of its real moves |
 | 2026-11-24 | [`464fa595`](https://github.com/JSsixtyfour/redrogue/commit/464fa595) | **KO Defiance** on a sleeping Pokémon no longer lets it use a move it never chose (a fainted teammate's, or a crash on turn 1) |
 | 2026-11-24 | [`06ef9bbc`](https://github.com/JSsixtyfour/redrogue/commit/06ef9bbc) | **Bide:** with 5 or 6 Pokémon, opening the party menu while an enemy stored energy made Bide unleash about 41,000 damage (present since 2026-05-11). Fixed |
 | 2026-11-24 | [`06ef9bbc`](https://github.com/JSsixtyfour/redrogue/commit/06ef9bbc) | **Bide** counts each hit as it lands. **Counter** no longer reaches back to an earlier round, a switch-in, a confusion self-hit, a Jump Kick crash, or a Wrap you switched out of |

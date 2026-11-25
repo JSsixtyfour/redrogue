@@ -52,18 +52,13 @@ public static class NightlyPower {
 $attempt = "$(Get-Date -Format 'yyyy-MM-dd HH:mm zzz') $headline"
 Add-Content -LiteralPath $log -Value $attempt -Encoding utf8
 if (-not $Quick) { Set-Content -LiteralPath $latest -Value $attempt -Encoding utf8 }
-if (-not $SkipToast) {
+# Never let a notification problem change the run's own result.
+if (-not $Quick) {
     try {
-        $null = [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime]
-        $null = [Windows.UI.Notifications.ToastNotification, Windows.UI.Notifications, ContentType = WindowsRuntime]
-        $null = [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime]
-        $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
-        $message = [Security.SecurityElement]::Escape($headline)
-        $xml.LoadXml("<toast><visual><binding template='ToastGeneric'><text>Red Rogue nightly</text><text>$message</text></binding></visual></toast>")
-        $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
-        [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Microsoft.Windows.PowerShell').Show($toast)
+        & (Join-Path $PSScriptRoot 'nightly_notify.ps1') -Headline $headline -Reports $reports -SkipToast:$SkipToast |
+            Add-Content -LiteralPath $log -Encoding utf8
     } catch {
-        Add-Content -LiteralPath $log -Value "Toast delivery error: $($_.Exception.Message)" -Encoding utf8
+        Add-Content -LiteralPath $log -Value "Notify error: $($_.Exception.Message)" -Encoding utf8
     }
 }
 Write-Output $attempt

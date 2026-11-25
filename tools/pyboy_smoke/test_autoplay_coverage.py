@@ -42,6 +42,14 @@ class SummariseTest(unittest.TestCase):
         self.assertEqual(result["files"]["b.asm"]["never"], ["RoutineB"])
         self.assertEqual(result["files"]["a.asm"]["branches_never"], ["RoutineA.loop"])
 
+    def test_a_label_no_run_could_hook_is_untracked_not_missed(self):
+        labels = [{"name": name, "file": "a.asm", "global": True} for name in ("Ran", "Skipped", "Missed")]
+        with patch.object(autoplay_coverage.coverage_inventory, "plan",
+                          return_value=(labels, {label["name"]: (0, 0) for label in labels}, {})):
+            result = autoplay_coverage.summarise({"seed1": ["Ran"]}, {"Ran", "Skipped"})
+        self.assertEqual(result["untracked"], ["Skipped"])
+        self.assertEqual(result["files"]["a.asm"]["never"], ["Missed"])
+
 
 class CompareTest(unittest.TestCase):
     def test_complete_inventory_distinguishes_hits_from_added_and_removed_names(self):

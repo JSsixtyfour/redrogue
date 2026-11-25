@@ -367,14 +367,12 @@ CheckDefrost:
 	sub FIRE
 	ret nz ; return if type of move used isn't fire
 	ld [wEnemyMonStatus], a ; set opponent status to 00 ["defrost" a frozen monster]
+	ldh a, [hIsInBattle]
+	dec a
+	jr z, .common ; wild: wEnemyMonPartyPos is stale, no party struct to write
 	ld hl, wEnemyMon1Status
 	ld a, [wEnemyMonPartyPos]
-	ld bc, PARTYMON_STRUCT_LENGTH
-	call AddNTimes
-	xor a
-	ld [hl], a ; clear status in roster
-	ld hl, FireDefrostedText
-	jr .common
+	jr .clearRosterStatus
 .opponent
 	ld a, [wEnemyMoveType] ; same as above with addresses swapped
 	sub FIRE
@@ -382,12 +380,13 @@ CheckDefrost:
 	ld [wBattleMonStatus], a
 	ld hl, wPartyMon1Status
 	ld a, [wPlayerMonNumber]
+.clearRosterStatus
 	ld bc, PARTYMON_STRUCT_LENGTH
 	call AddNTimes
 	xor a
-	ld [hl], a
-	ld hl, FireDefrostedText
+	ld [hl], a ; clear status in roster
 .common
+	ld hl, FireDefrostedText
 	jp PrintText
 
 FireDefrostedText:

@@ -502,7 +502,14 @@ tree is never tested. It builds the three ROMs and runs these suites:
 - `compare_builds` on 8 seeds
 - `sram_fuzz` on 4 seeds
 
-The full set takes about an hour. Each night writes
+On a new regression or a runner failure the Windows task (`nightly_windows.ps1`, then
+`nightly_notify.ps1`) opens that night's `report.html` in the browser and leaves a clickable
+notification up; other nights stay quiet. It also copies `index.html` and each night's report page to
+the documents drive (`-Documents`). The SessionStart hooks (`nightly_session_status.py`) list a new
+regression's findings at the start of every agent session until it is marked seen:
+`python tools/pyboy_smoke/nightly_session_status.py --seen`.
+
+The full set takes one to two hours (`DAILY_BUDGET`). Each night writes
 `../redrogue_nightly_reports/<date>_<sha>/`: logs, each suite's summary, copies
 of every failed seed's report, state and screenshot, and `report.md` with a
 replay command per finding. Its "Regressions" section compares against the

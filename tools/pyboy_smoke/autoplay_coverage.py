@@ -40,13 +40,16 @@ KNOWN_DEAD = {
 DEAD = {name for names in KNOWN_DEAD.values() for name in names}
 
 
-def summarise(hit_lists: dict[str, list[str]]) -> dict[str, object]:
-    """hit_lists: run name (seed) -> labels it ran."""
+def summarise(hit_lists: dict[str, list[str]], skipped: set[str] = frozenset()) -> dict[str, object]:
+    """hit_lists: run name (seed) -> labels it ran. skipped: labels no run could hook (a check
+    already hooks them or the byte next to them), so not running them proves nothing."""
     labels, hooks, inferred = coverage_inventory.plan()
     seeds_per_label = Counter(name for hits in hit_lists.values()
                               for name in coverage_inventory.ran_labels(hits, inferred))
     untracked = sorted(label["name"] for label in labels
-                       if label["name"] not in hooks and label["name"] not in inferred)
+                       if (label["name"] not in hooks and label["name"] not in inferred)
+                       or (label["name"] in skipped and not seeds_per_label[label["name"]]))
+    blind = set(skipped)
     files: dict[str, dict[str, object]] = defaultdict(lambda: {
         "routines": 0, "routines_run": 0, "labels": 0, "labels_run": 0,
         "never": [], "branches_never": []})
@@ -73,14 +76,14 @@ def summarise(hit_lists: dict[str, list[str]]) -> dict[str, object]:
             routine_run_counts[identity] = ran
             routine_files[identity] = label["file"]
             routine_names[identity] = name
-            if not ran and name not in DEAD:
+            if not ran and name not in DEAD and name not in blind:
                 row["never"].append(name)
         if ran == 1 and len(hit_lists) > 1:
             once.append(name)
     # A branch label never taken inside a routine that did run.
     for label in labels:
         name = label["name"]
-        if not label["global"] and not seeds_per_label[name]:
+        if not label["global"] and not seeds_per_label[name] and name not in blind:
             parent = name.split(".", 1)[0]
             if routine_ran.get(parent):
                 files[label["file"]]["branches_never"].append(name)
@@ -260,8 +263,8 @@ def load_reports(paths: list[Path]) -> dict[str, list[str]]:
     return hit_lists
 
 
-def write_summary(hit_lists: dict[str, list[str]]) -> dict[str, object]:
-    summary = summarise(hit_lists)
+def write_summary(hit_lists: dict[str, list[str]], skipped: set[str] = frozenset()) -> dict[str, object]:
+    summary = summarise(hit_lists, skipped)
     SUMMARY.write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
     return summary
 

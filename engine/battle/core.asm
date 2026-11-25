@@ -5782,6 +5782,9 @@ IncrementMovePP:
 	and a
 	ld a, [wPlayerMonNumber] ; value for player turn
 	jr z, .updatePP
+	ldh a, [hIsInBattle]
+	dec a
+	ret z ; wild: wEnemyMonPartyPos is stale, no party struct to write
 	ld a, [wEnemyMonPartyPos] ; value for enemy turn
 .updatePP
 	ld bc, PARTYMON_STRUCT_LENGTH
