@@ -167,7 +167,7 @@ _ElementPrismDescriptionText::
 	cont "chances."
 	done
 
-; ELEMENT PRISM cartridge system (custom_functions/element_prism.asm).
+; ELEMENT BOY cartridge system (custom_functions/element_prism.asm).
 _ElementPrismSetText::
 	text "CARTRIDGE"
 	line "installed!"

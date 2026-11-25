@@ -24,8 +24,8 @@ KEPT = ('wKODefianceUsages', 'wTurnRewindUsages', 'wDiceCharges',
 
 
 class JourneyAgent(autoplay.AutoplayAgent):
-    def __init__(self, h, *, accept, target_continuations=1):
-        super().__init__(h, seed=31, player='strong')
+    def __init__(self, h, *, accept, target_continuations=1, seed=31):
+        super().__init__(h, seed=seed, player='strong')
         self.accept = accept
         self.offering = self.choosing = False
         self.offer_before = self.continued = self.declined = None

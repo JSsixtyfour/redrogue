@@ -212,7 +212,7 @@ def signature(row: dict[str, object]) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Random battles with random input and every detector armed.")
-    parser.add_argument("--seeds", default="1-60")
+    parser.add_argument("--seeds", default="random:60")
     parser.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     parser.add_argument("--frames", type=int, default=14000)
     parser.add_argument("--timeout", type=float, default=120)

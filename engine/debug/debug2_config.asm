@@ -513,7 +513,7 @@ Debug2DoorList::
 	jr z, .wildArea
 ; NORMAL: routes or gyms, exactly as _PickNextStage would choose between them.
 ; Debug2ApplyRoundState has not run yet, so derive the same gym-next test it
-; uses - battle count mod 10 >= 6 - rather than reading BIT_ROGUE_GYM_NEXT.
+; uses - round step >= FIRST_GYM_STEP - rather than reading BIT_ROGUE_GYM_NEXT.
 	ld a, [wBattleCount]
 .mod10
 	cp ROUND_BATTLES
@@ -780,9 +780,9 @@ Debug2WildFacilityText: db "   FACILITY@"
 ; belongs beside the configuration screen that now feeds it.
 ;   - Rival's and player's starter = Porygon (base form).
 ;   - Money = half of max (500000, 3-byte BCD $50 $00 $00).
-;   - gyms completed = wBattleCount / 10 -> wObtainedBadges = (1 << gyms) - 1
+;   - gyms completed = wBattleCount / ROUND_BATTLES -> wObtainedBadges = (1 << gyms) - 1
 ;     (clamped to 8), overriding the shared 7-badge debug default.
-;   - remainder = wBattleCount mod 10 -> rem >= 6 sets BIT_ROGUE_GYM_NEXT (gym
+;   - remainder = wBattleCount mod ROUND_BATTLES -> rem >= FIRST_GYM_STEP sets BIT_ROGUE_GYM_NEXT (gym
 ;     next), else clears it (route next), so the lobby door matches.
 Debug2ApplyRoundState::
 	ld a, PORYGON

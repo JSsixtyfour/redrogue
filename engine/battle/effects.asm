@@ -1100,17 +1100,25 @@ TrappingEffect:
 	;
 	; Shin Red import Phase 4 (4.13, approved 2026-08-18): a trapping move can
 	; no longer take hold against a type it has no effect on - Wrap on a GHOST
-	; now simply fails instead of locking the target in. AIGetTypeEffectiveness
-	; lives in this same bank, so a plain call is fine; it clobbers hl/bc/de,
-	; hence the saves around it.
+	; now simply fails instead of locking the target in. Each side's own move
+	; against the other side's types (2026-11-24: the port asked the enemy's
+	; question on both turns, FOLLOWUPS #105). Both routines live in this bank, so
+	; plain calls are fine; they clobber hl/bc/de, hence the saves around them.
 	push hl
 	push bc
 	push de
-	call AIGetTypeEffectiveness
+	ldh a, [hWhoseTurn]
+	and a
+	jr nz, .enemyMatchup
+	call PreviewTypeMatchup
+	ld a, e
+	jr .gotMatchup
+.enemyMatchup
+	call AIGetTypeEffectiveness ; also leaves the result in a
+.gotMatchup
 	pop de
 	pop bc
 	pop hl
-	ld a, [wTypeEffectiveness]
 	and a
 	ret z ; no effect - the trapping move does not take hold at all
 	set USING_TRAPPING_MOVE, [hl] ; mon is now using a trapping move

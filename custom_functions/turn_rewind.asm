@@ -4,7 +4,7 @@ SECTION "Turn Rewind", ROMX, BANK[$10]
 ;
 ; LIVE as of 2026-08-07. This was briefly cut because wiring it in overflowed
 ; "Battle Core" (that ROM bank had ~1 free byte). It was reattached once the
-; ELEMENT PRISM work reclaimed ~117 bytes there by relocating
+; ELEMENT BOY work reclaimed ~117 bytes there by relocating
 ; HandleRecoilChallenge out to custom_functions/witch_battle_effects.asm; the
 ; four hooks below need 37 of those bytes. See KEY_ITEM_EFFECTS_PLAN_PC.md §5.
 ;

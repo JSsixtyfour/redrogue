@@ -9,7 +9,7 @@
 ;
 ;   ZONE 0  PERSISTENT_EVENTS_START .. _END
 ;           Survives a blackout AND the Hall of Fame. Intro/story state
-;           plus the ELEMENT PRISM one-time-ever messages, whose whole
+;           plus the ELEMENT BOY one-time-ever messages, whose whole
 ;           mechanism is never being cleared.
 ;
 ;   ZONE 1  RUN_EVENTS_START .. _END
@@ -1218,7 +1218,7 @@ ASSERT RUN_EVENTS_START % 8 == 0
 ASSERT RUN_EVENTS_END % 8 == 7
 ASSERT EVENT_GRAVEYARD_BASE > RUN_EVENTS_END
 ASSERT EVENT_GRAVEYARD_BASE % 8 == 0
-; ELEMENT PRISM first-time-ever flags must survive the run wipe:
+; ELEMENT BOY first-time-ever flags must survive the run wipe:
 ASSERT EVENT_PRISM_GYM1_SHOWN < RUN_EVENTS_START
 ASSERT EVENT_PRISM_WHITNEY_SHOWN < RUN_EVENTS_START
 ; the whole layout must fit the pinned budget:

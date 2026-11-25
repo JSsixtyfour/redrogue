@@ -97,6 +97,16 @@ def rom_move_lookups(harness, root: Path) -> list[tuple[int, int, str]]:
     return sorted(hits)
 
 
+# Routines whose buffers share bytes with battle state (WRAM_BIBLE.md, "The battle span's
+# neighbours"). Each is overworld-only; entering one in a battle would overwrite it.
+OVERWORLD_WRITERS = {
+    "SaveScreenTileAreaToBuffer3": "wTileMapBackup3",  # credit, loss, rental and reward popups
+    "MoveSprite_": "wNPCMovementDirections",  # scripted NPC walks
+    "InGameTrade_DoTrade": "wInGameTrade*",
+    "DisplayPCMainMenu": "wParentMenuItem",
+    "GivePokemon": "wAddedToParty",
+}
+
 # SendOutMon resets these when the player switches.
 SWITCH_WRITES = ("wLastSwitchInEnemyMonHP", "wEnemyUsedMove")
 
@@ -139,8 +149,11 @@ class BattleChecks:
         hook("DisplayBattleMenu", self._on_battle_menu)
         hook("MainInBattleLoop", self._on_turn_start)
         hook("MainInBattleLoop.selectEnemyMove", self._on_commit)
-        hook("SaveScreenTileAreaToBuffer3", self._on_buffer3)
+        for label, buffer in OVERWORLD_WRITERS.items():
+            if label in self.h.symbols._symbols:
+                hook(label, lambda _c, name=label, owner=buffer: self._on_overworld_writer(name, owner))
         hook("TurnRewindRestore", self._on_turn_start)  # it restores last turn's state: no comparison
+        hook("BridgeTryIntimidate.print", self._on_intimidate)
         hook("SwapMovesInMenu", self._on_turn_start)  # SELECT reorders the moves: the player asked for it
         hook("ExecutePlayerMove", lambda _c: self._count("player_acts"))
         hook("ExecuteEnemyMove", lambda _c: self._count("enemy_acts"))
@@ -268,6 +281,15 @@ class BattleChecks:
         self.snapshot = None
 
     @observed_check
+    def _on_intimidate(self, _context) -> None:
+        """The special Growlithe family lowers the enemy's Attack when switched in
+        (seed 9820, 2026-11-24). Only those bytes: anything else still counts."""
+        if self.snapshot is not None:
+            attack = self.h.address("wEnemyMonAttack")
+            for address in (attack, attack + 1, self.h.address("wEnemyMonAttackMod")):
+                self.snapshot[address] = self.h.pyboy.memory[address]
+
+    @observed_check
     def _on_battle_menu(self, _context) -> None:
         if self.h.read8("wBattleType") or self.h.read8("wLinkState") == 4:
             self.snapshot = None
@@ -305,6 +327,8 @@ class BattleChecks:
                                 bytes=bytes_[:8])
 
     @observed_check
-    def _on_buffer3(self, _context) -> None:
-        if self.h.read8("hIsInBattle") not in (0, 0xFF) and self.snapshot is not None:
-            self.checks.anomaly("buffer3_in_battle", "wTileMapBackup3 covers wMiscBattleData", stack=self._caller())
+    def _on_overworld_writer(self, label: str, buffer: str) -> None:
+        self._count(f"writer_{label}")
+        if self.h.read8("hIsInBattle") in (1, 2):
+            self.checks.anomaly("overworld_writer_in_battle", f"{label} writes {buffer} over battle state",
+                                stack=self._caller())

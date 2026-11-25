@@ -421,7 +421,7 @@ def fill_timeout(task_id, timeout, options):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Find reads of uninitialised save RAM.")
-    parser.add_argument("--seeds", default="1-4")
+    parser.add_argument("--seeds", default="random:4")
     parser.add_argument("--fills", type=int, default=3, help="random fills per seed, besides zero and $FF")
     parser.add_argument("--new-game", action="store_true",
                         help="power on and start a NEW GAME (the default boots the Debug 2 lobby)")

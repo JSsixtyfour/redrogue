@@ -517,6 +517,10 @@ ROMX $3E
 	; TryKODefiance's revival body, out of the full $0F (2026-11-24). farcall
 	; only, WRAM only, so any bank with room would do.
 	"KO Defiance Revive"
+	; The AI's stalemate test and its revealed-move recorder (2026-11-24), out of
+	; $10 and $0E. Both farcall only, WRAM and FarCopyData only.
+	"AI Stalemate"
+	"Trainer AI Fair Play"
 ROMX $3F
 	; "ProceduralCaveGen" relocated here 2026-09-16, out of ROMX $5.
 	;

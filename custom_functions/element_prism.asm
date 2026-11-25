@@ -1,16 +1,20 @@
 ; custom_functions/element_prism.asm
 ;
-; ELEMENT PRISM (see KEY_ITEM_EFFECTS_PLAN_PC.md §3i). Granted by the first
+; ELEMENT BOY (see KEY_ITEM_EFFECTS_PLAN_PC.md §3i). Granted by the first
 ; gym leader defeated, never sold. The player picks its type by using it from
 ; the bag; the choice lives in sElementPrismType (SRAM, so it survives run
 ; reset and blackout like key-item ownership). Its tier is key item index 14
 ; in sKeyItemTiers and is bought from the Credit Exchange upgrade vendor like
 ; every other key item.
 ;
+; NAMING: players see ELEMENT BOY. Identifiers and this file name keep the old
+; name, PRISM, because the save schemas key on several of them. They are renamed
+; at the next SAVE_SCHEMA_ID bump (FOLLOWUPS.md #108).
+;
 ; Two effects:
-;   1. Damage: player-turn moves of the prism's type deal +10/15/20% (by tier).
+;   1. Damage: player-turn moves of the ELEMENT BOY's type deal +10/15/20% (by tier).
 ;   2. Encounter bias: a rolled species whose types both differ from the
-;      prism's is discarded and re-rolled (1 extra attempt normally, 16
+;      ELEMENT BOY's is discarded and re-rolled (1 extra attempt normally, 16
 ;      during starter selection so "all starters are that type" is effectively
 ;      guaranteed).
 ;
@@ -30,9 +34,9 @@
 ; TrainerBattleVictory's gym-leader branch (engine/battle/core.asm). Costs
 ; that call site zero extra bytes: same 8-byte farcall, different target.
 ; Deliberately NOT folded into RogueAwardCredits2 itself, which the Elite
-; Four room scripts also call - the prism is a gym-leader grant only.
+; Four room scripts also call - the ELEMENT BOY is a gym-leader grant only.
 ;
-; The prism/cartridge grant itself is silent (no text box): this fires
+; The ELEMENT BOY/cartridge grant itself is silent (no text box): this fires
 ; between `inc wBattleCount` and the "TrainerDefeated"/money messages, and
 ; printing there would cut in front of the normal victory sequence. The
 ; one-time messages below print AFTER the grant instead, which is what makes
@@ -56,7 +60,7 @@ RogueGymLeaderVictory::
 	call IsKeyItemOwned           ; same bank; Z = not owned yet
 	jr nz, .alreadyHadPrism
 
-	; First-ever grant: hand over the prism itself and equip this leader's
+	; First-ever grant: hand over the ELEMENT BOY itself and equip this leader's
 	; cartridge, so it is never granted in a useless state. Always shows a
 	; message here - owning nothing before this call IS "first time", so
 	; there is no separate "already shown" event to check for this branch.
@@ -185,10 +189,10 @@ GymLeaderCartridgeTable:
 ; the same reason RogueAwardCredits1/2/3 exist as three entry points.
 ; Called from each room's end-battle script alongside its credit award.
 ;
-; The prism is always already owned by the time any of these fire - all 8
+; The ELEMENT BOY is always already owned by the time any of these fire - all 8
 ; badges (all 8 gym leaders) are required before the Elite Four is reachable
 ; (see the final-sequence badge gate) - so unlike RogueGymLeaderVictory these
-; never need to grant the prism itself, only the cartridge, each gated by its
+; never need to grant the ELEMENT BOY itself, only the cartridge, each gated by its
 ; own one-time event.
 ; ============================================================
 RogueGrantCartridgeIce::
@@ -434,9 +438,9 @@ PrismHasCartridge::
 	ret
 
 ; ============================================================
-; RoguePrismGetTypeFresh — resolve the prism's active type with no reliance
+; RoguePrismGetTypeFresh — resolve the ELEMENT BOY's active type with no reliance
 ; on the WRAM caches (see CACHE DISCIPLINE above).
-; OUTPUT: a = type constant, or $ff if the prism is not active or its type
+; OUTPUT: a = type constant, or $ff if the ELEMENT BOY is not active or its type
 ;         has not been chosen yet.
 ; CLOBBERS: af, bc, de, hl
 ; ============================================================
@@ -466,7 +470,7 @@ RoguePrismGetTypeFresh::
 	ld a, c
 	ret
 .none
-	; must also restore here - this path is taken whenever the prism is inactive,
+	; must also restore here - this path is taken whenever the ELEMENT BOY is inactive,
 	; i.e. the common case, and leaving the push unbalanced would corrupt the stack
 	pop af
 	ld [wCurPartySpecies], a
@@ -536,7 +540,7 @@ RoguePrismRefreshCache::
 ; ============================================================
 ; RoguePrismDamageBoost — farcalled from the `.done` exit of
 ; AdjustDamageForMoveType (engine/battle/core.asm). Scales wDamage by
-; (100 + bonus)/100 when the player's move matches the prism's type.
+; (100 + bonus)/100 when the player's move matches the ELEMENT BOY's type.
 ;
 ; Placed at `.done` rather than the two call sites (one hook instead of two)
 ; and safe there because both callers follow immediately with
@@ -557,13 +561,13 @@ RoguePrismDamageBoost::
 	; therefore only ever entered on the PLAYER's turn.
 	ld a, [wPrismDamageBonus]
 	and a
-	ret z                         ; prism inactive / no type chosen
+	ret z                         ; ELEMENT BOY inactive / no type chosen
 	ld b, a                       ; b = percent bonus
 	ld a, [wPrismType]
 	ld c, a
 	ld a, [wMoveType]
 	cp c
-	ret nz                        ; move type is not the prism's type
+	ret nz                        ; move type is not the ELEMENT BOY's type
 
 	ld a, 100
 	add b
@@ -626,12 +630,12 @@ RoguePrismShouldRerollSpecies::
 	and a
 	jr z, .keep                   ; budget exhausted - accept whatever we rolled
 	push de
-	call RoguePrismGetTypeFresh   ; a = prism type, or $ff (clobbers de)
+	call RoguePrismGetTypeFresh   ; a = ELEMENT BOY type, or $ff (clobbers de)
 	pop de
 	cp $ff
-	jr z, .keep                   ; prism not active / no type chosen
+	jr z, .keep                   ; ELEMENT BOY not active / no type chosen
 
-	ld b, a                       ; b = prism type
+	ld b, a                       ; b = ELEMENT BOY type
 	push de
 	ld a, d
 	ld [wCurSpecies], a
@@ -779,7 +783,7 @@ RoguePrismCartridgeMenu::
 
 ; ============================================================
 ; RoguePrismShowEquipped — farcalled from ItemUseElementPrism. Read-only:
-; swapping happens at the PC, so using the prism from the bag just reports
+; swapping happens at the PC, so using the ELEMENT BOY from the bag just reports
 ; which cartridge is installed. The name is copied into wStringBuffer for the
 ; text_ram field in _ElementPrismStatusText.
 ; CLOBBERS: af, bc, de, hl

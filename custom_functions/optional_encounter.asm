@@ -492,8 +492,22 @@ OptionalEncounterFinalizeGift::
 
 ; Replaces the existing tail hook without growing the crowded Battle Core.
 ; Preserve the cemetery hook's original order and behavior before our grant.
+; Tail of LoadEnemyMonData.
 OptionalEncounterAfterEnemyLoad::
 	farcall PCemMaybeApplyGhostBoss
+; A trainer's burned or paralyzed mon comes in with its Attack or Speed drop, as the
+; player's does (Shin Pokemon Red; FOLLOWUPS #106). Here because Battle Core is full.
+; The unmodified stats are already copied, so they stay whole. Rest undoes the drop
+; from the status alone: without it, Rest left a paralyzed mon at 4x its Speed.
+	ldh a, [hIsInBattle]
+	cp 2
+	jr nz, .noStatusDrop
+	ldh a, [hWhoseTurn]
+	push af
+	farcall ApplyBurnAndParalysisPenaltiesToEnemy ; writes hWhoseTurn
+	pop af
+	ldh [hWhoseTurn], a
+.noStatusDrop
 	ld a, [wOptionalEncounterBattle]
 	ld b, a
 	xor a

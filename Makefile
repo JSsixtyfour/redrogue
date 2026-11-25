@@ -249,6 +249,9 @@ sram_fuzz: pokeblue_debug.gbc
 
 # Random battles full of unusual moves, random input and every detector armed.
 # BATTLE_FUZZ_ARGS='--seeds 1-2000 --minutes 20'.
+menu_fuzz: pokeblue_debug.gbc
+	python3 tools/pyboy_smoke/menu_fuzz.py $(MENU_FUZZ_ARGS)
+
 battle_fuzz: pokeblue_debug.gbc
 	python3 tools/pyboy_smoke/battle_fuzz.py $(BATTLE_FUZZ_ARGS)
 

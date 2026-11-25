@@ -79,12 +79,12 @@ Random_Boss_Selection_Far::
 	jr .loop
 
 Random_Pokemon_Selection::
-; ELEMENT PRISM encounter bias: set this selection's type-mismatch re-roll
+; ELEMENT BOY encounter bias: set this selection's type-mismatch re-roll
 ; budget (custom_functions/element_prism.asm). Preserves every register - c
 ; holds the class argument the very next instructions test.
 ; Random_Pokemon_Selection_Any deliberately does NOT get this: it backs
 ; procedural-cave wild encounters, which are not the reward/starter rolls the
-; prism is meant to bias.
+; ELEMENT BOY is meant to bias.
 call RoguePrismSetRerollBudget
 ; A non-zero c names a rarity class directly (1=pokeball .. 4=masterball).
 ; Class ids are 1-based and tier ids 0-based, hence the dec.
@@ -289,7 +289,7 @@ RogueSelectFromTier::
 	ld a, c
 	and a
 	jr nz, .reject
-	; ELEMENT PRISM encounter bias: discard an off-type species and re-roll.
+	; ELEMENT BOY encounter bias: discard an off-type species and re-roll.
 	; Deliberately before the evolve step, exactly as the old code ordered it.
 	push de
 	call RoguePrismShouldRerollSpecies ; NZ = off-type and budget remains

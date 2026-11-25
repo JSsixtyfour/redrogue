@@ -1,4 +1,4 @@
-"""Prism text/menu contracts; frame waits and button input are mocked at seams."""
+"""ELEMENT BOY text/menu contracts; frame waits and button input are mocked at seams."""
 import io
 import re
 from source_constants import parse_rgbds_constants

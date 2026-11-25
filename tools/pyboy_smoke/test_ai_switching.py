@@ -640,6 +640,49 @@ class AIShouldSwitchTest(unittest.TestCase):
         self.assertEqual(self.harness.read8("wEnemySelectedMove"), self.moves["THUNDER_WAVE"])
         self.assertFalse(plan >> 6 & 1, f"plan {plan:#04x}")
 
+    def stalemate_verdict(self, moves: list[str], *, status: int = 0, confused: bool = False,
+                          disabled: int = 0) -> bool:
+        """AIActiveCanDoNothing's answer for a Weezing that chose moves[0], every PP left. Estimates
+        are cleared, so a damaging move counts as usable unless the routine knows it cannot work."""
+        h = RedRogueHarness(REPO_ROOT, ARTIFACTS)
+        try:
+            h.inject_fight2_spec(
+                [dict(self.mon("EKANS", ["POISON_STING"]), level=10)] * 2,
+                [dict(self.mon("WEEZING", moves), level=60), dict(self.mon("CLEFABLE", ["BODY_SLAM"]), level=58)],
+                trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=3)
+            h.boot_fight2(seed=1)
+            entered = h.hook_flag("AIActiveCanDoNothing")
+            can_act = h.hook_flag("AIActiveCanDoNothing.canAct")
+            h.write8("wEnemySelectedMove", self.moves[moves[0]])
+            h.write8("wEnemyMoveListIndex", 0)
+            h.write8("wBattleMonStatus", status)
+            h.write8("wPlayerBattleStatus1", 1 << 7 if confused else 0)
+            h.write8("wPlayerBattleStatus2", 0)
+            h.write8("wPlayerDisabledMove", disabled)
+            for offset in range(8):
+                h.write8("wAIEnemyEstimateCache", 0, offset)
+            h.call_routine("AIActiveCanDoNothing")
+            self.assertEqual(entered["count"], 1)
+            return can_act["count"] == 0
+        finally:
+            h.close()
+
+    def test_a_status_move_that_cannot_land_is_a_stalemate(self) -> None:
+        """Seed 9008 (2026-11-24): ~70 turns of Poison Gas into a paralyzed target."""
+        par = 1 << 6
+        for moves, board, stuck in (
+                (["POISON_GAS", "HAZE"], {"status": par}, True), (["POISON_GAS", "HAZE"], {}, False),
+                (["CONFUSE_RAY", "HAZE"], {"confused": True}, True), (["CONFUSE_RAY", "HAZE"], {"status": par}, False),
+                (["DISABLE", "HAZE"], {"disabled": 0x13}, True), (["DISABLE", "HAZE"], {}, False)):
+            with self.subTest(moves=moves, board=board):
+                self.assertEqual(self.stalemate_verdict(moves, **board), stuck)
+
+    def test_dream_eater_is_an_attack_only_against_a_sleeper(self) -> None:
+        # HAZE is chosen, so only Dream Eater could make this a board Weezing can act on.
+        for status, stuck in ((1 << 6, True), (3, False)):
+            with self.subTest(status=status):
+                self.assertEqual(self.stalemate_verdict(["HAZE", "DREAM_EATER"], status=status), stuck)
+
     def toxic_staller(self, player_status: int) -> bool:
         def board(h) -> None:
             h.write8("wEnemySelectedMove", self.moves["DOUBLE_TEAM"])

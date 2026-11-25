@@ -388,13 +388,13 @@ sRoomOwned:: ds 4 ; bits 0-7 TOP options 1-8, bit 8 LONG DESK, bits 9-12 MIDDLE
                   ; bits 27-31 decorations 12-16; 17-45 continue in sRoomOwnedExt,
                   ; bit 61 STATUE (BOTTOM option 2); no extra SRAM allocated
 
-; ELEMENT PRISM's chosen type (see KEY_ITEM_EFFECTS_PLAN_PC.md). $FF = not yet
+; ELEMENT BOY's chosen type (see KEY_ITEM_EFFECTS_PLAN_PC.md). $FF = not yet
 ; chosen. SRAM so the choice survives run reset and blackout, like key-item
-; ownership. The prism's tier needs no separate storage - it is key item
+; ownership. The ELEMENT BOY's tier needs no separate storage - it is key item
 ; index 14 in sKeyItemTiers above.
 sElementPrismType:: db
 
-; ELEMENT PRISM cartridges the player has unlocked: 1 bit per selectable type,
+; ELEMENT BOY cartridges the player has unlocked: 1 bit per selectable type,
 ; indexed by position in PrismTypeList (custom_functions/element_prism.asm),
 ; so 15 bits in 2 bytes. Gym leaders, the Elite Four and the Champion each
 ; grant their signature type's cartridge on defeat; the player equips one at

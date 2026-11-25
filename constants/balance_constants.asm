@@ -14,8 +14,8 @@ DEF WILD_EXP_MATCHES_TRAINER EQU 1
 
 ; --- Trainer level tables (data, not DEFs) -----------------------------------
 ; These live in data/balance/ because they are byte tables read at runtime:
-;   trainer_levels.asm    route trainers (wBattleCount mod 10 = 1-5) and gym
-;                         trainers (6-9), one 11-byte block per round. Also
+;   trainer_levels.asm    route trainers (steps 1-4 of the round) and gym
+;                         trainers (steps 5-7), one 11-byte block per round. Also
 ;                         the source of every reward level (GetRewardMonLevel).
 ;   wild_levels.asm       wild-area encounter levels, one byte per round.
 ;   wild_boss_levels.asm  wild-area boss levels, one byte per round.

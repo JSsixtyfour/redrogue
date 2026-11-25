@@ -698,6 +698,12 @@ SECTION "KO Defiance Revive", ROMX
 INCLUDE "custom_functions/ko_defiance_revive.asm"
 
 
+; The AI stalemate breaker's test (2026-11-24), out of bank $10, where debug had 3 B.
+SECTION "AI Stalemate", ROMX
+
+INCLUDE "engine/battle/ai/ai_stalemate.asm"
+
+
 SECTION "Battle Engine 9", ROMX
 
 INCLUDE "engine/battle/experience.asm"

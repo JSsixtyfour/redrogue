@@ -17,7 +17,7 @@
   "sTMBitfield": {"continue": "preserve", "recovery": "template", "why": "TM/HM ownership; ClearTMBitfield at run reset"},
   "sKeyItemsBitfield|sKeyItemTiers": {"continue": "preserve", "recovery": "keep", "why": "key items and their upgrade tiers survive run resets (meta-progression)"},
   "sRoom(Furniture|DecorSlots|Owned|OwnedExt)": {"continue": "preserve", "recovery": "keep", "why": "Dorm decoration state, cross-run"},
-  "sElementPrismType|sPrismCartridges": {"continue": "preserve", "recovery": "keep", "why": "ELEMENT PRISM choice and cartridges, cross-run"},
+  "sElementPrismType|sPrismCartridges": {"continue": "preserve", "recovery": "keep", "why": "ELEMENT BOY choice and cartridges, cross-run"},
   "sRogueSpeciesGroupsEnabled": {"continue": "preserve", "recovery": "keep", "why": "species-group toggles, cross-run"},
   "sGameData|sPlayerName|sMainData|sSpriteData|sPartyData|sCurBoxData|sTileAnimations|sCurMap|sGameDataEnd": {"continue": "preserve", "recovery": "field", "why": "the main save block (copies of saved WRAM and HRAM)"},
   "sMainDataCheckSum": {"continue": "preserve", "recovery": "template", "why": "recomputed by the converter after any change"},

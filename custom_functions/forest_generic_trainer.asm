@@ -266,12 +266,31 @@ ForestGenericPick::
 	ld d, e
 	set 7, d
 	jr z, .try
+	; Third pass (2026-11-24): any plain floor cell of the maze. Every dead end is
+	; taken when a Forest has exactly five, four balls and the hideout (1 of 300
+	; Forests). A path is two steps wide, so he never closes it. d keeps bit 7.
+	ld e, $ff                           ; e = the packed cell
+.nextCell
+	inc e
+	ld a, e
+	cp PF_CELL_W | ((PF_CELL_H - 1) << 4)
+	jr nc, .none                        ; past the last cell
+	and $0f
+	cp PF_CELL_W
+	jr nc, .nextCell
+	ld a, e
+	call FGTCellBlock                   ; -> wPFCurX/Y
+	call FGTOpenCellOk
+	jr nc, .nextCell
+	ld a, e
+	jr .store
 .none
 	ld a, FGT_CELL_NONE
 	ld [sWildGenericCell], a
 	ret
 .found
 	ld a, [hl]
+.store
 	ld [sWildGenericCell], a
 	call FGTFacing                      ; a = 0 down, 1 up, 2 left, 3 right
 	swap a
@@ -369,17 +388,7 @@ FGTCellOk:
 ; PF_TREE), in the maze being generated. Out: a = 0 down, 1 up, 2 left, 3 right
 ; (down when none reads open, which a dead end cannot be). Clobbers bc/de/hl.
 FGTFacing:
-	ld a, [wBuffer + wPFCurY]
-	ld l, a
-	ld h, 0
-	ld bc, PF_STRIDE
-	call FGTMultiply                    ; hl = Y * PF_STRIDE
-	ld a, [wBuffer + wPFCurX]
-	ld c, a
-	ld b, 0
-	add hl, bc
-	ld bc, wOverworldMap + PF_BASE
-	add hl, bc                          ; hl -> the dead end's block
+	call FGTBlockPtr
 	ld de, PF_STRIDE
 	push hl
 	add hl, de
@@ -412,6 +421,69 @@ FGTFacing:
 	ld a, 3
 	ret nz
 	xor a
+	ret
+
+; hl -> the block at wPFCurX/Y in the maze being generated. Clobbers a/bc/de.
+FGTBlockPtr:
+	ld a, [wBuffer + wPFCurY]
+	ld l, a
+	ld h, 0
+	ld bc, PF_STRIDE
+	call FGTMultiply                    ; hl = Y * PF_STRIDE
+	ld a, [wBuffer + wPFCurX]
+	ld c, a
+	ld b, 0
+	add hl, bc
+	ld bc, wOverworldMap + PF_BASE
+	add hl, bc
+	ret
+
+; The pick's third pass: e = a packed cell, wPFCurX/Y = its block, d bit 7 set.
+; Carry = not the entrance or boss cell, not a ball's or the hideout's, outside
+; the clearing, and plain floor. SRAM bank 0 open. Keeps de; clobbers a/bc/hl.
+FGTOpenCellOk:
+	ld a, e
+	cp 4 | (8 << 4)                     ; the entrance (PFBacktracker's literal)
+	ret z
+	ld a, [wBuffer + wPFBossCell]
+	cp e
+	ret z
+	call FGTCellOk
+	ret nc
+	ld a, [PF_CLEAR_KEY]
+	bit 7, a
+	jr z, .outside
+	ld a, [PF_CLEAR_X]
+	ld b, a
+	ld a, [wBuffer + wPFCurX]
+	sub b
+	jr c, .outside
+	ld b, a
+	ld a, [PF_CLEAR_W]
+	dec a
+	cp b
+	jr c, .outside
+	ld a, [PF_CLEAR_Y]
+	ld b, a
+	ld a, [wBuffer + wPFCurY]
+	sub b
+	jr c, .outside
+	ld b, a
+	ld a, [PF_CLEAR_H]
+	dec a
+	cp b
+	ret nc                              ; inside the clearing
+.outside
+	push de
+	call FGTBlockPtr
+	pop de
+	ld a, [hl]
+	dec a                               ; block 1: PFPickFloor's plain floor
+	jr nz, .no
+	scf
+	ret
+.no
+	and a
 	ret
 
 ; hl = l * bc (l small). Clobbers a/de.

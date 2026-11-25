@@ -137,7 +137,7 @@ KarensRoomKarenEndBattleScript:
 	ld a, TEXT_KARENSROOM_KAREN
 	ldh [hTextID], a
 	call DisplayTextID
-; ELEMENT PRISM cartridge: NORMAL, because her signature DARK does not exist in
+; ELEMENT BOY cartridge: NORMAL, because her signature DARK does not exist in
 ; Gen 1. Whitney also grants NORMAL, so the two share one event: it is only ever
 ; set by a grant, so a set event means the cartridge is already owned and the
 ; second grantor has nothing to add. Same text id shape as BrunosRoom.asm.

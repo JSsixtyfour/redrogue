@@ -1,6 +1,8 @@
 UpdateCinnabarGymGateTileBlocks::
 	rfarjp UpdateCinnabarGymGateTileBlocks_
 
+; hLoadedROMBank is written before rROMB at every switch: VBlank restores the bank from hLoadedROMBank,
+; so an interrupt between the two in the other order maps the old bank back and runs garbage.
 CheckForHiddenEventOrBookshelfOrCardKeyDoor::
 	ldh a, [hLoadedROMBank]
 	push af
@@ -9,15 +11,15 @@ CheckForHiddenEventOrBookshelfOrCardKeyDoor::
 	jr z, .nothingFound
 ; A button is pressed
 	ld a, BANK(CheckForHiddenEvent)
-	ld [rROMB], a
 	ldh [hLoadedROMBank], a
+	ld [rROMB], a
 	call CheckForHiddenEvent
 	ldh a, [hDidntFindAnyHiddenEvent]
 	and a
 	jr nz, .hiddenEventNotFound
 	ld a, [wHiddenEventFunctionRomBank]
-	ld [rROMB], a
 	ldh [hLoadedROMBank], a
+	ld [rROMB], a
 	ld de, .returnAddress
 	push de
 	jp hl
@@ -34,6 +36,6 @@ CheckForHiddenEventOrBookshelfOrCardKeyDoor::
 .done
 	ldh [hItemAlreadyFound], a
 	pop af
-	ld [rROMB], a
 	ldh [hLoadedROMBank], a
+	ld [rROMB], a
 	ret

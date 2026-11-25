@@ -568,7 +568,7 @@ AIRevalidateDecisionCaches::
 	ret
 
 ; State keys: checksums over every input one direction of the AI damage
-; estimates reads. Constant-per-battle inputs (tier, Witch prizes, prism, Bridge
+; estimates reads. Constant-per-battle inputs (tier, Witch prizes, ELEMENT BOY, Bridge
 ; effects, link state) are left out. Measured ~3.2k cycles for the original
 ; single key over both directions.
 ;

@@ -1,6 +1,8 @@
 """Nightly regression bookkeeping (nightly.py): what counts as worse than last
 night. Source-only: synthetic reports, no emulator."""
+import contextlib
 import datetime as dt
+import io
 import shlex
 import tempfile
 import json
@@ -172,6 +174,49 @@ class BattleFuzzSuiteTest(unittest.TestCase):
             return command[command.index("--seeds") + 1]
         self.assertNotEqual(seeds(24), seeds(25))
         self.assertEqual(seeds(24, quick=True), "1-12")
+
+    def test_every_planned_suite_gets_fixed_and_fresh_seeds(self) -> None:
+        from run_autoplay import parse_seeds
+        monday, tuesday = dt.date(2026, 11, 23), dt.date(2026, 11, 24)
+        for name, (fixed, fresh) in nightly.SEED_PLAN.items():
+            with self.subTest(suite=name):
+                tonight = parse_seeds(nightly.nightly_seeds(name, tuesday))
+                self.assertEqual(len(tonight), fixed + fresh)
+                self.assertEqual(len(set(tonight)), fixed + fresh)
+                self.assertEqual(tonight[:fixed], list(range(1, fixed + 1)))
+                self.assertEqual(tonight, parse_seeds(nightly.nightly_seeds(name, tuesday)), "must be repeatable")
+                self.assertFalse(set(tonight[fixed:]) & set(parse_seeds(nightly.nightly_seeds(name, monday))[fixed:][:50]))
+                command = nightly.suite_command(name, Path("."), tuesday, False)
+                self.assertEqual(command[command.index("--seeds") + 1], nightly.nightly_seeds(name, tuesday))
+        self.assertNotIn("newgame", nightly.SEED_PLAN, "the coverage control plays the same games every night")
+
+    def test_champion_rate_is_compared_over_the_fixed_seeds(self) -> None:
+        rows = [{"seed": 1, "run_records": [{"outcome": "champion"}]}, {"seed": 2, "run_records": [{"outcome": "blackout"}]},
+                {"seed": 500_000, "run_records": [{"outcome": "blackout"}] * 8}]
+        rate = nightly.champion_rate("lobby", rows, {"champion_rate": 0.1})
+        self.assertEqual((rate["champion_rate"], rate["champion_seeds"]), (0.5, [1, 2]))
+        base = {"suite": "lobby", "exit": 0, "findings": [], "champion_rate": 0.9, "champion_seeds": [1, 2], "stages_mean": 1}
+        now = base | {"champion_rate": 0.2}
+        self.assertEqual(len(nightly.regressions({"suites": [now]}, {"suites": [base]})), 1)
+        self.assertEqual(nightly.regressions({"suites": [now | {"champion_seeds": [1]}]}, {"suites": [base]}), [])
+
+    def test_random_seed_specs(self) -> None:
+        from run_autoplay import parse_seeds
+        with contextlib.redirect_stdout(io.StringIO()) as printed:
+            seeds = parse_seeds("1-2,random:5")
+        self.assertEqual(seeds[:2], [1, 2])
+        self.assertEqual(len(set(seeds)), 7)
+        self.assertIn(str(seeds[-1]), printed.getvalue(), "a drawn seed must be printed, or it cannot be replayed")
+
+    def test_menu_fuzz_findings_name_the_tool_and_a_seed(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "menu_fuzz.json"
+            self.assertEqual(nightly.menu_fuzz_findings(path)["findings"][0]["kind"], "no summary")
+            path.write_text(json.dumps({"findings": {"bills_pc_fuzz: bills_pc: mon 3 is gone": [42]},
+                                        "tools": {"bills_pc_fuzz": {"seeds": 9}}}), encoding="utf-8")
+            found = nightly.menu_fuzz_findings(path)["findings"][0]
+        self.assertEqual(found["kind"], "bills_pc_fuzz bills_pc")
+        self.assertIn("bills_pc_fuzz.py --seeds 42", found["replay"])
 
     def test_a_suite_newer_than_the_tested_commit_is_skipped_not_failed(self) -> None:
         with tempfile.TemporaryDirectory() as folder:

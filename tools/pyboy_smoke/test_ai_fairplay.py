@@ -386,6 +386,17 @@ class AIGetPlayerMoveNTest(unittest.TestCase):
                          self.moves["GROWL"])
 
 
+    def test_a_transformed_mons_copied_moves_are_known(self) -> None:
+        # They are a copy of one of the AI's own mons' moves: nothing to guess.
+        assert self.harness is not None
+        self.boot(ai_tier=1, player_moves=["TACKLE", "GROWL", "SPLASH"])
+        self.prime_seen_moves([])
+        self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", 1), 0)
+        self.harness.write8("wPlayerBattleStatus3", 1 << 3)  # TRANSFORMED
+        for slot, name in enumerate(("TACKLE", "GROWL", "SPLASH")):
+            self.assertEqual(call_a_preserving(self.harness, "AIGetPlayerMoveN", slot), self.moves[name])
+
+
 class AITrackSeenPlayerMoveTest(unittest.TestCase):
     harness: RedRogueHarness | None = None
 
@@ -435,6 +446,25 @@ class AITrackSeenPlayerMoveTest(unittest.TestCase):
         self.assertEqual(self.harness.revealed_player_moves(1), [2])
         self.assertEqual(self.harness.read_bytes("wAISeenPlayerMoveMask", 4),
                          [0b0100_0100, 0, 0, 0])
+
+    def test_a_transformed_mon_marks_none_of_its_real_slots(self) -> None:
+        # Transform's slots hold OUR mon's moves and revert on a switch: a bit set for one
+        # would mark the real slot's move, which was never shown (2026-11-24).
+        assert self.harness is not None
+        h = self.harness
+        h.inject_fight2_spec(
+            [{"species": self.species["MEW"], "level": 50,
+              "moves": [self.moves[n] for n in ("TRANSFORM", "PSYCHIC_M", "SURF", "THUNDERBOLT")]}],
+            [{"species": self.species["RATTATA"], "level": 50, "moves": [self.moves["TACKLE"]]}],
+            trainer_class=self.trainers["COOLTRAINER_M"], ai_tier=1)
+        h.boot_fight2(seed=1)
+        for status3, expected in ((1 << 3, []), (0, [2])):
+            h.write8("wAISeenPlayerMoveMask", 0)
+            h.write8("wPlayerBattleStatus3", status3)
+            h.write8("wPlayerSelectedMove", self.moves["SURF"])
+            h.park_before_hijack()
+            h.call_routine("AITrackSeenPlayerMove")
+            self.assertEqual(h.revealed_player_moves(0), expected, f"status3 {status3:#x}")
 
     def test_zero_selected_move_is_never_recorded(self) -> None:
         # wPlayerSelectedMove == 0 is never a real move (the old buffer's "nothing

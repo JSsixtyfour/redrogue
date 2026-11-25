@@ -181,7 +181,7 @@ def print_report(report: dict[str, object]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Play the same seeds on several builds and compare.")
-    parser.add_argument("--seeds", default="1-8")
+    parser.add_argument("--seeds", default="random:8")
     parser.add_argument("--builds", default=",".join(autoplay.ROMS),
                         help=f"comma-separated, from {', '.join(autoplay.ROMS)}")
     parser.add_argument("--runs", type=int, default=1)

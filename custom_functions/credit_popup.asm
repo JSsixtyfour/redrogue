@@ -83,7 +83,7 @@ RogueCreditPopupCheck::
 ; 1. Events - one ResetEventRange over ZONE 1 of constants/event_constants.asm
 ;    (every stage/gym/Elite 4 trainer bit, auto-walk "no turning back" flags,
 ;    reward/offer flags, procedural stage flags, EVENT_VICTORY_ROAD_CLEARED).
-;    ZONE 0 (ELEMENT PRISM one-time-ever flags) is untouched by design.
+;    ZONE 0 (ELEMENT BOY one-time-ever flags) is untouched by design.
 ;    1b. Toggles: RogueRunToggleClear re-shows a LISTED set of objects that
 ;    stage scripts hide (Tower 7F's rockets and Fuji). Hide bits live in
 ;    wToggleableObjectFlags, not wEventFlags, so step 1 never reached them.

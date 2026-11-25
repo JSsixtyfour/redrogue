@@ -90,6 +90,25 @@ class BattleChecksTest(unittest.TestCase):
                 checks.battle._on_lookup(0, 0, "A")
                 self.assertIn("move_lookup", self.kinds(checks))
 
+    def test_battle_reachable_scratch_stops_short_of_battle_state(self) -> None:
+        """wMoveBuffer is 164 bytes and runs on under wMiscBattleData. Its battle-reachable users
+        (the Learndex, item descriptions, the text and palette backups) must stay below it."""
+        import re
+        h = RedRogueHarness(ROOT, ARTIFACTS)
+        self.addCleanup(h.close)
+        room = h.address("wMiscBattleData") - h.address("wMoveBuffer")
+        self.assertEqual(h.address("wTextBoxBuffer"), h.address("wMoveBuffer"))
+        source = {p: p.read_text(encoding="utf-8") for p in (
+            ROOT / "engine/pokemon/status_view.asm", ROOT / "custom_functions/item_descriptions.asm",
+            ROOT / "engine/pokemon/evos_moves.asm")}
+        offsets = [int(n) for text in source.values()
+                   for n in re.findall(r"wMoveBuffer \+ (\d+)", text.replace("ITEM_DESC_SCRATCH", "wMoveBuffer"))]
+        self.assertTrue(offsets)
+        name = 9  # the longest type name and its terminator, the last thing written there
+        self.assertLess(max(offsets) + 6 + name, room, f"scratch ends at {max(offsets) + 6 + name}, battle at {room}")
+        record = parse_rgbds_constants(ROOT / "constants/pokemon_data_constants.asm").get("LEARNDEX_RECORD_SIZE", 64)
+        self.assertLess(record + 8, room)  # the record, then a move id per visible row
+
     def test_a_revealed_empty_slot_is_never_looked_up(self) -> None:
         """Transform reveals four slots; back in its own body the mon may have fewer, and
         the AI's STAB guess read the empty one as move 0 (2026-11-24)."""

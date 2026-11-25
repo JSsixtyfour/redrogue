@@ -76,7 +76,7 @@
           "level": 50,
           "moves": [
             "THUNDER_WAVE",
-            "THUNDERBOLT"
+            "QUICK_ATTACK"
           ]
         }
       ],
@@ -90,7 +90,8 @@
             0
           ]
         ]
-      }
+      },
+      "note": "Refreshed 2026-11-24: Thunderbolt is 0x on Rhydon and immune moves score 79 since 2026-11-16, so both slots tied and the board tested nothing. Quick Attack is the usable alternative."
     },
     {
       "name": "redundant_paralyze_vs_nonground_legal",
@@ -437,10 +438,10 @@
       "trainer_class": "COOLTRAINER_M",
       "player": [
         {
-          "species": "CHANSEY",
+          "species": "TAUROS",
           "level": 50,
           "moves": [
-            "TACKLE"
+            "BODY_SLAM"
           ]
         }
       ],
@@ -469,7 +470,11 @@
           20,
           20
         ]
-      }
+      },
+      "prime": {
+        "wAISeenPlayerMoveMask": 15
+      },
+      "note": "Refreshed 2026-11-24: the heal race (2026-11-18) encourages a heal that out-paces the player at any HP, and Chansey's Tackle was out-paced. A seen Tauros Body Slam is not, so the neutral band decides again; the scores are unchanged."
     },
     {
       "name": "smart_substitute_discouraged_below_half_hp",
@@ -608,12 +613,13 @@
       ],
       "expect": {
         "scores": [
-          30,
+          20,
           19,
           20,
           20
         ]
-      }
+      },
+      "note": "Refreshed 2026-11-24: the Gen 2 level rule was removed 2026-11-22 (Gen 1's OneHitKOEffect_ checks speed only), so a higher player level no longer discourages the move. The name is historical."
     },
     {
       "name": "smart_ohko_neutral_when_enemy_level_at_least_player",
@@ -1996,7 +2002,7 @@
       "required_cases": [
         "positive"
       ],
-      "note": "Wrap is NORMAL and Gastly is a Ghost. Trapping respects type immunity in this engine (the check runs before set USING_TRAPPING_MOVE), so AIFit_AgilityWrap must return 0 rather than spend a turn on Agility setting up a move that cannot land. Confirmed by slot 0 showing only AI_TYPES' -1 and AI_SETUP's -2, with no -3 from the plan layer.",
+      "note": "Wrap is NORMAL and Gastly is a Ghost. Trapping respects type immunity in this engine (the check runs before set USING_TRAPPING_MOVE), so AIFit_AgilityWrap must return 0 rather than spend a turn on Agility setting up a move that cannot land. Confirmed by slot 0 showing only AI_TYPES' -1 and AI_SETUP's -2, with no -3 from the plan layer. Refreshed 2026-11-24: immune moves score 79 since 2026-11-16 (Wrap and Tackle). Slot 0 is SETUP -2 and SMART -2 for Agility; there is still no -3 from the plan layer, which is the point.",
       "ai_tier": 3,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -2021,9 +2027,9 @@
       ],
       "expect": {
         "scores": [
-          15,
-          20,
-          20,
+          16,
+          79,
+          79,
           20
         ]
       }
@@ -2126,7 +2132,7 @@
       "required_cases": [
         "positive"
       ],
-      "note": "The AI is told the player's whole moveset (wAISeenPlayerMoveMask), as this scenario assumed before fair play: otherwise the type guess gives the player an unrevealed STAB attack that changes the plan's fitness. With the whole moveset seen (only Splash), the setup gate no longer guesses Snorlax's Self-Destruct, so Amnesia keeps AI_SETUP's -2 (18); Recover is still the pick.",
+      "note": "The AI is told the player's whole moveset (wAISeenPlayerMoveMask), as this scenario assumed before fair play: otherwise the type guess gives the player an unrevealed STAB attack that changes the plan's fitness. With the whole moveset seen (only Splash), the setup gate no longer guesses Snorlax's Self-Destruct, so Amnesia keeps AI_SETUP's -2 (18); Recover is still the pick. Refreshed 2026-11-24: Recover also gets SMART -2 from the heal race (2026-11-18); it is still the pick.",
       "ai_tier": 3,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -2159,7 +2165,7 @@
       "expect": {
         "scores": [
           18,
-          15,
+          13,
           20,
           20
         ]
@@ -2180,7 +2186,7 @@
       "required_cases": [
         "positive"
       ],
-      "note": "Player is a special attacker (2026-11-12): against Snorlax, which can Self-Destruct and only hits physically, the setup gate rightly withholds Amnesia - it neither shortens Chansey's KO (Tackle is physical) nor blunts the hit.",
+      "note": "Player is a special attacker (2026-11-12): against Snorlax, which can Self-Destruct and only hits physically, the setup gate rightly withholds Amnesia - it neither shortens Chansey's KO (Tackle is physical) nor blunts the hit. Refreshed 2026-11-24: SETUP -2 and PLAN -3 for Amnesia (setup retunes after 2026-11-12); it is still the pick.",
       "ai_tier": 3,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -2204,7 +2210,7 @@
       ],
       "expect": {
         "scores": [
-          16,
+          15,
           19,
           20,
           20
@@ -2309,7 +2315,7 @@
       "required_cases": [
         "positive"
       ],
-      "note": "Player (Electrode) is faster than Snorlax - the fitness bonus for flipping the speed tier applies, and ParaSweep beats ChanseyStall's required RECOVERY-less moveset here since no recovery move exists on this board.",
+      "note": "Player (Electrode) is faster than Snorlax - the fitness bonus for flipping the speed tier applies, and ParaSweep beats ChanseyStall's required RECOVERY-less moveset here since no recovery move exists on this board. Refreshed 2026-11-24: SMART gives Thunder Wave -3, one more than before, for flipping the speed order; it is still the pick.",
       "ai_tier": 3,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -2333,7 +2339,7 @@
       ],
       "expect": {
         "scores": [
-          15,
+          14,
           18,
           20,
           20
@@ -3855,7 +3861,7 @@
         "positive",
         "negative"
       ],
-      "note": "AI_OVERHAUL_PLAN.md follow-up F22, the control case. Body Slam's 30% paralysis rider against a Lapras at FULL HP. Lapras is Water/Ice, so the NORMAL-vs-same-type immunity rule in AISmartParaSideBlocked does not fire and the rider is genuinely payable, and Lapras is bulky enough that one Body Slam does not KO it. Confirmed via layer_trace: SMART delta [-2,0,0,0], the full AI_STRONG rider bonus. Board choice matters here - two earlier drafts used a Snorlax target, where Body Slam's NORMAL type collides with the target's own type and the rider was already blocked for an unrelated reason, so they would have 'passed' while testing nothing.",
+      "note": "AI_OVERHAUL_PLAN.md follow-up F22, the control case. Body Slam's 30% paralysis rider against a Lapras at FULL HP. Lapras is Water/Ice, so the NORMAL-vs-same-type immunity rule in AISmartParaSideBlocked does not fire and the rider is genuinely payable, and Lapras is bulky enough that one Body Slam does not KO it. Confirmed via layer_trace: SMART delta [-2,0,0,0], the full AI_STRONG rider bonus. Board choice matters here - two earlier drafts used a Snorlax target, where Body Slam's NORMAL type collides with the target's own type and the rider was already blocked for an unrelated reason, so they would have 'passed' while testing nothing. Refreshed 2026-11-24: Mist is no longer discouraged by 1 here; the tested move's layers are unchanged.",
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -3880,7 +3886,7 @@
       "expect": {
         "scores": [
           15,
-          21,
+          20,
           20,
           20
         ]
@@ -3900,7 +3906,7 @@
         "positive",
         "negative"
       ],
-      "note": "AI_OVERHAUL_PLAN.md follow-up F22. Identical board to the control, with the Lapras primed into one-shot range so Body Slam now KOs. A paralysis rider on a target that is about to faint is worth exactly nothing, and AI_SMART no longer pays for it. Confirmed via layer_trace: SMART delta [0,0,0,0], where the control shows [-2,0,0,0]. This phantom bonus is what forced AI_KILL_FIRST up to 9 in F16 - see that constant's header in ai_constants.asm for the before/after budget.",
+      "note": "AI_OVERHAUL_PLAN.md follow-up F22. Identical board to the control, with the Lapras primed into one-shot range so Body Slam now KOs. A paralysis rider on a target that is about to faint is worth exactly nothing, and AI_SMART no longer pays for it. Confirmed via layer_trace: SMART delta [0,0,0,0], where the control shows [-2,0,0,0]. This phantom bonus is what forced AI_KILL_FIRST up to 9 in F16 - see that constant's header in ai_constants.asm for the before/after budget. Refreshed 2026-11-24: Mist is no longer discouraged by 1 here; the tested move's layers are unchanged.",
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -3933,7 +3939,7 @@
       "expect": {
         "scores": [
           14,
-          21,
+          20,
           20,
           20
         ]
@@ -3952,7 +3958,7 @@
       "required_cases": [
         "positive"
       ],
-      "note": "The scope guard for F22: its gate applies to SECONDARY-EFFECT RIDERS only, never to a bonus that remains valid once the target is gone. Hyper Beam does not recharge when it KOs - the plan's own 'always fire Hyper Beam when it kills' rule - so AISmart_HyperBeam's encouragement must survive lethality. Player primed into one-shot range; confirmed via layer_trace that SMART still contributes [-1,0,0,0].",
+      "note": "The scope guard for F22: its gate applies to SECONDARY-EFFECT RIDERS only, never to a bonus that remains valid once the target is gone. Hyper Beam does not recharge when it KOs - the plan's own 'always fire Hyper Beam when it kills' rule - so AISmart_HyperBeam's encouragement must survive lethality. Player primed into one-shot range; confirmed via layer_trace that SMART still contributes [-1,0,0,0]. Refreshed 2026-11-24: AISmart_HyperBeam is neutral for a Beam that can KO since 2026-11-18 and discourages one that cannot: the -10 is AI_DAMAGE's kill tier alone, and the point stands, the KO Beam is not discouraged.",
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -3984,7 +3990,7 @@
       ],
       "expect": {
         "scores": [
-          9,
+          10,
           20,
           20,
           20
@@ -4004,7 +4010,7 @@
       "required_cases": [
         "positive"
       ],
-      "note": "The second scope guard for F22: a draining move still heals the user even on the turn it KOs, so AISmart_DrainHP's bonus must survive too. Enemy primed BELOW max HP (otherwise AISmart_DrainHP correctly declines - there is nothing to heal) and player primed into one-shot range. Confirmed via layer_trace: SMART still contributes [-1,0,0,0].",
+      "note": "The second scope guard for F22: a draining move still heals the user even on the turn it KOs, so AISmart_DrainHP's bonus must survive too. Enemy primed BELOW max HP (otherwise AISmart_DrainHP correctly declines - there is nothing to heal) and player primed into one-shot range. Confirmed via layer_trace: SMART still contributes [-1,0,0,0]. Refreshed 2026-11-24: Mist is no longer discouraged by 1 here; the tested move's layers are unchanged.",
       "ai_tier": 2,
       "trainer_class": "COOLTRAINER_M",
       "player": [
@@ -4043,7 +4049,7 @@
       "expect": {
         "scores": [
           8,
-          21,
+          20,
           20,
           20
         ]

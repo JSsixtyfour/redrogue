@@ -14,7 +14,7 @@
 
 SECTION "Trainer AI Core", ROMX
 
-; Base skill tier by Rogue round. round = wBattleCount / 10.
+; Base skill tier by Rogue round. round = wBattleCount / ROUND_BATTLES.
 ; These tables ARE the difficulty ladder - retuning the ramp means editing the
 ; numbers below and nothing else.
 ; One row per LEVELS difficulty setting (wOptions2 bits 0-2), one byte per
@@ -111,15 +111,15 @@ AIResolveTier::
 	ld a, AI_MAX_TIER
 	jr .store
 .noOverride
-; round = min(wBattleCount / 10, AI_MAX_ROUND), by repeated subtraction.
+; round = min(progress / ROUND_BATTLES, AI_MAX_ROUND), by repeated subtraction.
 	call GetRunProgress
 	ld b, 0
-.divideByTen
+.divideByRound
 	cp ROUND_BATTLES
 	jr c, .gotRound
 	sub ROUND_BATTLES
 	inc b
-	jr .divideByTen
+	jr .divideByRound
 .gotRound
 	ld a, b
 	cp AI_MAX_ROUND + 1
@@ -154,7 +154,7 @@ AIResolveTier::
 
 ; Boss bumps. Each is worth one tier, and the clamp below catches the overlap.
 ; The Elite Four and Champion deliberately need no test here: they only occur
-; at wBattleCount 86+, which is round 8, which is already AI_MAX_TIER.
+; at E4_FIRST_BATTLECOUNT and up, which is round 8, the last column.
 	ld a, [wGymLeaderNo]
 	and a
 	jr z, .notGymLeader

@@ -98,7 +98,7 @@ ExitPlayerPC:
 	ldh [hNoWaitAfterText], a
 	ret
 
-; ELEMENT PRISM cartridge swap (custom_functions/element_prism.asm). Returns
+; ELEMENT BOY cartridge swap (custom_functions/element_prism.asm). Returns
 ; to the PC menu rather than logging off, so the player can swap again or
 ; check the result.
 PlayerPCCartridgeSwap:
@@ -288,7 +288,7 @@ PlayerPCCartridgeSwap:
 PlayersPCMenuEntries:
 	db   "WITHDRAW"
 	next "DEPOSIT"
-	next "CARTRIDGE"   ; ELEMENT PRISM cartridge swap (custom_functions/element_prism.asm)
+	next "CARTRIDGE"   ; ELEMENT BOY cartridge swap (custom_functions/element_prism.asm)
 	next "LOG OFF@"
 
 TurnedOnPC2Text:

@@ -1044,11 +1044,11 @@ TrainerBattleVictory:
 	ld a, [wGymLeaderNo]
 	and a
 	jr z, .checkFifthTrainerCredits
-	; RogueGymLeaderVictory = RogueAwardCredits2 + the first-defeat ELEMENT PRISM
+	; RogueGymLeaderVictory = RogueAwardCredits2 + the first-defeat ELEMENT BOY
 	; grant (custom_functions/element_prism.asm). Same 8-byte farcall as before,
 	; just a different target, so this hook costs this (very tight) bank nothing.
 	; Not folded into RogueAwardCredits2 itself - the Elite Four scripts call
-	; that too, and the prism is a gym-leader grant only.
+	; that too, and the ELEMENT BOY is a gym-leader grant only.
 	farcall RogueGymLeaderVictory
 	jr .creditsDone
 .checkFifthTrainerCredits
@@ -5902,8 +5902,8 @@ AdjustDamageForMoveType:
 ; (farcall destroys b/h/l regardless of what the callee preserves). Both run
 ; before RandomizeDamage, i.e. the same stage of the pipeline as STAB and type
 ; effectiveness above.
-;   PLAYER's turn -> ELEMENT PRISM boost (custom_functions/element_prism.asm),
-;                    if the move matches the equipped prism's type.
+;   PLAYER's turn -> ELEMENT BOY boost (custom_functions/element_prism.asm),
+;                    if the move matches the equipped ELEMENT BOY's type.
 ;   ENEMY's turn  -> witch PRIZE_RESIST_SUPER, which softens super-effective
 ;                    hits. It stays in this bank because it scans TypeEffects,
 ;                    which is bank $0F data - see its header.

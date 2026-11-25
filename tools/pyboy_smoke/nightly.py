@@ -26,8 +26,14 @@ Suites (all by default, in this order):
     stack      runtime stack headroom and SRAM latch checks on DMG and CGB
     builds     compare_builds: seeds 1-8 on the debug, Blue and Red builds
     sram       sram_fuzz: seeds 1-4
-    battle_fuzz  random battles of unusual moves with random input, rotating seeds
+    battle_fuzz  random battles of unusual moves with random input
+    menu_fuzz  random input in Bill's PC, the START menu and the slot machine
     guards     one rotating share of standalone guards, all on Sunday
+
+Seeds (SEED_PLAN): most suites play a few fixed seeds, which the comparisons with
+other nights use, plus fresh ones drawn from the date, so every night plays new
+games and the same night can be replayed. newgame keeps all its seeds: the
+coverage comparison needs the same games.
 
 Each night writes <reports>/<date>_<sha>/ (default ../redrogue_nightly_reports):
 the logs, each suite's summary JSON, copies of every failed seed's report,
@@ -49,6 +55,7 @@ import datetime as dt
 import html
 import json
 import os
+import random
 import re
 import shlex
 import shutil
@@ -108,16 +115,24 @@ SUITES = {
                      "--max-frames", "500000", "--timeout", "300"], 600, ["autoplay_summary.json"]),
     "discovery": (AUTOPLAY_COMMAND + ["--seeds", "17-40", "--jobs", "6", "--new-game",
                       "--runs", "2", "--vary", "--player", "strong", "--save-checks",
+                      "--menu-chaos", "0.1",
                       "--coverage", "--max-frames", "2500000", "--timeout", "450"], 1200,
                   ["autoplay_summary.json", "coverage_summary.json"]),
     "directed": (["python3", "-m", "unittest", "-v", *DIRECTED_TESTS], 900, []),
-    "stack": (["python3", str(SMOKE_DIR / "audit_runtime_stack_sram.py")], 480, []),
+    "stack": (["python3", str(SMOKE_DIR / "audit_runtime_stack_sram.py"), "--dmg-seeds", "3", "--cgb-seeds", "5"],
+              600, []),
     "builds": (["python3", str(SMOKE_DIR / "compare_builds.py"), "--seeds", "1-8", "--jobs", "6",
                 "--max-frames", "1000000"], 7200, ["build_compare.json"]),
     "sram": (["python3", str(SMOKE_DIR / "sram_fuzz.py"), "--seeds", "1-4", "--matched-controls"], 3600, ["sram_fuzz_summary.json"]),
     "battle_fuzz": (["python3", str(SMOKE_DIR / "battle_fuzz.py"), "--seeds", "1-2000", "--jobs", "6",
-                     "--minutes", "5"], 900, ["battle_fuzz.json"]),
+                     "--minutes", "8"], 900, ["battle_fuzz.json"]),
+    "menu_fuzz": (["python3", str(SMOKE_DIR / "menu_fuzz.py"), "--seeds", "1-120", "--jobs", "6"], 1200,
+                  ["menu_fuzz.json"]),
     "guards": (["python3", str(SMOKE_DIR / "run_audits.py")], 5400, []),}
+# suite -> (fixed seeds from 1, fresh seeds drawn from the date). Comparisons with other nights
+# use only the fixed ones. newgame is absent: its 16 stay fixed, as the coverage control.
+SEED_PLAN = {"lobby": (12, 24), "cgb": (2, 4), "cgb_full": (8, 12), "menus": (8, 12), "room_menu": (2, 4),
+             "discovery": (0, 32), "builds": (4, 8), "sram": (2, 4), "battle_fuzz": (0, 3000), "menu_fuzz": (0, 240)}
 # --quick: a few seeds per suite, to check the runner itself.
 QUICK = {"lobby": {"--seeds": "1-2"}, "newgame": {"--seeds": "1-2", "--runs": "1"},
          "cgb": {"--seeds": "1-2", "--stages": "3", "--branches": "1",
@@ -126,21 +141,36 @@ QUICK = {"lobby": {"--seeds": "1-2"}, "newgame": {"--seeds": "1-2", "--runs": "1
          "menus": {"--seeds": "1-2", "--stages": "3"},
          "room_menu": {"--seeds": "1-2"},
          "discovery": {"--seeds": "17-18", "--runs": "1"},
-         "builds": {"--seeds": "1-2"}, "sram": {"--seeds": "1"}, "battle_fuzz": {"--seeds": "1-12"}}
+         "builds": {"--seeds": "1-2"}, "sram": {"--seeds": "1"}, "battle_fuzz": {"--seeds": "1-12"},
+         "menu_fuzz": {"--seeds": "1-4"}}
 AUTOPLAY_SUITES = {"lobby", "newgame", "cgb", "cgb_full", "menus", "room_menu", "discovery"}
 MENU_MILESTONES = {"pc": "pc_main_menu", "rental": "offer", "roompc": "top_menu"}
+
+
+def nightly_seeds(name: str, day: dt.date) -> str:
+    """This night's --seeds for a suite: its fixed ones, then fresh ones. The date decides them,
+    so a run can be repeated and two commits tested the same day play the same games."""
+    fixed, fresh = SEED_PLAN[name]
+    rng = random.Random(f"{day.isoformat()}/{name}")
+    parts = [f"1-{fixed}"] if fixed else []
+    if fresh > 200:  # a list this long would not fit a readable command
+        first = rng.randrange(10_000, 1_000_000)
+        parts.append(f"{first}-{first + fresh - 1}")
+    else:
+        parts += map(str, sorted(rng.sample(range(10_000, 1_000_000), fresh)))
+    return ",".join(parts)
 
 
 def suite_command(name: str, worktree: Path, day: dt.date, quick: bool) -> list[str]:
     command = list(SUITES[name][0])
     for flag, value in (QUICK.get(name, {}) if quick else {}).items():
         command[command.index(flag) + 1] = value
-    if name == "discovery" and not quick:
-        first = 17 + 24 * (day.toordinal() % 1000)
-        command[command.index("--seeds") + 1] = f"{first}-{first + 23}"
-    if name == "battle_fuzz" and not quick:
-        first = 100_001 + 2000 * (day.toordinal() % 1000)
-        command[command.index("--seeds") + 1] = f"{first}-{first + 1999}"
+    if name in SEED_PLAN and not quick:
+        command[command.index("--seeds") + 1] = nightly_seeds(name, day)
+    if name == "stack" and not quick:
+        fresh = random.Random(f"{day.isoformat()}/stack").sample(range(10_000, 1_000_000), 2)
+        command[command.index("--dmg-seeds") + 1] = f"3,{fresh[0]}"
+        command[command.index("--cgb-seeds") + 1] = f"5,{fresh[1]}"
     if name == "directed":
         command[0:0] = ["env", f"PYTHONPATH={SMOKE_DIR}"]
         if quick:
@@ -205,7 +235,7 @@ def run_suite(name: str, worktree: Path, night: Path, day: dt.date,
         result = execute_suite(name, command, worktree, night, log, min(timeout, remaining), keep, artifacts)
         if not has_issue(result):
             shutil.rmtree(artifacts)
-    elif name in AUTOPLAY_SUITES or name in ("builds", "stack", "battle_fuzz"):
+    elif name in AUTOPLAY_SUITES or name in ("builds", "stack", "battle_fuzz", "menu_fuzz"):
         # Keep suites and attempts separate, including failure snapshots with the same seed.
         with tempfile.TemporaryDirectory(prefix=f".{name}-", dir=night) as scratch:
             result = execute_suite(name, command, worktree, night, log, min(timeout, remaining),
@@ -214,8 +244,10 @@ def run_suite(name: str, worktree: Path, night: Path, day: dt.date,
         result = execute_suite(name, command, worktree, night, log, min(timeout, remaining), keep)
     if name == "guards":
         result["rotation"] = day.weekday()
-    if name in ("discovery", "battle_fuzz"):
-        result["rotating_seeds"] = True
+    if name in SEED_PLAN:
+        result["seeds"] = command[command.index("--seeds") + 1]
+        if not SEED_PLAN[name][0]:
+            result["rotating_seeds"] = True
     return result
 
 
@@ -289,6 +321,8 @@ def execute_suite(name, command, worktree, night, log, timeout, keep, artifacts=
         result.update(sram_findings(night / "sram_sram_fuzz_summary.json"))
     if name == "battle_fuzz":
         result.update(battle_fuzz_findings(night / "battle_fuzz_battle_fuzz.json"))
+    if name == "menu_fuzz":
+        result.update(menu_fuzz_findings(night / "menu_fuzz_menu_fuzz.json"))
     return result
 
 
@@ -330,12 +364,12 @@ def autoplay_findings(name: str, worktree: Path, night: Path, command=None,
         for kind, what, map_name in problems:
             findings.append({"seed": seed, "kind": kind, "what": what, "map": map_name, "replay": replay})
         for branch in branches:
-            command = branch["replay"].replace(str(artifacts), f"<night>/{name}_seeds").replace(str(ARTIFACTS), f"<night>/{name}_seeds")
+            branch_replay = branch["replay"].replace(str(artifacts), f"<night>/{name}_seeds").replace(str(ARTIFACTS), f"<night>/{name}_seeds")
             first = branch["anomalies"][0]["check"] if branch["anomalies"] else None
             findings.append({"seed": seed, "kind": f"branch {first or branch['outcome']}",
                              "what": f"branch {branch['key']}: {branch['outcome']} {branch['detail']}".rstrip()
                              + "".join(f"; {a['check']}: {a['detail']}" for a in branch["anomalies"][:2]),
-                             "map": branch["at"].get("map"), "replay": command})
+                             "map": branch["at"].get("map"), "replay": branch_replay})
     balance = summary.get("balance") or {}
     rows = summary["runs"]
     outcomes = summary.get("outcomes") or {}
@@ -369,8 +403,19 @@ def autoplay_findings(name: str, worktree: Path, night: Path, command=None,
     if name == "cgb_full" and not exposure["champions"]:
         unreached.append("CGB Hall of Fame")
     return {"findings": findings, "outcomes": outcomes, "exposure": exposure, "unreached": unreached,
-            "champion_rate": balance.get("champion_rate"),
+            **champion_rate(name, rows, balance),
             "stages_mean": (balance.get("stages_cleared") or {}).get("mean")}
+
+
+def champion_rate(name: str, rows: list[dict], balance: dict) -> dict[str, object]:
+    """The rate the next night compares with: over the fixed seeds only, when a suite has both."""
+    fixed = SEED_PLAN.get(name, (0, 0))[0]
+    kept = [row for row in rows if row["seed"] <= fixed]
+    runs = [run for row in kept for run in row.get("run_records") or []]
+    if not fixed or not runs:
+        return {"champion_rate": balance.get("champion_rate"), "champion_seeds": None}
+    return {"champion_rate": round(sum(run["outcome"] == "champion" for run in runs) / len(runs), 3),
+            "champion_seeds": sorted(row["seed"] for row in kept)}
 
 
 def count_menu_exposure(row, events, item_counts, errand_counts, choices):
@@ -407,6 +452,18 @@ def build_findings(path: Path) -> dict[str, object]:
                   "replay": f"python3 tools/pyboy_smoke/autoplay.py --seed {seed} --new-game --rom {rom}"}
                  for rom, total in report["totals"].items() for seed in total["failed_seeds"]]
     return {"findings": findings, "only_in_one_build": report["only_in_one_build"]}
+
+
+def menu_fuzz_findings(path: Path) -> dict[str, object]:
+    if not path.exists():
+        return {"findings": [{"kind": "no summary", "what": "no menu fuzz summary written", "replay": None}]}
+    report = json.loads(path.read_text(encoding="utf-8"))
+    findings = []
+    for what, seeds in report["findings"].items():
+        tool, _, detail = what.partition(": ")
+        findings.append({"seed": seeds[0] if seeds else None, "kind": f"{tool} {detail.split(':')[0]}", "what": what,
+                         "replay": f"python3 tools/pyboy_smoke/{tool}.py --seeds {seeds[0]} --jobs 1" if seeds else None})
+    return {"findings": findings, "exposure": {"seeds": sum(row["seeds"] for row in report["tools"].values())}}
 
 
 def battle_fuzz_findings(path: Path) -> dict[str, object]:
@@ -500,7 +557,8 @@ def regressions(report: dict[str, object], previous: dict[str, object] | None) -
             found.append(f"{suite['suite']}: new kind of finding: {kind}")
         for label in sorted(set(suite.get("unreached", [])) - set(before.get("unreached", []))):
             found.append(f"{suite['suite']}: no exposure to {label}")
-        if not suite.get("rotating_seeds") and suite.get("champion_rate") is not None and before.get("champion_rate") is not None \
+        if not suite.get("rotating_seeds") and suite.get("champion_seeds") == before.get("champion_seeds") \
+                and suite.get("champion_rate") is not None and before.get("champion_rate") is not None \
                 and suite["champion_rate"] < before["champion_rate"] - CHAMPION_DROP:
             found.append(f"{suite['suite']}: champion rate {before['champion_rate']:.0%} -> {suite['champion_rate']:.0%}")
     return found

@@ -317,9 +317,14 @@ AISwapRevealedMoveSlots::
 	pop bc
 	ret
 
-; Carry SET if this trainer class sees the player's full moveset.
+; Carry SET if this trainer class sees the player's full moveset, or the player's
+; mon is transformed: its moves are then a copy of one of our own mons'.
 ; Clobbers af, b, hl. Preserves c (AIGetPlayerMoveN's slot).
 AIPlayerMovesAreKnown:
+	ld a, [wPlayerBattleStatus3]
+	bit TRANSFORMED, a
+	scf
+	ret nz
 	ld a, [wTrainerClass]
 	ld b, a
 	ld hl, AIOmniscientClasses

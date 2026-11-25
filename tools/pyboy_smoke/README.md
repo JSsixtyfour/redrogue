@@ -226,7 +226,8 @@ and drives the joypad itself, from the Debug 2 lobby to the Hall of Fame, one
 seed per run, in parallel:
 
 ```sh
-make autoplay                                   # seeds 1-8
+make autoplay                                   # eight random seeds, printed for replay
+make autoplay AUTOPLAY_ARGS='--seeds random:32'
 make autoplay AUTOPLAY_ARGS='--seeds 1-64 --jobs 6'
 make autoplay AUTOPLAY_ARGS='--seeds 1-16 --new-game --runs 3'
 python3 tools/pyboy_smoke/autoplay.py --seed 15  # one run, events printed live
@@ -424,6 +425,20 @@ input-ready observations. A positive exposure result does not certify item
 effects, service histories, save boundaries, or Endless circuits. The explicit
 `integration_endless_journey.py` and `integration_autoplay.py` selections
 document fixture provenance and cold-Continue probe scope.
+
+`autoplay_battle_checks.py` rides along too: every `Moves` lookup in the ROM, GetName, move
+effects, animations, sounds and GetMonHeader must get a real id; a move about to run must be one
+its user can have; and between the battle menu opening and the turn being committed, battle state
+may change only by the player's own choice (a menu that overwrites it is how Bide broke). A routine
+that writes a buffer overlapping battle state must never run in battle (`OVERWORLD_WRITERS`).
+
+`battle_fuzz.py` (`make battle_fuzz`, and a nightly suite) plays random FIGHT 2 battles full of the
+moves bots never pick, with random input through every battle menu and conditions stacked on purpose
+(a status and low HP on one mon, one mon carrying KO DEFIANCE). When another lane finds a battle bug,
+make this reproduce it on the old ROM before trusting a clean run. `bills_pc_fuzz.py` does the same
+for Bill's PC on tagged rosters. `audit_stale_move_matrix.py` plays 880 directed battles around moves
+selected before, and executed after, a state change. `audit_wram_overlaps.py` (in `make audit`) fails
+when two RAM labels newly share bytes; re-record a deliberate one with `--update`.
 
 ### Options that widen the hunt
 

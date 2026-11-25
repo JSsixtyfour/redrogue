@@ -153,7 +153,7 @@ class Profile:
     difficulty: str = "HARD"
     # Key items owned from the start, as [name, tier, active]: written to
     # sKeyItemsBitfield/sKeyItemTiers (SRAM), the state a Credit Exchange
-    # purchase leaves. Their WRAM caches (charges, heal levels, the prism) are
+    # purchase leaves. Their WRAM caches (charges, heal levels, the ELEMENT BOY) are
     # re-derived by the game itself at the first run boundary
     # (RogueResetRunState), so charge-based items work from run 2 on.
     kit: list[list[object]] = field(default_factory=list)

@@ -675,10 +675,10 @@ ApplyKeyItemTierEffects::
 	; EXP_ALL is an option now (BIT_EXP_SHARE) with one fixed rule, so there is
 	; no tier to derive here any more (wExpAllLevel is retired, 2026-09-28).
 
-	; ELEMENT PRISM's damage bonus is derived from its tier the same way, but
+	; ELEMENT BOY's damage bonus is derived from its tier the same way, but
 	; its cache lives in custom_functions/element_prism.asm (the "rogue" bank,
 	; not this one), so it is refreshed by farcall rather than inline. Without
-	; this, a prism upgrade bought here would not take effect until the next
+	; this, an ELEMENT BOY upgrade bought here would not take effect until the next
 	; battle start, unlike every other item on this list.
 	farcall RoguePrismRefreshCache
 	ret

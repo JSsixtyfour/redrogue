@@ -3006,11 +3006,11 @@ wRogueFlagsBitfield2:: db
 
 ; Key Item Effects (see KEY_ITEM_EFFECTS_PLAN_PC.md). Run-scoped state, above
 ; wGameProgressFlagsEnd so it zeroes on new game. sElementPrismType/
-; sKeyItemTiers (SRAM) are the source of truth; the two prism bytes here are
+; sKeyItemTiers (SRAM) are the source of truth; the two ELEMENT BOY bytes here are
 ; caches resolved once at battle start (see ApplyKeyItemTierEffects /
 ; RogueOnBlackout), not general-purpose mirrors - see the plan doc for why a
 ; full WRAM mirror of the SRAM tier/active bits was rejected.
-wPrismType::        db   ; cached ELEMENT PRISM type, $FF = none/inactive
+wPrismType::        db   ; cached ELEMENT BOY type, $FF = none/inactive
 wPrismDamageBonus:: db   ; cached percent bonus, 0 = no boost this battle
 ; Dice charges remaining (not "used", unlike wRogueFlagsBitfield2's slot-pull
 ; bits) - a fresh/new-game byte reading 0 correctly means "own no dice yet".
@@ -3018,7 +3018,7 @@ wPrismDamageBonus:: db   ; cached percent bonus, 0 = no boost this battle
 ; Refilled to 1+tier per die by RogueOnBlackout (custom_functions/credit_popup.asm).
 wDiceCharges::      db
 wStatExpPasses::    db   ; scratch: STAT_BOOSTER pass count, set once per GainExperience call
-; ELEMENT PRISM encounter-bias retry budget, set once per Random_Pokemon_Selection
+; ELEMENT BOY encounter-bias retry budget, set once per Random_Pokemon_Selection
 ; call (1 normally, 16 during starter selection) and spent by
 ; RoguePrismShouldRerollSpecies. Scratch, not persistent state.
 wPrismRerollsLeft:: db
@@ -3194,8 +3194,8 @@ wEndlessFlags:: db
 	      ; -2 more for wBridgeOfferedLo + wBridgeState (Bridge System), still net-zero WRAM0
 	      ; -4 more for wPrismType + wPrismDamageBonus + wDiceCharges + wStatExpPasses
 	      ;   (Key Item Effects), still net-zero WRAM0
-	      ; -1 more for wPrismRerollsLeft (ELEMENT PRISM encounter bias), still net-zero WRAM0
-	      ; -1 more for wEventFlags growing by 13 bits / 1 byte (ELEMENT PRISM one-time
+	      ; -1 more for wPrismRerollsLeft (ELEMENT BOY encounter bias), still net-zero WRAM0
+	      ; -1 more for wEventFlags growing by 13 bits / 1 byte (ELEMENT BOY one-time
 	      ;   grant messages, constants/event_constants.asm), still net-zero WRAM0
 	      ; -1 more for wPlayerAppearance (selectable player character), still net-zero WRAM0
 	      ; -1 more for wOptions2 (extra options menu, Shin Red import Phase 0), still net-zero WRAM0

@@ -46,7 +46,7 @@ DEF AI_TIER_EXPERT    EQU 3
 DEF AI_MAX_TIER       EQU AI_TIER_EXPERT
 DEF NUM_AI_TIERS      EQU AI_MAX_TIER + 1
 
-; Highest round index AITierByRound is defined for. round = wBattleCount / 10,
+; Highest round index AITierByRound is defined for. round = progress / ROUND_BATTLES,
 ; clamped here (the Rogue scheme runs rounds 0-8; see func_enc_gen.asm).
 DEF AI_MAX_ROUND EQU NUM_ROGUE_ROUNDS
 

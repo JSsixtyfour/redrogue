@@ -30,6 +30,7 @@ import json
 import multiprocessing
 import os
 import queue
+import random
 import sys
 import time
 import traceback
@@ -41,9 +42,15 @@ SUMMARY_FIELDS = ("seed", "outcome", "stages_cleared", "battles_won", "frames", 
 
 
 def parse_seeds(spec: str) -> list[int]:
-    """"1-4,9" -> [1, 2, 3, 4, 9]."""
+    """"1-4,9" -> [1, 2, 3, 4, 9]. "random:8" draws eight fresh seeds and prints them, so a
+    batch plays games nobody has played; replay one with the number it printed."""
     seeds: list[int] = []
     for part in spec.split(","):
+        if part.strip().startswith("random:"):
+            drawn = sorted(random.SystemRandom().sample(range(10_000, 1_000_000), int(part.split(":")[1])))
+            print(f"random seeds: {','.join(map(str, drawn))}", flush=True)
+            seeds.extend(drawn)
+            continue
         first, _, last = part.strip().partition("-")
         seeds.extend(range(int(first), int(last or first) + 1))
     return seeds
@@ -284,7 +291,7 @@ def print_ai(ai: dict[str, object], args) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Soak-test Red Rogue with the autoplay agent.")
-    parser.add_argument("--seeds", default="1-8", help="e.g. 1-16 or 3,9,12")
+    parser.add_argument("--seeds", default="random:8", help="e.g. 1-16, 3,9,12 or random:16")
     parser.add_argument("--runs", type=int, default=1,
                         help="runs per seed; between runs the agent walks the hub into the next")
     parser.add_argument("--stages", type=int, default=1000)

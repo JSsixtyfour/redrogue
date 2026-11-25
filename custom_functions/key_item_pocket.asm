@@ -412,9 +412,9 @@ ClearKeyItemsBitfield::
     ld [hli], a
     dec b
     jr nz, .clearLoop
-    ; ELEMENT PRISM's chosen type must init to $ff, NOT 0. Every other byte
+    ; ELEMENT BOY's chosen type must init to $ff, NOT 0. Every other byte
     ; here means "none" at zero, but a type constant does not: 0 is NORMAL.
-    ; Zeroing this would hand every fresh file a Normal-type prism the player
+    ; Zeroing this would hand every fresh file a Normal-type ELEMENT BOY the player
     ; never picked, silently biasing species rolls and buffing Normal moves.
     ; Same bug class as sKeyItemTiers' original miss (see
     ; project_credit_system_bug_classes) - uninitialized SRAM that happens to

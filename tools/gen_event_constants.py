@@ -12,7 +12,7 @@ and emits a build-time ASSERT for every one of those constraints.
 
 Layout
 ------
-  ZONE 0  PERSISTENT_EVENTS_START .. _END   never wiped (intro, ELEMENT PRISM)
+  ZONE 0  PERSISTENT_EVENTS_START .. _END   never wiped (intro, ELEMENT BOY)
   ZONE 1  RUN_EVENTS_START .. _END          wiped by one ResetEventRange
   ZONE 2  EVENT_GRAVEYARD_BASE              unreachable maps, aliased/overlapping
           pad to NUM_EVENTS
@@ -182,7 +182,7 @@ PERSISTENT = [
     "EVENT_INTRO_TOUR_COMPLETE",
     "EVENT_GAMMA_SHADER",
     "EVENT_HALL_OF_FAME_DEX_RATING",
-    # ELEMENT PRISM "only the first time, ever" messages. MUST stay out of the
+    # ELEMENT BOY "only the first time, ever" messages. MUST stay out of the
     # run-scoped range - never being cleared is the whole mechanism.
     # GYM1..GYM8 must also stay contiguous (see CONTIG below).
     "EVENT_PRISM_GYM1_SHOWN",
@@ -445,8 +445,8 @@ NEW_EVENTS = [
     "EVENT_AUTOWALKED_INTO_WILLS_ROOM",
     "EVENT_BEAT_KARENS_ROOM_TRAINER_0",
     "EVENT_AUTOWALKED_INTO_KARENS_ROOM",
-    # Phase 7 ELEMENT PRISM cartridges for the two new grantors. Also listed in
-    # PERSISTENT (TABLE 2): a prism message fires once EVER, so it must not be
+    # Phase 7 ELEMENT BOY cartridges for the two new grantors. Also listed in
+    # PERSISTENT (TABLE 2): an ELEMENT BOY message fires once EVER, so it must not be
     # swept by RogueResetRunState.
     "EVENT_PRISM_E4_POISON_SHOWN",
     "EVENT_PRISM_E4_PSYCHIC_SHOWN",
@@ -1002,7 +1002,7 @@ def emit(alloc, trainer_blocks, reach_count):
     w(";")
     w(";   ZONE 0  PERSISTENT_EVENTS_START .. _END")
     w(";           Survives a blackout AND the Hall of Fame. Intro/story state")
-    w(";           plus the ELEMENT PRISM one-time-ever messages, whose whole")
+    w(";           plus the ELEMENT BOY one-time-ever messages, whose whole")
     w(";           mechanism is never being cleared.")
     w(";")
     w(";   ZONE 1  RUN_EVENTS_START .. _END")
@@ -1093,7 +1093,7 @@ def emit(alloc, trainer_blocks, reach_count):
     w("ASSERT RUN_EVENTS_END % 8 == 7")
     w("ASSERT EVENT_GRAVEYARD_BASE > RUN_EVENTS_END")
     w("ASSERT EVENT_GRAVEYARD_BASE % 8 == 0")
-    w("; ELEMENT PRISM first-time-ever flags must survive the run wipe:")
+    w("; ELEMENT BOY first-time-ever flags must survive the run wipe:")
     w("ASSERT EVENT_PRISM_GYM1_SHOWN < RUN_EVENTS_START")
     w("ASSERT EVENT_PRISM_WHITNEY_SHOWN < RUN_EVENTS_START")
     w("; the whole layout must fit the pinned budget:")

@@ -137,7 +137,7 @@ WillsRoomWillEndBattleScript:
 	ld a, TEXT_WILLSROOM_WILL
 	ldh [hTextID], a
 	call DisplayTextID
-; ELEMENT PRISM cartridge. Granted and announced from its own text id so
+; ELEMENT BOY cartridge. Granted and announced from its own text id so
 ; PrintText runs inside DisplayTextID - fired raw from this map script, the
 ; announcement drew an invisible box that silently waited for A. Gated here
 ; on the grant's own one-time event so a repeat win shows no empty box.

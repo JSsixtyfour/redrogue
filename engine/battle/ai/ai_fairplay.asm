@@ -27,11 +27,10 @@
 ; argument register for a nested farcall or a callee's own scratch usage to
 ; clobber out from under the caller.
 
-; RELOCATED 2026-09-29 from $2C (16 B free on Red) to $0E, to make room for
-; the B4 switch-in survival hook in AIReplacementIsBetter. Safe to move: the
-; only caller farcalls it with no register contract (above), and nothing
-; else in $2C references it.
-SECTION "Trainer AI Fair Play", ROMX, BANK[$0E]
+; RELOCATED 2026-09-29 from $2C (16 B free on Red) to $0E, then 2026-11-24 out of
+; $0E (0 free on Red/Blue) to $3E (layout.link). Safe to move: the only caller
+; farcalls it with no register contract (above), and it reads only WRAM.
+SECTION "Trainer AI Fair Play", ROMX
 
 ; Finds wPlayerSelectedMove's slot in the player's real moveset and sets that
 ; slot's bit for the active party member (wPlayerMonNumber) in
@@ -46,6 +45,12 @@ SECTION "Trainer AI Fair Play", ROMX, BANK[$0E]
 ; hook point - a miss still shows the player what move was chosen.
 ; Clobbers af, bc, de, hl.
 AITrackSeenPlayerMove::
+; A transformed mon's slots hold OUR mon's moves, and they revert when it leaves:
+; a bit set now would mark one of its real slots, whose move was never shown.
+; Nothing is lost, AIPlayerMovesAreKnown knows every copied move meanwhile.
+	ld a, [wPlayerBattleStatus3]
+	bit TRANSFORMED, a
+	ret nz
 	ld a, [wPlayerSelectedMove]
 	and a
 	ret z ; defensive: 0 is never a real move, so there is nothing to reveal
