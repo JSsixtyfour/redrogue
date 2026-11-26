@@ -52,8 +52,11 @@ def message(reports: Path) -> str:
         attempt = (reports / "latest_attempt.txt").read_text(encoding="utf-8-sig").strip()
     except OSError:
         attempt = "No Windows runner status yet."
+    marked = seen(reports)
+    if marked and marked in attempt:
+        attempt += " (seen)"
     nights = list(history(reports))
-    full = next((folder for folder, report in nights if nightly.is_full_report(report)), None)
+    full =next((folder for folder, report in nights if nightly.is_full_report(report)), None)
     if full is None:
         headline = f"Red Rogue nightly: no complete report. {attempt}"
     else:
@@ -62,7 +65,6 @@ def message(reports: Path) -> str:
         headline = f"Red Rogue nightly: {overdue}{attempt} Dashboard: {reports / 'index.html'}"
     if not nights:
         return headline
-    marked = seen(reports)
     unseen = [(folder, report) for folder, report in nights[:RECENT]
               if report.get("status") == "NEW regression" and folder.name > marked]
     if not unseen:
