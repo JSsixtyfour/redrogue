@@ -309,30 +309,13 @@ _AddPartyMon::
 ; pre-flagged by coincidence. This also future-proofs bits 4-7 for the next
 ; flag added to this byte - see MON_CATCH_RATE_BITFIELD_PC.md.
 
-; SHINY CHARM: roll a shiny flag for this newly created mon (bit 4 of this
-; same repurposed byte - see func_shiny.asm). Base rate is 1/256 even with
-; no charm owned; owning one only widens the threshold via GetKeyItemPower.
-; de is the live struct write cursor used immediately below and must
-; survive the farcall - see KEY_ITEM_EFFECTS_PLAN_PC.md §3a.
+; Shiny (bit 4 of this same repurposed byte, func_shiny.asm): a reward offer's
+; stored roll, the wild mon's own flag, or a fresh roll. See shiny_rolls.asm.
+; de is the live struct write cursor used immediately below.
 	push de
-	ld a, SHINY_CHARM
-	ld [wCurItem], a               ; NOTE: wCurItem IS wCurPartySpecies (same byte)
-	farcall GetKeyItemPowerInE     ; e = 0 (not active) or 1-3 (displayed tier);
-	                               ; a holds the caller's bank, never read it here
-	ld hl, .ShinyThresholdTable
-	ld d, 0
-	add hl, de
-	ld d, [hl]                     ; d = threshold (1/2/4/8/16); Random preserves de
-	ld a, [wCurSpecies]            ; restore the aliased byte before it escapes to
-	ld [wCurPartySpecies], a       ; callers, which read it after AddPartyMon returns
-	call Random                    ; a = fresh roll
-	cp d
-	pop de                         ; de = struct write cursor, restored
-	jr c, .isShiny                 ; carry set = roll < threshold
-	xor a
-	jr .writeShinyFlag
-.isShiny
-	ld a, 1 << BIT_SHINY
+	farcall AddPartyMonShiny       ; e = 1 << BIT_SHINY or 0
+	ld a, e
+	pop de
 .writeShinyFlag
 ; Phase 2R: fold the pending form index into the same repurposed byte (bits 5-6)
 ; alongside the shiny flag (bit 4). This is what makes the form STICK to the mon
@@ -444,17 +427,9 @@ _AddPartyMon::
 	xor a
 	ld [wSpawnForm], a
 	ld [wSpawnDVSlot], a ; same one-shot contract as wSpawnForm
+	ld [wSpawnShiny], a
 	scf
 	ret
-
-.ShinyThresholdTable:
-; SHINY CHARM (see KEY_ITEM_EFFECTS_PLAN_PC.md §3a). Index 0 is the base
-; rate with no charm owned; GetKeyItemPower's 1-4 (1 + displayed tier 0-3)
-; select entries 1-4. Doubles each tier; tier 3 (max, purchasable per
-; credit_mart.asm) caps at 16/256 = 6.3%.
-	table_width 1
-	db 1, 2, 4, 8, 16
-	assert_table_length 5
 
 ; ============================================================
 ; ApplyDVFloor — DV BOOSTER helper (see KEY_ITEM_EFFECTS_PLAN_PC.md §3d).

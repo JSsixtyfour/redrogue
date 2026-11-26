@@ -134,9 +134,9 @@ LoreleisRoomLoreleiEndBattleScript:
 ; PrintText runs inside DisplayTextID - fired raw from this map script, the
 ; announcement drew an invisible box that silently waited for A. Gated here
 ; on the grant's own one-time event so a repeat win shows no empty box.
-	CheckEvent EVENT_PRISM_E4_ICE_SHOWN
+	CheckEvent EVENT_ELEMENT_BOY_E4_ICE_SHOWN
 	ret nz
-	ld a, TEXT_LORELEISROOM_PRISM
+	ld a, TEXT_LORELEISROOM_ELEMENT_BOY
 	ldh [hTextID], a
 	jp DisplayTextID
 
@@ -144,7 +144,7 @@ LoreleisRoom_TextPointers:
 	def_text_pointers
 	dw_const LoreleisRoomLoreleiText,            TEXT_LORELEISROOM_LORELEI
 	dw_const LoreleisRoomLoreleiDontRunAwayText, TEXT_LORELEISROOM_DONT_RUN_AWAY
-	dw_const LoreleisRoomPrismText, TEXT_LORELEISROOM_PRISM
+	dw_const LoreleisRoomElementBoyText, TEXT_LORELEISROOM_ELEMENT_BOY
 
 LoreleisRoomTrainerHeaders:
 	def_trainers
@@ -187,7 +187,7 @@ LoreleisRoomLoreleiDontRunAwayText:
 	text_far _LoreleisRoomLoreleiDontRunAwayText
 	text_end
 
-LoreleisRoomPrismText:
+LoreleisRoomElementBoyText:
 	text_asm
 	farcall RogueGrantCartridgeIce
 	call DisableWaitingAfterTextDisplay ; the message carries its own prompt

@@ -67,16 +67,16 @@ class KeyItemEquipmentTest(HarnessTestCase):
         h = self.boot()
         tiers = [0x24, 0x49, 0x92, 0x24]
         h.write_sram_bytes("sKeyItemTiers", tiers)
-        h.write_sram_bytes("sElementPrismType", [0x14])
-        h.write_sram_bytes("sPrismCartridges", [0x55, 0x15])
+        h.write_sram_bytes("sElementBoyType", [0x14])
+        h.write_sram_bytes("sElementBoyCartridges", [0x55, 0x15])
         for routine in ("BuildKeyItemBagList", "BuildKeyItemPCWithdrawList", "IsKeyItemActive"):
             with self.subTest(entry=routine):
                 h.write_sram_bytes("sKeyItemsBitfield", bits(NAMES, NAMES))
-                self.select(routine, "ELEMENT_PRISM")
+                self.select(routine, "ELEMENT_BOY")
                 self.assertEqual(self.flags(), bits(NAMES, NAMES[:3]))
                 self.assertEqual(h.read_sram_bytes("sKeyItemTiers", 4), tiers)
-                self.assertEqual(h.read_sram_bytes("sElementPrismType", 1), [0x14])
-                self.assertEqual(h.read_sram_bytes("sPrismCartridges", 2), [0x55, 0x15])
+                self.assertEqual(h.read_sram_bytes("sElementBoyType", 1), [0x14])
+                self.assertEqual(h.read_sram_bytes("sElementBoyCartridges", 2), [0x55, 0x15])
                 h.call_routine("BuildKeyItemPCWithdrawList")
                 expected = [len(NAMES) - 3]
                 for name in NAMES[3:]:
@@ -84,16 +84,16 @@ class KeyItemEquipmentTest(HarnessTestCase):
                 expected.append(255)
                 self.assertEqual(h.read_bytes("wKeyItemPocketBuf", len(expected)), expected)
 
-    def test_deposit_then_withdraw_prism_and_reject_unowned(self):
+    def test_deposit_then_withdraw_element_boy_and_reject_unowned(self):
         h = self.boot()
         active = NAMES[:3]
-        owned = active + ["ELEMENT_PRISM"]
+        owned = active + ["ELEMENT_BOY"]
         h.write_sram_bytes("sKeyItemsBitfield", bits(owned, active))
-        self.assertFalse(self.select("WithdrawKeyItem", "ELEMENT_PRISM"))
+        self.assertFalse(self.select("WithdrawKeyItem", "ELEMENT_BOY"))
         self.assertTrue(self.select("DepositKeyItem", active[0]))
-        self.assertTrue(self.select("WithdrawKeyItem", "ELEMENT_PRISM"))
-        self.assertFalse(self.select("WithdrawKeyItem", "ELEMENT_PRISM"))
-        self.assertEqual(self.flags(), bits(owned, active[1:] + ["ELEMENT_PRISM"]))
+        self.assertTrue(self.select("WithdrawKeyItem", "ELEMENT_BOY"))
+        self.assertFalse(self.select("WithdrawKeyItem", "ELEMENT_BOY"))
+        self.assertEqual(self.flags(), bits(owned, active[1:] + ["ELEMENT_BOY"]))
         h.write_sram_bytes("sKeyItemsBitfield", [0] * 4)
         for name in NAMES:
             self.assertFalse(self.select("WithdrawKeyItem", name))
@@ -102,12 +102,12 @@ class KeyItemEquipmentTest(HarnessTestCase):
     def test_retired_bits_do_not_use_capacity_and_orphans_do_not_apply(self):
         h = self.boot()
         active = NAMES[:2]
-        owned = active + ["ELEMENT_PRISM"]
+        owned = active + ["ELEMENT_BOY"]
         state = bits(owned, active)
         state[0] |= 0xC0  # retired EXP ALL pair
         state[3] |= 0xC0  # reserved pair
         h.write_sram_bytes("sKeyItemsBitfield", state)
-        self.assertTrue(self.select("WithdrawKeyItem", "ELEMENT_PRISM"))
+        self.assertTrue(self.select("WithdrawKeyItem", "ELEMENT_BOY"))
         expected = bits(owned, owned)
         expected[0] |= 0xC0
         expected[3] |= 0xC0
@@ -118,23 +118,23 @@ class KeyItemEquipmentTest(HarnessTestCase):
             self.assertEqual(h.last_call_registers["E"], 0)
             self.assertEqual(self.flags(), [0] * 4)
 
-    def test_run_reset_preserves_equipment_ownership_and_prism_settings(self):
+    def test_run_reset_preserves_equipment_ownership_and_element_boy_settings(self):
         h = self.boot()
-        active = ["SHINY_CHARM", "RARE_LENS", "ELEMENT_PRISM"]
+        active = ["SHINY_CHARM", "RARE_LENS", "ELEMENT_BOY"]
         expected = bits(NAMES, active)
         h.write_sram_bytes("sKeyItemsBitfield", expected)
         h.write_sram_bytes("sKeyItemTiers", [0x24, 0x49, 0x92, 0x24])
-        h.write_sram_bytes("sElementPrismType", [0x14])
-        h.write_sram_bytes("sPrismCartridges", [0x55, 0x15])
+        h.write_sram_bytes("sElementBoyType", [0x14])
+        h.write_sram_bytes("sElementBoyCartridges", [0x55, 0x15])
         h.call_routine("RogueResetRunState")
         self.assertEqual(self.flags(), expected)
         self.assertEqual(h.read_sram_bytes("sKeyItemTiers", 4), [0x24, 0x49, 0x92, 0x24])
-        self.assertEqual(h.read_sram_bytes("sElementPrismType", 1), [0x14])
-        self.assertEqual(h.read_sram_bytes("sPrismCartridges", 2), [0x55, 0x15])
+        self.assertEqual(h.read_sram_bytes("sElementBoyType", 1), [0x14])
+        self.assertEqual(h.read_sram_bytes("sElementBoyCartridges", 2), [0x55, 0x15])
 
     def test_flute_is_independent_and_battle_buffer_stays_bounded(self):
         h = self.boot()
-        active = ["LEFTOVERS", "PP_TONIC", "ELEMENT_PRISM"]
+        active = ["LEFTOVERS", "PP_TONIC", "ELEMENT_BOY"]
         for flute in (0, 1):
             h.write_sram_bytes("sKeyItemsBitfield", bits(active, active))
             h.write8("wRecoveryItemCounts", flute, offset=20)

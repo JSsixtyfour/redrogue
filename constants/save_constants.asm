@@ -121,7 +121,13 @@
 ; events after it renumbered (flagsRenumbered). Migration wildGenericAdded writes
 ; "no trainer" and an unbeaten byte, so an old save in a wild area has none until
 ; the next area's preload.
-DEF SAVE_SCHEMA_ID EQU 25
+; Schema 26 (2026-11-25): sRogueOfferShiny, 3 bytes appended to "Reward Offer DVs
+; SRAM" (bank 2); only the section's end label moves. Migration
+; rogueOfferShinyAdded writes $ff (never shiny), so an offer rolled before this
+; keeps its DVs and stays as it was shown. The ELEMENT BOY's identifiers took its
+; new name (FOLLOWUPS #108): labels and events renamed, no value or address
+; changed, and the step knows the two renamed SRAM labels.
+DEF SAVE_SCHEMA_ID EQU 26
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; Transient invalid magic while a writer owns the save. Completed headers and

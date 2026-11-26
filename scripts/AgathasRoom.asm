@@ -135,9 +135,9 @@ AgathasRoomAgathaEndBattleScript:
 ; PrintText runs inside DisplayTextID - fired raw from this map script, the
 ; announcement drew an invisible box that silently waited for A. Gated here
 ; on the grant's own one-time event so a repeat win shows no empty box.
-	CheckEvent EVENT_PRISM_E4_GHOST_SHOWN
+	CheckEvent EVENT_ELEMENT_BOY_E4_GHOST_SHOWN
 	ret nz
-	ld a, TEXT_AGATHASROOM_PRISM
+	ld a, TEXT_AGATHASROOM_ELEMENT_BOY
 	ldh [hTextID], a
 	jp DisplayTextID
 
@@ -145,7 +145,7 @@ AgathasRoom_TextPointers:
 	def_text_pointers
 	dw_const AgathasRoomAgathaText,            TEXT_AGATHASROOM_AGATHA
 	dw_const AgathasRoomAgathaDontRunAwayText, TEXT_AGATHASROOM_AGATHA_DONT_RUN_AWAY
-	dw_const AgathasRoomPrismText, TEXT_AGATHASROOM_PRISM
+	dw_const AgathasRoomElementBoyText, TEXT_AGATHASROOM_ELEMENT_BOY
 
 AgathasRoomTrainerHeaders:
 	def_trainers
@@ -188,7 +188,7 @@ AgathasRoomAgathaDontRunAwayText:
 	text_far _AgathasRoomAgathaDontRunAwayText
 	text_end
 
-AgathasRoomPrismText:
+AgathasRoomElementBoyText:
 	text_asm
 	farcall RogueGrantCartridgeGhost
 	call DisableWaitingAfterTextDisplay ; the message carries its own prompt

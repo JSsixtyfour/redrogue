@@ -43,6 +43,7 @@ _GivePokemon::
 	xor a
 	ld [wSpawnForm], a
 	ld [wSpawnDVSlot], a
+	ld [wSpawnShiny], a
 	ld hl, BoxIsFullText
 	call PrintText
 	and a

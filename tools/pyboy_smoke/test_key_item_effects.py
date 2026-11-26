@@ -141,7 +141,7 @@ class KeyItemEffectLifecycleTest(HarnessTestCase):
     def test_blackout_reset_rederives_tiers_and_refills_spent_counters(self) -> None:
         h = self.boot()
         owned = list(NAMES)
-        active = ["LEFTOVERS", "PP_TONIC", "ELEMENT_PRISM"]
+        active = ["LEFTOVERS", "PP_TONIC", "ELEMENT_BOY"]
         tiers = all_tiers({
             "LEFTOVERS": 2,
             "PP_TONIC": 1,
@@ -150,13 +150,13 @@ class KeyItemEffectLifecycleTest(HarnessTestCase):
             "DOOR_DICE": 0,
             "MON_DICE": 1,
             "ITEM_DICE": 2,
-            "ELEMENT_PRISM": 2,
+            "ELEMENT_BOY": 2,
         })
         flags = bits(owned, active)
         h.write_sram_bytes("sKeyItemsBitfield", flags)
         h.write_sram_bytes("sKeyItemTiers", tiers)
-        h.write_sram_bytes("sElementPrismType", [TYPES["FIRE"]])
-        h.write_sram_bytes("sPrismCartridges", [0, 1])  # FIRE is cartridge index 8
+        h.write_sram_bytes("sElementBoyType", [TYPES["FIRE"]])
+        h.write_sram_bytes("sElementBoyCartridges", [0, 1])  # FIRE is cartridge index 8
         h.write8("wHealAllItemLevel", 0)
         h.write8("wRestorePPItemLevel", 0)
         h.write8("wKODefianceUsages", 0)
@@ -172,9 +172,9 @@ class KeyItemEffectLifecycleTest(HarnessTestCase):
         self.assertEqual(h.read8("wKODefianceUsages"), 3)  # 1 + internal tier 2
         self.assertEqual(h.read8("wTurnRewindUsages"), 3)  # 2 + internal tier 1
         self.assertEqual(h.read8("wDiceCharges"), 1 | (2 << 2) | (3 << 4))
-        self.assertEqual(h.read8("wPrismType"), TYPES["FIRE"])
+        self.assertEqual(h.read8("wElementBoyType"), TYPES["FIRE"])
 
-    def test_element_prism_refresh_retains_each_selected_tier_bonus(self) -> None:
+    def test_element_boy_refresh_retains_each_selected_tier_bonus(self) -> None:
         """Legal active loadouts must keep the authored 10/15/20 percent cache.
 
         This is a routine fixture, not an actual battle activation journey.
@@ -183,21 +183,21 @@ class KeyItemEffectLifecycleTest(HarnessTestCase):
         h = self.boot()
         for tier, expected in enumerate((10, 15, 20)):
             with self.subTest(tier=tier):
-                h.write_sram_bytes('sKeyItemsBitfield', bits(['ELEMENT_PRISM'], ['ELEMENT_PRISM']))
-                h.write_sram_bytes('sKeyItemTiers', tier_bytes('ELEMENT_PRISM', tier))
-                h.write_sram_bytes('sElementPrismType', [TYPES['FIRE']])
-                h.write_sram_bytes('sPrismCartridges', [0, 1])
-                h.call_routine('RoguePrismRefreshCache')
-                self.assertEqual(h.read8('wPrismType'), TYPES['FIRE'])
-                self.assertEqual(h.read8('wPrismDamageBonus'), expected)
+                h.write_sram_bytes('sKeyItemsBitfield', bits(['ELEMENT_BOY'], ['ELEMENT_BOY']))
+                h.write_sram_bytes('sKeyItemTiers', tier_bytes('ELEMENT_BOY', tier))
+                h.write_sram_bytes('sElementBoyType', [TYPES['FIRE']])
+                h.write_sram_bytes('sElementBoyCartridges', [0, 1])
+                h.call_routine('RogueElementBoyRefreshCache')
+                self.assertEqual(h.read8('wElementBoyType'), TYPES['FIRE'])
+                self.assertEqual(h.read8('wElementBoyDamageBonus'), expected)
 
-    def test_element_prism_tier_damage_and_inactive_controls(self) -> None:
+    def test_element_boy_tier_damage_and_inactive_controls(self) -> None:
         """Exercise the refreshed cache's consumer, with exact damage deltas."""
         h = self.boot()
         with isolated_routine_calls(h):
-            self._check_prism_damage_controls(h)
+            self._check_element_boy_damage_controls(h)
 
-    def _check_prism_damage_controls(self, h) -> None:
+    def _check_element_boy_damage_controls(self, h) -> None:
         species = h.read8('wCurPartySpecies')
         for tier, bonus in enumerate((10, 15, 20)):
             for active, selected, move, expected in (
@@ -207,18 +207,18 @@ class KeyItemEffectLifecycleTest(HarnessTestCase):
                 (True, 0xff, TYPES['FIRE'], 100),
             ):
                 with self.subTest(tier=tier, active=active, selected=selected, move=move):
-                    h.write_sram_bytes('sKeyItemsBitfield', bits(['ELEMENT_PRISM'],
-                        ['ELEMENT_PRISM'] if active else []))
-                    h.write_sram_bytes('sKeyItemTiers', tier_bytes('ELEMENT_PRISM', tier))
-                    h.write_sram_bytes('sElementPrismType', [selected])
-                    h.write_sram_bytes('sPrismCartridges', [0, 1])
+                    h.write_sram_bytes('sKeyItemsBitfield', bits(['ELEMENT_BOY'],
+                        ['ELEMENT_BOY'] if active else []))
+                    h.write_sram_bytes('sKeyItemTiers', tier_bytes('ELEMENT_BOY', tier))
+                    h.write_sram_bytes('sElementBoyType', [selected])
+                    h.write_sram_bytes('sElementBoyCartridges', [0, 1])
                     h.write8('wCurPartySpecies', species)
-                    h.call_routine('RoguePrismRefreshCache')
+                    h.call_routine('RogueElementBoyRefreshCache')
                     self.assertEqual(h.read8('wCurPartySpecies'), species)
                     h.write8('wMoveType', move)
                     h.write8('wDamage', 0)
                     h.write8('wDamage', 100, 1)
-                    h.call_routine('RoguePrismDamageBoost')
+                    h.call_routine('RogueElementBoyDamageBoost')
                     self.assertEqual(h.read_bytes('wDamage', 2), [0, expected])
 
 

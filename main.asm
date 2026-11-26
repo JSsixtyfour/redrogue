@@ -884,7 +884,7 @@ INCLUDE "custom_functions/pocket_items.asm"
 INCLUDE "custom_functions/dice_items.asm"
 INCLUDE "custom_functions/witch_battle_effects.asm"
 INCLUDE "custom_functions/witch_setup.asm"
-INCLUDE "custom_functions/element_prism.asm"
+INCLUDE "custom_functions/element_boy.asm"
 
 INCLUDE "engine/pokemon/rarity.asm"
 INCLUDE "engine/pokemon/random_pokemon_selection.asm"
@@ -934,6 +934,8 @@ SECTION "Bridge Extended Effects", ROMX
 INCLUDE "custom_functions/bridge_effects_extended.asm"
 ; Must stay in this section: RestPrecheck plain-calls BridgePlayerRestIsBlocked.
 INCLUDE "custom_functions/sleep_clause.asm"
+; GetEnemyCatchRateByte plain-calls WildMonAddShiny.
+INCLUDE "custom_functions/shiny_rolls.asm"
 
 ; Procedural stage events (Phase 7): the farcall-only half, in its own section
 ; so it can float. See custom_functions/stage_events.asm's header for why the

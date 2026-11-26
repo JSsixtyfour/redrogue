@@ -37,8 +37,8 @@ UseItem_::
 	jp z, ItemUseMonDice
 	cp ITEM_DICE ; outside ItemUsePtrTable's range
 	jp z, ItemUseItemDice
-	cp ELEMENT_PRISM ; outside ItemUsePtrTable's range
-	jp z, ItemUseElementPrism
+	cp ELEMENT_BOY ; outside ItemUsePtrTable's range
+	jp z, ItemUseElementBoy
 	cp M_GENE ; outside ItemUsePtrTable's range
 	jp z, ItemUseMGene
 	cp M_TOME ; outside ItemUsePtrTable's range
@@ -2808,10 +2808,10 @@ ItemUseItemDice::
 
 ; Read-only status check: reports which CARTRIDGE is installed. Swapping is
 ; done at the PC (engine/menus/players_pc.asm), so the bag never changes it.
-; Logic lives in custom_functions/element_prism.asm ("rogue" bank), same as
+; Logic lives in custom_functions/element_boy.asm ("rogue" bank), same as
 ; the dice items above and for the same reason: this bank has no room.
-ItemUseElementPrism::
-	farcall RoguePrismShowEquipped
+ItemUseElementBoy::
+	farcall RogueElementBoyShowEquipped
 	ret
 
 ; ============================================================
@@ -2970,8 +2970,8 @@ IsKeyItem_::
 	ret z ; MON_DICE is a key item: can't be tossed
 	cp ITEM_DICE ; outside KeyItemFlags' range (added after the elevator floors)
 	ret z ; ITEM_DICE is a key item: can't be tossed
-	cp ELEMENT_PRISM ; outside KeyItemFlags' range (added after the elevator floors)
-	ret z ; ELEMENT_PRISM is a key item: can't be tossed
+	cp ELEMENT_BOY ; outside KeyItemFlags' range (added after the elevator floors)
+	ret z ; ELEMENT_BOY is a key item: can't be tossed
 .notLeftovers
 	cp MIST_STONE ; outside KeyItemFlags' range, but it is a consumable stat item
 	jr z, .notKeyItem
@@ -3226,6 +3226,7 @@ SendNewMonToBox:
 	xor a
 	ld [wSpawnForm], a
 	ld [wSpawnDVSlot], a ; same contract (reward offer DVs)
+	ld [wSpawnShiny], a
 	ret
 
 ; checks if the tile in front of the player is a shore or water tile

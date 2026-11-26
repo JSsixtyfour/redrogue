@@ -258,7 +258,7 @@ ShowPokedexDataInternal:
 	pop af
 	ld [wLoadedMon + MON_CATCH_RATE], a
 	call PrintBaseStats
-	farcall PrintRewardOfferDVs
+	farcall PrintRewardOfferDetails
 	ld a, [wRewardInfoSlot]
 	and a
 	jr z, .evolutionPage

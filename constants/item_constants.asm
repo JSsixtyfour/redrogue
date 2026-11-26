@@ -137,7 +137,7 @@ DEF NUM_FLOORS EQU const_value - 1 - NUM_ITEMS
 	const DOOR_DICE         ; $6D
 	const MON_DICE          ; $6E
 	const ITEM_DICE         ; $6F
-	const ELEMENT_PRISM     ; $70
+	const ELEMENT_BOY     ; $70
 
 ; one-shot consumables (Phase 11): fix a mon you already have, rather than
 ; DV_BOOSTER/STAT_BOOSTER's passive floor/multiplier on newly added mons

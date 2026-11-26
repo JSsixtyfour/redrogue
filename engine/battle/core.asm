@@ -1045,7 +1045,7 @@ TrainerBattleVictory:
 	and a
 	jr z, .checkFifthTrainerCredits
 	; RogueGymLeaderVictory = RogueAwardCredits2 + the first-defeat ELEMENT BOY
-	; grant (custom_functions/element_prism.asm). Same 8-byte farcall as before,
+	; grant (custom_functions/element_boy.asm). Same 8-byte farcall as before,
 	; just a different target, so this hook costs this (very tight) bank nothing.
 	; Not folded into RogueAwardCredits2 itself - the Elite Four scripts call
 	; that too, and the ELEMENT BOY is a gym-leader grant only.
@@ -5905,12 +5905,12 @@ AdjustDamageForMoveType:
 ; (farcall destroys b/h/l regardless of what the callee preserves). Both run
 ; before RandomizeDamage, i.e. the same stage of the pipeline as STAB and type
 ; effectiveness above.
-;   PLAYER's turn -> ELEMENT BOY boost (custom_functions/element_prism.asm),
+;   PLAYER's turn -> ELEMENT BOY boost (custom_functions/element_boy.asm),
 ;                    if the move matches the equipped ELEMENT BOY's type.
 ;   ENEMY's turn  -> witch PRIZE_RESIST_SUPER, which softens super-effective
 ;                    hits. It stays in this bank because it scans TypeEffects,
 ;                    which is bank $0F data - see its header.
-; The whose-turn test used to live at the top of RoguePrismDamageBoost as a
+; The whose-turn test used to live at the top of RogueElementBoyDamageBoost as a
 ; `ret nz`; it moved here so the enemy-turn path has somewhere to go.
 	ldh a, [hWhoseTurn]
 	and a
@@ -5920,7 +5920,7 @@ AdjustDamageForMoveType:
 	farcall BridgeApplyRepeatDamageBoost
 	farcall BridgeApplyLifeOrbDamageBoost
 	farcall BridgeApplyCriticalDamageBoost
-	farcall RoguePrismDamageBoost
+	farcall RogueElementBoyDamageBoost
 	ret
 
 ; Apply School Type Expert only when the complete dual-type matchup remains
@@ -5942,7 +5942,7 @@ BridgeTrySuperEffectiveDamageBoost:
 ; Read-only player move matchup preview.  This deliberately does not reuse
 ; AIGetTypeEffectiveness below: that routine is enemy-attacks-player only
 ; and reports in tenths rather than twentieths.  It also does not include
-; RoguePrismDamageBoost.  That hook scales damage, not type effectiveness, so
+; RogueElementBoyDamageBoost.  That hook scales damage, not type effectiveness, so
 ; leaving it out of this readout is correct.
 ; Keep the accumulator in twentieths so two half-resistances remain x1/4
 ; instead of truncating 5 * 5 / 10 to an incorrect x0.2.
@@ -6029,7 +6029,7 @@ TypeMatchupScan:
 ; RogueWitchResistSuperEffective
 ; Witch PRIZE_RESIST_SUPER (permanent, earned once per run): incoming
 ; SUPER-EFFECTIVE damage is scaled to 3/4. Reached from AdjustDamageForMoveType's
-; single exit on the ENEMY's turn, where RoguePrismDamageBoost (a player-only
+; single exit on the ENEMY's turn, where RogueElementBoyDamageBoost (a player-only
 ; boost) used to simply `ret nz`.
 ;
 ; WHY THIS LIVES IN BANK $0F AND NOT IN THE ROGUE BANK WITH THE OTHER WITCH CODE:
@@ -6147,7 +6147,7 @@ AIGetTypeEffectiveness:
 ; inherited: SelectEnemyMove never sets it, and both CalculateDamage and
 ; AdjustDamageForMoveType branch on it. Forging it to "enemy's turn" is
 ; load-bearing rather than cosmetic - it is also what makes
-; AdjustDamageForMoveType's RoguePrismDamageBoost farcall self-cancel, since
+; AdjustDamageForMoveType's RogueElementBoyDamageBoost farcall self-cancel, since
 ; that boost returns immediately on any turn but the player's.
 ;
 ; ALIAS WARNING: wMoveType is the SAME BYTE as wTypeEffectiveness (and
@@ -7396,11 +7396,11 @@ LoadEnemyMonData:
 	; AddPartyMon path already clears these (add_mon.asm); the existing clear
 	; further below writes the base-stats scratch copy, NOT this struct field,
 	; so it does not cover the box path.
-	xor a
-	ld [de], a
-; Phase 2R, TOUCH 2 of 2. The clear above is load-bearing and must stay
-; unconditional (MON_CATCH_RATE_BITFIELD_PC.md explains why), so the form is
-; written back immediately after it rather than by making it conditional.
+	; GetEnemyCatchRateByte's store just below is that whole-byte write. It reads the
+	; old byte first: a captured wild mon is rebuilt here and keeps its shiny flag
+	; (WildMonAddShiny).
+; Phase 2R, TOUCH 2 of 2. That store is load-bearing and must stay unconditional
+; (MON_CATCH_RATE_BITFIELD_PC.md explains why), so the form is part of it.
 ;
 ; This has to happen BEFORE the species name is baked into wEnemyMonNick at the
 ; tail of this routine, or a formed wild mon announces itself by its base

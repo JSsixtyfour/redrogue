@@ -1540,7 +1540,7 @@ class RedRogueHarness:
         touch them: measured 2026-11-12, a battle-animation timing change moved
         boot_fight2's park so the battle menu's leftover frame rewrote
         hCurrentMenuItem, redrew wTileMap and called UpdateSprites/
-        HandleMenuInput after correct callees had returned (test_prism_menu,
+        HandleMenuInput after correct callees had returned (test_element_boy_menu,
         test_key_swap_checkpoint, test_lobby_door_headings).
         """
         bank, address = self.symbols.get(label)

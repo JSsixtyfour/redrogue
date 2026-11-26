@@ -319,7 +319,7 @@ ASSERT sSaveHeaderEnd - sSaveHeader == SAVE_HEADER_SIZE
 	        ; was $3bb; 4 bytes carved for sRoomOwnedExt below (room dolls 12-45).
 	        ; was $3f4; 57 bytes carved for sStolenRecord above (Phase 7d).
 	        ; was $591; 112 bytes carved for sFusionDiagBuf below, 4 bytes carved for sKeyItemTiers below,
-	        ; 1 byte sElementPrismType + 2 sPrismCartridges + 34 sTurnRewindBuf (Key Item Effects),
+	        ; 1 byte sElementBoyType + 2 sElementBoyCartridges + 34 sTurnRewindBuf (Key Item Effects),
 	        ; 14 bytes carved for sRoomFurniture/sRoomDecorSlots/sRoomOwned below (Room Decoration System),
 	        ; 77 bytes carved for the debug-only FIGHT 2 injected-team fixture below,
 	        ; 1 byte sRogueSpeciesGroupsEnabled (species groups)
@@ -392,15 +392,15 @@ sRoomOwned:: ds 4 ; bits 0-7 TOP options 1-8, bit 8 LONG DESK, bits 9-12 MIDDLE
 ; chosen. SRAM so the choice survives run reset and blackout, like key-item
 ; ownership. The ELEMENT BOY's tier needs no separate storage - it is key item
 ; index 14 in sKeyItemTiers above.
-sElementPrismType:: db
+sElementBoyType:: db
 
 ; ELEMENT BOY cartridges the player has unlocked: 1 bit per selectable type,
-; indexed by position in PrismTypeList (custom_functions/element_prism.asm),
+; indexed by position in ElementBoyTypeList (custom_functions/element_boy.asm),
 ; so 15 bits in 2 bytes. Gym leaders, the Elite Four and the Champion each
 ; grant their signature type's cartridge on defeat; the player equips one at
 ; the PC. SRAM because cartridges persist across runs and blackouts, exactly
 ; like key-item ownership - accumulating them over several runs is the point.
-sPrismCartridges:: ds 2
+sElementBoyCartridges:: ds 2
 
 ; Species-group toggles (Johto / Kanto Time Warp). One bit per group, using the
 ; BIT_GROUP_* positions from constants/rogue_species_groups.asm. Bit 0 (Kanto)
@@ -414,8 +414,8 @@ sPrismCartridges:: ds 2
 ; GROUP_OVERRIDE_MASK match keeps legacy $ff on the ordinary unlock path.
 ;
 ; SRAM, outside sGameData, because the toggles are meant to persist across runs
-; and blackouts exactly like sPrismCartridges above. MUST stay adjacent to
-; sPrismCartridges: ClearKeyItemsBitfield (custom_functions/key_item_pocket.asm)
+; and blackouts exactly like sElementBoyCartridges above. MUST stay adjacent to
+; sElementBoyCartridges: ClearKeyItemsBitfield (custom_functions/key_item_pocket.asm)
 ; zeroes it there on a new game. SRAM powers up as $ff and ClearAllSRAMBanks
 ; FILLS $ff, so an explicit clear is mandatory, not defensive.
 sRogueSpeciesGroupsEnabled:: db
@@ -476,6 +476,7 @@ SECTION "Reward Offer DVs SRAM", SRAM, BANK[2]
 
 sRogueOfferDVs:: ds 3 * 2   ; MON_DVS layout per slot: Atk/Def, Spd/Spc
 sRogueOfferDVTag:: ds 3     ; species each slot's DVs were rolled for
+sRogueOfferShiny:: ds 3     ; each slot's shiny roll (shiny_rolls.asm), rolled with its DVs
 sRogueOfferDVsEnd::
 
 SECTION "Saved Boxes 1", SRAM

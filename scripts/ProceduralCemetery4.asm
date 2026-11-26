@@ -120,7 +120,7 @@ ProceduralCemetery4BossOfferText:
 	ld a, [hCurrentMenuItem]
 	and a
 	jr nz, .cemDone
-	farcall PCGetBossLevel        ; capped at MAX_LEVEL, so the gift keeps the fight's level
+	farcall PCGetBossGiftLevel    ; capped at MAX_LEVEL, so the gift keeps the fight's level (and shininess)
 	ld a, [wRoguePokemon1]
 	ld b, a
 	ld a, [wCurEnemyLevel]

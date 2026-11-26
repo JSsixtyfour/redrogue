@@ -202,6 +202,9 @@ DEF LEARNDEX_RECORD_SIZE  EQU 64 ; bytes copied per LearndexLoadRecord /
                                   ; LEARNDEX_DESIGN.md SS3.1
 
 ; ---------------------------------------------------------------------------
+; wSpawnShiny: set = the next player mon's shininess is already decided, in BIT_SHINY.
+DEF BIT_SPAWN_SHINY_DECIDED EQU 7
+
 ; Species Groups Phase 2R - regional / convergent / eeveelution FORMS.
 ;
 ; A "form" is a distinct-looking mon delivered as <existing species> + a small

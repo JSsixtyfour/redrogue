@@ -112,7 +112,7 @@ ItemPrices::
 	bcd3 0     ; DOOR_DICE
 	bcd3 0     ; MON_DICE
 	bcd3 0     ; ITEM_DICE
-	bcd3 0     ; ELEMENT_PRISM
+	bcd3 0     ; ELEMENT_BOY
 	bcd3 10000 ; M_GENE - no mart stocks it; sells for half, 5000
 	bcd3 10000 ; M_TOME - no mart stocks it; sells for half, 5000
 	bcd3 3500  ; SUN_STONE
@@ -130,7 +130,7 @@ ItemPrices::
 ; back by (SHINY_CHARM - 1) * 3, so item $66 lands on the first row; only the
 ; ten ids below are ever looked up here, and they are contiguous by design.
 ;
-; ELEMENT_PRISM is deliberately absent - it is an NPC gift, never for sale.
+; ELEMENT_BOY is deliberately absent - it is an NPC gift, never for sale.
 ;
 ; 2026-10-09 (player feedback #4): halved, halves rounded up (was 30/20/25/25/25/
 ; 35/30/15/15/15). Upgrade costs (credit_mart.asm) were unchanged at that time.

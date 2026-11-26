@@ -356,7 +356,7 @@ CreditUpgradeInfoTable:
 	db "Per run          @"
 	db "T3 Rerolls 2▶3   @"
 	db "Per run          @"
-	db ELEMENT_PRISM
+	db ELEMENT_BOY
 	db "T2 +10%▶+15%     @"
 	db "Typed move damage@"
 	db "T3 +15%▶+20%     @"

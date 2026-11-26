@@ -48,7 +48,7 @@ class RewardOfferDVsTest(unittest.TestCase):
         self.assertNotEqual(species, other)
 
         h.call_routine("RogueOfferDVsClear", limit=2000)
-        self.assertEqual(h.read_sram_bytes("sRogueOfferDVs", 9, bank=SRAM_BANK), [0] * 9)
+        self.assertEqual(h.read_sram_bytes("sRogueOfferDVs", 12, bank=SRAM_BANK), [0] * 12)
 
         # Slot 2 (index 1): the roll tags the slot with the offered species.
         h.write8("wRoguePokemon2", species)

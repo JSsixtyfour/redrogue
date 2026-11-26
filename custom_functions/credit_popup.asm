@@ -101,8 +101,8 @@ RogueCreditPopupCheck::
 ;    restored across the fill, like wGymsUsedMask, for the Dorm popup),
 ;    wRogueFlagsBitfield2, and every map's CurScript byte (every map resets to
 ;    its default entry state) - plus wHealAllItemLevel/wRestorePPItemLevel/
-;    wKODefianceUsages/wDiceCharges/wPrismType/wPrismDamageBonus/
-;    wPrismRerollsLeft, which step 3 immediately re-derives.
+;    wKODefianceUsages/wDiceCharges/wElementBoyType/wElementBoyDamageBonus/
+;    wElementBoyRerollsLeft, which step 3 immediately re-derives.
 ;
 ; 3. Re-derive the SRAM-tier caches step 2 just zeroed. wKODefianceUsages and
 ;    wDiceCharges are not run flags - they are cached copies
@@ -112,9 +112,9 @@ RogueCreditPopupCheck::
 ;    ApplyKeyItemTierEffects (engine/events/credit_mart.asm) already existed
 ;    for exactly this, its own doc comment saying it should run "at the next
 ;    run boundary" - it just was never wired to one before now. It also
-;    farcalls RoguePrismRefreshCache, covering wPrismType/wPrismDamageBonus.
-;    wPrismRerollsLeft needs no re-derive - it is set fresh every time it is
-;    used (custom_functions/element_prism.asm), scratch not persistent state.
+;    farcalls RogueElementBoyRefreshCache, covering wElementBoyType/wElementBoyDamageBonus.
+;    wElementBoyRerollsLeft needs no re-derive - it is set fresh every time it is
+;    used (custom_functions/element_boy.asm), scratch not persistent state.
 ;    Dice charges use a different per-item bit-packing than
 ;    ApplyKeyItemTierEffects handles, so that logic (unchanged from what used
 ;    to live in RogueOnBlackout) is inlined below it.

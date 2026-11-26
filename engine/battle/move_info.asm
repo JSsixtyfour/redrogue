@@ -69,7 +69,7 @@ PrintMenuItem:
 	call PrintNumber
 	; Type and type effectiveness share the first row.  Keep the
 	; effectiveness readout separate from the damage path: the preview is
-	; intentionally type-only and does not include RoguePrismDamageBoost.
+	; intentionally type-only and does not include RogueElementBoyDamageBoost.
 	farcall PreviewTypeMatchup
 	ld a, e
 	ld d, a

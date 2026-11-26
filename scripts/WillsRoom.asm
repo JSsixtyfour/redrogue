@@ -141,9 +141,9 @@ WillsRoomWillEndBattleScript:
 ; PrintText runs inside DisplayTextID - fired raw from this map script, the
 ; announcement drew an invisible box that silently waited for A. Gated here
 ; on the grant's own one-time event so a repeat win shows no empty box.
-	CheckEvent EVENT_PRISM_E4_PSYCHIC_SHOWN
+	CheckEvent EVENT_ELEMENT_BOY_E4_PSYCHIC_SHOWN
 	ret nz
-	ld a, TEXT_WILLSROOM_PRISM
+	ld a, TEXT_WILLSROOM_ELEMENT_BOY
 	ldh [hTextID], a
 	jp DisplayTextID
 
@@ -151,7 +151,7 @@ WillsRoom_TextPointers:
 	def_text_pointers
 	dw_const WillsRoomWillText,            TEXT_WILLSROOM_WILL
 	dw_const WillsRoomWillDontRunAwayText, TEXT_WILLSROOM_WILL_DONT_RUN_AWAY
-	dw_const WillsRoomPrismText, TEXT_WILLSROOM_PRISM
+	dw_const WillsRoomElementBoyText, TEXT_WILLSROOM_ELEMENT_BOY
 
 WillsRoomTrainerHeaders:
 	def_trainers
@@ -194,7 +194,7 @@ WillsRoomWillDontRunAwayText:
 	text_far _WillsRoomWillDontRunAwayText
 	text_end
 
-WillsRoomPrismText:
+WillsRoomElementBoyText:
 	text_asm
 	farcall RogueGrantCartridgePsychic
 	call DisableWaitingAfterTextDisplay ; the message carries its own prompt

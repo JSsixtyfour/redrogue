@@ -19,18 +19,13 @@
 ; MON_CATCH_RATE_BITFIELD_PC.md. Bits 0-3 are already used (ghost/fusion/
 ; type-variant/special-form); this claims the next free bit.
 ;
-; The roll + bit-set happens inline at the mon-creation site
-; (engine/pokemon/add_mon.asm), not through an ApplyShiny call here - there's
-; nothing to share (the roll odds live entirely at that one call site), and
-; add_mon.asm already farcalls GetKeyItemPower there for DV_BOOSTER, so the
-; SHINY CHARM roll reuses the same farcall shape rather than adding a second
-; cross-bank hop through this file. Only the read side (IsShiny) lives here,
-; for the two display hooks in engine/gfx/palettes.asm.
+; Every roll lives in custom_functions/shiny_rolls.asm. Only the read side
+; (IsShiny) and the entrance sparkle live here.
 ;
 ; Enemy side (2026-09-29): a TRAINER mon keeps its party struct's whole flag
 ; byte (GetEnemyCatchRateByte, bridge_effects_extended.asm), so trainer mons
-; rolled shiny at creation now show it on the HUD. Wild mons still carry only
-; their form bits, so a wild mon is never shiny.
+; rolled shiny at creation now show it on the HUD. A wild mon is rolled as its
+; battle starts (GetEnemyCatchRateByte, 2026-11-25) and shows it the same way.
 
 DEF BIT_SHINY EQU 4 ; bit within the repurposed CatchRate byte
 

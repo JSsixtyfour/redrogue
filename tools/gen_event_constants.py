@@ -185,29 +185,29 @@ PERSISTENT = [
     # ELEMENT BOY "only the first time, ever" messages. MUST stay out of the
     # run-scoped range - never being cleared is the whole mechanism.
     # GYM1..GYM8 must also stay contiguous (see CONTIG below).
-    "EVENT_PRISM_GYM1_SHOWN",
-    "EVENT_PRISM_GYM2_SHOWN",
-    "EVENT_PRISM_GYM3_SHOWN",
-    "EVENT_PRISM_GYM4_SHOWN",
-    "EVENT_PRISM_GYM5_SHOWN",
-    "EVENT_PRISM_GYM6_SHOWN",
-    "EVENT_PRISM_GYM7_SHOWN",
-    "EVENT_PRISM_GYM8_SHOWN",
-    "EVENT_PRISM_E4_ICE_SHOWN",
-    "EVENT_PRISM_E4_FIGHTING_SHOWN",
-    "EVENT_PRISM_E4_GHOST_SHOWN",
-    "EVENT_PRISM_E4_DRAGON_SHOWN",
+    "EVENT_ELEMENT_BOY_GYM1_SHOWN",
+    "EVENT_ELEMENT_BOY_GYM2_SHOWN",
+    "EVENT_ELEMENT_BOY_GYM3_SHOWN",
+    "EVENT_ELEMENT_BOY_GYM4_SHOWN",
+    "EVENT_ELEMENT_BOY_GYM5_SHOWN",
+    "EVENT_ELEMENT_BOY_GYM6_SHOWN",
+    "EVENT_ELEMENT_BOY_GYM7_SHOWN",
+    "EVENT_ELEMENT_BOY_GYM8_SHOWN",
+    "EVENT_ELEMENT_BOY_E4_ICE_SHOWN",
+    "EVENT_ELEMENT_BOY_E4_FIGHTING_SHOWN",
+    "EVENT_ELEMENT_BOY_E4_GHOST_SHOWN",
+    "EVENT_ELEMENT_BOY_E4_DRAGON_SHOWN",
     # Phase 7: Koga and Will. Karen grants NORMAL (her signature type is DARK,
-    # absent from Gen 1) and shares EVENT_PRISM_WHITNEY_SHOWN, so there is no
-    # EVENT_PRISM_E4_DARK_SHOWN and there should not be one.
-    "EVENT_PRISM_E4_POISON_SHOWN",
-    "EVENT_PRISM_E4_PSYCHIC_SHOWN",
+    # absent from Gen 1) and shares EVENT_ELEMENT_BOY_WHITNEY_SHOWN, so there is no
+    # EVENT_ELEMENT_BOY_E4_DARK_SHOWN and there should not be one.
+    "EVENT_ELEMENT_BOY_E4_POISON_SHOWN",
+    "EVENT_ELEMENT_BOY_E4_PSYCHIC_SHOWN",
     # Johto leaders with their own cartridge type (2026-09-23): the NORMAL /
     # FLYING / BUG trio moved here off the Champion. FALKNER reuses the retired
-    # EVENT_PRISM_CHAMPION_SHOWN bit, BUGSY / WHITNEY are appended at the end,
+    # EVENT_ELEMENT_BOY_CHAMPION_SHOWN bit, BUGSY / WHITNEY are appended at the end,
     # so no existing persistent flag moves. Not contiguous on purpose:
-    # RogueGymLeaderVictory looks them up through a table (element_prism.asm).
-    "EVENT_PRISM_FALKNER_SHOWN",
+    # RogueGymLeaderVictory looks them up through a table (element_boy.asm).
+    "EVENT_ELEMENT_BOY_FALKNER_SHOWN",
     "EVENT_RIVAL_CHAMPION_DEFEATED",
     "EVENT_LANCE_CHAMPION_DEFEATED",
     "EVENT_OAK_CHAMPION_DEFEATED",
@@ -219,8 +219,8 @@ PERSISTENT = [
     "EVENT_POST_GAME",
     "EVENT_PALMS_ROOM_OPEN",
     "EVENT_AI_ATTEMPT_SPENT",
-    "EVENT_PRISM_BUGSY_SHOWN",
-    "EVENT_PRISM_WHITNEY_SHOWN",
+    "EVENT_ELEMENT_BOY_BUGSY_SHOWN",
+    "EVENT_ELEMENT_BOY_WHITNEY_SHOWN",
     "EVENT_POST_AI_PALM_COMPLETE",
 ]
 
@@ -252,9 +252,9 @@ CONTIG = [
      ["EVENT_BEAT_VERMILION_GYM_TRAINER_%d" % i for i in range(3)], None,
      "SetEventRange TRAINER_0..TRAINER_2 (VermilionGym.asm:98)"),
     (PERSISTENT_GROUP,
-     ["EVENT_PRISM_GYM%d_SHOWN" % i for i in range(1, 9)], None,
+     ["EVENT_ELEMENT_BOY_GYM%d_SHOWN" % i for i in range(1, 9)], None,
      "RogueGymLeaderVictory computes GYM1 + (wGymLeaderNo - 1) at runtime "
-     "(element_prism.asm:93)"),
+     "(element_boy.asm:93)"),
     # --- runs that live inside the graveyard (dead maps, kept correct anyway) -
     ("Route23",
      ["EVENT_PASSED_CASCADEBADGE_CHECK", "EVENT_PASSED_THUNDERBADGE_CHECK",
@@ -352,10 +352,10 @@ EXTRA_SEEDS = {
 NEW_EVENTS = [
     "EVENT_POST_AI_PALM_COMPLETE",
     # 2026-09-23: NORMAL / FLYING / BUG cartridges moved off the Champion onto
-    # Falkner, Bugsy and Whitney (element_prism.asm JohtoPrismEventTable).
-    "EVENT_PRISM_FALKNER_SHOWN",
-    "EVENT_PRISM_BUGSY_SHOWN",
-    "EVENT_PRISM_WHITNEY_SHOWN",
+    # Falkner, Bugsy and Whitney (element_boy.asm JohtoElementBoyEventTable).
+    "EVENT_ELEMENT_BOY_FALKNER_SHOWN",
+    "EVENT_ELEMENT_BOY_BUGSY_SHOWN",
+    "EVENT_ELEMENT_BOY_WHITNEY_SHOWN",
     # Phase 6 Johto gyms. Six per gym, mirroring the Kanto eight: the leader's
     # beat flag, the TM-received flag, and four trainer flags which the
     # def_trainers contract requires to stay consecutive.
@@ -448,8 +448,8 @@ NEW_EVENTS = [
     # Phase 7 ELEMENT BOY cartridges for the two new grantors. Also listed in
     # PERSISTENT (TABLE 2): an ELEMENT BOY message fires once EVER, so it must not be
     # swept by RogueResetRunState.
-    "EVENT_PRISM_E4_POISON_SHOWN",
-    "EVENT_PRISM_E4_PSYCHIC_SHOWN",
+    "EVENT_ELEMENT_BOY_E4_POISON_SHOWN",
+    "EVENT_ELEMENT_BOY_E4_PSYCHIC_SHOWN",
     # Checkpoint 1 persistent progression state. These are introduced here so
     # they exist before the champion, AI, timewarp, and credit consumers land.
     # They are classified in PERSISTENT (TABLE 2), even while currently
@@ -1094,8 +1094,8 @@ def emit(alloc, trainer_blocks, reach_count):
     w("ASSERT EVENT_GRAVEYARD_BASE > RUN_EVENTS_END")
     w("ASSERT EVENT_GRAVEYARD_BASE % 8 == 0")
     w("; ELEMENT BOY first-time-ever flags must survive the run wipe:")
-    w("ASSERT EVENT_PRISM_GYM1_SHOWN < RUN_EVENTS_START")
-    w("ASSERT EVENT_PRISM_WHITNEY_SHOWN < RUN_EVENTS_START")
+    w("ASSERT EVENT_ELEMENT_BOY_GYM1_SHOWN < RUN_EVENTS_START")
+    w("ASSERT EVENT_ELEMENT_BOY_WHITNEY_SHOWN < RUN_EVENTS_START")
     w("; the whole layout must fit the pinned budget:")
     w("ASSERT EVENT_GRAVEYARD_BASE + %d <= NUM_EVENTS" % gsize)
     w("")
@@ -1150,8 +1150,8 @@ def verify(alloc, trainer_blocks):
         problems.append("RUN_EVENTS_END %d is not byte aligned" % z1e)
     if gbase % 8 != 0 or gbase <= z1e:
         problems.append("graveyard base %d misplaced" % gbase)
-    for name in ("EVENT_PRISM_GYM1_SHOWN", "EVENT_PRISM_FALKNER_SHOWN",
-                 "EVENT_PRISM_BUGSY_SHOWN", "EVENT_PRISM_WHITNEY_SHOWN"):
+    for name in ("EVENT_ELEMENT_BOY_GYM1_SHOWN", "EVENT_ELEMENT_BOY_FALKNER_SHOWN",
+                 "EVENT_ELEMENT_BOY_BUGSY_SHOWN", "EVENT_ELEMENT_BOY_WHITNEY_SHOWN"):
         if name in layout and bit(name) >= z1s:
             problems.append("%s is inside the run-wiped range" % name)
 

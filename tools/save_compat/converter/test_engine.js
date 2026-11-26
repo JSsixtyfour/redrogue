@@ -843,6 +843,53 @@ test("schema 5 to 6: a fallen count within the new capacity is kept", () => {
   assert.equal(out.bytes[wramOffset(to, "wFallenCount")], 3);
 });
 
+test("schema 25 to 26: shiny rolls start never shiny, the ELEMENT BOY's data and events survive the rename", () => {
+  const full = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
+  const from = full(25), to = full(26);
+  const save = syntheticSave("25"), pkg = packageTargeting("26");
+  const sram = (s, label) => { const f = s.sram.find((g) => g.label === label); return f ? offsetOf(f.bank, f.address) : -1; };
+  // Noise in every event bit, the two renamed fields, the offers' DVs and tags, and the new bytes.
+  const ev = wramOffset(from, "wEventFlags");
+  let x = 0x2468ace1;
+  const noise = (at, n) => { for (let i = 0; i < n; i++) { x = (Math.imul(x, 1103515245) + 12345) >>> 0; save[at + i] = x >>> 24; } };
+  noise(ev, 64);
+  const type = sram(from, "sElementPrismType"), carts = sram(from, "sPrismCartridges");
+  save[type] = 0x14; save[carts] = 0x55; save[carts + 1] = 0x2a;
+  noise(sram(from, "sRogueOfferDVs"), 9);
+  const shiny = sram(to, "sRogueOfferShiny");
+  assert.equal(shiny, sram(from, "sRogueOfferDVTag") + 3);
+  save.set([0, 0, 0], shiny);             // stale free space that would read as shiny
+  recomputeChecksums(save, from);
+  const out = api.convert(save, pkg, { mode: "continue" });
+  assert.equal(out.ok, true, out.reason);
+  const b = out.bytes;
+  assert.deepEqual(Array.from(b.slice(shiny, shiny + 3)), [0xff, 0xff, 0xff]);
+  // Renamed in place: old name and new name, same address, same bytes.
+  assert.equal(sram(to, "sElementBoyType"), type);
+  assert.equal(sram(to, "sElementBoyCartridges"), carts);
+  assert.equal(sram(to, "sElementPrismType"), -1);
+  assert.deepEqual([b[type], b[carts], b[carts + 1]], [0x14, 0x55, 0x2a]);
+  // Every constant a save can store, by name, through the rename.
+  const oldName = (k) => k.replace("ELEMENT_BOY", k.startsWith("EVENT_") ? "PRISM" : "ELEMENT_PRISM");
+  let renamed = 0;
+  for (const [k, v] of Object.entries(to.constants)) {
+    if (k === "SAVE_SCHEMA_ID" || !k.includes("ELEMENT_BOY")) continue;
+    assert.equal(from.constants[oldName(k)], v, `${k} changed value`);
+    renamed++;
+  }
+  assert.ok(renamed >= 20, `only ${renamed} renamed constants`);
+  for (const [k, v] of Object.entries(from.constants))
+    if (k.startsWith("EVENT_") && !k.includes("PRISM")) assert.equal(to.constants[k], v, `${k} changed value`);
+  assert.equal(wramOffset(to, "wEventFlags"), ev);
+  const bit = (bytes, k, c) => (bytes[ev + (c[k] >> 3)] >> (c[k] & 7)) & 1;
+  for (const k of Object.keys(to.constants).filter((n) => n.startsWith("EVENT_ELEMENT_BOY_")))
+    assert.equal(bit(b, k, to.constants), bit(save, oldName(k), from.constants), `${k} lost its flag`);
+  // Nothing else changes but the header.
+  for (let i = 0; i < save.length; i++)
+    if (!(i >= shiny && i < shiny + 3) && !(i >= 0x2040 && i < 0x2048)) assert.equal(b[i], save[i], `unrelated byte ${i}`);
+  assert.equal(api.checksumStatus(b, to).main, true);
+});
+
 test("damaged, foreign or wrapped files are refused with a reason", () => {
   const good = syntheticSave(TARGET);
   const cases = [

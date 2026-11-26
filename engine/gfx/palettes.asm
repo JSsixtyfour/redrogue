@@ -202,6 +202,13 @@ ShinyPaletteConvert:
 	ld a, [hl]
 	ret
 
+; For a farcall, which can't carry a. IN/OUT: e.
+ShinyPaletteConvertInE::
+	ld a, e
+	call ShinyPaletteConvert
+	ld e, a
+	ret
+
 ; Indexed by (normal palette - PAL_MEWMON). Order must match the PAL_*MON
 ; constant block in constants/palette_constants.asm.
 ShinyPaletteMap:
@@ -230,14 +237,9 @@ SetPal_Pokedex:
 	call DeterminePaletteIDOutOfBattle
 	ld hl, wPalPacket + 3
 	ld [hl], a
-	; Reward INFO preview: the offer's form palette. The real Pokedex describes
-	; the base species, so outside a preview this leaves the slot alone.
-	farcall RewardInfoFormPalette
-	ld a, e
-	and a
-	jr z, .noFormPalette
-	ld [wPalPacket + 3], a
-.noFormPalette
+	; Reward INFO preview: the offer's form and shiny palette. The real Pokedex
+	; describes the base species, so outside a preview this leaves the slot alone.
+	farcall RewardInfoPalette
 	ld hl, wPalPacket
 	ld de, BlkPacket_Pokedex
 	ret

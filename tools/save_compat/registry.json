@@ -181,6 +181,12 @@
    "to": "25",
    "steps": ["flagsRenumbered", "wildGenericAdded"],
    "verified": "2026-11-20 (Claude): Continue, verified with real saves. 64dede26 (schema 24, the 23 -> 24 gate's target) made six saves (lobby, route, cave, forest, cemetery, facility); the engine converted all six, and saves.py continue on the schema-25 tree (27d530a6 plus uncommitted generic-trainer placement and deep-ramp ROM changes, no RAM change) passed each (continues, saves and continues again); an unconverted control was refused. Evidence builds/gate24_64dede26/. The generic trainer in every wild area: sForestGenericRow/Cell renamed sWildGenericRow/Cell (same addresses), sWildGenericFloor added from free space, wWildGenericBeaten from a main-data pad byte (nothing moved); EVENT_BEAT_FOREST_GENERIC_TRAINER retired, 349 events renumbered (RUN_EVENTS_END 495 -> 487), translated by name. The step writes no trainer (row 0, cell $fe, floor 0) and an unbeaten byte. Synthetic test 'schema 24 to 25'."
+  },
+  {
+   "from": "25",
+   "to": "26",
+   "steps": ["rogueOfferShinyAdded"],
+   "verified": "2026-11-25 (Claude): Continue, verified with real saves. sRogueOfferShiny, three bytes appended to the reward offer section of SRAM bank 2 and set to $ff (never shiny); nothing else moves. ELEMENT PRISM identifiers renamed ELEMENT BOY (FOLLOWUPS #108) with every value and address unchanged: the rename-only build of ea8a4e56 was byte-identical on all three ROMs. Synthetic test 'schema 25 to 26'. Real-save gate passed: six saves (lobby, route, cave, forest, cemetery, facility) made on the schema-25 build ea8a4e56 convert and pass saves.py continue on the schema-26 build; the unconverted lobby save is refused. Evidence builds/gate25_ea8a4e56/. BGB/hardware acceptance pending."
   }
  ]
 }

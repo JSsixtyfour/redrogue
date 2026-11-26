@@ -380,12 +380,13 @@ GetEnemyCatchRateByte::
 	ld [wEnemyMonType2], a
 	jr .done
 .wild
-	ld a, [wSpawnForm]     ; a wild mon has no struct: form only
+	ld a, [wSpawnForm]     ; a wild mon has no struct: its form and its shiny roll
 	and NUM_FORM_SLOTS
 	rrca                   ; 0-3 -> bits 5-6
 	rrca
 	rrca
 	ld e, a
+	call WildMonAddShiny   ; same section (shiny_rolls.asm)
 .done                      ; single exit (test_karate_dojo_forms hooks it)
 	farcall OptionalEncounterEnemyFlags
 	ret

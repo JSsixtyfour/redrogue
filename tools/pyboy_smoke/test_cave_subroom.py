@@ -538,8 +538,16 @@ class CaveSubroomResidentTest(CaveSubroomTest):
         seen = self.fight_and_win("maniac")
         self.assertEqual(h.read8("wPartyCount"), 6)
         self.assertEqual(h.read8("wBoxCount"), boxed + 1, "nothing sent to the box")
-        species = h.read_bytes("wBoxSpecies", boxed + 1)
-        self.assertTrue(set(species) & {mon[0] for mon in seen["party"]}, "not one of his species in the box")
+        # One of his, as it was, like the party one above (a box mon has no stats).
+        got = h.read_bytes("wBoxMon1", 33)
+        def same(mon):
+            return (mon[0], mon[7] & ~0x02, list(mon[8:12]), list(mon[17:29]))
+        his = [mon for mon in seen["party"] if same(mon) == same(got)]
+        self.assertTrue(his, "not one of his Pokemon in the box")
+        self.assertEqual(h.read8("wBoxSpecies"), got[0])
+        self.assertIn(got[3], [mon[33] for mon in his], "box level")
+        self.assertEqual(got[4], 0, "still has a status")
+        self.assertEqual(got[12:14], h.read_bytes("wPlayerID", 2), "the player is not its OT")
 
 
 class CaveResidentFallbackTest(CaveSubroomTest):

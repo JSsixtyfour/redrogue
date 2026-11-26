@@ -371,8 +371,8 @@ FacSuperNerdPrize::
 ; wEnemyMon6's slot when his battle was won, as it was in his party: species,
 ; level, form, shiny, DVs, moves, stat experience. It comes healed and cured,
 ; with the player as its OT, named by its species and form. With the party full
-; it goes to the BOX through GivePokemon instead: species, level and form, the
-; rest rolled fresh. Marked paid either way, even with the BOX full too: the
+; it goes to the BOX through GivePokemon and is then made the same
+; (FacManiacBoxPrize). Marked paid either way, even with the BOX full too: the
 ; set-aside copy does not outlive the next battle, so there is nothing to owe.
 ; Prints. Clobbers everything.
 FacManiacPrize:
@@ -463,7 +463,13 @@ FacManiacPrize:
 	ld b, a
 	ld a, [wLoadedMonLevel]
 	ld c, a
-	jp GivePokemon                  ; prints where it went
+	ld a, [wLoadedMonCatchRate]
+	and 1 << BIT_SHINY
+	or 1 << BIT_SPAWN_SHINY_DECIDED
+	ld [wSpawnShiny], a
+	call GivePokemon                ; prints where it went
+	ret nc
+	farjp FacManiacBoxPrize         ; in the box: his Pokemon, not a fresh one
 
 ; Out: a = wLoadedMon's form index (0 = base).
 .form

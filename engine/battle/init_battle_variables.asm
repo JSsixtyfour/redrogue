@@ -1,10 +1,10 @@
 InitBattleVariables:
 	predef SingleCPUSpeed ; battle transitions have known double-speed visual faults
 ; ELEMENT BOY: resolve the two hot-path damage caches once per battle (see
-; custom_functions/element_prism.asm). Placed here rather than in core.asm's
+; custom_functions/element_boy.asm). Placed here rather than in core.asm's
 ; InitBattleCommon because this routine is already callfar'd once per battle
 ; start from there, and "Battle Core" is the tightest bank in the ROM.
-	farcall RoguePrismRefreshCache
+	farcall RogueElementBoyRefreshCache
 ; TURN REWIND: mark "no snapshot yet" for this battle (see
 ; custom_functions/turn_rewind.asm). Here for the same reason as the ELEMENT BOY
 ; refresh above - this routine is already callfar'd once per battle start

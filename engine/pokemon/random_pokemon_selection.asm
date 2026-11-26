@@ -80,12 +80,12 @@ Random_Boss_Selection_Far::
 
 Random_Pokemon_Selection::
 ; ELEMENT BOY encounter bias: set this selection's type-mismatch re-roll
-; budget (custom_functions/element_prism.asm). Preserves every register - c
+; budget (custom_functions/element_boy.asm). Preserves every register - c
 ; holds the class argument the very next instructions test.
 ; Random_Pokemon_Selection_Any deliberately does NOT get this: it backs
 ; procedural-cave wild encounters, which are not the reward/starter rolls the
 ; ELEMENT BOY is meant to bias.
-call RoguePrismSetRerollBudget
+call RogueElementBoySetRerollBudget
 ; A non-zero c names a rarity class directly (1=pokeball .. 4=masterball).
 ; Class ids are 1-based and tier ids 0-based, hence the dec.
 ld a, c
@@ -292,7 +292,7 @@ RogueSelectFromTier::
 	; ELEMENT BOY encounter bias: discard an off-type species and re-roll.
 	; Deliberately before the evolve step, exactly as the old code ordered it.
 	push de
-	call RoguePrismShouldRerollSpecies ; NZ = off-type and budget remains
+	call RogueElementBoyShouldRerollSpecies ; NZ = off-type and budget remains
 	pop de
 	jr nz, .reject
 	pop bc
@@ -492,20 +492,16 @@ rogue_pokemon_randomized_batch::
    ld hl, wCompletedInGameTradeFlags
    predef FlagActionPredef
 ; Phase 2R increment 8: the three form bytes sit immediately after the three
-; species bytes so this one walk clears both, and so the draw loop can index
+; species bytes so one walk (RogueOffersReset) clears both, and the draw loop can index
 ; them with the offset it already computed. The ASSERT is what makes that
 ; adjacency a build error to break rather than a silent mislabelling of every
 ; reward offer.
    ASSERT wRoguePokemonForm1 == wRoguePokemon3 + 1, \
           "reward form bytes must follow the species bytes - the clear and the draw loop both walk straight through"
-   ld hl, wRoguePokemon1
-   xor a
-   ld [hli], a          ; clear out prior pokemon
-   ld [hli], a          ; clear out prior pokemon
-   ld [hli], a          ; clear out prior pokemon
-   ld [hli], a          ; and their forms - a slot the trade roll pre-fills or a
-   ld [hli], a          ; roll skips must read as form 0, not as last stage's
-   ld [hl], a           ; leftover
+   ; clear out prior pokemon and their forms (a slot the trade roll pre-fills or
+   ; a roll skips must read as form 0, not as last stage's leftover), and the DVs
+   ; and shiny rolls stored for them
+   farcall RogueOffersReset
 
    call RogueRewardTradeRoll   ; may pre-fill wRoguePokemon1; wroguenpctradeget=0 if no trade
 

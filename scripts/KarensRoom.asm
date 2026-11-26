@@ -141,9 +141,9 @@ KarensRoomKarenEndBattleScript:
 ; Gen 1. Whitney also grants NORMAL, so the two share one event: it is only ever
 ; set by a grant, so a set event means the cartridge is already owned and the
 ; second grantor has nothing to add. Same text id shape as BrunosRoom.asm.
-	CheckEvent EVENT_PRISM_WHITNEY_SHOWN
+	CheckEvent EVENT_ELEMENT_BOY_WHITNEY_SHOWN
 	ret nz
-	ld a, TEXT_KARENSROOM_PRISM
+	ld a, TEXT_KARENSROOM_ELEMENT_BOY
 	ldh [hTextID], a
 	jp DisplayTextID
 
@@ -151,7 +151,7 @@ KarensRoom_TextPointers:
 	def_text_pointers
 	dw_const KarensRoomKarenText,            TEXT_KARENSROOM_KAREN
 	dw_const KarensRoomKarenDontRunAwayText, TEXT_KARENSROOM_KAREN_DONT_RUN_AWAY
-	dw_const KarensRoomPrismText,            TEXT_KARENSROOM_PRISM
+	dw_const KarensRoomElementBoyText,            TEXT_KARENSROOM_ELEMENT_BOY
 
 KarensRoomTrainerHeaders:
 	def_trainers
@@ -194,7 +194,7 @@ KarensRoomKarenDontRunAwayText:
 	text_far _KarensRoomKarenDontRunAwayText
 	text_end
 
-KarensRoomPrismText:
+KarensRoomElementBoyText:
 	text_asm
 	farcall RogueGrantCartridgeNormal
 	call DisableWaitingAfterTextDisplay ; the message carries its own prompt

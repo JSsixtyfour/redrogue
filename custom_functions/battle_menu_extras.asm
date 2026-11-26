@@ -380,7 +380,7 @@ BattleItemInfoTable:
 	battle_item_info DOOR_DICE,     INFO_DOOR_DICE, .DoorDice
 	battle_item_info MON_DICE,      INFO_MON_DICE,  .MonDice
 	battle_item_info ITEM_DICE,     INFO_ITEM_DICE, .ItemDice
-	battle_item_info ELEMENT_PRISM, INFO_NONE,      .ElementPrism
+	battle_item_info ELEMENT_BOY, INFO_NONE,      .ElementBoy
 	battle_item_info POKE_FLUTE,    INFO_NONE,      .PokeFlute
 	db $FF
 
@@ -399,7 +399,7 @@ BattleItemInfoTable:
 .DoorDice:     db "Rerolls the doors@",  "in the lobby@"
 .MonDice:      db "Rerolls the reward@", "#MON@"
 .ItemDice:     db "Rerolls items@",      "or gift options@"
-.ElementPrism: db "Powers up moves@",    "matching its type@"
+.ElementBoy: db "Powers up moves@",    "matching its type@"
 .PokeFlute:    db "Wakes all #MON@",     "Uses up your turn@"
 
 ; ============================================================

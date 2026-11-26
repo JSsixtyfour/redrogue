@@ -401,7 +401,9 @@ the commit until there is one.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-11-25 | - | **Wild Metronome and Mirror Move** no longer change unrelated memory. After a Pokémon was sent to the PC box, it could crash the game at the end of a battle. Thawing a wild Pokémon with a Fire move had the same fault |
+| 2026-11-25 | - | **Shiny Pokémon:** wild ones can now appear shiny, at the same odds as ones you receive, and stay shiny if caught or if they join you. A reward's INFO screen shows whether it is shiny, and Pokémon sent to the PC box can be shiny too. With a full party, Bill's DUPLICATE and the PokéManiac's prize now put the exact Pokémon in the box, where most of it used to be rolled again |
+| 2026-11-25 | [`2d0797d9`](https://github.com/JSsixtyfour/redrogue/commit/2d0797d9) | **Flora's Spore gift** now gives the Pokémon it names. Where it could be Vileplume or Bellossom, the list, the description and the Pokémon you received were each picked separately |
+| 2026-11-25 | [`f88ae9b8`](https://github.com/JSsixtyfour/redrogue/commit/f88ae9b8) | **Wild Metronome and Mirror Move** no longer change unrelated memory. After a Pokémon was sent to the PC box, it could crash the game at the end of a battle. Thawing a wild Pokémon with a Fire move had the same fault |
 | 2026-11-24 | [`9ba706d6`](https://github.com/JSsixtyfour/redrogue/commit/9ba706d6) | **Trapping moves:** yours now check their own type against the target. They no longer hold a target they cannot damage (Wrap on a Ghost), and no longer fail because of the target's own move |
 | 2026-11-24 | [`9ba706d6`](https://github.com/JSsixtyfour/redrogue/commit/9ba706d6) | **A trainer's burned or paralyzed Pokémon** keeps its Attack or Speed drop when sent back in. Rest on one no longer leaves it at 2x Attack or 4x Speed |
 | 2026-11-24 | [`9ba706d6`](https://github.com/JSsixtyfour/redrogue/commit/9ba706d6) | **Transform:** the enemy AI knows a transformed Pokémon's copied moves, and using one no longer reveals one of its real moves |

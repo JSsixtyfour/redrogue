@@ -142,9 +142,9 @@ KogasRoomKogaEndBattleScript:
 ; PrintText runs inside DisplayTextID - fired raw from this map script, the
 ; announcement drew an invisible box that silently waited for A. Gated here
 ; on the grant's own one-time event so a repeat win shows no empty box.
-	CheckEvent EVENT_PRISM_E4_POISON_SHOWN
+	CheckEvent EVENT_ELEMENT_BOY_E4_POISON_SHOWN
 	ret nz
-	ld a, TEXT_KOGASROOM_PRISM
+	ld a, TEXT_KOGASROOM_ELEMENT_BOY
 	ldh [hTextID], a
 	jp DisplayTextID
 
@@ -152,7 +152,7 @@ KogasRoom_TextPointers:
 	def_text_pointers
 	dw_const KogasRoomKogaText,            TEXT_KOGASROOM_KOGA
 	dw_const KogasRoomKogaDontRunAwayText, TEXT_KOGASROOM_KOGA_DONT_RUN_AWAY
-	dw_const KogasRoomPrismText, TEXT_KOGASROOM_PRISM
+	dw_const KogasRoomElementBoyText, TEXT_KOGASROOM_ELEMENT_BOY
 
 KogasRoomTrainerHeaders:
 	def_trainers
@@ -195,7 +195,7 @@ KogasRoomKogaDontRunAwayText:
 	text_far _KogasRoomKogaDontRunAwayText
 	text_end
 
-KogasRoomPrismText:
+KogasRoomElementBoyText:
 	text_asm
 	farcall RogueGrantCartridgePoison
 	call DisableWaitingAfterTextDisplay ; the message carries its own prompt

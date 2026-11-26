@@ -9,7 +9,7 @@ TYPES = parse_rgbds_constants(REPO_ROOT / 'constants/type_constants.asm')
 TYPE_NAMES = ['NORMAL','FIGHTING','FLYING','POISON','GROUND','ROCK','BUG','GHOST',
               'FIRE','WATER','GRASS','ELECTRIC','PSYCHIC_TYPE','ICE','DRAGON']
 
-class PrismMenuTest(HarnessTestCase):
+class ElementBoyMenuTest(HarnessTestCase):
     def boot(self):
         h = self.harness
         h.boot_fight2(seed=17)
@@ -34,9 +34,9 @@ class PrismMenuTest(HarnessTestCase):
         for name in TYPE_NAMES:
             with self.subTest(type=name):
                 self.restore()
-                h.write_sram_bytes('sElementPrismType',[TYPES[name]])
+                h.write_sram_bytes('sElementBoyType',[TYPES[name]])
                 for i in range(360): h.write8('wTileMap',0x7f,offset=i)
-                h.call_routine('RoguePrismShowEquipped')
+                h.call_routine('RogueElementBoyShowEquipped')
                 expected = name.replace('_TYPE','')
                 self.assertEqual(grids[-1][321:321+len(expected)], [ord(c)-ord('A')+0x80 for c in expected])
                 self.assertEqual(errors['count'],0)
@@ -55,24 +55,24 @@ class PrismMenuTest(HarnessTestCase):
         self.hook('HandleMenuInput',menu)
         for row in range(15):
             self.restore()
-            h.write_sram_bytes('sPrismCartridges',[255,127])
-            h.write_sram_bytes('sElementPrismType',[TYPES['NORMAL']])
+            h.write_sram_bytes('sElementBoyCartridges',[255,127])
+            h.write_sram_bytes('sElementBoyType',[TYPES['NORMAL']])
             h.write8('hUILayoutFlags',0)
             backup = h.read_bytes('wTileMapBackup2',360)
             choice.update(row=row,key=1)
-            h.call_routine('RoguePrismCartridgeMenu')
-            self.assertEqual(h.read_sram_bytes('sElementPrismType',1),[TYPES[TYPE_NAMES[row]]])
+            h.call_routine('RogueElementBoyCartridgeMenu')
+            self.assertEqual(h.read_sram_bytes('sElementBoyType',1),[TYPES[TYPE_NAMES[row]]])
             self.assertEqual(h.read_bytes('wTileMapBackup2',360),backup)
             self.assertEqual(h.read8('hUILayoutFlags'),0)
             self.assertEqual(seen[-1][0],3) # Only A/B terminate HandleMenuInput.
             self.assertEqual(seen[-1][2],14)
             self.assertNotEqual(seen[-1][1],0)
         self.restore()
-        h.write_sram_bytes('sPrismCartridges',[255,127])
-        h.write_sram_bytes('sElementPrismType',[TYPES['FIRE']])
+        h.write_sram_bytes('sElementBoyCartridges',[255,127])
+        h.write_sram_bytes('sElementBoyType',[TYPES['FIRE']])
         choice.update(row=14,key=2)
-        h.call_routine('RoguePrismCartridgeMenu')
-        self.assertEqual(h.read_sram_bytes('sElementPrismType',1),[TYPES['FIRE']])
+        h.call_routine('RogueElementBoyCartridgeMenu')
+        self.assertEqual(h.read_sram_bytes('sElementBoyType',1),[TYPES['FIRE']])
 
     def test_transfer_cursor_clamps_and_description_background_is_blank(self):
         h = self.boot()
@@ -95,52 +95,52 @@ class PrismMenuTest(HarnessTestCase):
         h = self.boot()
         messages = []
         self.hook('PrintText',lambda _: (messages.append(h.pyboy.register_file.HL),return_from_call(h)))
-        for active,label in [(('ELEMENT_PRISM',),'equipped'),((),'stored')]:
+        for active,label in [(('ELEMENT_BOY',),'equipped'),((),'stored')]:
             self.restore()
-            h.write_sram_bytes('sKeyItemsBitfield',bits(('ELEMENT_PRISM',),active))
+            h.write_sram_bytes('sKeyItemsBitfield',bits(('ELEMENT_BOY',),active))
             h.write8('wCurItem',42)
-            h.call_routine('PrismShowGrantDestination')
-            self.assertEqual(messages[-1],h.address('PrismShowGrantDestination.'+label))
+            h.call_routine('ElementBoyShowGrantDestination')
+            self.assertEqual(messages[-1],h.address('ElementBoyShowGrantDestination.'+label))
             self.assertEqual(h.read8('wCurItem'),42)
 
     def test_karen_grants_normal_once_sharing_whitneys_event(self):
         h = self.boot()
-        event = parse_rgbds_constants(REPO_ROOT / 'constants/event_constants.asm')['EVENT_PRISM_WHITNEY_SHOWN']
+        event = parse_rgbds_constants(REPO_ROOT / 'constants/event_constants.asm')['EVENT_ELEMENT_BOY_WHITNEY_SHOWN']
         byte, mask = event >> 3, 1 << (event & 7)
         messages = []
         self.hook('PrintText',lambda _: (messages.append(h.pyboy.register_file.HL),return_from_call(h)))
         flags = h.read8('wEventFlags',offset=byte)
 
         # Neither Whitney nor Karen beaten yet: Karen grants and announces.
-        h.write_sram_bytes('sPrismCartridges',[0,0])
+        h.write_sram_bytes('sElementBoyCartridges',[0,0])
         h.write8('wEventFlags',flags & ~mask,offset=byte)
         h.call_routine('RogueGrantCartridgeNormal')
-        self.assertEqual(h.read_sram_bytes('sPrismCartridges',2),[1,0])
-        self.assertEqual(messages,[h.address('PrismCartridgeGrantText')])
+        self.assertEqual(h.read_sram_bytes('sElementBoyCartridges',2),[1,0])
+        self.assertEqual(messages,[h.address('ElementBoyCartridgeGrantText')])
         self.assertEqual(h.read_bytes('wStringBuffer',7),[ord(c)-ord('A')+0x80 for c in 'NORMAL']+[0x50])
         self.assertTrue(h.read8('wEventFlags',offset=byte) & mask)
 
         # Whitney already granted it: no second message, cartridge kept.
         self.restore()
         messages.clear()
-        h.write_sram_bytes('sPrismCartridges',[1,0])
+        h.write_sram_bytes('sElementBoyCartridges',[1,0])
         h.write8('wEventFlags',flags | mask,offset=byte)
         h.call_routine('RogueGrantCartridgeNormal')
-        self.assertEqual(h.read_sram_bytes('sPrismCartridges',2),[1,0])
+        self.assertEqual(h.read_sram_bytes('sElementBoyCartridges',2),[1,0])
         self.assertEqual(messages,[])
 
         # The room's "skip the empty text box" gate must name the grant's event.
         room = (REPO_ROOT / 'scripts/KarensRoom.asm').read_text()
-        self.assertIn('CheckEvent EVENT_PRISM_WHITNEY_SHOWN',room)
+        self.assertIn('CheckEvent EVENT_ELEMENT_BOY_WHITNEY_SHOWN',room)
         self.assertIn('farcall RogueGrantCartridgeNormal',room)
 
     def test_empty_cartridge_collection_does_not_open_a_menu(self):
         h = self.boot()
         self.hook('PrintText',lambda _: return_from_call(h))
         menus=h.hook_flag('HandleMenuInput')
-        h.write_sram_bytes('sPrismCartridges',[0,0])
-        h.write_sram_bytes('sElementPrismType',[255])
+        h.write_sram_bytes('sElementBoyCartridges',[0,0])
+        h.write_sram_bytes('sElementBoyType',[255])
         # Count at the return: the parked battle menu runs HandleMenuInput too.
-        count = h.call_routine('RoguePrismCartridgeMenu', capture=lambda _: menus['count'])
+        count = h.call_routine('RogueElementBoyCartridgeMenu', capture=lambda _: menus['count'])
         self.assertEqual(count,0)
-        self.assertEqual(h.read_sram_bytes('sElementPrismType',1),[255])
+        self.assertEqual(h.read_sram_bytes('sElementBoyType',1),[255])

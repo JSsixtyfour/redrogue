@@ -10,6 +10,7 @@ PrintBeginningBattleText:
 	farcall RogueWildEnemyGhostEntrance ; custom_functions/battle_menu_extras.asm
 	ld a, [wEnemyMonSpecies2]
 	call PlayCry
+	farcall PlayEnemyVariantEntranceAnim ; a shiny wild mon sparkles
 	ld hl, WildMonAppearedText
 	ld a, [wMoveMissed]
 	and a

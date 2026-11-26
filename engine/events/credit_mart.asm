@@ -676,11 +676,11 @@ ApplyKeyItemTierEffects::
 	; no tier to derive here any more (wExpAllLevel is retired, 2026-09-28).
 
 	; ELEMENT BOY's damage bonus is derived from its tier the same way, but
-	; its cache lives in custom_functions/element_prism.asm (the "rogue" bank,
+	; its cache lives in custom_functions/element_boy.asm (the "rogue" bank,
 	; not this one), so it is refreshed by farcall rather than inline. Without
 	; this, an ELEMENT BOY upgrade bought here would not take effect until the next
 	; battle start, unlike every other item on this list.
-	farcall RoguePrismRefreshCache
+	farcall RogueElementBoyRefreshCache
 	ret
 
 ; INPUT: a = internal tier, hl = 4-entry level table. OUTPUT: a = level.
@@ -741,7 +741,7 @@ CreditUpgradeTable:
 	db DOOR_DICE,     KEY_ITEM_BIT_DOOR_DICE_OWNED / 2,     $09, $18, $60
 	db MON_DICE,      KEY_ITEM_BIT_MON_DICE_OWNED / 2,      $09, $18, $60
 	db ITEM_DICE,     KEY_ITEM_BIT_ITEM_DICE_OWNED / 2,     $09, $18, $60
-	db ELEMENT_PRISM, KEY_ITEM_BIT_ELEMENT_PRISM_OWNED / 2, $12, $24, $80
+	db ELEMENT_BOY, KEY_ITEM_BIT_ELEMENT_BOY_OWNED / 2, $12, $24, $80
 	db $ff
 
 CreditVendorGreetingText:

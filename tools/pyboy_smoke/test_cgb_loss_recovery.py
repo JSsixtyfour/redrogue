@@ -39,9 +39,9 @@ class CgbLossRecoveryTest(unittest.TestCase):
         player_id=h.read_bytes('wPlayerID',2)
         groups=(('sKeyItemsBitfield',4,1),('sKeyItemTiers',4,1),
                 ('sRoomFurniture',2,1),('sRoomDecorSlots',8,1),('sRoomOwned',4,1),
-                ('sRoomOwnedExt',4,1),('sElementPrismType',1,1),('sPrismCartridges',2,1),
+                ('sRoomOwnedExt',4,1),('sElementBoyType',1,1),('sElementBoyCartridges',2,1),
                 ('sRogueSpeciesGroupsEnabled',1,1),('sFinalTeamArchive',1635,1),
-                ('sHallOfFame',4800,0),('sRogueOfferDVs',9,2),('sTurnRewindBuf',34,1),
+                ('sHallOfFame',4800,0),('sRogueOfferDVs',12,2),('sTurnRewindBuf',34,1),
                 ('sStolenRecord',57,1))
         before={name:h.read_sram_bytes(name,size,bank=bank) for name,size,bank in groups}
         image=loss.LossRecoveryTest.prepared(self,h)

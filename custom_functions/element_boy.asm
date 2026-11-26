@@ -1,15 +1,11 @@
-; custom_functions/element_prism.asm
+; custom_functions/element_boy.asm
 ;
 ; ELEMENT BOY (see KEY_ITEM_EFFECTS_PLAN_PC.md §3i). Granted by the first
 ; gym leader defeated, never sold. The player picks its type by using it from
-; the bag; the choice lives in sElementPrismType (SRAM, so it survives run
+; the bag; the choice lives in sElementBoyType (SRAM, so it survives run
 ; reset and blackout like key-item ownership). Its tier is key item index 14
 ; in sKeyItemTiers and is bought from the Credit Exchange upgrade vendor like
 ; every other key item.
-;
-; NAMING: players see ELEMENT BOY. Identifiers and this file name keep the old
-; name, PRISM, because the save schemas key on several of them. They are renamed
-; at the next SAVE_SCHEMA_ID bump (FOLLOWUPS.md #108).
 ;
 ; Two effects:
 ;   1. Damage: player-turn moves of the ELEMENT BOY's type deal +10/15/20% (by tier).
@@ -19,14 +15,14 @@
 ;      guaranteed).
 ;
 ; CACHE DISCIPLINE - the one subtle thing in this file. The damage hook runs
-; on every damaging hit, so it reads two WRAM caches (wPrismType /
-; wPrismDamageBonus) refreshed once per battle by RoguePrismRefreshCache.
+; on every damaging hit, so it reads two WRAM caches (wElementBoyType /
+; wElementBoyDamageBonus) refreshed once per battle by RogueElementBoyRefreshCache.
 ; The encounter-bias hook does NOT use those caches: reward/starter rolls
 ; happen in the reward room and Oak's Lab, where no battle has necessarily
 ; started yet, so the caches can be stale or (on a fresh file) still zero -
 ; and zero is a VALID type constant (NORMAL), which would silently bias every
 ; roll toward Normal-types. It resolves ownership and type fresh from SRAM
-; instead via RoguePrismGetTypeFresh; that path is cold (a few times per
+; instead via RogueElementBoyGetTypeFresh; that path is cold (a few times per
 ; stage), so the SRAM round trip costs nothing that matters.
 
 ; ============================================================
@@ -53,12 +49,12 @@ RogueGymLeaderVictory::
 	ret nc                        ; out of table range (1-8 valid)
 
 	call RogueGetGymLeaderType    ; a = this leader's type
-	call RoguePrismGrantCartridge
+	call RogueElementBoyGrantCartridge
 
-	ld a, ELEMENT_PRISM
+	ld a, ELEMENT_BOY
 	ld [wCurItem], a
 	call IsKeyItemOwned           ; same bank; Z = not owned yet
-	jr nz, .alreadyHadPrism
+	jr nz, .alreadyHadElementBoy
 
 	; First-ever grant: hand over the ELEMENT BOY itself and equip this leader's
 	; cartridge, so it is never granted in a useless state. Always shows a
@@ -72,30 +68,30 @@ RogueGymLeaderVictory::
 	ld a, 1
 	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld a, c
-	ld [sElementPrismType], a     ; equip it immediately
+	ld [sElementBoyType], a     ; equip it immediately
 	xor a
 	ld [rRAMG], a                 ; never leave SRAM enabled across a return
-	call RoguePrismRefreshCache   ; make the equipped type live this battle
-	ld b, ELEMENT_PRISM
+	call RogueElementBoyRefreshCache   ; make the equipped type live this battle
+	ld b, ELEMENT_BOY
 	ld c, 1
 	call GiveItem
 	call RogueGetGymLeaderType
-	jp RoguePrismShowFirstGrantMessage ; tail call; a = type
+	jp RogueElementBoyShowFirstGrantMessage ; tail call; a = type
 
-.alreadyHadPrism
+.alreadyHadElementBoy
 	; Not the first leader - only show a message the first time THIS leader's
-	; own cartridge is granted. EVENT_PRISM_GYM1_SHOWN..GYM8_SHOWN are
+	; own cartridge is granted. EVENT_ELEMENT_BOY_GYM1_SHOWN..GYM8_SHOWN are
 	; contiguous in wGymLeaderNo order (see event_constants.asm), so the
 	; right one is computed at runtime rather than needing 8 separate
 	; compile-time CheckEvent/SetEvent call sites. This event number is
 	; ~2600+, so it travels in de (a 16-bit add), never a - NUM_EVENTS is
 	; thousands, so it does not fit an 8-bit register or an 8-bit `add a, n`.
-	call RogueGetJohtoPrismIndex   ; a = 0-7 for FALKNER..CLAIR, carry if one
+	call RogueGetJohtoElementBoyIndex   ; a = 0-7 for FALKNER..CLAIR, carry if one
 	jr nc, .kantoEvent
 	add a
 	ld e, a
 	ld d, 0
-	ld hl, JohtoPrismEventTable
+	ld hl, JohtoElementBoyEventTable
 	add hl, de
 	ld a, [hli]
 	ld d, [hl]
@@ -106,15 +102,15 @@ RogueGymLeaderVictory::
 	dec a
 	ld e, a
 	ld d, 0
-	ld hl, EVENT_PRISM_GYM1_SHOWN
+	ld hl, EVENT_ELEMENT_BOY_GYM1_SHOWN
 	add hl, de
 	ld d, h
 	ld e, l                        ; de = this leader's event number
 .checkEvent
-	call RoguePrismCheckAndSetEvent ; Z = first time this leader's message fires
+	call RogueElementBoyCheckAndSetEvent ; Z = first time this leader's message fires
 	ret nz
 	call RogueGetGymLeaderType
-	jp RoguePrismShowCartridgeMessage  ; tail call; a = type
+	jp RogueElementBoyShowCartridgeMessage  ; tail call; a = type
 
 ; wGymLeaderNo (1-8) -> a = signature type. Order is badge order, matching
 ; the `ld a, $N / ld [wGymLeaderNo], a` in each gym script.
@@ -123,7 +119,7 @@ RogueGymLeaderVictory::
 ; their Kanto counterpart's. Janine has no entry: she reuses Koga's slot 5,
 ; and both are Poison.
 RogueGetGymLeaderType:
-	call RogueGetJohtoPrismIndex
+	call RogueGetJohtoElementBoyIndex
 	ld hl, JohtoCartridgeTable
 	jr c, .index
 	ld a, [wGymLeaderNo]
@@ -139,7 +135,7 @@ RogueGetGymLeaderType:
 ; OUTPUT: carry + a = 0-7 when the beaten leader is one of the eight Johto
 ; leaders FALKNER..CLAIR (consecutive trainer classes), else no carry.
 ; CLOBBERS: af
-RogueGetJohtoPrismIndex:
+RogueGetJohtoElementBoyIndex:
 	ld a, [wTrainerClass]
 	sub FALKNER
 	cp CLAIR - FALKNER + 1
@@ -162,15 +158,15 @@ JohtoCartridgeTable:
 ; slot-keyed event would silence whichever of the two was beaten second. The
 ; five later leaders reuse the event of whoever else grants their type, so the
 ; "new cartridge" message fires once per cartridge, not once per grantor.
-JohtoPrismEventTable:
-	dw EVENT_PRISM_FALKNER_SHOWN
-	dw EVENT_PRISM_BUGSY_SHOWN
-	dw EVENT_PRISM_WHITNEY_SHOWN     ; shared with Karen (Normal)
-	dw EVENT_PRISM_E4_GHOST_SHOWN    ; Morty, shared with Agatha
-	dw EVENT_PRISM_E4_FIGHTING_SHOWN ; Chuck, shared with Bruno
-	dw EVENT_PRISM_GYM1_SHOWN        ; Jasmine, shared with Brock (Rock)
-	dw EVENT_PRISM_E4_ICE_SHOWN      ; Pryce, shared with Lorelei
-	dw EVENT_PRISM_E4_DRAGON_SHOWN   ; Clair, shared with Lance
+JohtoElementBoyEventTable:
+	dw EVENT_ELEMENT_BOY_FALKNER_SHOWN
+	dw EVENT_ELEMENT_BOY_BUGSY_SHOWN
+	dw EVENT_ELEMENT_BOY_WHITNEY_SHOWN     ; shared with Karen (Normal)
+	dw EVENT_ELEMENT_BOY_E4_GHOST_SHOWN    ; Morty, shared with Agatha
+	dw EVENT_ELEMENT_BOY_E4_FIGHTING_SHOWN ; Chuck, shared with Bruno
+	dw EVENT_ELEMENT_BOY_GYM1_SHOWN        ; Jasmine, shared with Brock (Rock)
+	dw EVENT_ELEMENT_BOY_E4_ICE_SHOWN      ; Pryce, shared with Lorelei
+	dw EVENT_ELEMENT_BOY_E4_DRAGON_SHOWN   ; Clair, shared with Lance
 
 GymLeaderCartridgeTable:
 	db ROCK          ; 1 Brock
@@ -196,31 +192,31 @@ GymLeaderCartridgeTable:
 ; own one-time event.
 ; ============================================================
 RogueGrantCartridgeIce::
-	ld de, EVENT_PRISM_E4_ICE_SHOWN
+	ld de, EVENT_ELEMENT_BOY_E4_ICE_SHOWN
 	ld a, ICE
-	jr RoguePrismGrantAndAnnounce
+	jr RogueElementBoyGrantAndAnnounce
 RogueGrantCartridgeFighting::
-	ld de, EVENT_PRISM_E4_FIGHTING_SHOWN
+	ld de, EVENT_ELEMENT_BOY_E4_FIGHTING_SHOWN
 	ld a, FIGHTING
-	jr RoguePrismGrantAndAnnounce
+	jr RogueElementBoyGrantAndAnnounce
 RogueGrantCartridgeGhost::
-	ld de, EVENT_PRISM_E4_GHOST_SHOWN
+	ld de, EVENT_ELEMENT_BOY_E4_GHOST_SHOWN
 	ld a, GHOST
-	jr RoguePrismGrantAndAnnounce
+	jr RogueElementBoyGrantAndAnnounce
 RogueGrantCartridgePoison::
-	ld de, EVENT_PRISM_E4_POISON_SHOWN
+	ld de, EVENT_ELEMENT_BOY_E4_POISON_SHOWN
 	ld a, POISON
-	jr RoguePrismGrantAndAnnounce
+	jr RogueElementBoyGrantAndAnnounce
 RogueGrantCartridgePsychic::
-	ld de, EVENT_PRISM_E4_PSYCHIC_SHOWN
+	ld de, EVENT_ELEMENT_BOY_E4_PSYCHIC_SHOWN
 	ld a, PSYCHIC_TYPE
-	jr RoguePrismGrantAndAnnounce
+	jr RogueElementBoyGrantAndAnnounce
 RogueGrantCartridgeNormal::           ; Karen; the event is shared with Whitney
-	ld de, EVENT_PRISM_WHITNEY_SHOWN
+	ld de, EVENT_ELEMENT_BOY_WHITNEY_SHOWN
 	ld a, NORMAL
-	jr RoguePrismGrantAndAnnounce
+	jr RogueElementBoyGrantAndAnnounce
 RogueGrantCartridgeDragon::
-	ld de, EVENT_PRISM_E4_DRAGON_SHOWN
+	ld de, EVENT_ELEMENT_BOY_E4_DRAGON_SHOWN
 	ld a, DRAGON
 	; fall through
 
@@ -228,21 +224,21 @@ RogueGrantCartridgeDragon::
 ; Checks the event BEFORE granting, specifically so the type (only live in a)
 ; never needs to survive a clobbering call while ALSO holding the event
 ; number - each stage's input is consumed before the next stage runs.
-RoguePrismGrantAndAnnounce:
+RogueElementBoyGrantAndAnnounce:
 	push af                       ; save type across the check call (clobbers af too)
-	call RoguePrismCheckAndSetEvent ; Z = first time; clobbers af/bc/de/hl
+	call RogueElementBoyCheckAndSetEvent ; Z = first time; clobbers af/bc/de/hl
 	jr z, .firstTime
 	pop af                        ; not first time - discard the saved type, balance the stack
 	ret
 .firstTime
 	pop af                        ; a = type again
-	push af                       ; re-save it - RoguePrismGrantCartridge clobbers af too
-	call RoguePrismGrantCartridge
+	push af                       ; re-save it - RogueElementBoyGrantCartridge clobbers af too
+	call RogueElementBoyGrantCartridge
 	pop af                        ; a = type, restored
-	jp RoguePrismShowCartridgeMessage ; tail call
+	jp RogueElementBoyShowCartridgeMessage ; tail call
 
 ; ============================================================
-; RoguePrismCheckAndSetEvent — test-and-set a wEventFlags bit given a
+; RogueElementBoyCheckAndSetEvent — test-and-set a wEventFlags bit given a
 ; RUNTIME event number, unlike the CheckEvent/SetEvent macros (which need a
 ; compile-time constant, since they fold the byte/bit split into DEF
 ; arithmetic at assemble time - see macros/scripts/events.asm). Needed here
@@ -259,7 +255,7 @@ RoguePrismGrantAndAnnounce:
 ;         Z clear (NZ) = already shown before (bit was already 1)
 ; CLOBBERS: af, bc, de, hl
 ; ============================================================
-RoguePrismCheckAndSetEvent:
+RogueElementBoyCheckAndSetEvent:
 	ld a, e
 	and 7
 	ld c, a                        ; c = bit position 0-7
@@ -291,49 +287,49 @@ RoguePrismCheckAndSetEvent:
 	ret
 
 ; ============================================================
-; RoguePrismShowFirstGrantMessage / RoguePrismShowCartridgeMessage — print
+; RogueElementBoyShowFirstGrantMessage / RogueElementBoyShowCartridgeMessage — print
 ; the appropriate one-time leader/E4 message. Both take the granted type in
 ; a and copy its name into wStringBuffer for text_ram
-; (_PrismFirstGrantText / _PrismCartridgeGrantText both read it there).
-; INPUT: a = type constant (always one already in PrismTypeList - every
-;        caller here passes a hardcoded valid type, so PrismTypeToIndex's
+; (_ElementBoyFirstGrantText / _ElementBoyCartridgeGrantText both read it there).
+; INPUT: a = type constant (always one already in ElementBoyTypeList - every
+;        caller here passes a hardcoded valid type, so ElementBoyTypeToIndex's
 ;        "not found" case is not defended against)
 ; CLOBBERS: af, bc, de, hl
 ; ============================================================
-RoguePrismShowFirstGrantMessage::
-	call RoguePrismCopyTypeName
-	ld hl, PrismFirstGrantText
+RogueElementBoyShowFirstGrantMessage::
+	call RogueElementBoyCopyTypeName
+	ld hl, ElementBoyFirstGrantText
 	call PrintText
-	farjp PrismShowGrantDestination
+	farjp ElementBoyShowGrantDestination
 
-RoguePrismShowCartridgeMessage::
-	call RoguePrismCopyTypeName
-	ld hl, PrismCartridgeGrantText
+RogueElementBoyShowCartridgeMessage::
+	call RogueElementBoyCopyTypeName
+	ld hl, ElementBoyCartridgeGrantText
 	jp PrintText
 
 ; INPUT: a = type constant. Copies its name into wStringBuffer.
-RoguePrismCopyTypeName:
-	call PrismTypeToIndex          ; a = index
-	call PrismIndexToNamePtr       ; hl = name string
+RogueElementBoyCopyTypeName:
+	call ElementBoyTypeToIndex          ; a = index
+	call ElementBoyIndexToNamePtr       ; hl = name string
 	ld de, wStringBuffer
-	jp PrismCopyName               ; tail call
+	jp ElementBoyCopyName               ; tail call
 
-PrismFirstGrantText:
-	text_far _PrismFirstGrantText
+ElementBoyFirstGrantText:
+	text_far _ElementBoyFirstGrantText
 	text_end
 
-PrismCartridgeGrantText:
-	text_far _PrismCartridgeGrantText
+ElementBoyCartridgeGrantText:
+	text_far _ElementBoyCartridgeGrantText
 	text_end
 
 ; ============================================================
-; RoguePrismGrantCartridge — unlock the cartridge for the type in a.
+; RogueElementBoyGrantCartridge — unlock the cartridge for the type in a.
 ; Idempotent: re-beating a leader simply re-sets a bit that is already set.
 ; INPUT: a = type constant
 ; CLOBBERS: af, bc, de, hl
 ; ============================================================
-RoguePrismGrantCartridge::
-	call PrismTypeToIndex         ; a = 0-14, or carry clear if not selectable
+RogueElementBoyGrantCartridge::
+	call ElementBoyTypeToIndex         ; a = 0-14, or carry clear if not selectable
 	ret nc
 	; bit index -> byte offset + mask
 	ld c, a
@@ -345,7 +341,7 @@ RoguePrismGrantCartridge::
 	srl a                         ; a = byte offset (0 or 1)
 	ld e, a
 	ld d, 0
-	ld hl, sPrismCartridges
+	ld hl, sElementBoyCartridges
 	add hl, de
 	ld a, 1
 	inc b
@@ -369,17 +365,17 @@ RoguePrismGrantCartridge::
 	ret
 
 ; ============================================================
-; PrismTypeToIndex — type constant -> its position in PrismTypeList (0-14).
+; ElementBoyTypeToIndex — type constant -> its position in ElementBoyTypeList (0-14).
 ; Needed because type constants are not contiguous (0-8 then 20-26), so they
 ; cannot index a 15-bit field directly.
 ; INPUT:  a = type constant
 ; OUTPUT: carry set + a = index, or carry clear if the type is not selectable
 ; CLOBBERS: af, bc, hl
 ; ============================================================
-PrismTypeToIndex::
+ElementBoyTypeToIndex::
 	ld c, a
 	ld b, 0
-	ld hl, PrismTypeList
+	ld hl, ElementBoyTypeList
 .scan
 	ld a, [hl]
 	cp c
@@ -387,7 +383,7 @@ PrismTypeToIndex::
 	inc hl
 	inc b
 	ld a, b
-	cp PRISM_TYPE_COUNT
+	cp ELEMENT_BOY_TYPE_COUNT
 	jr c, .scan
 	and a                         ; carry clear = not a selectable type
 	ret
@@ -397,12 +393,12 @@ PrismTypeToIndex::
 	ret
 
 ; ============================================================
-; PrismHasCartridge — is the type at index a unlocked?
+; ElementBoyHasCartridge — is the type at index a unlocked?
 ; INPUT:  a = index (0-14)
 ; OUTPUT: Z set = locked, Z clear (NZ) = unlocked
 ; CLOBBERS: af, bc, de, hl
 ; ============================================================
-PrismHasCartridge::
+ElementBoyHasCartridge::
 	ld c, a
 	and 7
 	ld b, a
@@ -412,7 +408,7 @@ PrismHasCartridge::
 	srl a
 	ld e, a
 	ld d, 0
-	ld hl, sPrismCartridges
+	ld hl, sElementBoyCartridges
 	add hl, de
 	ld a, 1
 	inc b
@@ -438,20 +434,20 @@ PrismHasCartridge::
 	ret
 
 ; ============================================================
-; RoguePrismGetTypeFresh — resolve the ELEMENT BOY's active type with no reliance
+; RogueElementBoyGetTypeFresh — resolve the ELEMENT BOY's active type with no reliance
 ; on the WRAM caches (see CACHE DISCIPLINE above).
 ; OUTPUT: a = type constant, or $ff if the ELEMENT BOY is not active or its type
 ;         has not been chosen yet.
 ; CLOBBERS: af, bc, de, hl
 ; ============================================================
-RoguePrismGetTypeFresh::
+RogueElementBoyGetTypeFresh::
 	; wCurItem IS wCurPartySpecies (one byte, three labels - see ram/wram.asm).
 	; Preserve it across the key-item lookup: callers may have a live species in
 	; it, and clobbering it corrupted the battle intro's enemy pic. See the
-	; comment on RoguePrismRefreshCache below for the full failure mode.
+	; comment on RogueElementBoyRefreshCache below for the full failure mode.
 	ld a, [wCurPartySpecies]
 	push af
-	ld a, ELEMENT_PRISM
+	ld a, ELEMENT_BOY
 	ld [wCurItem], a
 	call GetKeyItemPower          ; same bank; 0 = not active
 	and a
@@ -461,7 +457,7 @@ RoguePrismGetTypeFresh::
 	ASSERT BANK("Save Data") == 1
 	ld a, 1
 	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
-	ld a, [sElementPrismType]
+	ld a, [sElementBoyType]
 	ld c, a
 	xor a
 	ld [rRAMG], a                 ; never leave SRAM enabled across a return
@@ -478,13 +474,13 @@ RoguePrismGetTypeFresh::
 	ret
 
 ; ============================================================
-; RoguePrismRefreshCache — farcalled once per battle from
+; RogueElementBoyRefreshCache — farcalled once per battle from
 ; InitBattleVariables (engine/battle/init_battle_variables.asm). Resolves
 ; the two hot-path caches the damage hook reads. Also called after an
 ; upgrade purchase so a new tier applies immediately (see
 ; ApplyKeyItemTierEffects, engine/events/credit_mart.asm).
 ;
-; wPrismDamageBonus = 0 is the "skip entirely" sentinel, so the damage hook's
+; wElementBoyDamageBonus = 0 is the "skip entirely" sentinel, so the damage hook's
 ; common case is one load and a conditional return.
 ; CLOBBERS: af, bc, de, hl
 ;
@@ -493,13 +489,13 @@ RoguePrismGetTypeFresh::
 ; wCurPartySpecies still holds the species whose front pic is about to be drawn.
 ; The pic load reads TWO different variables: GetMonHeader (home/pokemon.asm) uses
 ; wCurSpecies for the pic POINTER, while UncompressMonSprite (home/pics.asm) uses
-; wCurPartySpecies to pick the pic BANK. Leaving ELEMENT_PRISM ($70) in it made
+; wCurPartySpecies to pick the pic BANK. Leaving ELEMENT_BOY ($70) in it made
 ; every wild battle draw the correct pic offset out of BANK("Pics 3"), which is
 ; garbage for any species not genuinely in that bank - the intermittent scrambled
 ; wild-mon sprite (a species that really does live in Pics 3 rendered fine, which
 ; is what made it look random). Hence the save/restore wrapper below.
 ; ============================================================
-RoguePrismRefreshCache::
+RogueElementBoyRefreshCache::
 	ld a, [wCurPartySpecies]
 	push af
 	call .body
@@ -508,11 +504,11 @@ RoguePrismRefreshCache::
 	ret
 .body
 	xor a
-	ld [wPrismDamageBonus], a
+	ld [wElementBoyDamageBonus], a
 	ld a, $ff
-	ld [wPrismType], a
+	ld [wElementBoyType], a
 
-	ld a, ELEMENT_PRISM
+	ld a, ELEMENT_BOY
 	ld [wCurItem], a
 	call GetKeyItemPower          ; a = 0 (not active) or 1-3 (displayed tier)
 	and a
@@ -525,20 +521,20 @@ RoguePrismRefreshCache::
 	ld b, [hl]                    ; b = percent bonus for this tier
 
 	push bc                       ; the type lookup clobbers the tier bonus in b
-	call RoguePrismGetTypeFresh   ; a = chosen type, or $ff
+	call RogueElementBoyGetTypeFresh   ; a = chosen type, or $ff
 	pop bc
 	cp $ff
 	ret z                         ; owned but no type picked yet - stays disabled
-	ld [wPrismType], a
+	ld [wElementBoyType], a
 	ld a, b
-	ld [wPrismDamageBonus], a
+	ld [wElementBoyDamageBonus], a
 	ret
 
 .BonusTable:
 	db 10, 15, 20
 
 ; ============================================================
-; RoguePrismDamageBoost — farcalled from the `.done` exit of
+; RogueElementBoyDamageBoost — farcalled from the `.done` exit of
 ; AdjustDamageForMoveType (engine/battle/core.asm). Scales wDamage by
 ; (100 + bonus)/100 when the player's move matches the ELEMENT BOY's type.
 ;
@@ -554,16 +550,16 @@ RoguePrismRefreshCache::
 ; second idiom for the same job.
 ; CLOBBERS: af, bc, de, hl
 ; ============================================================
-RoguePrismDamageBoost::
+RogueElementBoyDamageBoost::
 	; The player-turn check that used to open this routine now lives at the hook
 	; site in AdjustDamageForMoveType (engine/battle/core.asm), which branches the
 	; enemy's turn to RogueWitchResistSuperEffective instead. This routine is
 	; therefore only ever entered on the PLAYER's turn.
-	ld a, [wPrismDamageBonus]
+	ld a, [wElementBoyDamageBonus]
 	and a
 	ret z                         ; ELEMENT BOY inactive / no type chosen
 	ld b, a                       ; b = percent bonus
-	ld a, [wPrismType]
+	ld a, [wElementBoyType]
 	ld c, a
 	ld a, [wMoveType]
 	cp c
@@ -591,7 +587,7 @@ RoguePrismDamageBoost::
 	ret
 
 ; ============================================================
-; RoguePrismSetRerollBudget — called at the top of Random_Pokemon_Selection
+; RogueElementBoySetRerollBudget — called at the top of Random_Pokemon_Selection
 ; (engine/pokemon/random_pokemon_selection.asm, same bank). Sets how many
 ; type-mismatch re-rolls this selection may spend.
 ;
@@ -599,7 +595,7 @@ RoguePrismDamageBoost::
 ; cp c` on the class argument in c, so clobbering c would silently change
 ; which rarity class gets rolled.
 ; ============================================================
-RoguePrismSetRerollBudget::
+RogueElementBoySetRerollBudget::
 	push af
 	push bc
 	push de
@@ -609,7 +605,7 @@ RoguePrismSetRerollBudget::
 	jr z, .gotBudget              ; Z = event NOT set = starter not chosen yet
 	ld a, 1                       ; normal reward roll - a single extra attempt
 .gotBudget
-	ld [wPrismRerollsLeft], a
+	ld [wElementBoyRerollsLeft], a
 	pop hl
 	pop de
 	pop bc
@@ -617,7 +613,7 @@ RoguePrismSetRerollBudget::
 	ret
 
 ; ============================================================
-; RoguePrismShouldRerollSpecies — called from Random_Pokemon_Selection once a
+; RogueElementBoyShouldRerollSpecies — called from Random_Pokemon_Selection once a
 ; species has passed the existing AllSpeciesCheck.
 ; INPUT:  d = candidate species, e = its explicit form index
 ; OUTPUT: Z set = keep it, Z clear (NZ) = discard and re-roll (budget spent)
@@ -625,12 +621,12 @@ RoguePrismSetRerollBudget::
 ; CLOBBERS: af, bc, e, hl  (d preserved; the caller's hl is saved by the
 ;           caller, since it holds the class-selection retry address)
 ; ============================================================
-RoguePrismShouldRerollSpecies::
-	ld a, [wPrismRerollsLeft]
+RogueElementBoyShouldRerollSpecies::
+	ld a, [wElementBoyRerollsLeft]
 	and a
 	jr z, .keep                   ; budget exhausted - accept whatever we rolled
 	push de
-	call RoguePrismGetTypeFresh   ; a = ELEMENT BOY type, or $ff (clobbers de)
+	call RogueElementBoyGetTypeFresh   ; a = ELEMENT BOY type, or $ff (clobbers de)
 	pop de
 	cp $ff
 	jr z, .keep                   ; ELEMENT BOY not active / no type chosen
@@ -653,7 +649,7 @@ RoguePrismShouldRerollSpecies::
 	cp b
 	jr z, .keep
 
-	ld hl, wPrismRerollsLeft      ; mismatch - spend one attempt and re-roll
+	ld hl, wElementBoyRerollsLeft      ; mismatch - spend one attempt and re-roll
 	dec [hl]
 	ld a, 1
 	and a                         ; NZ
@@ -663,7 +659,7 @@ RoguePrismShouldRerollSpecies::
 	ret
 
 ; ============================================================
-; RoguePrismCartridgeMenu — farcalled from the Player PC's CARTRIDGE option
+; RogueElementBoyCartridgeMenu — farcalled from the Player PC's CARTRIDGE option
 ; (engine/menus/players_pc.asm). Lists only the cartridges the player has
 ; actually unlocked and equips the chosen one.
 ;
@@ -678,23 +674,23 @@ RoguePrismShouldRerollSpecies::
 ; bank from this one - reading it would need a bankswitch inside the draw
 ; loop for no benefit.
 ;
-; The listed subset is RECOMPUTED (PrismCountCartridges /
-; PrismNthCartridgeIndex) rather than cached in a buffer. An index map would
+; The listed subset is RECOMPUTED (ElementBoyCountCartridges /
+; ElementBoyNthCartridgeIndex) rather than cached in a buffer. An index map would
 ; have needed 16 bytes of WRAM0, which does not exist - and recomputing over
 ; 15 bits in a menu that only redraws on open costs nothing measurable.
 ; ============================================================
-RoguePrismCartridgeMenu::
+RogueElementBoyCartridgeMenu::
 	; Nothing unlocked yet? Say so - a zero-row TextBoxBorder is malformed.
-	call PrismCountCartridges
+	call ElementBoyCountCartridges
 	and a
 	jr nz, .haveCartridges
-	ld hl, PrismNoCartridgesText
+	ld hl, ElementBoyNoCartridgesText
 	jp PrintText
 
 .haveCartridges
 	; Parent PC owns screen buffer 2; it redraws on return.
 
-	call PrismCountCartridges
+	call ElementBoyCountCartridges
 	hlcoord 0, 0
 	ld b, a                       ; interior rows: one per UNLOCKED cartridge
 	ld c, 10                      ; interior cols: fits "FIGHTING"/"ELECTRIC" at x=2
@@ -707,14 +703,14 @@ RoguePrismCartridgeMenu::
 	ld a, c
 	push bc
 	push hl
-	call PrismHasCartridge        ; NZ = unlocked (clobbers everything)
+	call ElementBoyHasCartridge        ; NZ = unlocked (clobbers everything)
 	pop hl
 	pop bc
 	jr z, .drawNext
 	push bc                       ; save index counter
 	push hl                       ; save screen pos across the name lookup
 	ld a, c
-	call PrismIndexToNamePtr      ; hl = name string (clobbers b)
+	call ElementBoyIndexToNamePtr      ; hl = name string (clobbers b)
 	ld d, h
 	ld e, l                       ; de = string for PlaceString
 	pop hl                        ; hl = screen pos again
@@ -725,7 +721,7 @@ RoguePrismCartridgeMenu::
 .drawNext
 	inc c
 	ld a, c
-	cp PRISM_TYPE_COUNT
+	cp ELEMENT_BOY_TYPE_COUNT
 	jr c, .drawLoop
 
 	xor a
@@ -734,7 +730,7 @@ RoguePrismCartridgeMenu::
 	ld [wMenuWatchMovingOutOfBounds], a
 	ld a, PAD_A | PAD_B
 	ld [wMenuWatchedKeys], a
-	call PrismCountCartridges
+	call ElementBoyCountCartridges
 	dec a
 	ld [wMaxMenuItem], a
 	ld a, 1
@@ -755,8 +751,8 @@ RoguePrismCartridgeMenu::
 
 	; cursor row -> nth unlocked index -> type constant
 	ldh a, [hCurrentMenuItem]
-	call PrismNthCartridgeIndex   ; a = type index
-	ld hl, PrismTypeList
+	call ElementBoyNthCartridgeIndex   ; a = type index
+	ld hl, ElementBoyTypeList
 	ld e, a
 	ld d, 0
 	add hl, de
@@ -769,98 +765,98 @@ RoguePrismCartridgeMenu::
 	ld a, 1
 	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
 	ld a, b
-	ld [sElementPrismType], a
+	ld [sElementBoyType], a
 	xor a
 	ld [rRAMG], a                 ; never leave SRAM enabled across a return
 
 
-	call RoguePrismRefreshCache   ; new type applies immediately, not next battle
-	ld hl, ElementPrismSetText
+	call RogueElementBoyRefreshCache   ; new type applies immediately, not next battle
+	ld hl, ElementBoySetText
 	jp PrintText
 
 .cancelled
 	ret
 
 ; ============================================================
-; RoguePrismShowEquipped — farcalled from ItemUseElementPrism. Read-only:
+; RogueElementBoyShowEquipped — farcalled from ItemUseElementBoy. Read-only:
 ; swapping happens at the PC, so using the ELEMENT BOY from the bag just reports
 ; which cartridge is installed. The name is copied into wStringBuffer for the
-; text_ram field in _ElementPrismStatusText.
+; text_ram field in _ElementBoyStatusText.
 ; CLOBBERS: af, bc, de, hl
 ; ============================================================
-RoguePrismShowEquipped::
+RogueElementBoyShowEquipped::
 	ld a, RAMG_SRAM_ENABLE
 	ld [rRAMG], a
 	ASSERT BANK("Save Data") == 1
 	ld a, 1
 	ld [rRAMB], a       ; select bank 1 explicitly; ambient bank is unreliable
-	ld a, [sElementPrismType]
+	ld a, [sElementBoyType]
 	ld b, a
 	xor a
 	ld [rRAMG], a
 	ld a, b
 	cp $ff
 	jr z, .none
-	call PrismTypeToIndex
+	call ElementBoyTypeToIndex
 	jr nc, .none                  ; stored a type that is not selectable
-	call PrismIndexToNamePtr      ; hl = name string
+	call ElementBoyIndexToNamePtr      ; hl = name string
 	ld de, wStringBuffer
-	call PrismCopyName
-	ld hl, ElementPrismStatusText
+	call ElementBoyCopyName
+	ld hl, ElementBoyStatusText
 	jp PrintText
 .none
-	ld hl, PrismNoCartridgesText
+	ld hl, ElementBoyNoCartridgesText
 	jp PrintText
 
 ; hl = source string (ends '@'), de = dest. Copies including the terminator.
-PrismCopyName:
+ElementBoyCopyName:
 	ld a, [hli]
 	ld [de], a
 	inc de
 	cp '@'
-	jr nz, PrismCopyName
+	jr nz, ElementBoyCopyName
 	ret
 
 ; ============================================================
-; PrismCountCartridges — how many cartridges are unlocked (0-15).
+; ElementBoyCountCartridges — how many cartridges are unlocked (0-15).
 ; OUTPUT: a = count.  CLOBBERS: af, de, hl (bc preserved)
 ; ============================================================
-PrismCountCartridges:
+ElementBoyCountCartridges:
 	push bc
 	ld b, 0                       ; b = running count
 	ld c, 0                       ; c = index under test
 .loop
 	ld a, c
 	push bc
-	call PrismHasCartridge
+	call ElementBoyHasCartridge
 	pop bc
 	jr z, .next
 	inc b
 .next
 	inc c
 	ld a, c
-	cp PRISM_TYPE_COUNT
+	cp ELEMENT_BOY_TYPE_COUNT
 	jr c, .loop
 	ld a, b                       ; read out BEFORE the pop restores bc
 	pop bc
 	ret
 
 ; ============================================================
-; PrismNthCartridgeIndex — turn a menu row into a type index by walking the
+; ElementBoyNthCartridgeIndex — turn a menu row into a type index by walking the
 ; unlocked set again, which is what lets the menu list an arbitrary subset
 ; without storing an index map.
 ; INPUT:  a = n (0-based menu row)
 ; OUTPUT: a = type index (0-14) of the nth unlocked cartridge
 ; CLOBBERS: af, de, hl (bc preserved)
 ; ============================================================
-PrismNthCartridgeIndex:
+ElementBoyNthCartridgeIndex:
 	push bc
 	ld b, a                       ; b = how many unlocked entries still to skip
 	ld c, 0                       ; c = index under test
 .loop
 	ld a, c
 	push bc
-	call PrismHasCartridge
+	call ElementBoyHasCartridge
 	pop bc
 	jr z, .next
 	ld a, b
@@ -870,7 +866,7 @@ PrismNthCartridgeIndex:
 .next
 	inc c
 	ld a, c
-	cp PRISM_TYPE_COUNT
+	cp ELEMENT_BOY_TYPE_COUNT
 	jr c, .loop
 	ld c, 0                       ; defensive: should be unreachable
 .found
@@ -879,15 +875,15 @@ PrismNthCartridgeIndex:
 	ret
 
 ; ============================================================
-; PrismIndexToNamePtr — index (0-14) -> pointer to its name string.
-; PrismTypeNames is variable-length, so this walks it rather than indexing.
+; ElementBoyIndexToNamePtr — index (0-14) -> pointer to its name string.
+; ElementBoyTypeNames is variable-length, so this walks it rather than indexing.
 ; INPUT:  a = index
 ; OUTPUT: hl = name string
 ; CLOBBERS: af, b, hl
 ; ============================================================
-PrismIndexToNamePtr:
+ElementBoyIndexToNamePtr:
 	ld b, a
-	ld hl, PrismTypeNames
+	ld hl, ElementBoyTypeNames
 	inc b
 .walk
 	dec b
@@ -898,28 +894,28 @@ PrismIndexToNamePtr:
 	jr nz, .skip
 	jr .walk
 
-ElementPrismSetText:
-	text_far _ElementPrismSetText
+ElementBoySetText:
+	text_far _ElementBoySetText
 	text_end
 
-ElementPrismStatusText:
-	text_far _ElementPrismStatusText
+ElementBoyStatusText:
+	text_far _ElementBoyStatusText
 	text_end
 
-PrismNoCartridgesText:
-	text_far _PrismNoCartridgesText
+ElementBoyNoCartridgesText:
+	text_far _ElementBoyNoCartridgesText
 	text_end
 
 ; The 15 selectable types, in menu order. BIRD and the UNUSED_TYPES block are
 ; deliberately excluded - they are not real, obtainable types.
-PrismTypeList:
+ElementBoyTypeList:
 	db NORMAL, FIGHTING, FLYING, POISON, GROUND, ROCK, BUG, GHOST
 	db FIRE, WATER, GRASS, ELECTRIC, PSYCHIC_TYPE, ICE, DRAGON
-DEF PRISM_TYPE_COUNT EQU 15
+DEF ELEMENT_BOY_TYPE_COUNT EQU 15
 
-; Must stay in the same order as PrismTypeList above - the menu draws these
+; Must stay in the same order as ElementBoyTypeList above - the menu draws these
 ; sequentially and indexes that table by cursor position.
-PrismTypeNames:
+ElementBoyTypeNames:
 	db "NORMAL@"
 	db "FIGHTING@"
 	db "FLYING@"

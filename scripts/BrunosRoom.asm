@@ -131,9 +131,9 @@ BrunosRoomBrunoEndBattleScript:
 ; PrintText runs inside DisplayTextID - fired raw from this map script, the
 ; announcement drew an invisible box that silently waited for A. Gated here
 ; on the grant's own one-time event so a repeat win shows no empty box.
-	CheckEvent EVENT_PRISM_E4_FIGHTING_SHOWN
+	CheckEvent EVENT_ELEMENT_BOY_E4_FIGHTING_SHOWN
 	ret nz
-	ld a, TEXT_BRUNOSROOM_PRISM
+	ld a, TEXT_BRUNOSROOM_ELEMENT_BOY
 	ldh [hTextID], a
 	jp DisplayTextID
 
@@ -141,7 +141,7 @@ BrunosRoom_TextPointers:
 	def_text_pointers
 	dw_const BrunosRoomBrunoText,            TEXT_BRUNOSROOM_BRUNO
 	dw_const BrunosRoomBrunoDontRunAwayText, TEXT_BRUNOSROOM_BRUNO_DONT_RUN_AWAY
-	dw_const BrunosRoomPrismText, TEXT_BRUNOSROOM_PRISM
+	dw_const BrunosRoomElementBoyText, TEXT_BRUNOSROOM_ELEMENT_BOY
 
 BrunosRoomTrainerHeaders:
 	def_trainers
@@ -184,7 +184,7 @@ BrunosRoomBrunoDontRunAwayText:
 	text_far _BrunosRoomBrunoDontRunAwayText
 	text_end
 
-BrunosRoomPrismText:
+BrunosRoomElementBoyText:
 	text_asm
 	farcall RogueGrantCartridgeFighting
 	call DisableWaitingAfterTextDisplay ; the message carries its own prompt

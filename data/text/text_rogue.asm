@@ -161,32 +161,32 @@ _ItemDiceDescriptionText::
 	line "reward items."
 	done
 
-_ElementPrismDescriptionText::
+_ElementBoyDescriptionText::
 	text "Boosts that type's"
 	line "damage and reward"
 	cont "chances."
 	done
 
-; ELEMENT BOY cartridge system (custom_functions/element_prism.asm).
-_ElementPrismSetText::
+; ELEMENT BOY cartridge system (custom_functions/element_boy.asm).
+_ElementBoySetText::
 	text "CARTRIDGE"
 	line "installed!"
 	prompt
 
 ; text_ram reads the equipped type's name out of wStringBuffer.
-_ElementPrismStatusText::
+_ElementBoyStatusText::
 	text "CARTRIDGE:"
 	line "@"
 	text_ram wStringBuffer
 	text ""
 	prompt
 
-_PrismNoCartridgesText::
+_ElementBoyNoCartridgesText::
 	text "No CARTRIDGE"
 	line "installed."
 	prompt
 
-; One-time grant messages (custom_functions/element_prism.asm), gated on
+; One-time grant messages (custom_functions/element_boy.asm), gated on
 ; persistent per-grantor events - shown once ever, never again, even across
 ; runs. text_ram reads the granted type's name out of wStringBuffer.
 ; The two grant announcements below all end in `prompt`, because they are
@@ -199,7 +199,7 @@ _PrismNoCartridgesText::
 ; The type name (wStringBuffer, up to 8 chars: FIGHTING, ELECTRIC) goes on its
 ; own line: "ELECTRIC CARTRIDGE!" is 19 columns against the box's 18, and the
 ; old one-line layouts ran to 30.
-_PrismFirstGrantText::
+_ElementBoyFirstGrantText::
 	text "Received the"
 	line "ELEMENT BOY!"
 
@@ -210,7 +210,7 @@ _PrismFirstGrantText::
 	cont "CARTRIDGE!"
 	prompt
 
-_PrismCartridgeGrantText::
+_ElementBoyCartridgeGrantText::
 	text "Received a"
 	line "@"
 	text_ram wStringBuffer
@@ -218,7 +218,7 @@ _PrismCartridgeGrantText::
 	cont "CARTRIDGE!"
 	prompt
 
-_PrismCartridgeReceivedText::
+_ElementBoyCartridgeReceivedText::
 	text "Received a"
 	line "CARTRIDGE!"
 	done

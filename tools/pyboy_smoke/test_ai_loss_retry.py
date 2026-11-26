@@ -39,10 +39,10 @@ class EventLayoutTest(unittest.TestCase):
         events = parse_rgbds_constants(EVENT_CONSTANTS)
         self.assertEqual(events["EVENT_PALMS_ROOM_OPEN"], 33)
         self.assertEqual(events["EVENT_AI_ATTEMPT_SPENT"], 34)
-        # 34 -> 36 (2026-09-23): EVENT_PRISM_BUGSY_SHOWN / _WHITNEY_SHOWN were
+        # 34 -> 36 (2026-09-23): EVENT_ELEMENT_BOY_BUGSY_SHOWN / _WHITNEY_SHOWN were
         # appended AFTER EVENT_AI_ATTEMPT_SPENT, so nothing above moved.
-        self.assertEqual(events["EVENT_PRISM_BUGSY_SHOWN"], 35)
-        self.assertEqual(events["EVENT_PRISM_WHITNEY_SHOWN"], 36)
+        self.assertEqual(events["EVENT_ELEMENT_BOY_BUGSY_SHOWN"], 35)
+        self.assertEqual(events["EVENT_ELEMENT_BOY_WHITNEY_SHOWN"], 36)
         # Committed post-AI Palm completion appends bit 37; run flags stay at 40.
         self.assertEqual(events["EVENT_POST_AI_PALM_COMPLETE"], 37)
         self.assertEqual(events["PERSISTENT_EVENTS_END"], 37)

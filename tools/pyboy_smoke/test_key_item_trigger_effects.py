@@ -236,7 +236,7 @@ class KeyItemTriggerEffectsTest(HarnessTestCase):
                         finally:
                             h.close()
 
-    def test_prism_species_bias_reward_starter_budget_and_form_types(self):
+    def test_element_boy_species_bias_reward_starter_budget_and_form_types(self):
         h=self.harness
         h.boot_fight2(seed=17)
         species=parse_rgbds_constants(REPO_ROOT/'constants/pokemon_constants.asm')
@@ -248,38 +248,38 @@ class KeyItemTriggerEffectsTest(HarnessTestCase):
             for tier in range(3):
                 for starter in (False,True):
                     with self.subTest(tier=tier,starter=starter):
-                        self.configure('ELEMENT_PRISM',tier)
-                        h.write_sram_bytes('sElementPrismType',[types['FIRE']])
+                        self.configure('ELEMENT_BOY',tier)
+                        h.write_sram_bytes('sElementBoyType',[types['FIRE']])
                         if starter: h.pyboy.memory[address]&=~(1<<(event%8))&255
                         else: h.pyboy.memory[address]|=1<<(event%8)
-                        h.call_routine('RoguePrismSetRerollBudget')
+                        h.call_routine('RogueElementBoySetRerollBudget')
                         budget=16 if starter else 1
-                        self.assertEqual(h.read8('wPrismRerollsLeft'),budget)
+                        self.assertEqual(h.read8('wElementBoyRerollsLeft'),budget)
                         # Matching fire candidate is kept without spending budget.
                         h.pyboy.register_file.D=species['CHARMANDER']; h.pyboy.register_file.E=0
-                        h.call_routine('RoguePrismShouldRerollSpecies')
+                        h.call_routine('RogueElementBoyShouldRerollSpecies')
                         self.assertTrue(h.last_call_registers['F']&0x80)
-                        self.assertEqual(h.read8('wPrismRerollsLeft'),budget)
+                        self.assertEqual(h.read8('wElementBoyRerollsLeft'),budget)
                         # Water mismatch consumes exactly the full bounded budget.
                         for remaining in range(budget-1,-1,-1):
                             h.pyboy.register_file.D=species['SQUIRTLE']; h.pyboy.register_file.E=0
-                            h.call_routine('RoguePrismShouldRerollSpecies')
+                            h.call_routine('RogueElementBoyShouldRerollSpecies')
                             self.assertFalse(h.last_call_registers['F']&0x80)
                             self.assertEqual(h.last_call_registers['D'],species['SQUIRTLE'])
-                            self.assertEqual(h.read8('wPrismRerollsLeft'),remaining)
+                            self.assertEqual(h.read8('wElementBoyRerollsLeft'),remaining)
                         h.pyboy.register_file.D=species['SQUIRTLE']; h.pyboy.register_file.E=0
-                        h.call_routine('RoguePrismShouldRerollSpecies')
+                        h.call_routine('RogueElementBoyShouldRerollSpecies')
                         self.assertTrue(h.last_call_registers['F']&0x80)
                 for active,selected,form,kept in ((False,types['FIRE'],0,True),
                         (True,255,0,True),(True,types['ICE'],1,True),(True,types['ICE'],0,False)):
                     with self.subTest(tier=tier,active=active,selected=selected,form=form):
-                        self.configure('ELEMENT_PRISM',tier,active)
-                        h.write_sram_bytes('sElementPrismType',[selected])
-                        h.write8('wPrismRerollsLeft',1)
+                        self.configure('ELEMENT_BOY',tier,active)
+                        h.write_sram_bytes('sElementBoyType',[selected])
+                        h.write8('wElementBoyRerollsLeft',1)
                         h.pyboy.register_file.D=species['VULPIX']; h.pyboy.register_file.E=form
-                        h.call_routine('RoguePrismShouldRerollSpecies')
+                        h.call_routine('RogueElementBoyShouldRerollSpecies')
                         self.assertEqual(bool(h.last_call_registers['F']&0x80),kept)
-                        self.assertEqual(h.read8('wPrismRerollsLeft'),int(kept))
+                        self.assertEqual(h.read8('wElementBoyRerollsLeft'),int(kept))
             self.assertEqual(h.hook_errors,[])
 
     def test_actual_victory_recovery_dispatch_active_inactive_and_loss_controls(self):
@@ -325,11 +325,11 @@ class KeyItemTriggerEffectsTest(HarnessTestCase):
                     finally:
                         h.close()
 
-    def test_scope_lens_prism_three_way_consumers_keep_independent_outcomes(self):
+    def test_scope_lens_element_boy_three_way_consumers_keep_independent_outcomes(self):
         h=self.harness
         h.boot_fight2(seed=17)
         types=parse_rgbds_constants(REPO_ROOT/'constants/type_constants.asm')
-        loadout=['RARE_SCOPE','RARE_LENS','ELEMENT_PRISM']
+        loadout=['RARE_SCOPE','RARE_LENS','ELEMENT_BOY']
         observed=[]
         def scope(_): observed.append(h.pyboy.register_file.B)
         h.register_hook('Random_Pokemon_Selection.noRareScope',scope)
@@ -340,15 +340,15 @@ class KeyItemTriggerEffectsTest(HarnessTestCase):
                     tiers=all_tiers({name:tier for name in loadout})
                     h.write_sram_bytes('sKeyItemsBitfield',flags)
                     h.write_sram_bytes('sKeyItemTiers',tiers)
-                    h.write_sram_bytes('sElementPrismType',[types['FIRE']])
+                    h.write_sram_bytes('sElementBoyType',[types['FIRE']])
                     h.write8('wWitchPrizesEarned',0); h.write8('wRogueFlagsBitfield',0)
                     for i in range(3): h.write8('wBridgeGlobalEffects',0,i)
                     h.write8('wRewardRarityBonus',0) if 'wRewardRarityBonus' in h.symbols._symbols else None
-                    h.call_routine('RoguePrismRefreshCache')
-                    self.assertEqual(h.read8('wPrismDamageBonus'),(10,15,20)[tier])
+                    h.call_routine('RogueElementBoyRefreshCache')
+                    self.assertEqual(h.read8('wElementBoyDamageBonus'),(10,15,20)[tier])
                     h.write8('wMoveType',types['FIRE'])
                     h.write8('wDamage',0); h.write8('wDamage',100,1)
-                    h.call_routine('RoguePrismDamageBoost')
+                    h.call_routine('RogueElementBoyDamageBoost')
                     self.assertEqual(h.read_bytes('wDamage',2),[0,(110,115,120)[tier]])
                     h.write8('wItemBonusRarity',0); h.write8('hRandomAdd',73)
                     h.call_routine('ItemSelectionRarityBonus')

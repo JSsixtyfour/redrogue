@@ -25,7 +25,7 @@ KeyItemPocketTable::
     db DOOR_DICE,     KEY_ITEM_BIT_DOOR_DICE_OWNED
     db MON_DICE,      KEY_ITEM_BIT_MON_DICE_OWNED
     db ITEM_DICE,     KEY_ITEM_BIT_ITEM_DICE_OWNED
-    db ELEMENT_PRISM, KEY_ITEM_BIT_ELEMENT_PRISM_OWNED
+    db ELEMENT_BOY, KEY_ITEM_BIT_ELEMENT_BOY_OWNED
     db $FF
 
 ; ============================================================
@@ -420,10 +420,10 @@ ClearKeyItemsBitfield::
     ; project_credit_system_bug_classes) - uninitialized SRAM that happens to
     ; be a legal value fails quietly instead of loudly.
     ld a, $ff
-    ld [sElementPrismType], a
+    ld [sElementBoyType], a
     xor a
-    ld [sPrismCartridges], a      ; no cartridges unlocked on a brand-new file
-    ld [sPrismCartridges + 1], a
+    ld [sElementBoyCartridges], a      ; no cartridges unlocked on a brand-new file
+    ld [sElementBoyCartridges + 1], a
     ld [sRogueSpeciesGroupsEnabled], a ; no species groups enabled on a new file
     ld [rRAMG], a
     ret

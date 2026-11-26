@@ -52,21 +52,21 @@ DEF EVENT_GOT_POKEDEX                            EQU    5 ; byte 0 bit 5
 DEF EVENT_INTRO_TOUR_COMPLETE                    EQU    6 ; byte 0 bit 6
 DEF EVENT_GAMMA_SHADER                           EQU    7 ; byte 0 bit 7
 DEF EVENT_HALL_OF_FAME_DEX_RATING                EQU    8 ; byte 1 bit 0
-DEF EVENT_PRISM_GYM1_SHOWN                       EQU    9 ; byte 1 bit 1
-DEF EVENT_PRISM_GYM2_SHOWN                       EQU   10 ; byte 1 bit 2
-DEF EVENT_PRISM_GYM3_SHOWN                       EQU   11 ; byte 1 bit 3
-DEF EVENT_PRISM_GYM4_SHOWN                       EQU   12 ; byte 1 bit 4
-DEF EVENT_PRISM_GYM5_SHOWN                       EQU   13 ; byte 1 bit 5
-DEF EVENT_PRISM_GYM6_SHOWN                       EQU   14 ; byte 1 bit 6
-DEF EVENT_PRISM_GYM7_SHOWN                       EQU   15 ; byte 1 bit 7
-DEF EVENT_PRISM_GYM8_SHOWN                       EQU   16 ; byte 2 bit 0
-DEF EVENT_PRISM_E4_ICE_SHOWN                     EQU   17 ; byte 2 bit 1
-DEF EVENT_PRISM_E4_FIGHTING_SHOWN                EQU   18 ; byte 2 bit 2
-DEF EVENT_PRISM_E4_GHOST_SHOWN                   EQU   19 ; byte 2 bit 3
-DEF EVENT_PRISM_E4_DRAGON_SHOWN                  EQU   20 ; byte 2 bit 4
-DEF EVENT_PRISM_E4_POISON_SHOWN                  EQU   21 ; byte 2 bit 5
-DEF EVENT_PRISM_E4_PSYCHIC_SHOWN                 EQU   22 ; byte 2 bit 6
-DEF EVENT_PRISM_FALKNER_SHOWN                    EQU   23 ; byte 2 bit 7
+DEF EVENT_ELEMENT_BOY_GYM1_SHOWN                 EQU    9 ; byte 1 bit 1
+DEF EVENT_ELEMENT_BOY_GYM2_SHOWN                 EQU   10 ; byte 1 bit 2
+DEF EVENT_ELEMENT_BOY_GYM3_SHOWN                 EQU   11 ; byte 1 bit 3
+DEF EVENT_ELEMENT_BOY_GYM4_SHOWN                 EQU   12 ; byte 1 bit 4
+DEF EVENT_ELEMENT_BOY_GYM5_SHOWN                 EQU   13 ; byte 1 bit 5
+DEF EVENT_ELEMENT_BOY_GYM6_SHOWN                 EQU   14 ; byte 1 bit 6
+DEF EVENT_ELEMENT_BOY_GYM7_SHOWN                 EQU   15 ; byte 1 bit 7
+DEF EVENT_ELEMENT_BOY_GYM8_SHOWN                 EQU   16 ; byte 2 bit 0
+DEF EVENT_ELEMENT_BOY_E4_ICE_SHOWN               EQU   17 ; byte 2 bit 1
+DEF EVENT_ELEMENT_BOY_E4_FIGHTING_SHOWN          EQU   18 ; byte 2 bit 2
+DEF EVENT_ELEMENT_BOY_E4_GHOST_SHOWN             EQU   19 ; byte 2 bit 3
+DEF EVENT_ELEMENT_BOY_E4_DRAGON_SHOWN            EQU   20 ; byte 2 bit 4
+DEF EVENT_ELEMENT_BOY_E4_POISON_SHOWN            EQU   21 ; byte 2 bit 5
+DEF EVENT_ELEMENT_BOY_E4_PSYCHIC_SHOWN           EQU   22 ; byte 2 bit 6
+DEF EVENT_ELEMENT_BOY_FALKNER_SHOWN              EQU   23 ; byte 2 bit 7
 DEF EVENT_RIVAL_CHAMPION_DEFEATED                EQU   24 ; byte 3 bit 0
 DEF EVENT_LANCE_CHAMPION_DEFEATED                EQU   25 ; byte 3 bit 1
 DEF EVENT_OAK_CHAMPION_DEFEATED                  EQU   26 ; byte 3 bit 2
@@ -78,8 +78,8 @@ DEF EVENT_FINAL_BRIEFING_COMPLETE                EQU   31 ; byte 3 bit 7
 DEF EVENT_POST_GAME                              EQU   32 ; byte 4 bit 0
 DEF EVENT_PALMS_ROOM_OPEN                        EQU   33 ; byte 4 bit 1
 DEF EVENT_AI_ATTEMPT_SPENT                       EQU   34 ; byte 4 bit 2
-DEF EVENT_PRISM_BUGSY_SHOWN                      EQU   35 ; byte 4 bit 3
-DEF EVENT_PRISM_WHITNEY_SHOWN                    EQU   36 ; byte 4 bit 4
+DEF EVENT_ELEMENT_BOY_BUGSY_SHOWN                EQU   35 ; byte 4 bit 3
+DEF EVENT_ELEMENT_BOY_WHITNEY_SHOWN              EQU   36 ; byte 4 bit 4
 DEF EVENT_POST_AI_PALM_COMPLETE                  EQU   37 ; byte 4 bit 5
 DEF PERSISTENT_EVENTS_END   EQU 37
 
@@ -1219,8 +1219,8 @@ ASSERT RUN_EVENTS_END % 8 == 7
 ASSERT EVENT_GRAVEYARD_BASE > RUN_EVENTS_END
 ASSERT EVENT_GRAVEYARD_BASE % 8 == 0
 ; ELEMENT BOY first-time-ever flags must survive the run wipe:
-ASSERT EVENT_PRISM_GYM1_SHOWN < RUN_EVENTS_START
-ASSERT EVENT_PRISM_WHITNEY_SHOWN < RUN_EVENTS_START
+ASSERT EVENT_ELEMENT_BOY_GYM1_SHOWN < RUN_EVENTS_START
+ASSERT EVENT_ELEMENT_BOY_WHITNEY_SHOWN < RUN_EVENTS_START
 ; the whole layout must fit the pinned budget:
 ASSERT EVENT_GRAVEYARD_BASE + 15 <= NUM_EVENTS
 
@@ -1233,8 +1233,8 @@ ASSERT EVENT_CINNABAR_GYM_GATE4_UNLOCKED - EVENT_CINNABAR_GYM_GATE0_UNLOCKED == 
 ASSERT EVENT_BEAT_FUCHSIA_GYM_TRAINER_5 - EVENT_BEAT_FUCHSIA_GYM_TRAINER_0 == 5
 ; VermilionGym: SetEventRange TRAINER_0..TRAINER_2 (VermilionGym.asm:98)
 ASSERT EVENT_BEAT_VERMILION_GYM_TRAINER_2 - EVENT_BEAT_VERMILION_GYM_TRAINER_0 == 2
-; __persistent__: RogueGymLeaderVictory computes GYM1 + (wGymLeaderNo - 1) at runtime (element_prism.asm:93)
-ASSERT EVENT_PRISM_GYM8_SHOWN - EVENT_PRISM_GYM1_SHOWN == 7
+; __persistent__: RogueGymLeaderVictory computes GYM1 + (wGymLeaderNo - 1) at runtime (element_boy.asm:93)
+ASSERT EVENT_ELEMENT_BOY_GYM8_SHOWN - EVENT_ELEMENT_BOY_GYM1_SHOWN == 7
 ; Route23: EventFlagBit walks CASCADE..EARTH and indexes EARTHBADGE+1 (Route23.asm:33,155-191)
 ASSERT EVENT_PASSED_EARTHBADGE_CHECK - EVENT_PASSED_CASCADEBADGE_CHECK == 6
 ; FightingDojo: SetEventRange BEAT_KARATE_MASTER..TRAINER_3 (FightingDojo.asm post-battle)

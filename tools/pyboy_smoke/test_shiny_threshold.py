@@ -3,7 +3,7 @@
 A maxed SHINY CHARM used to make 95.7% of received mons shiny: the table
 had 4 entries (indices 0-3) but GetKeyItemPower returns 1-4 (1 + the
 displayed tier, which is 0-3), so tier 3 read one byte past the table into
-ApplyDVFloor's `push af` ($F5 = 245/256). Nothing caught it because the
+ApplyDVFloor's `push af` ($F5 = 245/256) (the table was in add_mon.asm then). Nothing caught it because the
 table had no assert_table_length.
 
 This does not run the ROM; it is a static check that the fix is the one
@@ -18,13 +18,13 @@ import unittest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-ADD_MON = REPO_ROOT / "engine" / "pokemon" / "add_mon.asm"
+SHINY_ROLLS = REPO_ROOT / "custom_functions" / "shiny_rolls.asm"
 
 
 def table_body() -> str:
-    src = ADD_MON.read_text()
-    start = src.index(".ShinyThresholdTable:")
-    end = src.index("ApplyDVFloor", start)
+    src = SHINY_ROLLS.read_text(encoding="utf-8")
+    start = src.index("ShinyThresholdTable:")
+    end = src.index("; ----", start)
     return src[start:end]
 
 
@@ -32,7 +32,7 @@ class ShinyThresholdTableTest(unittest.TestCase):
     def test_table_has_five_entries_one_per_tier_plus_base(self) -> None:
         body = table_body()
         m = re.search(r"^\tdb ([\d, ]+)$", body, re.M)
-        self.assertIsNotNone(m, "no `db` row found in .ShinyThresholdTable")
+        self.assertIsNotNone(m, "no `db` row found in ShinyThresholdTable")
         entries = [int(x) for x in m.group(1).split(",")]
         self.assertEqual(
             entries, [1, 2, 4, 8, 16],

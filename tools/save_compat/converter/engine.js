@@ -165,6 +165,9 @@
   // Migration steps, by name. Each takes (bytes, fromSchema, toSchema) and edits the copy in place,
   // or returns a refusal string. They are explicit on purpose: a matching label name never proves
   // two fields mean the same thing.
+  // SRAM labels renamed in place, new name -> old name (schema 26: ELEMENT PRISM -> ELEMENT BOY).
+  var RENAMED_SRAM = { sElementBoyType: "sElementPrismType", sElementBoyCartridges: "sPrismCartridges" };
+
   var STEPS = {
     // Same layout and meaning (tools/save_schema.py diff --ignore-header said identical): only the
     // header is new, and it sits in padding no checksum covers.
@@ -803,6 +806,33 @@
       return null;
     },
 
+    // Schema 25 -> 26 (2026-11-25, reward offers' shiny rolls): sRogueOfferShiny, three bytes
+    // appended to the reward offer section of SRAM bank 2, so only that section's end label moves.
+    // $ff never beats the shiny odds, so an offer rolled before this stays as it was shown. The
+    // ELEMENT PRISM identifiers became ELEMENT BOY (FOLLOWUPS #108): two SRAM labels renamed at
+    // the same addresses, and the EVENT_PRISM_* events renamed at the same bits, which is why this
+    // migration must NOT use flagsRenumbered (by name, they would look removed and cleared).
+    rogueOfferShinyAdded: function (bytes, from, to) {
+      if (sramField(from, "sRogueOfferShiny")) return "this save already has reward offer shiny rolls";
+      var renamed = {};
+      for (var name in RENAMED_SRAM) renamed[RENAMED_SRAM[name]] = name;
+      var shiny = sramField(to, "sRogueOfferShiny"), tags = sramField(to, "sRogueOfferDVTag");
+      if (!shiny || !tags || shiny.size !== 3 || shiny.bank !== tags.bank ||
+          offsetOf(shiny.bank, shiny.address) !== offsetOf(tags.bank, tags.address) + tags.size)
+        return "reward offer shiny layout not recognised";
+      var start = offsetOf(shiny.bank, shiny.address), end = start + shiny.size;
+      for (var i = 0; i < from.sram.length; i++) {
+        var f = from.sram[i], t = sramField(to, renamed[f.label] || f.label);
+        if (f.label === "sRogueOfferDVsEnd") continue; // the end label itself
+        if (!t || t.bank !== f.bank || t.address !== f.address || t.size !== f.size)
+          return "save field " + f.label + " moved, which this step does not expect";
+        var o = offsetOf(f.bank, f.address);
+        if (f.size && o < end && o + f.size > start) return "the shiny rolls would overwrite " + f.label;
+      }
+      for (var n = start; n < end; n++) bytes[n] = 0xff;
+      return null;
+    },
+
     lossRecoveryAdded: function (bytes, from, to) {
       var names = ["sLossRecovery1", "sLossRecovery2", "sLossRecovery3", "sLossRecoveryCRC", "sLossRecoveryValid"];
       for (var i = 0; i < names.length; i++) {
@@ -998,7 +1028,8 @@
     var kept = [], lost = [];
     function copy(srcOff, dstOff, size) { for (var i = 0; i < size; i++) out[dstOff + i] = save[srcOff + i]; }
     r.keep_sram.forEach(function (label) {
-      var a = sramField(sourceSchema, label), b = sramField(targetSchema, label);
+      var a = sramField(sourceSchema, label) || (RENAMED_SRAM[label] && sramField(sourceSchema, RENAMED_SRAM[label]));
+      var b = sramField(targetSchema, label);
       if (!a || !b || a.size !== b.size) { lost.push(label); return; }
       copy(offsetOf(a.bank, a.address), offsetOf(b.bank, b.address), a.size);
       kept.push(label);

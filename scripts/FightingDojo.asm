@@ -107,16 +107,13 @@ FightingDojoInitRewards:
 	farjp RogueRefresh
 
 FightingDojoPublishRewards:
+	farcall RogueOffersReset ; new offers: none of the old DVs or shiny rolls
 	ld e, 0
 	call FightingDojoResolveRewardSpecies
 	ld [wRoguePokemon1], a
 	ld e, 1
 	call FightingDojoResolveRewardSpecies
 	ld [wRoguePokemon2], a
-	xor a
-	ld [wRoguePokemon3], a
-	ld [wRoguePokemonForm1], a
-	ld [wRoguePokemonForm2], a
 	ret
 
 FightingDojoResolveRewardSpecies:

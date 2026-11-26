@@ -1449,8 +1449,8 @@ wItemPrices:: dw
 ; Two real bugs this has already caused, both hard to find:
 ;   1. _AddPartyMon (engine/pokemon/add_mon.asm) - DV_BOOSTER/SHINY_CHARM lookups
 ;      corrupted the species before it escaped to callers.
-;   2. RoguePrismRefreshCache (custom_functions/element_prism.asm) - runs at EVERY
-;      battle start and left ELEMENT_PRISM ($70) here. The battle intro's pic load
+;   2. RogueElementBoyRefreshCache (custom_functions/element_boy.asm) - runs at EVERY
+;      battle start and left ELEMENT_BOY ($70) here. The battle intro's pic load
 ;      reads wCurSpecies for the pic POINTER (GetMonHeader, home/pokemon.asm) but
 ;      wCurPartySpecies for the pic BANK (UncompressMonSprite, home/pics.asm), so
 ;      the enemy sprite was drawn from the wrong bank -> scrambled tiles. It only
@@ -1459,7 +1459,7 @@ wItemPrices:: dw
 ;
 ; RULE: if you set wCurItem in code that can run while a species is live (battle,
 ; pic loading, party/box writes, species rolls), save this byte first and restore
-; it before returning. See RoguePrismRefreshCache for the wrapper pattern.
+; it before returning. See RogueElementBoyRefreshCache for the wrapper pattern.
 wCurPartySpecies::
 wCurItem::
 wCurListMenuItem::
@@ -2035,7 +2035,13 @@ wRewardInfoSlot:: db
 
 wDamage:: dw
 
-	ds 2
+; Companion to wSpawnForm: bit 7 (BIT_SPAWN_SHINY_DECIDED) set = the next player
+; mon's shininess is BIT_SHINY of this byte; 0 = roll it (custom_functions/
+; shiny_rolls.asm). Zeroed with wSpawnForm by whatever makes the mon. Carved in
+; place from the `ds 2` pad here (unsaved, not in a UNION), so nothing moves.
+wSpawnShiny:: db
+
+	ds 1
 
 wRepelRemainingSteps:: db
 
@@ -3005,13 +3011,13 @@ wGymChoice:: db
 wRogueFlagsBitfield2:: db
 
 ; Key Item Effects (see KEY_ITEM_EFFECTS_PLAN_PC.md). Run-scoped state, above
-; wGameProgressFlagsEnd so it zeroes on new game. sElementPrismType/
+; wGameProgressFlagsEnd so it zeroes on new game. sElementBoyType/
 ; sKeyItemTiers (SRAM) are the source of truth; the two ELEMENT BOY bytes here are
 ; caches resolved once at battle start (see ApplyKeyItemTierEffects /
 ; RogueOnBlackout), not general-purpose mirrors - see the plan doc for why a
 ; full WRAM mirror of the SRAM tier/active bits was rejected.
-wPrismType::        db   ; cached ELEMENT BOY type, $FF = none/inactive
-wPrismDamageBonus:: db   ; cached percent bonus, 0 = no boost this battle
+wElementBoyType::        db   ; cached ELEMENT BOY type, $FF = none/inactive
+wElementBoyDamageBonus:: db   ; cached percent bonus, 0 = no boost this battle
 ; Dice charges remaining (not "used", unlike wRogueFlagsBitfield2's slot-pull
 ; bits) - a fresh/new-game byte reading 0 correctly means "own no dice yet".
 ; bits 0-1 = DOOR_DICE, bits 2-3 = MON_DICE, bits 4-5 = ITEM_DICE (0-3 each).
@@ -3020,8 +3026,8 @@ wDiceCharges::      db
 wStatExpPasses::    db   ; scratch: STAT_BOOSTER pass count, set once per GainExperience call
 ; ELEMENT BOY encounter-bias retry budget, set once per Random_Pokemon_Selection
 ; call (1 normally, 16 during starter selection) and spent by
-; RoguePrismShouldRerollSpecies. Scratch, not persistent state.
-wPrismRerollsLeft:: db
+; RogueElementBoyShouldRerollSpecies. Scratch, not persistent state.
+wElementBoyRerollsLeft:: db
 
 ; ============================================================================
 ; Gym-leader expansion run state (GYM_LEADER_EXPANSION_PLAN.md, Phase 0d).
@@ -3192,9 +3198,9 @@ wEndlessFlags:: db
 	      ; -1 more for wWildAreaState (wild-area door integration), still net-zero WRAM0
 	      ; -1 more for wProcCemBossBattle (cemetery ghost boss flag), still net-zero WRAM0
 	      ; -2 more for wBridgeOfferedLo + wBridgeState (Bridge System), still net-zero WRAM0
-	      ; -4 more for wPrismType + wPrismDamageBonus + wDiceCharges + wStatExpPasses
+	      ; -4 more for wElementBoyType + wElementBoyDamageBonus + wDiceCharges + wStatExpPasses
 	      ;   (Key Item Effects), still net-zero WRAM0
-	      ; -1 more for wPrismRerollsLeft (ELEMENT BOY encounter bias), still net-zero WRAM0
+	      ; -1 more for wElementBoyRerollsLeft (ELEMENT BOY encounter bias), still net-zero WRAM0
 	      ; -1 more for wEventFlags growing by 13 bits / 1 byte (ELEMENT BOY one-time
 	      ;   grant messages, constants/event_constants.asm), still net-zero WRAM0
 	      ; -1 more for wPlayerAppearance (selectable player character), still net-zero WRAM0

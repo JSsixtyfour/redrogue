@@ -98,11 +98,11 @@ ExitPlayerPC:
 	ldh [hNoWaitAfterText], a
 	ret
 
-; ELEMENT BOY cartridge swap (custom_functions/element_prism.asm). Returns
+; ELEMENT BOY cartridge swap (custom_functions/element_boy.asm). Returns
 ; to the PC menu rather than logging off, so the player can swap again or
 ; check the result.
 PlayerPCCartridgeSwap:
-	farcall RoguePrismCartridgeMenu
+	farcall RogueElementBoyCartridgeMenu
 	jp PlayerPCMenu
 
 ; [code sweep 2026-09-27] unreferenced vanilla code, commented out to reclaim ROM
@@ -288,7 +288,7 @@ PlayerPCCartridgeSwap:
 PlayersPCMenuEntries:
 	db   "WITHDRAW"
 	next "DEPOSIT"
-	next "CARTRIDGE"   ; ELEMENT BOY cartridge swap (custom_functions/element_prism.asm)
+	next "CARTRIDGE"   ; ELEMENT BOY cartridge swap (custom_functions/element_boy.asm)
 	next "LOG OFF@"
 
 TurnedOnPC2Text:
@@ -517,10 +517,10 @@ PlayerPCClampSelection:
 	ret
 
 ; Query the final equipped state, rather than transient grant scratch RAM.
-PrismShowGrantDestination::
+ElementBoyShowGrantDestination::
 	ld a, [wCurItem]
 	push af
-	ld a, ELEMENT_PRISM
+	ld a, ELEMENT_BOY
 	ld [wCurItem], a
 	farcall IsKeyItemActive
 	ld hl, .stored

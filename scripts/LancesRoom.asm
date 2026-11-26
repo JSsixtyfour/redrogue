@@ -135,9 +135,9 @@ LancesRoomLanceEndBattleScript:
 ; PrintText runs inside DisplayTextID - fired raw from this map script, the
 ; announcement drew an invisible box that silently waited for A. Gated here
 ; on the grant's own one-time event so a repeat win shows no empty box.
-	CheckEvent EVENT_PRISM_E4_DRAGON_SHOWN
+	CheckEvent EVENT_ELEMENT_BOY_E4_DRAGON_SHOWN
 	ret nz
-	ld a, TEXT_LANCESROOM_PRISM
+	ld a, TEXT_LANCESROOM_ELEMENT_BOY
 	ldh [hTextID], a
 	jp DisplayTextID
 
@@ -177,7 +177,7 @@ LancesRoomPlayerIsMovingScript:
 LancesRoom_TextPointers:
 	def_text_pointers
 	dw_const LancesRoomLanceText, TEXT_LANCESROOM_LANCE
-	dw_const LancesRoomPrismText, TEXT_LANCESROOM_PRISM
+	dw_const LancesRoomElementBoyText, TEXT_LANCESROOM_ELEMENT_BOY
 
 LancesRoomTrainerHeaders:
 	def_trainers
@@ -217,7 +217,7 @@ LancesRoomLanceAfterBattleText:
 	text_far _Elite4GoToChampionText
 	text_end
 
-LancesRoomPrismText:
+LancesRoomElementBoyText:
 	text_asm
 	farcall RogueGrantCartridgeDragon
 	call DisableWaitingAfterTextDisplay ; the message carries its own prompt

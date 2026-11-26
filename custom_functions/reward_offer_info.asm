@@ -9,20 +9,25 @@
 ; on SAVE, so a reset-without-saving reloads the same offers AND the same DVs -
 ; there is no re-rolling DVs by resetting.
 ;
+; Each offer's shiny roll (sRogueOfferShiny) lives and works the same way; what
+; it means is custom_functions/shiny_rolls.asm's business.
+;
 ; DVs are rolled LAZILY, keyed by species. About ten sites write
 ; wRoguePokemon1-3 (lobby batch, four procedural generators, bridge gifts,
 ; trades), so instead of hooking every writer, each slot remembers which species
 ; its DVs were rolled for (sRogueOfferDVTag). A slot whose species no longer
-; matches its tag is a new offer and gets fresh DVs. The one blind spot - the
-; same species landing in the same slot on a later offer keeps the old DVs - is
-; harmless.
+; matches its tag is a new offer and gets fresh DVs. A new set of offers also
+; clears the tags (RogueOffersReset), so the same species landing in the same
+; slot again is not the same mon again. Taking an offer does not clear its tag:
+; reset-without-saving would then re-roll it.
 
 ; ============================================================================
 ; GetRogueOfferDVs
 ; IN:  e = offer slot, 1-3
 ; OUT: h = Spd/Spc DV byte (MON_DVS + 1), l = Atk/Def DV byte (MON_DVS + 0).
 ;      RAW: no DV Booster floor (see GetRogueOfferDVsFloored).
-; Clobbers a, bc, de. Leaves SRAM disabled on bank 0 (house convention).
+;      e = the slot's shiny roll, a random byte (shiny_rolls.asm).
+; Clobbers a, bc, d. Leaves SRAM disabled on bank 0 (house convention).
 ; Farcall-safe: the slot travels in e and the result in hl, the only registers
 ; Bankswitch passes through (project_farcall_bc_clobber_bug_class).
 ; ============================================================================
@@ -47,12 +52,21 @@ GetRogueOfferDVs::
 	ld hl, sRogueOfferDVTag
 	add hl, de
 	ld [hl], b
+	ld hl, sRogueOfferShiny
+	add hl, de
+	call Random
+	ld [hl], a
 	pop hl
 	call Random
 	ld [hli], a
 	call Random
 	ld [hld], a
 .read
+	push hl
+	ld hl, sRogueOfferShiny
+	add hl, de
+	ld e, [hl]
+	pop hl
 	ld a, [hli]               ; byte 0 = Atk/Def
 	ld h, [hl]                ; byte 1 = Spd/Spc
 	ld l, a
@@ -145,10 +159,19 @@ OfferDVFloorTable:
 	ASSERT @ - OfferDVFloorTable == 4
 
 ; ============================================================================
+; RogueOffersReset - a new set of offers: clears the three species, the three
+; forms right after them (ASSERT in rogue_pokemon_randomized_batch) and
+; everything stored for the old set.
 ; RogueOfferDVsClear - new game. SRAM powers up $FF, and stale tags from an old
 ; run could otherwise match a new offer. A zero tag matches no real offer.
-; Preserves nothing.
+; Both preserve nothing.
 ; ============================================================================
+RogueOffersReset::
+	ld hl, wRoguePokemon1
+	ld bc, 6
+	xor a
+	call FillMemory
+	; fall through
 RogueOfferDVsClear::
 	call RogueOfferDVsOpen
 	ld hl, sRogueOfferDVs

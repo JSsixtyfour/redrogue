@@ -545,7 +545,7 @@ def credit_awards() -> dict:
     return {
         "credits_route": amount("engine/battle/core.asm", "cp FINAL_ROUTE_STEP + 1"),
         "credits_wild_boss": amount("scripts/ProceduralForest.asm", "farcall RogueAwardCredits"),
-        "credits_gym_leader": amount("custom_functions/element_prism.asm", "RogueGymLeaderVictory::"),
+        "credits_gym_leader": amount("custom_functions/element_boy.asm", "RogueGymLeaderVictory::"),
         "credits_champion": amount("scripts/ChampionsRoom.asm", "farcall RogueAwardCredits"),
         "credits_ai_lair": amount("scripts/AILair.asm", "farcall RogueAwardCredits"),
     }

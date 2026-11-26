@@ -1158,7 +1158,10 @@ BridgeBillDuplicate::
 	ld a, [wAddedToParty]
 	and a
 	jr nz, .copyPartyStruct
-	scf                          ; boxed -> fresh same-species mon, still delivered
+	ld d, h                      ; boxed: de = source, wBoxMon1 = the new mon
+	ld e, l
+	farcall BoxCopyOfPartyMon
+	scf
 	ret
 .copyPartyStruct
 	push hl                      ; source base

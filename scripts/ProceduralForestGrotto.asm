@@ -152,6 +152,7 @@ FGEncounterOffer:
 	xor a
 	ld [wSpawnForm], a
 	ld [wSpawnDVSlot], a
+	farcall JoiningMonKeepShiny ; it joins as it was fought
 	ld a, [wOptionalEncounterSpecies]
 	ld b, a
 	ld a, [wOptionalEncounterLevel]

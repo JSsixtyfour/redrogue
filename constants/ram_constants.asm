@@ -685,8 +685,8 @@ DEF KEY_ITEM_BIT_MON_DICE_OWNED         EQU 24
 DEF KEY_ITEM_BIT_MON_DICE_ACTIVE        EQU 25
 DEF KEY_ITEM_BIT_ITEM_DICE_OWNED        EQU 26
 DEF KEY_ITEM_BIT_ITEM_DICE_ACTIVE       EQU 27
-DEF KEY_ITEM_BIT_ELEMENT_PRISM_OWNED    EQU 28
-DEF KEY_ITEM_BIT_ELEMENT_PRISM_ACTIVE   EQU 29
+DEF KEY_ITEM_BIT_ELEMENT_BOY_OWNED    EQU 28
+DEF KEY_ITEM_BIT_ELEMENT_BOY_ACTIVE   EQU 29
 ; All 15 items × 2 bits = 30 bits = 4 bytes (byte 0-3 of sKeyItemsBitfield).
 ; Active bit is always own_bit + 1 (by construction — callers may use inc c).
 DEF KEY_ITEM_MAX_ACTIVE EQU 3   ; max items in bag at once
