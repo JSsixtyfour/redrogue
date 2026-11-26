@@ -13,7 +13,7 @@ import re
 import unittest
 
 from harness import RedRogueHarness
-from source_constants import parse_map_constants
+from source_constants import parse_map_constants, parse_rgbds_constants
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -166,6 +166,15 @@ class RoomDecorRuntimeTest(unittest.TestCase):
         h.tick(30, render=True)
         ARTIFACTS.mkdir(exist_ok=True)
         h.pyboy.screen.image.save(ARTIFACTS / "room_decor_new_pieces.png")
+
+    def test_mewtwo_doll_keeps_its_dedicated_picture(self) -> None:
+        h = self.harness
+        h.boot_debug1(self.maps["SILPH_CO_DORM"])
+        h.write_sram_bytes("sRoomDecorSlots", [21])
+        self.park()
+        h.call_routine("LoadMapData")
+        sprites = parse_rgbds_constants(ROOT / "constants/sprite_constants.asm")
+        self.assertEqual(h.read8("wSprite01StateData1PictureID"), sprites["SPRITE_MEWTWO"])
 
     def test_statue_selection_preserves_other_furniture_and_dolls(self) -> None:
         h = self.harness

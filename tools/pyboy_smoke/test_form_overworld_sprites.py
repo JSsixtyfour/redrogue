@@ -2,8 +2,8 @@
 """Forms that share an overworld sheet (2026-10-27).
 
 PCGetDedicatedPokemonSprite resolves a form only through its .formSprites
-list: Galarian Mr. Mime -> the Mr. Mime sheet, Armored Mewtwo -> the Mewtwo
-sheet. Every other form, and every fusion or special form, keeps the category
+list: Galarian Mr. Mime -> the Mr. Mime sheet. Base and Armored Mewtwo both
+use the generic monster, and every unlisted form keeps the category
 fallback. Driven through FollowerResolveLeadPicture so the follower's
 catch-rate bits -> form index normalisation is measured too.
 """
@@ -74,8 +74,8 @@ class FormOverworldSpritesTest(unittest.TestCase):
             ('MR_MIME', 0, 'SPRITE_MR_MIME'),
             ('MR_MIME', FORM_1, 'SPRITE_MR_MIME'),       # Galarian Mr. Mime
             ('MR_RIME', 0, 'SPRITE_MR_MIME'),
-            ('MEWTWO', 0, 'SPRITE_MEWTWO'),
-            ('MEWTWO', FORM_1, 'SPRITE_MEWTWO'),         # Armored Mewtwo
+            ('MEWTWO', 0, 'SPRITE_MONSTER'),
+            ('MEWTWO', FORM_1, 'SPRITE_MONSTER'),
             ('MR_MIME', FORM_1 | 0b00001000, None),      # special form: fallback
             ('MR_MIME', 0b00000010, None),               # fusion: fallback
             ('FARFETCHD', 0, None),                      # no sheet at all
@@ -93,7 +93,8 @@ class FormOverworldSpritesTest(unittest.TestCase):
     def test_lookup_takes_a_form_index(self):
         # The cave/boss encoding: D = wRoguePokemonForm1's plain form index.
         for species, form, sprite in [('MR_MIME', 1, 'SPRITE_MR_MIME'),
-                                      ('MEWTWO', 1, 'SPRITE_MEWTWO'),
+                                      ('MEWTWO', 0, None),
+                                      ('MEWTWO', 1, None),
                                       ('MR_MIME', 2, None),
                                       ('MR_MIME', 0xFF, None)]:
             with self.subTest(species=species, form=form):
@@ -104,6 +105,12 @@ class FormOverworldSpritesTest(unittest.TestCase):
                 else:
                     self.assertTrue(out['carry'])
                     self.assertEqual(out['E'], SPRITES[sprite])
+
+    def test_mewtwo_encounter_picture_uses_generic_monster(self):
+        for form in (0, 1):
+            with self.subTest(form=form):
+                out = self.run_direct('PCGetSpeciesOWSprite', D=form, E=SPECIES['MEWTWO'])
+                self.assertEqual(out['E'], SPRITES['SPRITE_MONSTER'])
 
 
 if __name__ == '__main__':

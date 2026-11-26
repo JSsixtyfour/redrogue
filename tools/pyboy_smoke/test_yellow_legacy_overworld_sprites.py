@@ -34,6 +34,43 @@ OBJECT_CONTRACTS = {
     "CeruleanCaveB1F.asm": "SPRITE_MEWTWO, STAY, DOWN, TEXT_CERULEANCAVEB1F_MEWTWO, MEWTWO, 70",
 }
 
+# 16x96 sheets whose six frames are one front-facing pose alternating with a
+# second front-facing pose (a party-menu bounce). They are the right size for
+# the walking-slot loader but cannot turn, so they are room dolls only.
+PARTY_POSE = ("MEW", "MEWTWO")
+
+# Sheet frame order: standing down, up, left, then walking down, up, left.
+FRAME_NAMES = ("stand down", "stand up", "stand left", "walk down", "walk up", "walk left")
+# Measured art gaps on sheets the follower/boss lookup still uses. Each entry
+# must still show its gap, so fixing the art fails the test until it is removed.
+NO_STEP_FRAMES = ("NIDORINO", "PSYDUCK")  # walk frames are copies of the standing frames
+WRONG_FACING_WALK = ("MOLTRES",)          # walk down is the stand up frame
+
+
+def sheet_frames(sprite: str) -> list[bytes]:
+    """The six 16x16 frames of a built sheet (4 tiles, 64 bytes each)."""
+    raw = (ROOT / "gfx" / "sprites" / f"{sprite.lower()}.2bpp").read_bytes()
+    assert len(raw) == 384, f"{sprite} is not a 16x96 sheet"
+    return [raw[64 * i:64 * i + 64] for i in range(6)]
+
+
+def lookup_sprites() -> set[str]:
+    """Every SPRITE_* the follower/boss/encounter lookup can return."""
+    source = (ROOT / "custom_functions/procedural_cave_gen.asm").read_text()
+    species = source.split("\n.speciesSprites\n", 1)[1].split(".speciesSpritesEnd", 1)[0]
+    forms = source.split("\n.formSprites\n", 1)[1].split(".formSpritesEnd", 1)[0]
+    return set(re.findall(r"^\s*db [^;\n]*\bSPRITE_(\w+)", species + forms, re.M))
+
+
+def sheet_gaps(sprite: str) -> dict[str, list[str]]:
+    f = sheet_frames(sprite)
+    turns = [f"{FRAME_NAMES[a]} == {FRAME_NAMES[b]}"
+             for a, b in ((0, 1), (0, 2), (1, 2)) if f[a] == f[b]]
+    steps = [FRAME_NAMES[d + 3] for d in range(3) if f[d + 3] == f[d]]
+    facing = [f"{FRAME_NAMES[d + 3]} == {FRAME_NAMES[s]}"
+              for d in range(3) for s in range(3) if s != d and f[d + 3] == f[s]]
+    return {"turns": turns, "steps": steps, "facing": facing}
+
 
 class YellowLegacyOverworldSpriteContracts(unittest.TestCase):
     def test_ids_are_appended_in_pointer_table_order(self):
@@ -58,7 +95,7 @@ class YellowLegacyOverworldSpriteContracts(unittest.TestCase):
                 self.assertGreaterEqual(length, 8)
                 self.assertEqual((width, height), (16, 96))
 
-    def test_authored_objects_use_species_sprites(self):
+    def test_authored_objects_use_their_configured_sprites(self):
         object_dir = ROOT / "data/maps/objects"
         for filename, expected in OBJECT_CONTRACTS.items():
             with self.subTest(filename=filename):
@@ -74,7 +111,12 @@ class YellowLegacyOverworldSpriteContracts(unittest.TestCase):
             "; ============================================================", 1
         )[0]
         for sprite in SPRITES:
-            self.assertIn(f"db {sprite}, SPRITE_{sprite}", lookup)
+            if sprite in PARTY_POSE:
+                self.assertNotIn(f"SPRITE_{sprite}", lookup)
+            else:
+                self.assertIn(f"db {sprite}, SPRITE_{sprite}", lookup)
+        dorm = (ROOT / "custom_functions/room_decor.asm").read_text()
+        self.assertIn("db SPRITE_MEWTWO       ; 21 MEWTWO", dorm)
         self.assertIn("ld a, [wRoguePokemonForm1]", procedural)
         # Bosses and optional encounters share one resolver: dedicated first.
         self.assertRegex(
@@ -97,6 +139,28 @@ class YellowLegacyOverworldSpriteContracts(unittest.TestCase):
             r"ld bc, PARTYMON_STRUCT_LENGTH\s+call AddNTimes.*?"
             r"ld bc, MON_CATCH_RATE\s+add hl, bc\s+ld d, \[hl\]",
         )
+
+    def test_lookup_sheets_turn_and_step(self):
+        # A size check passes a padded one-pose image; this compares the frames.
+        for sprite in sorted(lookup_sprites()):
+            with self.subTest(sprite=sprite):
+                gaps = sheet_gaps(sprite)
+                self.assertEqual(gaps["turns"], [], "cannot face every direction")
+                if sprite in NO_STEP_FRAMES:
+                    self.assertEqual(len(gaps["steps"]), 3, "art fixed: drop it from NO_STEP_FRAMES")
+                else:
+                    self.assertEqual(gaps["steps"], [], "walks without a step frame")
+                if sprite in WRONG_FACING_WALK:
+                    self.assertNotEqual(gaps["facing"], [], "art fixed: drop it from WRONG_FACING_WALK")
+                else:
+                    self.assertEqual(gaps["facing"], [], "a walk frame faces another direction")
+
+    def test_party_pose_sheets_are_caught_by_the_frame_check(self):
+        # The check above must reject the sheets that motivated it.
+        for sprite in PARTY_POSE:
+            with self.subTest(sprite=sprite):
+                self.assertNotEqual(sheet_gaps(sprite)["turns"], [])
+                self.assertNotIn(sprite, lookup_sprites())
 
 
 if __name__ == "__main__":

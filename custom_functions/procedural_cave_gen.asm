@@ -864,7 +864,7 @@ PCGetDedicatedPokemonSprite::
 	db ARTICUNO, SPRITE_ARTICUNO
 	db ZAPDOS, SPRITE_ZAPDOS
 	db MOLTRES, SPRITE_MOLTRES
-	db MEWTWO, SPRITE_MEWTWO
+	; Mewtwo uses the monster category. Its dedicated pose is a Dorm doll.
 	db MR_MIME, SPRITE_MR_MIME   ; full walking sheet since 2026-10-27
 	db MR_RIME, SPRITE_MR_MIME   ; family share
 	; Yellow Legacy batch 2: full walking sheets only. The standing-only and
@@ -894,7 +894,6 @@ PCGetDedicatedPokemonSprite::
 ; Forms that share an overworld sheet: db species, form index, SPRITE_*.
 .formSprites
 	db MR_MIME, 1, SPRITE_MR_MIME  ; Galarian Mr. Mime
-	db MEWTWO, 1, SPRITE_MEWTWO    ; Armored Mewtwo (follower only; never a boss)
 .formSpritesEnd
 
 ; ============================================================
