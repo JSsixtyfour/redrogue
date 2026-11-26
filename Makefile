@@ -321,13 +321,14 @@ pokeblue_debug_ball_colors.gbc: RGBLINKFLAGS += -p 0xff
 pokered_vc.gbc:     RGBLINKFLAGS += -p 0x00
 pokeblue_vc.gbc:    RGBLINKFLAGS += -p 0x00
 
-RGBFIXFLAGS += -cjsv -n 0 -k 01 -l 0x33 -m MBC3+RAM+BATTERY -r 03
-pokered.gbc:        RGBFIXFLAGS += -p 0x00 -t "POKEMON RED"
-pokeblue.gbc:       RGBFIXFLAGS += -p 0x00 -t "POKEMON BLUE"
-pokeblue_debug.gbc: RGBFIXFLAGS += -p 0xff -t "POKEMON BLUE"
-pokeblue_debug_ball_colors.gbc: RGBFIXFLAGS += -p 0xff -t "POKEMON BLUE"
-pokered_vc.gbc:     RGBFIXFLAGS += -p 0x00 -t "POKEMON RED"
-pokeblue_vc.gbc:    RGBFIXFLAGS += -p 0x00 -t "POKEMON BLUE"
+# The CGB flag leaves 15 bytes for the cartridge title.
+RGBFIXFLAGS += -cjsv -n 0 -k 01 -l 0x33 -m MBC3+RAM+BATTERY -r 03 -t "POKEMONREDROGUE"
+pokered.gbc:        RGBFIXFLAGS += -p 0x00
+pokeblue.gbc:       RGBFIXFLAGS += -p 0x00
+pokeblue_debug.gbc: RGBFIXFLAGS += -p 0xff
+pokeblue_debug_ball_colors.gbc: RGBFIXFLAGS += -p 0xff
+pokered_vc.gbc:     RGBFIXFLAGS += -p 0x00
+pokeblue_vc.gbc:    RGBFIXFLAGS += -p 0x00
 
 # Every linked ROM is also archived to $(BUILD_DIR) as <rom>_<date>_<time>_<git hash>[-dirty].gbc,
 # with its matching .sym so BGB auto-loads symbols. The canonical pokered.gbc etc. stay in place
@@ -345,7 +346,7 @@ BUILD_STAMP = $(word 1,$(BUILD_TIME))_$(word 2,$(BUILD_TIME))$(word 3,$(BUILD_TI
 BUILD_TEXT  = $(word 1,$(BUILD_TIME)) $(word 2,$(BUILD_TIME)):$(word 3,$(BUILD_TIME))
 BUILD_ID    = $(eval BUILD_ID := $(shell git rev-parse --short HEAD 2>/dev/null || echo nogit)$(shell git diff --quiet HEAD -- 2>/dev/null || echo -dirty))$(BUILD_ID)
 
-%.gbc: $$(%_obj) layout.link buildid.asm
+%.gbc: $$(%_obj) layout.link buildid.asm Makefile
 	$(RGBASM) $(RGBASMFLAGS) $(if $(findstring _debug,$*),-D _DEBUG) -D 'BUILD_DATE_TEXT=$(BUILD_TEXT)' -D 'BUILD_ID_TEXT=$(BUILD_ID)' -o $*_buildid.o buildid.asm
 	$(RGBLINK) $(RGBLINKFLAGS) -l layout.link -m $*.map -n $*.sym -o $@ $(filter %.o,$^) $*_buildid.o
 	$(RGBFIX) $(RGBFIXFLAGS) $@

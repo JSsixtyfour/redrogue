@@ -711,7 +711,7 @@ $flags = if ($kit -and $kit.flags) { $kit.flags } else {
 	[pscustomobject]@{
 		asm  = @('-Weverything', '-Wtruncation=1', '-Q8', '-P', 'includes.asm', '-D', '_RED')
 		link = @('-Weverything', '-Wtruncation=1', '-d', '-p', '0x00')
-		fix  = @('-Weverything', '-cjsv', '-n', '0', '-k', '01', '-l', '0x33', '-m', 'MBC3+RAM+BATTERY', '-r', '03', '-p', '0x00', '-t', 'POKEMON RED')
+		fix  = @('-Weverything', '-cjsv', '-n', '0', '-k', '01', '-l', '0x33', '-m', 'MBC3+RAM+BATTERY', '-r', '03', '-p', '0x00', '-t', 'POKEMONREDROGUE')
 	}
 }
 
