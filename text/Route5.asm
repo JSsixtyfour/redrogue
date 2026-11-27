@@ -8,36 +8,36 @@ _Route5Youngster1BattleText::
 	text "There's a shady"
 	line "guy who sells"
 	cont "#MON at the"
-    cont "LOBBY"
+    cont "LOBBY."
     done
 
 _Route5Youngster1EndBattleText::
 	text "Yup!"
 	line "Knew that guy"
-	cont "was scamming me"
+	cont "was scamming me."
 	prompt
 
 _Route5Youngster1AfterBattleText::
 	text "Maybe you'll"
-	line "have better luck"
+	line "have better luck."
 	done
     
 _Route5Youngster2BattleText::
 	text "I just picked my"
 	line "#MON up from"
-    cont "the DAYCARE"
+    cont "the DAYCARE."
     done
 
 _Route5Youngster2EndBattleText::
 	text "Oh!"
 	line "Maybe I should"
 	cont "have spent more"
-    cont "time with them"
+    cont "time with them."
 	prompt
 
 _Route5Youngster2AfterBattleText::
 	text "There's a DAYCARE"
-	line "in the LOBBY now"
+	line "in the LOBBY now."
 	done
     
 _Route5Lass2BattleText::
@@ -49,13 +49,13 @@ _Route5Lass2BattleText::
 _Route5Lass2EndBattleText::
 	text "Oh my!"
 	line "Your #MON are"
-	cont "so strong"
+	cont "so strong."
 	prompt
 
 _Route5Lass2AfterBattleText::
 	text "But your #MON"
 	line "are still cute"
-    cont "too"
+    cont "too."
 	done
     
 _Route5JrTrainerFBattleText::
@@ -66,7 +66,7 @@ _Route5JrTrainerFBattleText::
 _Route5JrTrainerFEndBattleText::
 	text "Yikes"
 	line "Guess I'm not"
-	cont "anymore"
+	cont "anymore."
 	prompt
 
 _Route5JrTrainerFAfterBattleText::
