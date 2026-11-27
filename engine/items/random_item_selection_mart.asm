@@ -32,9 +32,19 @@ ld a, item_ultraball_odds
 ld hl, healing_ultraball_class
 ld c, NUM_HEALING_ULTRABALL_CLASS
 cp b
-jr nc, healing_item_selection
+jr nc, healing_item_revive_tier
 ld hl, healing_masterball_class
 ld c, NUM_HEALING_MASTERBALL_CLASS
+
+; Ironman: no REVIVE / MAX_REVIVE on the shelf. Each is the last entry of its
+; tier's list (item_rarity.asm), so one less in the count leaves it out. The
+; tiers left (2 and 3 items) plus the lower two still hold 18 different items
+; for the 10 slots the duplicate check below fills.
+healing_item_revive_tier:
+ld a, [wOptions3]
+bit BIT_IRONMAN, a
+jr z, healing_item_selection
+dec c
 
 healing_item_selection:
 push hl

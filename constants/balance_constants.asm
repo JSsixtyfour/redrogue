@@ -280,8 +280,13 @@ ASSERT WILD_AREA_ENCOUNTER_RATE <= WILD_CAVE_ENCOUNTER_RATE && WILD_CAVE_ENCOUNT
 ; 10/0.47 = 21 for a wanderer and 10/0.31 = 32 for a path-follower; 20 is a
 ; deliberately conservative pick between Route 4 (20) and Route 1 (25). Collecting
 ; all balls at 20: 3.8 encounters (grass-avoiding) to 6.6 (grass-ignoring), mean 5.2.
+; Raised to 25 on 2026-11-26 because it played thin. Only tile $20 rolls: the
+; plain grass block ($01) has tile $34 at two of its four half-block check
+; corners, so half the steps on solid-looking grass never roll. Measured over five
+; random walks: 90 of 252 steps were on $20 (~36%), so 20 was ~7/256 per step
+; walked, below Viridian Forest's 8. At 25 that is ~9.
 ; Re-measure if the Forest generator's grass density changes.
-DEF WILD_FOREST_ENCOUNTER_RATE EQU 20
+DEF WILD_FOREST_ENCOUNTER_RATE EQU 25
 ASSERT WILD_AREA_ENCOUNTER_RATE <= WILD_FOREST_ENCOUNTER_RATE && WILD_FOREST_ENCOUNTER_RATE < 256
 ; The Cemetery rolls on every floor tile like Cave/Facility, but its floors are
 ; small (10x9 blocks): measured 2026-11-21 over 60 floor-1 layouts, ~109

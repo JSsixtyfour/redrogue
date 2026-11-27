@@ -79,16 +79,21 @@ db SODA_POP
 db FRESH_WATER
 db FULL_HEAL
 
+; The revive must stay LAST in each of the next two lists: in Ironman both
+; rollers (Random_Item_Selection, Random_Healing_Mart_Selection) use one less
+; than the list length, which leaves it out (the stone list's Kanto-prefix trick).
 healing_ultraball_class:
 db MAX_ETHER
 db HYPER_POTION
 db REVIVE
+ASSERT @ - healing_ultraball_class == NUM_HEALING_ULTRABALL_CLASS
 
 healing_masterball_class:
 db FULL_RESTORE
 db MAX_POTION
-db MAX_REVIVE
 db MAX_ELIXER
+db MAX_REVIVE
+ASSERT @ - healing_masterball_class == NUM_HEALING_MASTERBALL_CLASS
 
 tm_classes:
 table_width 1

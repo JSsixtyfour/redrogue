@@ -267,7 +267,10 @@ Ghost variants have Ghost as their second type.
 - **Wild Pokémon cannot be caught,** except in the Safari Zone. (RULE)
 - **END replaces RUN** and gives up the run, after a confirmation. (RULE)
 - **No running** from trainers or wild-area battles. (RULE)
-- **Ironman (optional):** a Pokémon that faints is released after the battle.
+- **Ironman (optional):** a Pokémon that faints is released after the battle. REVIVE and MAX REVIVE are
+  never offered with Ironman on: not in item balls, as rewards, or at the healing clerk. Their share goes
+  to the other items of the same rarity (MAX ETHER and HYPER POTION; FULL RESTORE, MAX POTION and MAX
+  ELIXER).
 
 ### Items that change battles (RUN)
 
@@ -401,7 +404,8 @@ the commit until there is one.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-11-25 | - | **Shiny Pokémon:** wild ones can now appear shiny, at the same odds as ones you receive, and stay shiny if caught or if they join you. A reward's INFO screen shows whether it is shiny, and Pokémon sent to the PC box can be shiny too. With a full party, Bill's DUPLICATE and the PokéManiac's prize now put the exact Pokémon in the box, where most of it used to be rolled again |
+| 2026-11-26 | - | **Ironman: no REVIVE or MAX REVIVE.** With Ironman on, item balls, rewards and the healing clerk no longer offer them. The other healing items in their tiers become a little more common |
+| 2026-11-25 | afb4e92b | **Shiny Pokémon:** wild ones can now appear shiny, at the same odds as ones you receive, and stay shiny if caught or if they join you. A reward's INFO screen shows whether it is shiny, and Pokémon sent to the PC box can be shiny too. With a full party, Bill's DUPLICATE and the PokéManiac's prize now put the exact Pokémon in the box, where most of it used to be rolled again |
 | 2026-11-25 | [`2d0797d9`](https://github.com/JSsixtyfour/redrogue/commit/2d0797d9) | **Flora's Spore gift** now gives the Pokémon it names. Where it could be Vileplume or Bellossom, the list, the description and the Pokémon you received were each picked separately |
 | 2026-11-25 | [`f88ae9b8`](https://github.com/JSsixtyfour/redrogue/commit/f88ae9b8) | **Wild Metronome and Mirror Move** no longer change unrelated memory. After a Pokémon was sent to the PC box, it could crash the game at the end of a battle. Thawing a wild Pokémon with a Fire move had the same fault |
 | 2026-11-24 | [`9ba706d6`](https://github.com/JSsixtyfour/redrogue/commit/9ba706d6) | **Trapping moves:** yours now check their own type against the target. They no longer hold a target they cannot damage (Wrap on a Ghost), and no longer fail because of the target's own move |

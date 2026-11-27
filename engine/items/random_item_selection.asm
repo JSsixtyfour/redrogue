@@ -41,6 +41,14 @@ ld b, NUM_HEALING_POKEBALL_CLASS
 ld c, NUM_HEALING_GREATBALL_CLASS 
 ld d, NUM_HEALING_ULTRABALL_CLASS 
 ld e, NUM_HEALING_MASTERBALL_CLASS
+; Ironman: no REVIVE / MAX_REVIVE. Each is the last entry of its tier's list
+; (item_rarity.asm), so one less in the count leaves it out.
+ld a, [wOptions3]
+bit BIT_IRONMAN, a
+jr z, .keepRevives
+dec d
+dec e
+.keepRevives
 push bc
 jp item_determineClassSlot
 
