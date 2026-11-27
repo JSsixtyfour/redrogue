@@ -16,8 +16,11 @@ import test_ai_heuristic_gaps as gaps  # module import: its test classes are not
 class S5SmallTest(gaps._MoveLayerGapsBase):
     def test_rest_with_a_status_to_cure(self) -> None:
         brn = {"wEnemyMonStatus": 1 << self.battle["BRN"]}
-        # Control: a plain Recover is unchanged by the enemy's status.
-        self.assertEqual(self.smart_score("RECOVER", {"wEnemyMonHP": (150,), **brn}), 22)
+        # Control: a plain Recover is unchanged by the enemy's status. It scores
+        # 18 here because the heal race applies (faster, and 100 HP outheals the
+        # player's best 97); 22 was a stale KO cache skipping that scan.
+        self.assertEqual(self.smart_score("RECOVER", {"wEnemyMonHP": (150,)}), 18)
+        self.assertEqual(self.smart_score("RECOVER", {"wEnemyMonHP": (150,), **brn}), 18)
         self.assertEqual(self.smart_score("REST", {"wEnemyMonHP": (70,), **brn}), 18)   # cure + heal
         self.assertEqual(self.smart_score("REST", {"wEnemyMonHP": (150,), **brn}), 20)  # no longer discouraged
         self.assertEqual(self.smart_score("REST", {"wEnemyMonHP": (150,)}), 22)         # nothing to cure

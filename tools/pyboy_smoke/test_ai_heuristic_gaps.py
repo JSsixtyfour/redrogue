@@ -342,10 +342,9 @@ class AISmartGapsTest(_MoveLayerGapsBase):
     # max HP, 100 here) exceeds the player's best possible hit -> encouraged at any HP.
     def heal_race(self, player_move, hp, speed=100, max_hp=200):
         self.h.reveal_player_moves(0, [0], clear=True)
-        # wAIPlayerKOCache must be cleared by hand: call_routine's fresh-decision reset
-        # clears wAIPlayerKOMaxDamage but not the cache (see test_ai_switching's
-        # call_ai_should_switch), so a stale cached answer skipped the scan and left the
-        # max invalid (measured). In play the two are cleared and filled together.
+        # A stale wAIPlayerKOCache skipped the scan and left the max invalid (measured).
+        # call_routine now clears it unless a test primes it; this write predates that.
+        # In play the two are cleared and filled together.
         board = {"wEnemyMonHP": (hp,), "wEnemyMonMaxHP": (max_hp,), "wEnemyMonSpeed": (speed,),
                  "wAIPlayerKOCache": 0,
                  ("wBattleMonMoves", 0): self.moves[player_move]}

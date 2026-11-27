@@ -243,13 +243,10 @@ class AIShouldSwitchTest(unittest.TestCase):
         may still hold that decision's answer for the board as it was before
         this test primed it; AIShouldSwitch's trigger 2 (AIPlayerWouldKO)
         would otherwise reuse that stale answer instead of recomputing one
-        for the board this test actually set up. call_routine's own "fresh
-        decision" precondition only resets the damage-estimate span
-        (wAIEnemyEstimateCache/wAIPlayerKOMaxDamage, FOLLOWUPS #48) - it is
-        deliberately NOT a global reset of these two, since other tests
-        (test_ai_checkpoint_b, test_ai_reliable_ko_wins) prime a specific
-        wAIPlayerKOCache/wAIReliableKOFound value and need call_routine to
-        leave it alone."""
+        for the board this test actually set up. call_routine now clears
+        these two as well unless the test wrote one since the previous call
+        (test_ai_checkpoint_b and test_ai_reliable_ko_wins prime them); the
+        explicit clear here predates that and is kept as documentation."""
         assert self.harness is not None
         for label in ("wAIPlayerKOCache", "wAIReliableKOFound"):
             self.harness.write8(label, 0)

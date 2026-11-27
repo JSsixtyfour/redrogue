@@ -121,7 +121,8 @@ class ReliableKOWinsTest(unittest.TestCase):
         h.write8("wAIReliableKOFound", 0)
         for slot in (0, 3, 2):
             h.write8("wBuffer", slot, offset=17)  # AI_BUF_CURSLOT
-            h.call_routine("AIMarkReliableKOSlot", limit=100)
+            # one decision marks several slots, so keep the bits between calls
+            h.call_routine("AIMarkReliableKOSlot", limit=100, fresh_decision=False)
         self.assertEqual(h.read8("wAIReliableKOFound"), 0b1101)
 
 

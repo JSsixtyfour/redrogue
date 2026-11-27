@@ -24,7 +24,10 @@ def sprite_sizes():
     entries = []
     for line in table.splitlines():
         match = re.match(
-            r"^\s*overworld_sprite\s+\w+,\s*(\d+)\s*(?:;.*)?$", line
+            # overworld_sprite_stand_only still reserves a 12-tile VRAM slot;
+            # only its ROM copy omits the duplicated walk frames.
+            r"^\s*overworld_sprite(?:_stand_only)?\s+\w+,\s*(\d+)\s*(?:;.*)?$",
+            line,
         )
         if match:
             entries.append(match.group(1))

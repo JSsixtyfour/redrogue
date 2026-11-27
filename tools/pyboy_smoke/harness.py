@@ -151,6 +151,7 @@ class RedRogueHarness:
         self._rom_file = io.BytesIO(rom_data)
         self.artifacts_dir = artifacts_dir.resolve()
         self._call_streak = 0
+        self._primed_ai_latches = set()
         self._sp_trick_ranges = None
         self._last_call_label = None
         options = {
@@ -414,7 +415,14 @@ class RedRogueHarness:
     def read8(self, label: str, offset: int = 0) -> int:
         return self.pyboy.memory[self.address(label) + offset]
 
+    # One-decision AI answers that AIClearDecisionCaches empties at the start of
+    # every real decision. call_routine empties them too unless the test wrote
+    # one since the previous call (see call_routine).
+    AI_DECISION_LATCHES = ("wAIPlayerKOCache", "wAIReliableKOFound")
+
     def write8(self, label: str, value: int, offset: int = 0) -> None:
+        if label in self.AI_DECISION_LATCHES and offset == 0:
+            self._primed_ai_latches.add(label)
         self.pyboy.memory[self.address(label) + offset] = value & 0xFF
 
     SEEN_MASK_BYTES = 3  # PARTY_LENGTH * NUM_MOVES / 8
@@ -1521,7 +1529,7 @@ class RedRogueHarness:
         return False
 
     def call_routine(self, label: str, limit: int = 12000, *, nested_vblank: bool = False,
-                     capture=None):
+                     capture=None, fresh_decision: bool = True):
         """Call a ROM routine through the engine's bank trampoline.
 
         PRECONDITION: the CPU must already be parked somewhere safe to
@@ -1542,6 +1550,9 @@ class RedRogueHarness:
         hCurrentMenuItem, redrew wTileMap and called UpdateSprites/
         HandleMenuInput after correct callees had returned (test_element_boy_menu,
         test_key_swap_checkpoint, test_lobby_door_headings).
+
+        fresh_decision=False skips the AI cache reset below, for a test that
+        chains several calls inside what is one decision in play.
         """
         bank, address = self.symbols.get(label)
         self._assert_parked_machine_sane(label)
@@ -1553,10 +1564,20 @@ class RedRogueHarness:
         # test that edits stats or moves between two direct calls must not read
         # the previous call's answers back (FOLLOWUPS #48, 2026-09-30). The 10
         # bytes are the estimates plus wAIPlayerKOMaxDamage, which follows them.
-        if "wAIEnemyEstimateCache" in self.symbols._symbols:
+        if fresh_decision and "wAIEnemyEstimateCache" in self.symbols._symbols:
             span = 10 if "wAIPlayerKOMaxDamage" in self.symbols._symbols else 8
             for offset in range(span):
                 self.write8("wAIEnemyEstimateCache", 0, offset=offset)
+        # The KO answer has to go with them: clearing wAIPlayerKOMaxDamage alone
+        # left a cached YES/NO beside an invalid max, and a previous call's
+        # answer decided the next board (measured 2026-11-27: a full-HP
+        # Explosion user chose BombTrade in test_ai_plan_matrix). A test that
+        # wrote a latch since the last call is priming it on purpose
+        # (test_ai_checkpoint_b, test_ai_paralysis_threshold), so that one stays.
+        for latch in self.AI_DECISION_LATCHES if fresh_decision else ():
+            if latch not in self._primed_ai_latches and latch in self.symbols._symbols:
+                self.pyboy.memory[self.address(latch)] = 0  # AI_KO_CACHE_EMPTY / none
+        self._primed_ai_latches.clear()
         register_names = self._PARK_REGISTER_NAMES
         saved_registers = {
             name: getattr(self.pyboy.register_file, name) for name in register_names

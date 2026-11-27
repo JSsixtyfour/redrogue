@@ -108,11 +108,13 @@ SUITES = {
                     "--save-checks", "--coverage", "--timeout", "600"], 1200,
                  ["autoplay_summary_cgb.json", "coverage_summary_cgb.json"]),
     "menus": (AUTOPLAY_COMMAND + ["--seeds", "1-16", "--jobs", "6", "--runs", "2",
-                  "--stages", "10", "--vary", "--errands", "all", "--save-checks",
-                  "--max-frames", "750000", "--timeout", "450"], 1200, ["autoplay_summary.json"]),
+                  "--stages", "10", "--vary", "--errands", "all", "--save-checks", "--coverage",
+                  "--max-frames", "750000", "--timeout", "450"], 1200,
+              ["autoplay_summary.json", "coverage_summary.json"]),
     "room_menu": (AUTOPLAY_COMMAND + ["--seeds", "1-4", "--jobs", "4", "--runs", "2",
-                     "--new-game", "--vary", "--errands", "roompc", "--save-checks",
-                     "--max-frames", "500000", "--timeout", "300"], 600, ["autoplay_summary.json"]),
+                     "--new-game", "--vary", "--errands", "roompc", "--save-checks", "--coverage",
+                     "--max-frames", "500000", "--timeout", "300"], 600,
+                  ["autoplay_summary.json", "coverage_summary.json"]),
     "discovery": (AUTOPLAY_COMMAND + ["--seeds", "17-40", "--jobs", "6", "--new-game",
                       "--runs", "2", "--vary", "--player", "strong", "--save-checks",
                       "--menu-chaos", "0.1",
@@ -564,6 +566,28 @@ def regressions(report: dict[str, object], previous: dict[str, object] | None) -
     return found
 
 
+def reached_routines(folder: Path, files: set[str]) -> set[str]:
+    """Routines any of the named coverage summaries in a night's folder ran at least once."""
+    reached = set()
+    for name in files:
+        try:
+            counts = json.loads((folder / name).read_text(encoding="utf-8")).get("routine_run_counts") or {}
+        except (OSError, ValueError):
+            continue
+        reached |= {identity for identity, count in counts.items() if count}
+    return reached
+
+
+def pooled_coverage_delta(night: Path, previous: Path) -> tuple[int, int]:
+    """Gained and lost routines over every suite, against the previous night. Only coverage
+    files both nights wrote are pooled, so a night that ran extra suites (Sunday) does not
+    read as a loss the night after. One suite alone swings by ~150 routines a night on seeds."""
+    files = ({p.name for p in night.glob("*coverage_summary*.json")}
+             & {p.name for p in previous.glob("*coverage_summary*.json")})
+    tonight, before = reached_routines(night, files), reached_routines(previous, files)
+    return len(tonight - before), len(before - tonight)
+
+
 def coverage_regression(night: Path, history: list[Path]) -> tuple[dict, list[str]]:
     """Intersect proven losses against three distinct prior calendar nights."""
     from contextlib import redirect_stdout
@@ -595,7 +619,8 @@ def coverage_regression(night: Path, history: list[Path]) -> tuple[dict, list[st
         lost -= {identity for identity, count in counts.items() if count}
     lost = sorted(identity for identity in lost
                   if names.get(identity, identity.rsplit("::", 1)[-1]) not in blind)
-    return {"gained": len(deltas[0]["gained"]), "lost": len(deltas[0]["lost"]),
+    gained, lost_count = pooled_coverage_delta(night, history[0])
+    return {"gained": gained, "lost": lost_count, "pooled": True,
             "persistent_lost": lost}, ([f"coverage: {len(lost)} routines reached on all three prior nights were missed by every suite"]
                                       if lost else [])
 
@@ -663,7 +688,8 @@ def write_markdown(report: dict[str, object], night: Path) -> None:
         lines += ["", f"Runner failure: {report['runner_error']}"]
     if report.get("coverage_delta"):
         delta = report["coverage_delta"]
-        lines += ["", f"Coverage versus last night: {delta['gained']} routines newly reached, {delta['lost']} lost."]
+        scope = "all suites" if delta.get("pooled") else "newgame only"
+        lines += ["", f"Coverage versus last night ({scope}): {delta['gained']} routines newly reached, {delta['lost']} lost."]
         missed = delta["persistent_lost"]
         if missed:
             lines += ["", f"Missed after three prior nights: {', '.join(missed)}"]
