@@ -442,6 +442,9 @@ class ForestDeepFloorTest(unittest.TestCase):
         # Continue it spawns one step behind, and a save taken in a dead end put
         # it on the only way out, failing a walk the game allows (2026-11-22).
         blocked = fw.sprite_tiles(h, skip=(15,))
+        # Crossing the other half can trigger its own warp before we reach FG_WARP.
+        second_y, second_x = h.warp_entries()[SECOND_WARP][:2]
+        blocked.add((second_x, second_y))
         if h.read8("wSprite09StateData1"):
             gx, gy = h.read8("wSprite09StateData2MapX") - 4, h.read8("wSprite09StateData2MapY") - 4
             dx, dy = {0: (0, 1), 4: (0, -1), 8: (-1, 0), 12: (1, 0)}[h.read8("wSprite09StateData1FacingDirection")]
@@ -459,11 +462,21 @@ class ForestDeepFloorTest(unittest.TestCase):
             self.fail(f"{description}: no path from {here} to the opening {(x, y)}; blocked {sorted(blocked)}; "
                       f"unblocked path {'exists' if free is not None else 'none'}; tiles near {near}")
         button = fw.outward((x, y))
-        if buttons and buttons[-1] == button:
+        if buttons:
             fw.walk(h, buttons[:-1], settle=budget)
-            fw.step(h, button, settle=budget)       # onto it, holding outward
-        else:
-            fw.walk(h, buttons, settle=budget)
+            # Either half of the opening can warp before the final coordinate
+            # is visible, including on a sideways approach.
+            if not seen["count"]:
+                approach = buttons[-1]
+                for _ in range(120):
+                    budget()
+                    h.pyboy.button_press(approach)
+                    h.tick(1)
+                    if seen["count"] or (h.read8("wXCoord"), h.read8("wYCoord")) == (x, y):
+                        break
+                h.pyboy.button_release(approach)
+                self.assertTrue(seen["count"] or (h.read8("wXCoord"), h.read8("wYCoord")) == (x, y),
+                                f"{description}: final step {approach} did not reach {(x, y)} or warp")
         for _ in range(240):
             if seen["count"]:
                 break

@@ -218,6 +218,7 @@ LoadMapSpriteTilePatterns:
 	push de
 	call ReadSpriteSheetData
 	push af
+	jr nz, .noCarry3 ; stand-only sheet: the walk frames are the standing poses at de
 	ld a, $c0
 	add e
 	ld e, a
@@ -283,6 +284,7 @@ LoadMapSpriteTilePatterns:
 ; de = pointer to sprite sheet
 ; bc = length in bytes
 ; a = ROM bank
+; nz = stand-only sheet (SPRITE_SHEET_STAND_ONLY: walk frames = standing poses)
 ReadSpriteSheetData:
 	ld a, [hli]
 	ld e, a
@@ -293,6 +295,8 @@ ReadSpriteSheetData:
 	xor a
 	ld b, a
 	ld a, [hli]
+	bit SPRITE_SHEET_STAND_ONLY_F, a
+	res SPRITE_SHEET_STAND_ONLY_F, a
 	ret
 
 ; Loads sprite set for outside maps (cities and routes) and sets VRAM slots.

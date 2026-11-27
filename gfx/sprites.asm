@@ -134,10 +134,11 @@ PikachuSprite:: ; genuine 16x96px art, 384 bytes / 24 raw tiles — no padding n
 	INCBIN "gfx/sprites/pikachu.2bpp"
 
 ChanseySprite:: ; pokeyellow's source art is only 16x48px (192 bytes / 12 raw
-                ; tiles) — half of what a "12" entry consumes here (see note
-                ; above). Repeated once to reach the required 384 bytes.
+                ; tiles): standing poses only. Its table row is
+                ; overworld_sprite_stand_only, so the loader reuses them as the
+                ; walk frames (it was INCBINed twice until 2026-11-26).
 	INCBIN "gfx/sprites/chansey.2bpp"
-	INCBIN "gfx/sprites/chansey.2bpp"
+	ASSERT @ - ChanseySprite == 12 tiles
 
 ; Official pret/pokeyellow walking sheets. No map or player appearance uses them.
 ; NPC SpriteSheetPointerTable carries the source bank for each sheet.
@@ -145,12 +146,12 @@ SECTION "Jessie James Sprites", ROMX, BANK[$2C]
 JessieSprite:: INCBIN "gfx/sprites/jessie.2bpp"
 JamesSprite::  INCBIN "gfx/sprites/james.2bpp"
 
-; Source-faithful pret/pokeyellow sheet. Yellow stores 12 raw tiles (192 B),
-; while this fork's walking-sheet loader consumes 384 B for a 12-tile entry.
-; Repeat the authored poses exactly as the existing Chansey import does.
+; Source-faithful pret/pokeyellow sheet: a full 16x96 walking sheet (384 B, 24 tiles),
+; exactly what the loader reads for a 12-tile entry. (It was INCBINed twice until
+; 2026-11-26; the second copy was never read.)
 OfficerJennySprite::
 	INCBIN "gfx/sprites/officer_jenny.2bpp"
-	INCBIN "gfx/sprites/officer_jenny.2bpp"
+	ASSERT @ - OfficerJennySprite == 24 tiles
 
 ; Species-specific overworld sheets imported from Pokemon Yellow Legacy
 ; commit 15169d137e2ef778e8765f7f3381acc4093dc169. The three donor half-sheets
@@ -168,9 +169,11 @@ MoltresSprite::  INCBIN "gfx/sprites/moltres.2bpp"
 MewtwoSprite::   INCBIN "gfx/sprites/mewtwo.2bpp"
 
 ; Yellow Legacy batch 2 (2026-09-25), from Pokemon_Yellow_Legacy main. The
-; walking-range loader always reads 384 bytes (sheet, then sheet + $C0 for the
-; walk frames), so a standing-poses-only 16x48 sheet is included twice and a
-; one-pose 16x16 sheet six times, as ChanseySprite and the Room Sprites do.
+; walking-range loader reads 384 bytes (sheet, then sheet + $C0 for the walk
+; frames). A standing-poses-only 16x48 sheet is stored once and its table row is
+; overworld_sprite_stand_only, which makes the loader read the walk frames from
+; the sheet's start (2026-11-26; they used to be INCBINed twice). One-pose 16x16
+; sheets are still included six times, as the Room Sprites do.
 ; INCBINs stay literal: the Makefile's dependency scan reads them as text.
 FearowSprite::
 	INCBIN "gfx/sprites/fearow.2bpp"
@@ -197,60 +200,48 @@ SlowpokeSprite::
 	INCBIN "gfx/sprites/slowpoke.2bpp"
 	ASSERT @ - SlowpokeSprite == 24 tiles
 
-VaporeonSprite:: ; standing poses only, repeated as the walk frames
+VaporeonSprite:: ; standing poses only (overworld_sprite_stand_only)
 	INCBIN "gfx/sprites/vaporeon.2bpp"
-	INCBIN "gfx/sprites/vaporeon.2bpp"
-	ASSERT @ - VaporeonSprite == 24 tiles
-BulbasaurSprite:: ; standing poses only, repeated as the walk frames
+	ASSERT @ - VaporeonSprite == 12 tiles
+BulbasaurSprite:: ; standing poses only (overworld_sprite_stand_only)
 	INCBIN "gfx/sprites/bulbasaur.2bpp"
-	INCBIN "gfx/sprites/bulbasaur.2bpp"
-	ASSERT @ - BulbasaurSprite == 24 tiles
-ClefairySprite:: ; standing poses only, repeated as the walk frames
+	ASSERT @ - BulbasaurSprite == 12 tiles
+ClefairySprite:: ; standing poses only (overworld_sprite_stand_only)
 	INCBIN "gfx/sprites/clefairy.2bpp"
-	INCBIN "gfx/sprites/clefairy.2bpp"
-	ASSERT @ - ClefairySprite == 24 tiles
-JigglypuffSprite:: ; standing poses only, repeated as the walk frames
+	ASSERT @ - ClefairySprite == 12 tiles
+JigglypuffSprite:: ; standing poses only (overworld_sprite_stand_only)
 	INCBIN "gfx/sprites/jigglypuff.2bpp"
-	INCBIN "gfx/sprites/jigglypuff.2bpp"
-	ASSERT @ - JigglypuffSprite == 24 tiles
-MachokeSprite:: ; standing poses only, repeated as the walk frames
+	ASSERT @ - JigglypuffSprite == 12 tiles
+MachokeSprite:: ; standing poses only (overworld_sprite_stand_only)
 	INCBIN "gfx/sprites/machoke.2bpp"
-	INCBIN "gfx/sprites/machoke.2bpp"
-	ASSERT @ - MachokeSprite == 24 tiles
-MeowthSprite:: ; standing poses only, repeated as the walk frames
+	ASSERT @ - MachokeSprite == 12 tiles
+MeowthSprite:: ; standing poses only (overworld_sprite_stand_only)
 	INCBIN "gfx/sprites/meowth.2bpp"
-	INCBIN "gfx/sprites/meowth.2bpp"
-	ASSERT @ - MeowthSprite == 24 tiles
+	ASSERT @ - MeowthSprite == 12 tiles
 MrMimeSprite:: ; full walking sheet (2026-10-27); also Galarian Mr. Mime and Mr. Rime
 	INCBIN "gfx/sprites/mr_mime.2bpp"
 	ASSERT @ - MrMimeSprite == 24 tiles
-NidoranMSprite:: ; standing poses only, repeated as the walk frames
+NidoranMSprite:: ; standing poses only (overworld_sprite_stand_only)
 	INCBIN "gfx/sprites/nidoran_m.2bpp"
-	INCBIN "gfx/sprites/nidoran_m.2bpp"
-	ASSERT @ - NidoranMSprite == 24 tiles
-OddishSprite:: ; standing poses only, repeated as the walk frames
+	ASSERT @ - NidoranMSprite == 12 tiles
+OddishSprite:: ; standing poses only (overworld_sprite_stand_only)
 	INCBIN "gfx/sprites/oddish.2bpp"
-	INCBIN "gfx/sprites/oddish.2bpp"
-	ASSERT @ - OddishSprite == 24 tiles
-PidgeotSprite:: ; standing poses only, repeated as the walk frames
+	ASSERT @ - OddishSprite == 12 tiles
+PidgeotSprite:: ; standing poses only (overworld_sprite_stand_only)
 	INCBIN "gfx/sprites/pidgeot.2bpp"
-	INCBIN "gfx/sprites/pidgeot.2bpp"
-	ASSERT @ - PidgeotSprite == 24 tiles
-PoliwrathSprite:: ; standing poses only, repeated as the walk frames
+	ASSERT @ - PidgeotSprite == 12 tiles
+PoliwrathSprite:: ; standing poses only (overworld_sprite_stand_only)
 	INCBIN "gfx/sprites/poliwrath.2bpp"
-	INCBIN "gfx/sprites/poliwrath.2bpp"
-	ASSERT @ - PoliwrathSprite == 24 tiles
-SandshrewSprite:: ; standing poses only, repeated as the walk frames
+	ASSERT @ - PoliwrathSprite == 12 tiles
+SandshrewSprite:: ; standing poses only (overworld_sprite_stand_only)
 	INCBIN "gfx/sprites/sandshrew.2bpp"
-	INCBIN "gfx/sprites/sandshrew.2bpp"
-	ASSERT @ - SandshrewSprite == 24 tiles
-Seel2Sprite:: ; standing poses only, repeated as the walk frames
+	ASSERT @ - SandshrewSprite == 12 tiles
+Seel2Sprite:: ; standing poses only (overworld_sprite_stand_only)
 	INCBIN "gfx/sprites/seel2.2bpp"
-	INCBIN "gfx/sprites/seel2.2bpp"
-	ASSERT @ - Seel2Sprite == 24 tiles
+	ASSERT @ - Seel2Sprite == 12 tiles
 
 ; Bank $3E is full after the sheets above; the one-pose sheets follow in $37.
-SECTION "Yellow Legacy Pokemon Sprites 2", ROMX ; unpinned from $37 2026-11-03 (Player Back Pics needed the room)
+SECTION "Yellow Legacy Pokemon Sprites 2", ROMX ; unpinned from $37 2026-11-03 (Player Back Pics needed the room); pinned to $21 in layout.link 2026-11-26
 PorygonSprite::
 	INCBIN "gfx/sprites/porygon.2bpp"
 	ASSERT @ - PorygonSprite == 24 tiles

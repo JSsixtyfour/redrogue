@@ -131,6 +131,12 @@ DEF FIRST_EXTRA_WALKING_SPRITE EQU const_value
 	const SPRITE_DRAGONITE               ; $79
 DEF NUM_SPRITES EQU const_value - 1
 
+; SpriteSheetPointerTable bank byte, bit 7: a 12-tile sheet with standing poses
+; only; its walk frames are loaded from the sheet's start (overworld_sprite_stand_only).
+; ROM banks stay below $80 even at 2 MiB, so the bit is free.
+DEF SPRITE_SHEET_STAND_ONLY_F EQU 7
+DEF SPRITE_SHEET_STAND_ONLY   EQU 1 << SPRITE_SHEET_STAND_ONLY_F
+
 ; Neutral Pokemon-to-overworld-sprite categories.
 ; Static boss and walking follower consumers translate these separately.
 	const_def

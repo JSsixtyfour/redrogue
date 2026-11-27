@@ -234,6 +234,11 @@ ROMX $20
 ROMX $21
 	"Text 2"
 	"Form Dex Text A"
+	; Pinned here 2026-11-26 (was floating, last in $15 after "Song PetitCupBattle"):
+	; it was the only floater in $15, so pinning it elsewhere lets the pinned Petit Cup
+	; song grow in place (a replacement measured 2,085 B vs the 1,847 B original).
+	; Reached only through BANK()-carrying pointers (overworld_sprite rows), so any bank works.
+	"Yellow Legacy Pokemon Sprites 2"
 ROMX $22
 	"Text 3"
 	"Form Dex Text B"
@@ -436,7 +441,7 @@ ROMX $37
 	"Room Sprites"
 	; "Yellow Legacy Pokemon Sprites 2" unpinned 2026-11-03: three new player
 	; backs (cue ball, fisherman, hiker) overflowed $37 by 214 B. It is reached
-	; only through BANK()-carrying pointers, so it floats.
+	; only through BANK()-carrying pointers, so it floated (pinned to $21 2026-11-26).
 	; Every player back pic, which LoadPlayerBackPic and the Hall of Fame load
 	; with one BANK(RedPicBack). Moved from "Pics 4" ($0C) on 2026-10-24; a
 	; back for each of the 31 appearances would be ~5.1 KB.

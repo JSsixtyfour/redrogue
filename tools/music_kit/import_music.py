@@ -6,7 +6,9 @@
 
 Uses the same convert.ps1 the kit runs (only the label differs), so the
 imported song is what he heard. Then:
-  1. measures the song's exact size by assembling it alone
+  1. measures the song's exact size by assembling it alone, then the size of
+     song_optimize.py's lossless rewrite, and keeps the smaller (one song only;
+     a sharing pair is imported as converted)
   2. picks a bank with song_placement.py: the end of a bank holding only pinned
      sections, best fit with a 512 B reserve, and pins the section there in
      layout.link. A floating song section made rgblink re-pack other code (the
@@ -34,6 +36,7 @@ REPO = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import audio_banks  # noqa: E402
 import make_music_kit  # noqa: E402
+import song_optimize  # noqa: E402
 import song_placement  # noqa: E402
 
 MAPS = ("pokered.map", "pokeblue.map", "pokeblue_debug.map")
@@ -118,6 +121,34 @@ def convert_one(src, label, partner=None, partner_label=None):
     return open(tmp_asm).read()
 
 
+def optimized(text, size, tmp_all):
+    """The smaller of the converted song and song_optimize.py's lossless rewrite.
+
+    The rewrite keeps every note, rest, duration and channel setting (its own
+    semantic check raises otherwise); song_audio_compare.py proves it in PyBoy.
+    Measured 2026-11-26 on the game's songs: 0-34% smaller, same music on all.
+    A song pair (shared phrases across two songs) isn't supported yet."""
+    try:
+        new_text, _ = song_optimize.optimize(text)
+    except (song_optimize.Unsupported, AssertionError) as e:
+        print("import_music: kept the converted song as is (optimizer: %s)" % e)
+        return text, size
+    head = "".join(l + "\n" for l in text.split("\n")[:3] if l.startswith(";"))
+    new_text = head + ("; Size-optimized by tools/music_kit/song_optimize.py: same notes, lengths and\n"
+                       "; channel state as the converted song.\n") + new_text
+    tmp_opt = tmp_all[:-4] + "_opt.asm"
+    with open(tmp_opt, "w", newline="\n") as f:
+        f.write(new_text)
+    new_size = song_size(tmp_opt)
+    if new_size >= size:
+        print("import_music: optimizer found nothing to save (%d -> %d bytes); kept the converted song" % (size, new_size))
+        return text, size
+    print("import_music: optimized %d -> %d bytes (same music)" % (size, new_size))
+    with open(tmp_all, "w", newline="\n") as f:
+        f.write(new_text)
+    return new_text, new_size
+
+
 def main():
     if len(sys.argv) != 3 or not sys.argv[1]:
         die("usage: make import_music MID=song.mid NAME=SongName   or   ASM=song.asm NAME=SongName\n"
@@ -167,6 +198,8 @@ def main():
     with open(tmp_all, "w", newline="\n") as f:
         f.write(text)
     size = song_size(tmp_all)
+    if len(songs) == 1:
+        text, size = optimized(text, size, tmp_all)
 
     # 2. where it goes: pinned at the end of a bank that holds only pinned sections
     maps = [m for m in MAPS if os.path.exists(m)]

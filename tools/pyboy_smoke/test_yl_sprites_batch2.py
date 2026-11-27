@@ -1,8 +1,11 @@
 """Yellow Legacy sprite batch 2: 24 Pokemon sheets in three shapes.
 
 Walking sheets (16x96) are followers/bosses and dolls; standing-only (16x48)
-and one-pose (16x16) sheets are dolls only and are padded to the 384 bytes the
-walking-slot loader always reads (sheet, then sheet + $C0 for walk frames).
+and one-pose (16x16) sheets are dolls only. The walking-slot loader reads 384
+bytes (sheet, then sheet + $C0 for walk frames). One-pose sheets are padded to
+that in the ROM; standing-only sheets are stored once (2026-11-26) and their
+overworld_sprite_stand_only row makes the loader read the walk frames from the
+sheet's start, so VRAM gets the same 384 bytes the old doubled copy gave.
 """
 
 from pathlib import Path
@@ -118,6 +121,35 @@ class BatchTwoRuntimeTest(unittest.TestCase):
                 sheet = padded_sheet(name)
                 self.assertEqual(bytes(memory[standing:standing + 192]), sheet[:192], "standing half")
                 self.assertEqual(bytes(memory[walking:walking + 192]), sheet[192:], "walk half")
+
+    def test_stand_only_sheets_load_their_poses_as_walk_frames(self) -> None:
+        """Every overworld_sprite_stand_only row (the 12 batch-2 standing sheets and
+        Chansey), plus Officer Jenny (one copy of a full 16x96 sheet since
+        2026-11-26), puts the same 384 bytes in VRAM that the doubled copies did."""
+        h = self.harness
+        ids = sprite_ids()
+        pointers = (ROOT / "data" / "sprites" / "sprites.asm").read_text(encoding="utf-8")
+        stand_only = re.findall(r"^\toverworld_sprite_stand_only \w+, 12 +; SPRITE_(\w+)$", pointers, re.M)
+        self.assertEqual(len(stand_only), 13, stand_only)
+        names = stand_only + ["OFFICER_JENNY"]
+        h.boot_debug1(self.maps["SILPH_CO_DORM"])
+        for start in range(0, len(names), 4):
+            chosen = names[start:start + 4]
+            for slot in range(1, 5):
+                h.write8(f"wSprite0{slot}StateData1", ids[chosen[slot - 1]] if slot <= len(chosen) else 0)
+            self.park()
+            h.call_routine("InitMapSprites")
+            memory = h.pyboy.memory
+            vram = h.address("vNPCSprites")
+            for slot, name in enumerate(chosen, start=1):
+                base = h.read8(f"wSprite0{slot}StateData2ImageBaseOffset")
+                with self.subTest(name=name, base=base):
+                    self.assertTrue(1 <= base <= 10, "not given a walking VRAM slot")
+                    standing = vram + (base - 1) * 192
+                    walking = standing + 0x800
+                    sheet = padded_sheet(name)
+                    self.assertEqual(bytes(memory[standing:standing + 192]), sheet[:192], "standing half")
+                    self.assertEqual(bytes(memory[walking:walking + 192]), sheet[192:], "walk half")
 
 
 if __name__ == "__main__":

@@ -4,6 +4,16 @@ MACRO overworld_sprite
 	db BANK(\1)
 ENDM
 
+; A 12-tile sheet with standing poses only (192 B). The flag bit in the bank byte
+; tells LoadMapSpriteTilePatterns to load the walk frames from the sheet's start
+; instead of start + $C0, so the poses aren't stored twice.
+MACRO overworld_sprite_stand_only
+	ASSERT \2 == 12, "only a 12-tile sheet has walk frames"
+	dw \1
+	db \2 tiles
+	db BANK(\1) | SPRITE_SHEET_STAND_ONLY
+ENDM
+
 MACRO overworld_sprite_slice
 	dw \1 + \2 tiles
 	db \3 tiles
@@ -43,7 +53,7 @@ SpriteSheetPointerTable:
 	overworld_sprite MiddleAgedWomanSprite, 12  ; SPRITE_MIDDLE_AGED_WOMAN
 	overworld_sprite BrunetteGirlSprite, 12     ; SPRITE_BRUNETTE_GIRL
 	overworld_sprite LanceSprite, 12            ; SPRITE_LANCE
-	overworld_sprite ChanseySprite, 12          ; SPRITE_CHANSEY
+	overworld_sprite_stand_only ChanseySprite, 12          ; SPRITE_CHANSEY
 	overworld_sprite ScientistSprite, 12        ; SPRITE_SCIENTIST
 	overworld_sprite RockerSprite, 12           ; SPRITE_ROCKER
 	overworld_sprite SwimmerSprite, 12          ; SPRITE_SWIMMER
@@ -110,19 +120,19 @@ SpriteSheetPointerTable:
 	overworld_sprite NidoranFSprite, 12        ; SPRITE_NIDORAN_F
 	overworld_sprite PidgeySprite, 12          ; SPRITE_PIDGEY
 	overworld_sprite SlowpokeSprite, 12        ; SPRITE_SLOWPOKE
-	overworld_sprite VaporeonSprite, 12        ; SPRITE_VAPOREON
-	overworld_sprite BulbasaurSprite, 12       ; SPRITE_BULBASAUR
-	overworld_sprite ClefairySprite, 12        ; SPRITE_CLEFAIRY
-	overworld_sprite JigglypuffSprite, 12      ; SPRITE_JIGGLYPUFF
-	overworld_sprite MachokeSprite, 12         ; SPRITE_MACHOKE
-	overworld_sprite MeowthSprite, 12          ; SPRITE_MEOWTH
+	overworld_sprite_stand_only VaporeonSprite, 12        ; SPRITE_VAPOREON
+	overworld_sprite_stand_only BulbasaurSprite, 12       ; SPRITE_BULBASAUR
+	overworld_sprite_stand_only ClefairySprite, 12        ; SPRITE_CLEFAIRY
+	overworld_sprite_stand_only JigglypuffSprite, 12      ; SPRITE_JIGGLYPUFF
+	overworld_sprite_stand_only MachokeSprite, 12         ; SPRITE_MACHOKE
+	overworld_sprite_stand_only MeowthSprite, 12          ; SPRITE_MEOWTH
 	overworld_sprite MrMimeSprite, 12          ; SPRITE_MR_MIME
-	overworld_sprite NidoranMSprite, 12        ; SPRITE_NIDORAN_M
-	overworld_sprite OddishSprite, 12          ; SPRITE_ODDISH
-	overworld_sprite PidgeotSprite, 12         ; SPRITE_PIDGEOT
-	overworld_sprite PoliwrathSprite, 12       ; SPRITE_POLIWRATH
-	overworld_sprite SandshrewSprite, 12       ; SPRITE_SANDSHREW
-	overworld_sprite Seel2Sprite, 12           ; SPRITE_SEEL2
+	overworld_sprite_stand_only NidoranMSprite, 12        ; SPRITE_NIDORAN_M
+	overworld_sprite_stand_only OddishSprite, 12          ; SPRITE_ODDISH
+	overworld_sprite_stand_only PidgeotSprite, 12         ; SPRITE_PIDGEOT
+	overworld_sprite_stand_only PoliwrathSprite, 12       ; SPRITE_POLIWRATH
+	overworld_sprite_stand_only SandshrewSprite, 12       ; SPRITE_SANDSHREW
+	overworld_sprite_stand_only Seel2Sprite, 12           ; SPRITE_SEEL2
 	overworld_sprite JolteonSprite, 12         ; SPRITE_JOLTEON
 	overworld_sprite FlareonSprite, 12         ; SPRITE_FLAREON
 	overworld_sprite WigglytuffSprite, 12      ; SPRITE_WIGGLYTUFF
