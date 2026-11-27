@@ -13,8 +13,8 @@
 ; so only they reach this page.
 
 DEF DEX_EVO_FIRST_ROW EQU 11 ; page 2's stat rows, under the divider
-DEF DEX_EVO_ROWS      EQU 6  ; rows 11-16; only an all-unlocked Eevee needs two pages
-DEF DEX_EVO_METHOD_X  EQU 12 ; name at col 1 (10 chars), method at cols 12-18
+DEF DEX_EVO_ROWS      EQU 6  ; rows 11-16, three name/method pairs
+DEF DEX_EVO_METHOD_OFFSET EQU SCREEN_WIDTH + 1 ; next row, column 2
 
 ; ---------------------------------------------------------------------------
 ; DexShowEvoPage
@@ -142,16 +142,16 @@ DexShowEvoPage::
 	ld [wNamedObjectIndex], a
 	call GetMonName      ; de = the name; hl preserved
 	pop hl
-	push hl
 	call PlaceString
-	pop hl
+	ld a, ':'
+	ld [bc], a           ; PlaceString returns the next tile in bc
 	pop bc               ; the method
 	push hl
-	ld de, DEX_EVO_METHOD_X - 1
+	ld de, DEX_EVO_METHOD_OFFSET
 	add hl, de
 	call DexEvoPrintMethod
 	pop hl
-	ld de, SCREEN_WIDTH
+	ld de, 2 * SCREEN_WIDTH
 	add hl, de
 	ld d, h
 	ld e, l
@@ -201,8 +201,8 @@ DexEvoClearRows:
 	jp ClearScreenArea
 
 ; IN: b = EVOLVE_LEVEL / _ITEM / _TRADE, c = level or stone, hl = tile.
-; Seven tiles at most: "LV 36", "LV42/TR" (a level-up at 42 or any real
-; trade), or the stone's short name.
+; Method on its own line: "LV 36", "LV42/TR" (a level-up at 42 or any real
+; trade), or the item name.
 DexEvoPrintMethod:
 	ld a, b
 	cp EVOLVE_ITEM
@@ -224,23 +224,9 @@ DexEvoPrintMethod:
 	ld de, DexEvoTradeText
 	jp PlaceString
 .stone
-	ld de, DexEvoStoneNames
-.findStone
-	ld a, [de]
-	inc de
-	and a
-	jr z, .unknown       ; dex_evo_page tests check every stone is listed
-	cp c
-	jr z, .gotStone
-.skipName
-	ld a, [de]
-	inc de
-	cp '@'
-	jr nz, .skipName
-	jr .findStone
-.unknown
-	ld de, DexEvoStoneText
-.gotStone
+	ld a, c
+	ld [wNamedObjectIndex], a
+	call GetItemName
 	jp PlaceString
 
 ; a = 0-255 at hl, no leading zeros; hl moves past it. Clobbers af, bc, de.
@@ -281,21 +267,5 @@ DexEvoNoneText:
 	db "NO EVOLUTION@"
 DexEvoTradeText:
 	db "/TR@"
-DexEvoStoneText:
-	db "STONE@"
-
-; db <item>, "<label>@"; 0 ends the table. Every item an evolution entry
-; names must be here (checked by tools/pyboy_smoke/test_dex_evo_page.py).
-DexEvoStoneNames:
-	db FIRE_STONE,    "FIRE@"
-	db THUNDER_STONE, "THUNDER@"
-	db WATER_STONE,   "WATER@"
-	db LEAF_STONE,    "LEAF@"
-	db MOON_STONE,    "MOON@"
-	db SUN_STONE,     "SUN@"
-	db DUSK_STONE,    "DUSK@"
-	db ICE_STONE,     "ICE@"
-	db 0
-
 ASSERT BANK(DexShowEvoPage) == BANK(EvosMovesPointerTable), \
        "DexShowEvoPage walks the evolution lists with plain in-bank reads"

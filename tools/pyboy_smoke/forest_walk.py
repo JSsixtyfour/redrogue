@@ -13,6 +13,8 @@ import re
 from collections import deque
 from pathlib import Path
 
+from source_constants import parse_rgbds_constants
+
 ROOT = Path(__file__).resolve().parents[2]
 SIZE, STRIDE, BASE = 20, 26, 81          # blocks; wOverworldMap row stride and (0, 0)
 STEP = {"up": (0, -1), "down": (0, 1), "left": (-1, 0), "right": (1, 0)}
@@ -50,14 +52,44 @@ def tiles(h) -> dict[tuple[int, int], int]:
     return out
 
 
+_TOGGLES = parse_rgbds_constants(ROOT / "constants/toggle_constants.asm")
+# IsObjectHidden (engine/overworld/toggleable_objects.asm) on a wild-area stage
+# map: slots 1-7 read these bits directly; any other slot uses the map's list.
+_WILD_AREA_SLOT_TOGGLE = {
+    1: "TOGGLE_WILD_AREA_BOSS", 2: "TOGGLE_WILD_AREA_POKEBALL_1",
+    3: "TOGGLE_WILD_AREA_POKEBALL_2", 4: "TOGGLE_WILD_AREA_POKEBALL_3",
+    5: "TOGGLE_WILD_AREA_POKEBALL_4", 6: "TOGGLE_WILD_AREA_NPC_1", 7: "TOGGLE_WILD_AREA_NPC_2",
+}
+
+
+def hidden(h, slot: int) -> bool:
+    """IsObjectHidden's answer for `slot` on the Forest, read from RAM."""
+    name = _WILD_AREA_SLOT_TOGGLE.get(slot)
+    if name is None:
+        at = h.address("wToggleableObjectList")
+        while True:
+            listed, bit = h.pyboy.memory[at], h.pyboy.memory[at + 1]
+            if listed == 0xFF:
+                return False
+            if listed == slot:
+                break
+            at += 2
+    else:
+        bit = _TOGGLES[name]
+    return bool(h.read8("wToggleableObjectFlags", bit // 8) >> (bit % 8) & 1)
+
+
 def sprite_tiles(h, skip=()) -> set[tuple[int, int]]:
-    """The steps every shown sprite (slots 1-15) stands on. A hidden one (a
-    taken ball) keeps its picture but has image index $FF."""
+    """The steps every present sprite (slots 1-15) stands on. Image index $FF
+    is not enough to drop one: the game writes it for a toggled-off sprite (a
+    taken ball) AND for any sprite merely off screen (CheckSpriteAvailability),
+    and an off-screen ball still blocks once the walk brings it on screen
+    (measured 2026-11-26: a 37-step path ran into floor 1's ball at step 25)."""
     out = set()
     for s in range(1, 16):
         if s in skip or not h.read8(f"wSprite{s:02d}StateData1"):
             continue
-        if h.read8(f"wSprite{s:02d}StateData1", offset=2) == 0xFF:
+        if h.read8(f"wSprite{s:02d}StateData1", offset=2) == 0xFF and hidden(h, s):
             continue
         out.add((h.read8(f"wSprite{s:02d}StateData2MapX") - 4, h.read8(f"wSprite{s:02d}StateData2MapY") - 4))
     return out

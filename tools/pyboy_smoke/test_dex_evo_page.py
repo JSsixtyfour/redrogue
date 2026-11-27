@@ -11,7 +11,6 @@ mainline call with the engine's own stack, by faking the frame Bankswitch
 would have pushed, then presses A through the pages.
 """
 from pathlib import Path
-import re
 import unittest
 
 from harness import RedRogueHarness
@@ -24,7 +23,7 @@ EVENTS = parse_rgbds_constants(REPO_ROOT / "constants" / "event_constants.asm")
 RAM = parse_rgbds_constants(REPO_ROOT / "constants" / "ram_constants.asm")
 DEX = parse_rgbds_constants(REPO_ROOT / "constants" / "pokedex_constants.asm")
 MON_CATCH_RATE = 7
-FIRST_ROW, ROWS, METHOD_X = 11, 6, 12
+FIRST_ROW, ROWS = 11, 6
 
 
 class DexEvoPageTest(unittest.TestCase):
@@ -62,10 +61,13 @@ class DexEvoPageTest(unittest.TestCase):
 
     def lines(self) -> list[tuple[str, str]]:
         out = []
-        for r in range(FIRST_ROW, FIRST_ROW + ROWS):
-            name = self.row(r, 1, 10).strip()
-            method = self.row(r, METHOD_X, 7).strip()
+        for r in range(FIRST_ROW, FIRST_ROW + ROWS, 2):
+            name = self.row(r, 1, 17).strip()
+            method = self.row(r + 1, 2, 17).strip()
             if name or method:
+                if method:
+                    self.assertTrue(name.endswith(':'), name)
+                    name = name[:-1]
                 out.append((name, method))
         return out
 
@@ -152,18 +154,6 @@ class DexEvoPageTest(unittest.TestCase):
 
     # --- tests -------------------------------------------------------------
 
-    def test_every_evolution_stone_has_a_label(self) -> None:
-        stones = set()
-        for path in [REPO_ROOT / "data" / "pokemon" / "evos_moves.asm",
-                     *(REPO_ROOT / "data" / "pokemon" / "form_evos_moves").glob("*.asm")]:
-            text = path.read_text(encoding="utf-8")
-            stones |= set(re.findall(r"^\s*db EVOLVE_ITEM(?:_FORM)?,\s*([A-Z_]+)", text, re.M))
-            stones |= set(re.findall(r"^\s*evo_item_form\s+\d+,\s*([A-Z_]+)", text, re.M))
-        page = (REPO_ROOT / "custom_functions" / "dex_evo_page.asm").read_text(encoding="utf-8")
-        labelled = set(re.findall(r"^\s*db (\w+),\s*\"", page, re.M))
-        self.assertTrue(stones)
-        self.assertEqual(stones - labelled, set(), "stones without a DexEvoStoneNames label")
-
     def test_level_trade_and_none(self) -> None:
         self.set_owned(True)
         self.set_groups(KANTO | JOHTO | WARP)
@@ -179,26 +169,26 @@ class DexEvoPageTest(unittest.TestCase):
         self.assertEqual(self.species_page("SLOWPOKE"), [[("SLOWBRO", "LV 37")]])
         self.set_groups(KANTO | JOHTO)
         self.assertEqual(self.species_page("SLOWPOKE"),
-                         [[("SLOWBRO", "LV 37"), ("SLOWKING", "WATER")]])
+                         [[("SLOWBRO", "LV 37"), ("SLOWKING", "WATER STONE")]])
 
     def test_eevee_branches_follow_the_groups_and_overflow(self) -> None:
         self.set_owned(True)
-        kanto = [("FLAREON", "FIRE"), ("JOLTEON", "THUNDER"), ("VAPOREON", "WATER")]
+        kanto = [("FLAREON", "FIRE STONE"), ("JOLTEON", "THUNDERSTONE"), ("VAPOREON", "WATER STONE")]
         self.set_groups(KANTO)
         self.assertEqual(self.species_page("EEVEE"), [kanto])
         self.set_groups(KANTO | JOHTO)
         self.assertEqual(self.species_page("EEVEE"),
-                         [kanto + [("ESPEON", "SUN"), ("UMBREON", "DUSK")]])
+                         [kanto, [("ESPEON", "SUN STONE"), ("UMBREON", "DUSK STONE")]])
         self.set_groups(KANTO | JOHTO | WARP)
-        everything = kanto + [("LEAFEON", "LEAF"), ("ESPEON", "SUN"), ("UMBREON", "DUSK"),
-                              ("GLACEON", "ICE"), ("SYLVEON", "MOON")]
-        self.assertEqual(self.species_page("EEVEE"), [everything[:6], everything[6:]])
+        everything = kanto + [("LEAFEON", "LEAF STONE"), ("ESPEON", "SUN STONE"), ("UMBREON", "DUSK STONE"),
+                              ("GLACEON", "ICE STONE"), ("SYLVEON", "MOON STONE")]
+        self.assertEqual(self.species_page("EEVEE"), [everything[:3], everything[3:6], everything[6:]])
 
     def test_forms_list_page(self) -> None:
         self.set_owned(True)
         self.set_groups(KANTO)  # a form carries its own form forward regardless
         self.assertEqual(self.show("FormDexShowData", c=DEX["DEX_FORM_A_VULPIX"]),
-                         [[("ANINETALES", "ICE")]])
+                         [[("ANINETALES", "ICE STONE")]])
 
     def test_reward_preview_uses_the_offer_s_form(self) -> None:
         self.set_owned(True)
@@ -209,7 +199,7 @@ class DexEvoPageTest(unittest.TestCase):
         h.write8("wRewardInfoSlot", 1)
         h.write8("wPokedexNum", SPECIES["VULPIX"])
         try:
-            self.assertEqual(self.show("ShowPokedexData"), [[("ANINETALES", "ICE")]])
+            self.assertEqual(self.show("ShowPokedexData"), [[("ANINETALES", "ICE STONE")]])
         finally:
             h.write8("wRewardInfoSlot", 0)
 

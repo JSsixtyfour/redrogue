@@ -404,7 +404,7 @@ the commit until there is one.
 
 | Date | Commit | Change |
 |---|---|---|
-| 2026-11-26 | - | **Ironman: no REVIVE or MAX REVIVE.** With Ironman on, item balls, rewards and the healing clerk no longer offer them. The other healing items in their tiers become a little more common |
+| 2026-11-26 | 94841676 | **Ironman: no REVIVE or MAX REVIVE.** With Ironman on, item balls, rewards and the healing clerk no longer offer them. The other healing items in their tiers become a little more common |
 | 2026-11-25 | afb4e92b | **Shiny Pokémon:** wild ones can now appear shiny, at the same odds as ones you receive, and stay shiny if caught or if they join you. A reward's INFO screen shows whether it is shiny, and Pokémon sent to the PC box can be shiny too. With a full party, Bill's DUPLICATE and the PokéManiac's prize now put the exact Pokémon in the box, where most of it used to be rolled again |
 | 2026-11-25 | [`2d0797d9`](https://github.com/JSsixtyfour/redrogue/commit/2d0797d9) | **Flora's Spore gift** now gives the Pokémon it names. Where it could be Vileplume or Bellossom, the list, the description and the Pokémon you received were each picked separately |
 | 2026-11-25 | [`f88ae9b8`](https://github.com/JSsixtyfour/redrogue/commit/f88ae9b8) | **Wild Metronome and Mirror Move** no longer change unrelated memory. After a Pokémon was sent to the PC box, it could crash the game at the end of a battle. Thawing a wild Pokémon with a Fire move had the same fault |
