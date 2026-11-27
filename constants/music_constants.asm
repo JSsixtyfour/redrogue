@@ -66,8 +66,7 @@
 	const MUSIC_CHAMPION_BATTLE ; imported: championbattle.asm
 	const MUSIC_ROCKET_BATTLE ; imported: rocketbattle.asm
 	const MUSIC_SUICUNE_BATTLE ; imported: suicunebattle.asm
-	const MUSIC_LOOK_ROCKET ; imported: lookrocket.asm
-	const MUSIC_ROCKET_THEME ; imported: rockettheme.asm
+	const MUSIC_LOOK_ROCKET ; imported: lookrocket.asm (Crystal); a Rocket grunt spotting you in Johto mode
 	const MUSIC_MEWTWO_BATTLE ; imported: mewtwo.mid ("Battle with Mewtwo")
 	const MUSIC_HO_OH_BATTLE ; imported: hooh.mid ("Battle! Ho-Oh")
 	const MUSIC_POKE_CUP_BATTLE ; imported: poke_cup.mid ("Poke Cup Battles 4-6", Stadium; Kanto Rocket theme)

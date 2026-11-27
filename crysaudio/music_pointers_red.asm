@@ -59,7 +59,6 @@ Music:
 	dba Music_RocketBattle
 	dba Music_SuicuneBattle
 	dba Music_LookRocket
-	dba Music_RocketTheme
 	dba Music_MewtwoBattle
 	dba Music_HoOhBattle
 	dba Music_PokeCupBattle

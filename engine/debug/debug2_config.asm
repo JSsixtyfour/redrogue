@@ -1067,13 +1067,13 @@ DebugSoundHelp:
 ASSERT MUSIC_JOHTO_GYM_BATTLE == MUSIC_MEET_JESSIE_JAMES + 2
 ASSERT MUSIC_TCG2_GR_LEADER_DUEL == MUSIC_MEET_JESSIE_JAMES + 4
 ASSERT MUSIC_SUICUNE_BATTLE == MUSIC_MEET_JESSIE_JAMES + 8
-ASSERT MUSIC_ROCKET_THEME == MUSIC_MEET_JESSIE_JAMES + 10
-ASSERT MUSIC_MEWTWO_BATTLE == MUSIC_MEET_JESSIE_JAMES + 11
-ASSERT MUSIC_HO_OH_BATTLE == MUSIC_MEET_JESSIE_JAMES + 12
-ASSERT MUSIC_PIKA_CUP_BATTLE == MUSIC_MEET_JESSIE_JAMES + 15
+ASSERT MUSIC_LOOK_ROCKET == MUSIC_MEET_JESSIE_JAMES + 9
+ASSERT MUSIC_MEWTWO_BATTLE == MUSIC_MEET_JESSIE_JAMES + 10
+ASSERT MUSIC_HO_OH_BATTLE == MUSIC_MEET_JESSIE_JAMES + 11
+ASSERT MUSIC_PIKA_CUP_BATTLE == MUSIC_MEET_JESSIE_JAMES + 14
 DebugSongNames:
 	dw .jessieJames, .pinballBlue, .johtoGym, .tcgClub, .tcg2Gr
-	dw .johtoTrainer, .champion, .rocket, .suicune, .lookRocket, .rocketTheme
+	dw .johtoTrainer, .champion, .rocket, .suicune, .lookRocket
 	dw .mewtwo, .hoOh, .pokeCup, .petitCup, .pikaCup
 .end:
 .jessieJames:  db "MEET JESSIE JAMES@"
@@ -1086,7 +1086,6 @@ DebugSongNames:
 .rocket:       db "ROCKET BATTLE@"
 .suicune:      db "SUICUNE BATTLE@"
 .lookRocket:   db "LOOK ROCKET@"
-.rocketTheme:  db "ROCKET THEME@"
 .mewtwo:       db "BATTLE WITH MEWTWO@"
 .hoOh:         db "BATTLE! HO-OH@"
 .pokeCup:      db "POKE CUP 4-6@"

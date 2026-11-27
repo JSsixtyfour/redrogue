@@ -19,6 +19,8 @@
 	const BMUSIC_ROCKET         ; ROCKET, EVENT_JOHTO_ACTIVATED set
 	const BMUSIC_HO_OH          ; a wild Ho-Oh, or a trainer whose party has one
 	const BMUSIC_KANTO_ROCKET   ; GIOVANNI_MINIBOSS always; ROCKET with Johto off
+	const BMUSIC_FINAL_ROUTE    ; a round's last route trainer (FINAL_ROUTE_STEP)
+	const BMUSIC_FINAL_GYM      ; the last gym trainer before the leader (FINAL_GYM_TRAINER_STEP)
 DEF NUM_BMUSIC_CATEGORIES EQU const_value
 
 PlayBattleMusic::
@@ -189,6 +191,15 @@ GetBaseBattleMusicCategory:
 	jr z, .rocket
 	cp OPP_GIOVANNI_MINIBOSS
 	jr z, .rocket
+	; A round's last route trainer and last gym trainer have their own themes.
+	; GetRandRoster sets BIT_ROGUE_FINAL_TRAINER for exactly those two steps
+	; (and for the PokeManiac, who fights as the route's last trainer), and
+	; ReadTrainer clears it for authored teams, so the Elite Four (whose third
+	; member falls on step FINAL_GYM_TRAINER_STEP) never match. The step says
+	; which of the two this is. Rocket grunts keep their own theme (above).
+	ld a, [wRogueFlagsBitfield]
+	bit BIT_ROGUE_FINAL_TRAINER, a
+	jr nz, .finalTrainer ; at the end: the jr to .finalBattle above must stay in range
 .johtoGymCheck
 	; Johto gym trainers by map: they are ordinary classes. Janine's Fuchsia
 	; Gym is a Kanto map, so its trainers keep the Kanto theme.
@@ -262,6 +273,13 @@ GetBaseBattleMusicCategory:
 	ret z
 	ld a, BMUSIC_JOHTO_BOSS
 	ret
+.finalTrainer
+	call GetRunRoundStep ; a = step within the round
+	cp FIRST_GYM_STEP
+	ld a, BMUSIC_FINAL_ROUTE
+	ret c
+	ld a, BMUSIC_FINAL_GYM
+	ret
 
 ; Out: carry = this wild battle is a procedural stage's boss.
 ; The cemetery boss is started by its map script and flags itself
@@ -320,6 +338,8 @@ BattleMusicRamps:
 	dw BattleMusicRampRocket
 	dw BattleMusicRampHoOh
 	dw BattleMusicRampKantoRocket
+	dw BattleMusicRampFinalRoute
+	dw BattleMusicRampFinalGym
 	assert_table_length NUM_BMUSIC_CATEGORIES
 
 ; Each ramp: `db first round, song` rows in ascending round order, then -1.
@@ -370,4 +390,10 @@ BattleMusicRampHoOh:
 	db -1
 BattleMusicRampKantoRocket:
 	db 0, MUSIC_POKE_CUP_BATTLE
+	db -1
+BattleMusicRampFinalRoute:
+	db 0, MUSIC_TCG_CLUB_MASTER_DUEL
+	db -1
+BattleMusicRampFinalGym:
+	db 0, MUSIC_TCG2_GR_LEADER_DUEL
 	db -1

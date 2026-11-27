@@ -498,6 +498,8 @@ PlayTrainerMusic::
 	                     ; other trainer theme.
 	cp OPP_JESSIE_JAMES
 	jr z, .jessieJames   ; own theme; the Wild Area ambush plays it too
+	cp OPP_ROCKET
+	jr z, .rocket        ; Johto mode: Crystal's Rocket encounter theme
 	ld b, a
 	ld hl, EvilTrainerList
 .evilTrainerListLoop
@@ -524,6 +526,15 @@ PlayTrainerMusic::
 	jp PlayMusic
 .jessieJames
 	ld a, MUSIC_MEET_JESSIE_JAMES
+	jr .PlaySound
+.rocket
+; A Rocket grunt spotting you plays Crystal's Rocket encounter theme in Johto
+; mode, as his battle plays Crystal's Rocket battle theme (play_battle_music.asm);
+; otherwise the evil-trainer theme, as before. Giovanni's classes stay evil-trainer.
+	CheckEvent EVENT_JOHTO_ACTIVATED
+	ld a, MUSIC_LOOK_ROCKET
+	jr nz, .PlaySound
+	ld a, MUSIC_MEET_EVIL_TRAINER
 	jr .PlaySound
 .miniBossRival
 	ld a, MUSIC_MEET_RIVAL
