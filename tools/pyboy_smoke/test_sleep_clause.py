@@ -232,7 +232,7 @@ class SleepClauseTest(unittest.TestCase):
         # in one (core.asm .battleselect). Drop the bit for this render only.
         h.write8("wStatusFlags7", h.read8("wStatusFlags7") & ~BIT_TEST_BATTLE_MASK & 0xFF)
         row: dict[str, str] = {}
-        base = h.address("wTileMap") + 8 * 20 + 1
+        base = h.address("wTileMap") + 7 * 20 + 1
 
         def capture(_context) -> None:
             row.setdefault("text", decode_tiles(h.pyboy.memory[base:base + 9]))

@@ -58,7 +58,7 @@ PlayerAppearanceTable::
 	player_appearance SuperNerdSprite,    SuperNerdPic,    RedPicBack,    .superNerd
 	player_appearance CooltrainerMSprite, SwimmerPic,      SwimmerPicBack, .swimmer      ; SwimmerSprite depicts swimming, not walking
 	player_appearance RockerSprite,       TamerPic,        TamerPicBack,  .tamer
-	player_appearance YoungsterSprite,    YoungsterPic,    RedPicBack,    .youngster
+	player_appearance YoungsterSprite,    YoungsterPic,    YoungsterPicBack, .youngster
 	; Female entries start here — see FIRST_FEMALE_APPEARANCE.
 	player_appearance GreenSprite,        GreenPicFront,   GreenPicBack,  .green
 	player_appearance BeautySprite,       BeautyPic,       BeautyPicBack, .beauty

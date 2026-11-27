@@ -369,7 +369,7 @@ _PCMoveTutorNoMovesText::
 	text "I have nothing to"
 	line "teach this"
 	cont "#MON."
-	done
+	prompt
     
 _PCPokemonSalesmanIGotADealPokeballText::
 	text "MAN: Hello, there!"

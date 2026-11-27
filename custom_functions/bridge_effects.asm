@@ -130,6 +130,12 @@ BridgeAdjustFlinchThreshold::
 	ret
 
 BridgeApplyCuteDamageBoost::
+	; Player-only. The sole caller already branches away on the enemy's turn,
+	; but every check below reads the player's move fields, so a caller that
+	; reached this on the enemy's turn would boost the wrong move.
+	ldh a, [hWhoseTurn]
+	and a
+	ret nz
 	; The ordinary path already excludes status, Super Fang, and special fixed
 	; damage before reaching AdjustDamageForMoveType. Keep the explicit guards
 	; here as well for OHKO and AI/direct callers, whose base power is 1.

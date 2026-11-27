@@ -336,7 +336,6 @@ ROMX $2E
 	; Temporary Pokedex-only BG tiles. LoadPokedexTilePatterns uses BANK(), so
 	; the asset is bank-independent and is pinned away from tight bank $04.
 	"Pokedex Stats Bar Graphics"
-	"Battle Move Info"
 	"Battle Pic Helpers"
 	; Yume Task 4 expands Bill's PC into a 5x4 BG-icon grid. Every exported
 	; edge is bank-aware (farcall, explicit BANK(), dba, or text predef), and
@@ -526,6 +525,10 @@ ROMX $3E
 	; $10 and $0E. Both farcall only, WRAM and FarCopyData only.
 	"AI Stalemate"
 	"Trainer AI Fair Play"
+	; The battle move info box (PrintMenuItem), pinned here 2026-11-27 when its
+	; effect row pushed it past the room left in $2E. Reached only by farcall
+	; from MoveSelectionMenu; its own calls are HOME, predef or farcall.
+	"Battle Move Info"
 ROMX $3F
 	; "ProceduralCaveGen" relocated here 2026-09-16, out of ROMX $5.
 	;

@@ -1337,7 +1337,8 @@ PCMoveTutorTalk::
 	jr nz, .initMoveMenu
 	pop af
 	ld hl, PCMoveTutorNoMovesText
-	jp PrintText
+	call PrintText
+	jp .chooseMon ; pick another Pokemon; B on the party menu still says bye
 .initMoveMenu
 	xor a
 	ldh [hCurrentMenuItem], a

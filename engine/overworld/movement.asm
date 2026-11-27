@@ -515,6 +515,15 @@ MakeNPCFacePlayer:
 	bit PLAYER_DIR_BIT_DOWN, a
 	jr z, .notFacingUp
 	ld c, SPRITE_FACING_UP
+	; The nurse sheet's "up" frame is her bow, not a back view, so talking to
+	; her from above (wild-area Joy) held a bow through the whole exchange.
+	; She keeps her front pose instead; left and right use her side frame.
+	ldh a, [hCurrentSpriteOffset]
+	ld l, a                 ; h is still HIGH(wSpriteStateData1)
+	ld a, [hl]              ; x#SPRITESTATEDATA1_PICTUREID
+	cp SPRITE_NURSE
+	jr nz, .facingDirectionDetermined
+	ld c, SPRITE_FACING_DOWN
 	jr .facingDirectionDetermined
 .notFacingUp
 	bit PLAYER_DIR_BIT_LEFT, a
