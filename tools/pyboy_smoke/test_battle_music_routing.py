@@ -17,8 +17,11 @@ EVENTS = parse_rgbds_constants(REPO_ROOT / "constants/event_constants.asm")
 SPECIES = parse_rgbds_constants(REPO_ROOT / "constants/pokemon_constants.asm")
 ROUND_BATTLES = parse_rgbds_constants(
     REPO_ROOT / "constants/round_constants.asm")["ROUND_BATTLES"]
-BIT_TALKED_TO_TRAINER = parse_rgbds_constants(
-    REPO_ROOT / "constants/ram_constants.asm")["BIT_TALKED_TO_TRAINER"]
+RAM_CONSTANTS = parse_rgbds_constants(REPO_ROOT / "constants/ram_constants.asm")
+BIT_TALKED_TO_TRAINER = RAM_CONSTANTS["BIT_TALKED_TO_TRAINER"]
+BIT_ROGUE_FINAL_TRAINER = RAM_CONSTANTS["BIT_ROGUE_FINAL_TRAINER"]
+ROUND = parse_rgbds_constants(REPO_ROOT / "constants/round_constants.asm")
+FINAL_ROUTE_STEP, FINAL_GYM_TRAINER_STEP = ROUND["FINAL_ROUTE_STEP"], ROUND["FINAL_GYM_TRAINER_STEP"]
 JOHTO = EVENTS["EVENT_JOHTO_ACTIVATED"]
 FAKE_RAMP = "wTileMapBackup"  # scratch the routine never touches
 
@@ -46,7 +49,7 @@ class BattleMusicRoutingTest(HarnessTestCase):
     def song(self, *, opponent=0, trainer=True, gym_leader=0, map_name="REDS_HOUSE_1F",
              johto=False, talked=False, sprite=0, cemetery_boss=False, depth=0,
              battle_count=1, fake_ramp=None, seed=None, party=(), party_count=None,
-             wild_species=None) -> int:
+             wild_species=None, final=False) -> int:
         h = self.harness
         self.baseline.seek(0)
         h.load_state(self.baseline)
@@ -69,6 +72,11 @@ class BattleMusicRoutingTest(HarnessTestCase):
         h.write8("wStatusFlags3", status | bit if talked else status & ~bit)
         h.write8("hActiveSpriteIndex", sprite)
         h.write8("wProcCemBossBattle", 1 if cemetery_boss else 0)
+        # GetRandRoster's "final trainer of the tier" bit (ReadTrainer clears it
+        # for authored teams); written both ways so the baseline can't leak in.
+        flags = h.read8("wRogueFlagsBitfield")
+        bit = 1 << BIT_ROGUE_FINAL_TRAINER
+        h.write8("wRogueFlagsBitfield", flags | bit if final else flags & ~bit)
         h.write8("wEndlessDepth", depth)
         h.write8("wBattleCount", battle_count)
         self.fake_ramp = fake_ramp
@@ -240,6 +248,79 @@ class BattleMusicRoutingTest(HarnessTestCase):
         self.assertEqual(self.song(opponent=OPP["BROCK"], gym_leader=1, map_name="PEWTER_GYM",
                                    battle_count=5 * ROUND_BATTLES),
                          MUSIC["MUSIC_GYM_LEADER_BATTLE"])
+
+    def test_final_route_and_final_gym_trainers(self) -> None:
+        """A round's last route trainer plays TCG's Club Master duel and its last
+        gym trainer (right before the leader) TCG2's GR Leader duel (2026-11-26).
+        Both are GetRandRoster's BIT_ROGUE_FINAL_TRAINER trainers; the step tells
+        them apart."""
+        club = MUSIC["MUSIC_TCG_CLUB_MASTER_DUEL"]
+        gr = MUSIC["MUSIC_TCG2_GR_LEADER_DUEL"]
+        for rnd in (0, 2, 4, 7):
+            with self.subTest(round=rnd):
+                route = rnd * ROUND_BATTLES + FINAL_ROUTE_STEP
+                gym = rnd * ROUND_BATTLES + FINAL_GYM_TRAINER_STEP
+                self.assertEqual(self.song(opponent=OPP["YOUNGSTER"], battle_count=route,
+                                           final=True), club)
+                self.assertEqual(self.song(opponent=OPP["COOLTRAINER_M"], battle_count=gym,
+                                           final=True), gr)
+        # Johto mode and a Johto gym: the final gym trainer still gets GR's theme
+        self.assertEqual(self.song(opponent=OPP["COOLTRAINER_M"], map_name="VIOLET_GYM",
+                                   johto=True, battle_count=FINAL_GYM_TRAINER_STEP, final=True), gr)
+        # Endless: a one-row category, so the same songs and no roll
+        self.assertEqual(self.song(opponent=OPP["YOUNGSTER"], depth=2,
+                                   battle_count=FINAL_ROUTE_STEP, final=True), club)
+        # without the bit the same steps keep the ordinary themes
+        self.assertEqual(self.song(opponent=OPP["YOUNGSTER"], battle_count=FINAL_ROUTE_STEP),
+                         MUSIC["MUSIC_TRAINER_BATTLE"])
+        self.assertEqual(self.song(opponent=OPP["COOLTRAINER_M"], map_name="VIOLET_GYM",
+                                   battle_count=FINAL_GYM_TRAINER_STEP),
+                         MUSIC["MUSIC_JOHTO_TRAINER_BATTLE"])
+        # the third Elite Four member lands on the final gym step; authored teams
+        # never carry the bit, so the E4 keep their themes
+        e4_third = ROUND["E4_FIRST_BATTLECOUNT"] + 2
+        self.assertEqual(e4_third % ROUND_BATTLES, FINAL_GYM_TRAINER_STEP)
+        self.assertEqual(self.song(opponent=OPP["AGATHA"], battle_count=e4_third),
+                         MUSIC["MUSIC_TRAINER_BATTLE"])
+        # Rocket grunts, Mewtwo and the finale keep outranking it
+        self.assertEqual(self.song(opponent=OPP["ROCKET"], johto=True,
+                                   battle_count=FINAL_ROUTE_STEP, final=True),
+                         MUSIC["MUSIC_ROCKET_BATTLE"])
+        self.assertEqual(self.song(opponent=OPP["YOUNGSTER"], battle_count=FINAL_ROUTE_STEP,
+                                   final=True, party=[SPECIES["MEWTWO"]]),
+                         MUSIC["MUSIC_MEWTWO_BATTLE"])
+        self.assertEqual(self.song(opponent=OPP["RIVAL3"], battle_count=FINAL_ROUTE_STEP,
+                                   final=True), MUSIC["MUSIC_FINAL_BATTLE"])
+
+    def test_reward_room_plays_pinball_blue_field(self) -> None:
+        h = self.harness
+        bank, address = h.symbols.get("MapSongBanks")
+        rom = h.rom_path.read_bytes()
+        row = bank * 0x4000 + (address - (0x4000 if bank else 0)) + 2 * MAPS["REWARD_ROOM"]
+        self.assertEqual(rom[row], MUSIC["MUSIC_PINBALL_CATCH_EM_BLUE"])
+
+    def test_rocket_spotting_you_plays_look_rocket_in_johto_mode(self) -> None:
+        h = self.harness
+        played = []
+        h.register_hook("PlayMusic", lambda _: played.append(h.pyboy.register_file.A))
+        cases = (("ROCKET", True, MUSIC["MUSIC_LOOK_ROCKET"]),
+                 ("ROCKET", False, MUSIC["MUSIC_MEET_EVIL_TRAINER"]),
+                 ("GIOVANNI_MINIBOSS", True, MUSIC["MUSIC_MEET_EVIL_TRAINER"]),
+                 ("JESSIE_JAMES", True, MUSIC["MUSIC_MEET_JESSIE_JAMES"]),
+                 ("YOUNGSTER", True, MUSIC["MUSIC_MEET_MALE_TRAINER"]))
+        for name, johto, expected in cases:
+            with self.subTest(trainer=name, johto=johto):
+                self.baseline.seek(0)
+                h.load_state(self.baseline)
+                h.write8("wEngagedTrainerClass", OPP[name])
+                h.write8("wGymLeaderNo", 0)
+                flags = h.read8("wEventFlags", JOHTO // 8)
+                bit = 1 << (JOHTO % 8)
+                h.write8("wEventFlags", flags | bit if johto else flags & ~bit, JOHTO // 8)
+                played.clear()
+                h.call_routine("PlayTrainerMusic", limit=4000)
+                # SFX_STOP_ALL_MUSIC reaches PlayMusic as song 0 first
+                self.assertEqual([song for song in played if song], [expected])
 
     def test_ramp_walk_takes_the_last_reached_row(self) -> None:
         ramp = [0, 0x11, 2, 0x22, 5, 0x33]

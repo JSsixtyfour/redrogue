@@ -31,9 +31,13 @@ from pyboy import PyBoy  # noqa: E402
 #   41 NoteLength: the speed, which the optimizer re-chooses on purpose. Only
 #      SetNoteDuration reads it (low byte of speed * length), and NoteDuration and
 #      NoteDurationModifier, which are compared, are that product's result;
-#   21 LoopCount: finite-loop bookkeeping, read only by Music_Loop.
+#   21 LoopCount: finite-loop bookkeeping, read only by Music_Loop;
+#   17 Octave: read only when a note starts (ParseMusic -> GetFrequency), and
+#      that note's Pitch, Transposition and Frequency are all compared. A rest
+#      doesn't read it, so an `octave` moved from before a rest to the next note
+#      differs here only while resting (measured 2026-11-26 on LookRocket).
 # Flags1 (offset 3) is compared without bits 1-2 (in a subroutine, in a loop).
-LAYOUT_FIELDS = {2, 6, 7, 8, 9, 21, 41}
+LAYOUT_FIELDS = {2, 6, 7, 8, 9, 17, 21, 41}
 FLAGS1, FLAGS1_FLOW_BITS = 3, 0b110
 
 
