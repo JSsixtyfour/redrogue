@@ -43,8 +43,8 @@ PARTY_POSE = ("MEW", "MEWTWO")
 FRAME_NAMES = ("stand down", "stand up", "stand left", "walk down", "walk up", "walk left")
 # Measured art gaps on sheets the follower/boss lookup still uses. Each entry
 # must still show its gap, so fixing the art fails the test until it is removed.
-NO_STEP_FRAMES = ("NIDORINO", "PSYDUCK")  # walk frames are copies of the standing frames
-WRONG_FACING_WALK = ("MOLTRES",)          # walk down is the stand up frame
+NO_STEP_FRAMES: tuple[str, ...] = ()  # sprites whose walk frames are copies of the standing frames
+WRONG_FACING_WALK: tuple[str, ...] = ()  # sprites whose walk down is the stand up frame
 
 
 def sheet_frames(sprite: str) -> list[bytes]:
