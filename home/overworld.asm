@@ -2394,6 +2394,27 @@ LoadMapHeader::
 	ld [de], a ; x#SPRITESTATEDATA2_MOVEMENTBYTE1
 	ld a, [hli]
 	ldh [hLoadSpriteTemp1], a ; save movement byte 2
+; Face a fixed-direction object (DOWN/UP/LEFT/RIGHT) its way from the start.
+; The facing byte was left zeroed (down) until UpdateNPCSprite's first movement
+; pass, which runs after CheckSpriteAvailability has already drawn the sprite,
+; so an UP/LEFT/RIGHT object showed facing down for one frame on entry
+; (measured: the lobby trader, image $80 then $84).
+	push de
+	dec d ; HIGH(wSpriteStateData1)
+	ASSERT SPRITESTATEDATA1_FACINGDIRECTION - SPRITESTATEDATA2_MOVEMENTBYTE1 == 3
+	inc e
+	inc e
+	inc e ; x#SPRITESTATEDATA1_FACINGDIRECTION
+	sub DOWN
+	cp RIGHT - DOWN + 1
+	jr nc, .noFixedFacing ; WALK ranges, NONE, boulders: leave it down
+	ASSERT UP - DOWN == 1 && LEFT - DOWN == 2 && RIGHT - DOWN == 3
+	ASSERT SPRITE_FACING_UP == 4 && SPRITE_FACING_LEFT == 8 && SPRITE_FACING_RIGHT == 12
+	add a
+	add a
+	ld [de], a
+.noFixedFacing
+	pop de
 	ld a, [hli]
 	ldh [hLoadSpriteTemp2], a ; save text ID and flags byte
 	push bc
@@ -2403,8 +2424,6 @@ LoadMapHeader::
 	add hl, bc
 	ldh a, [hLoadSpriteTemp1]
 	ld [hli], a ; store movement byte 2 in byte 0 of sprite entry
-	ldh a, [hLoadSpriteTemp2]
-	ld [hl], a ; this appears pointless, since the value is overwritten immediately after
 	ldh a, [hLoadSpriteTemp2]
 	ldh [hLoadSpriteTemp1], a
 	and $3f

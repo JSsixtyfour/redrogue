@@ -31,6 +31,10 @@ ENDM
 ; \1 is on for this run. 5 bytes, clobbers a only, so it drops in beside an
 ; existing witch `bit BIT_WITCH_ACCEPTED` / `cp CHALLENGE_*` test.
 MACRO run_challenge
-	ld a, [wRunChallenges + (\1) / 8]
+	IF (\1) < 16
+		ld a, [wRunChallenges + (\1) / 8]
+	ELSE
+		ld a, [wRunChallengesExt + ((\1) - 16) / 8] ; 16-23: not contiguous
+	ENDC
 	bit (\1) % 8, a
 ENDM

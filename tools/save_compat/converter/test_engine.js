@@ -843,6 +843,37 @@ test("schema 5 to 6: a fallen count within the new capacity is kept", () => {
   assert.equal(out.bytes[wramOffset(to, "wFallenCount")], 3);
 });
 
+test("schema 26 to 27: the JOEY challenge starts off and unearned, nothing else changes", () => {
+  const full = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
+  const from = full(26), to = full(27);
+  const save = syntheticSave("26"), pkg = packageTargeting("27");
+  const ext = wramOffset(to, "wRunChallengesExt"), badges2 = wramOffset(to, "wChallengeBadges2");
+  assert.equal(wramOffset(from, "wRunChallengesExt"), -1);
+  assert.equal(ext, wramOffset(from, "wWildGenericBeaten") + 1, "the pad after wWildGenericBeaten");
+  assert.equal(badges2, wramOffset(from, "wChallengeBadges2"));
+  // Neighbours and the kept badges carry noise; the pad and the new badge bit hold stale bits.
+  save[ext - 1] = 0x5a;                   // wWildGenericBeaten
+  save[ext] = 0xff;                       // stale pad
+  save[ext + 1] = 0xa5;
+  save[badges2] = 0xff;                   // every extra earned, plus a stale bit 5
+  save.set([0x12, 0x34], wramOffset(to, "wRunChallenges"));
+  recomputeChecksums(save, from);
+  const out = api.convert(save, pkg, { mode: "continue" });
+  assert.equal(out.ok, true, out.reason);
+  const b = out.bytes;
+  assert.equal(b[ext], 0, "no challenge 16-23 on");
+  assert.equal(b[badges2], 0xdf, "bit 5 (JOEY) cleared, the other extras kept");
+  assert.deepEqual([b[ext - 1], b[ext + 1]], [0x5a, 0xa5]);
+  assert.deepEqual(Array.from(b.slice(wramOffset(to, "wRunChallenges"), wramOffset(to, "wRunChallenges") + 2)), [0x12, 0x34]);
+  const main = to.checksums.find((c) => c.name === "main");
+  const sum = offsetOf(main.at_bank, main.at);
+  for (let i = 0; i < save.length; i++) {
+    if (i === ext || i === badges2 || i === sum || (i >= 0x2040 && i < 0x2048)) continue; // fields, checksum, header
+    if (b[i] !== save[i]) assert.equal(b[i], save[i], `unrelated byte ${i}`);
+  }
+  assert.equal(api.checksumStatus(b, to).main, true);
+});
+
 test("schema 25 to 26: shiny rolls start never shiny, the ELEMENT BOY's data and events survive the rename", () => {
   const full = (id) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "save_schemas", `schema_${id}.json`), "utf8"));
   const from = full(25), to = full(26);

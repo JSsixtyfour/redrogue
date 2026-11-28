@@ -323,8 +323,14 @@ DEF CHALLENGE_REDUCED_RARITY_PENALTY EQU 51
 	const RUN_CH_FULL_PARTIES     ; 13 run only: trainers never field one fewer
 	const RUN_CH_FEWER_REWARDS    ; 14 run only: fewer reward Pokemon
 	const RUN_CH_NO_GIFTS         ; 15 run only: no bridge gift rooms are rolled
+	; 16 and up live in wRunChallengesExt (wRunChallenges is full), and their
+	; badges are BIT_CHBADGE_* extras, since wChallengeBadges/Hi are full too.
+	const RUN_CH_JOEY             ; 16 run only: RATTATA starters, Youngster look
 DEF NUM_RUN_CHALLENGES EQU const_value ; offered in the Dorm PC list
-ASSERT const_value <= 16, "wRunChallenges / wChallengeBadges hold 16 bits"
+ASSERT const_value <= 24, "wRunChallenges + wRunChallengesExt hold 24 bits"
+; RECORDS page 1 has 16 rows, one per wChallengeBadges/Hi bit. Challenges from
+; 16 up show their badge on page 2 with the extras instead.
+DEF NUM_RUN_CH_BADGE_ROWS EQU 16
 
 ; wChallengeBadges2 bits: badges with no Dorm PC toggle, plus combinations.
 	const_def
@@ -333,7 +339,9 @@ ASSERT const_value <= 16, "wRunChallenges / wChallengeBadges hold 16 bits"
 	const BIT_CHBADGE_THREE       ; 2 cleared with 3+ run challenges at once
 	const BIT_CHBADGE_SIX         ; 3 cleared with 6+ run challenges at once
 	const BIT_CHBADGE_ALL         ; 4 cleared with every run challenge on
+	const BIT_CHBADGE_JOEY        ; 5 cleared with RUN_CH_JOEY on
 DEF NUM_CHBADGE_EXTRA EQU const_value
+ASSERT const_value <= 8
 
 ; FEWER REWARDS withholds the stage reward Pokemon on the 0-based rounds whose bit is
 ; set here (bit n = round n): %00100010 is rounds 2 and 6 by the player's count, the

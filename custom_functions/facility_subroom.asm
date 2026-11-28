@@ -784,12 +784,14 @@ FacManiacNoRoomText:
 
 ; In battle: he lost. Line 1 already holds "POKEMANIAC: " (12 of 18).
 FacManiacBeatenText:
-	text "Alright. Let me"
-	line "roll the dice to"
-	cont "choose which."
+	text "Okay."
+	para "Let me roll the"
+	line "dice to choose"
+	cont "which #MON."
 	prompt
 
-; In battle: he won.
+; In battle: he won. Same prefix, so line 1 has 6.
 FacManiacWonText:
-	text "Oh, nice try!"
+	text "Oh,"
+	para "Nice try!"
 	prompt

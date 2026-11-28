@@ -80,7 +80,9 @@ ENGINE_WRAM = {"wPlayerName", "wPartyCount", "wPartySpecies", "wBoxCount", "wCur
                # migration bridgeRecordsAdded (schema 22 -> 23)
                "wBridgeSelectedEffect2", "wBridgeSelectedEffectsEnd", "wBridgeSelectedEffectOwner3",
                # migration wildGenericAdded (schema 24 -> 25)
-               "wWildGenericBeaten", "wNumSigns"}
+               "wWildGenericBeaten", "wNumSigns",
+               # migration joeyChallengeAdded (schema 26 -> 27)
+               "wRunChallengesExt"}
 # (forestGenericAdded, schema 23 -> 24, reads SRAM labels only: every package carries those.)
 
 # Steps whose per-migration table flag_translation() computes and attaches to the target schema.

@@ -105,14 +105,46 @@ PlayerAppearanceTable::
 .lass          db "LASS@"
 .oldMan        db "OLD MAN@"
 
-; Common entry point for all four accessors.
-; Returns hl = &PlayerAppearanceTable[wPlayerAppearance].
-GetPlayerAppearanceEntry:
+; a = the appearance to show right now: YOUNGSTER while the JOEY run challenge
+; is on, outside Silph Co (the Dorm, the lobby and the halls between runs keep
+; the chosen look), else wPlayerAppearance, with a corrupt index (e.g. an SRAM
+; slot from an older layout) read as RED. Every look the player is drawn with
+; goes through here, so the map change that reloads the sprite also swaps it.
+; Clobbers af, bc, de, hl.
+GetEffectivePlayerAppearance::
+	run_challenge RUN_CH_JOEY
+	jr z, .own
+	ldh a, [hCurMap]
+	ld hl, JoeyOwnLookMaps
+	ld de, 1
+	call IsInArray
+	jr c, .own
+	ld a, PLAYER_APPEARANCE_YOUNGSTER
+	ret
+.own
 	ld a, [wPlayerAppearance]
 	cp NUM_PLAYER_APPEARANCES
-	jr c, .valid
-	xor a ; corrupt index (e.g. an SRAM slot from an older layout): fall back to RED
-.valid
+	ret c
+	xor a
+	ret
+
+; The same in e, for a farcall (Bankswitch destroys a). Clobbers af, bc, d, hl.
+GetEffectivePlayerAppearanceFar::
+	call GetEffectivePlayerAppearance
+	ld e, a
+	ret
+
+; Silph Co: where JOEY leaves the player's own look alone.
+JoeyOwnLookMaps:
+	db SILPH_CO_1F, SILPH_CO_2F, SILPH_CO_3F, SILPH_CO_4F, SILPH_CO_5F
+	db SILPH_CO_6F, SILPH_CO_7F, SILPH_CO_8F, SILPH_CO_9F, SILPH_CO_10F
+	db SILPH_CO_11F, SILPH_CO_ELEVATOR, SILPH_CO_B1F, SILPH_CO_DORM, SILPH_CO_VR
+	db -1
+
+; Common entry point for all four accessors.
+; Returns hl = &PlayerAppearanceTable[GetEffectivePlayerAppearance].
+GetPlayerAppearanceEntry:
+	call GetEffectivePlayerAppearance
 	ld hl, PlayerAppearanceTable
 	ld bc, PLAYER_APPEARANCE_ENTRY_SIZE
 	and a
@@ -163,7 +195,7 @@ SwitchRunningToWalkingSprites::
 	ld a, [wWalkBikeSurfState]
 	and a
 	ret nz
-	ld a, [wPlayerAppearance]
+	call GetEffectivePlayerAppearance
 	cp PLAYER_APPEARANCE_RED
 	jr z, .loadWalk
 	cp PLAYER_APPEARANCE_GREEN
@@ -179,7 +211,7 @@ LoadRunningPlayerSpriteGraphics:
 	ld a, [wWalkBikeSurfState]
 	and a
 	ret nz ; surfing keeps its existing sheet
-	ld a, [wPlayerAppearance]
+	call GetEffectivePlayerAppearance
 	ld de, RedRunSprite
 	cp PLAYER_APPEARANCE_RED
 	jr z, .load

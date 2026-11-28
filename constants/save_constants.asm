@@ -127,7 +127,12 @@
 ; keeps its DVs and stays as it was shown. The ELEMENT BOY's identifiers took its
 ; new name (FOLLOWUPS #108): labels and events renamed, no value or address
 ; changed, and the step knows the two renamed SRAM labels.
-DEF SAVE_SCHEMA_ID EQU 26
+; Schema 27 (2026-11-27): the JOEY run challenge. wRunChallengesExt (run
+; challenges 16-23) took the follower reservation's last spare saved byte, after
+; wWildGenericBeaten; nothing moved. wChallengeBadges2 bit 5 now means the JOEY
+; badge (never set before). Migration joeyChallengeAdded writes both as a new game
+; does: no challenge on, no badge.
+DEF SAVE_SCHEMA_ID EQU 27
 
 DEF SAVE_HEADER_SIZE EQU 8
 ; Transient invalid magic while a writer owns the save. Completed headers and

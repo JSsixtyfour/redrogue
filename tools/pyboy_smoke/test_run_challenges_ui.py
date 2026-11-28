@@ -148,7 +148,7 @@ class RunChallengesUITest(unittest.TestCase):
         self.open_pc()
         h.write8("wChallengeBadges", 0b00000101)      # POOR REWARDS, HIGHER LEVELS
         h.write8("wChallengeBadgesHi", 0b01000000)    # id 14: FEWER REWARDS
-        h.write8("wChallengeBadges2", 0b00010001)     # IRONMAN, ALL AT ONCE
+        h.write8("wChallengeBadges2", 0b00110001)     # IRONMAN, ALL AT ONCE, JOEY
         h.write8("wBestHeat", 12)
         for _ in range(3):                            # RECORDS
             self.press("down")
@@ -165,8 +165,9 @@ class RunChallengesUITest(unittest.TestCase):
         self.shot("run_challenges_records1.png")
         self.press("a", 20)                           # page 2
         self.assertEqual(self.row(2, 7), text("IRONMAN"))
-        marks = [self.row(2 + i, 1, 17)[0] for i in range(5)]
-        self.assertEqual(marks, [plus, minus, minus, minus, plus])
+        marks = [self.row(2 + i, 1, 17)[0] for i in range(6)]
+        self.assertEqual(marks, [plus, minus, minus, minus, plus, plus])
+        self.assertEqual(self.row(7, 4), text("JOEY"), "RUN_CH_JOEY's badge is an extra")
         self.assertEqual(self.row(11, 3, 13), [0x7F, 0xF7, 0xF8])  # " 12", leading zero blank
         self.shot("run_challenges_records2.png")
         self.press("b", 30)

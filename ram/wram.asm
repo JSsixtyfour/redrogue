@@ -2376,7 +2376,11 @@ ASSERT wOptionalEncounterBattle - wOptionalEncounterSpecies == 6
 ; time and each area's roll clears the byte, so the areas share it. Not an event:
 ; the event table is full (gen_event_constants.py: 520 bits needed of 512).
 wWildGenericBeaten:: db
-	ds 28 - 19 - 7 - 1
+; Run challenges 16-23 (schema 27), the reservation's last spare saved byte:
+; wRunChallenges is full and its neighbours are taken. Same rules as
+; wRunChallenges: editable only between runs, not cleared by the run reset, read
+; with the run_challenge macro. custom_functions/run_challenges.asm.
+wRunChallengesExt:: db
 wFollowerDataEnd::
 ASSERT wFollowerDataEnd - wFollowerDataStart == 28
 

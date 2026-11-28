@@ -833,6 +833,24 @@
       return null;
     },
 
+    // Schema 26 -> 27 (2026-11-27, the JOEY run challenge): wRunChallengesExt, run challenges
+    // 16-23, takes the follower reservation's last spare saved byte right after
+    // wWildGenericBeaten, so nothing moves. wChallengeBadges2 bit 5 (BIT_CHBADGE_JOEY) was never
+    // set before. Both start as a new game has them: no challenge on, no badge.
+    joeyChallengeAdded: function (bytes, from, to) {
+      if (wramField(from, "wRunChallengesExt")) return "this save already has the JOEY challenge";
+      var ext = wramOffset(to, "wRunChallengesExt"), beaten = wramOffset(from, "wWildGenericBeaten");
+      if (ext < 0 || beaten < 0 || ext !== beaten + 1 || wramOffset(to, "wWildGenericBeaten") !== beaten)
+        return "run challenge padding layout not recognised";
+      if (wramOffset(to, "wNumSigns") !== wramOffset(from, "wNumSigns")
+          || wramOffset(to, "wChallengeBadges2") !== wramOffset(from, "wChallengeBadges2"))
+        return "the main data moved, which this step does not expect";
+      bytes[ext] = 0;
+      bytes[wramOffset(to, "wChallengeBadges2")] &= 0xdf;
+      recomputeChecksums(bytes, to, ["main"]);
+      return null;
+    },
+
     lossRecoveryAdded: function (bytes, from, to) {
       var names = ["sLossRecovery1", "sLossRecovery2", "sLossRecovery3", "sLossRecoveryCRC", "sLossRecoveryValid"];
       for (var i = 0; i < names.length; i++) {

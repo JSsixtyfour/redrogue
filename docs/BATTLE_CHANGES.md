@@ -344,6 +344,7 @@ x0.75 · your 2 to 5 hit moves always hit 4 or 5 times · +10% prize money · ra
 | Turn limit | After 6 + round turns, lose 1/16 max HP every turn |
 | No healing | No medicine outside battle |
 | Higher levels / rarer foes | Enemy levels about +10% / one rarity class higher |
+| Joey (Dorm PC only) | All three starters are RATTATA, with 15 in every DV. With the Time Warp group on, one of the three is Alolan RATTATA. RATTATA offered later in the run roll their DVs as usual. You also look like a Youngster outside Silph Co |
 
 ## Still vanilla: do not get caught
 
@@ -404,6 +405,7 @@ the commit until there is one.
 
 | Date | Commit | Change |
 |---|---|---|
+| 2026-11-27 | - | **New Dorm PC challenge, JOEY** (heat 1): all three starters are RATTATA with 15 in every DV, and one is Alolan RATTATA if the Time Warp group is on. Clearing a run with it on earns a JOEY badge |
 | 2026-11-26 | 94841676 | **Ironman: no REVIVE or MAX REVIVE.** With Ironman on, item balls, rewards and the healing clerk no longer offer them. The other healing items in their tiers become a little more common |
 | 2026-11-25 | afb4e92b | **Shiny Pokémon:** wild ones can now appear shiny, at the same odds as ones you receive, and stay shiny if caught or if they join you. A reward's INFO screen shows whether it is shiny, and Pokémon sent to the PC box can be shiny too. With a full party, Bill's DUPLICATE and the PokéManiac's prize now put the exact Pokémon in the box, where most of it used to be rolled again |
 | 2026-11-25 | [`2d0797d9`](https://github.com/JSsixtyfour/redrogue/commit/2d0797d9) | **Flora's Spore gift** now gives the Pokémon it names. Where it could be Vileplume or Bellossom, the list, the description and the Pokémon you received were each picked separately |

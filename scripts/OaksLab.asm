@@ -43,6 +43,7 @@ OaksLab_Script:
    jr nz, .default
 
    farcall rogue_pokemon_randomized_batch
+   farcall JoeyStarterOverride   ; run challenge JOEY: three RATTATA (run_challenges.asm)
    SetEvent EVENT_ESTABLISHED_STARTER
 
    jp .end

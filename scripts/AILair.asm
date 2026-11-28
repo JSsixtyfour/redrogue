@@ -173,13 +173,11 @@ AILairMirrorSpriteIDs:
 ; Called from ProcBossPatchStageSprite between LoadMapHeader and InitMapSprites.
 ; AILAIR_OPPONENT is object 1, so its slot is wSprite01.
 AILairPatchMirrorSprite::
-	ld a, [wPlayerAppearance]
-	cp NUM_PLAYER_APPEARANCES
-	jr c, .inRange
-	xor a ; corrupt byte: fall back to Red rather than index past the table
-.inRange
+	; the look the player has right now (YOUNGSTER under the JOEY run
+	; challenge); a corrupt byte already reads as RED
+	farcall GetEffectivePlayerAppearanceFar ; e = appearance
 	ld hl, AILairMirrorSpriteIDs
-	ld c, a
+	ld c, e
 	ld b, 0
 	add hl, bc
 	ld a, [hl]

@@ -5,6 +5,7 @@
 ; State, all saved Main Data outside wGameProgressFlags, so the run reset
 ; leaves it alone:
 ;   wRunChallenges       the choice; locked while a run is in progress
+;   wRunChallengesExt    the same for RUN_CH_ 16 up (not contiguous with it)
 ;   wRunChallengeBroken  this run's broken badge conditions (cleared at run
 ;                        start, see the layout below)
 ;   wChallengeBadges/Hi  RUN_CH_* bits ever cleared with
@@ -38,6 +39,7 @@ RunChallengesNewGame::
 	xor a
 	ld [wRunChallenges], a
 	ld [wRunChallenges + 1], a
+	ld [wRunChallengesExt], a
 	ld [wChallengeBadges], a
 	ld [wChallengeBadgesHi], a
 	ld [wChallengeBadges2], a
@@ -142,6 +144,10 @@ RunChallengesCommitClear::
 	cpl
 	and RUN_BROKEN_FLAGS
 	ld e, a                       ; e = extras earned
+	run_challenge RUN_CH_JOEY     ; no wChallengeBadges/Hi bit: an extra instead
+	jr z, .noJoey
+	set BIT_CHBADGE_JOEY, e
+.noJoey
 	call RunChallengeCount        ; c = challenges on; keeps de
 	ld a, c
 	cp 3
@@ -252,6 +258,9 @@ RunChallengeMask::
 	cp 8
 	jr c, .lowByte
 	inc hl
+	cp 16
+	jr c, .lowByte
+	ld hl, wRunChallengesExt
 .lowByte
 	ld a, b
 	and 7
@@ -343,6 +352,7 @@ RunChallengeWeights:
 	db 2 ; RUN_CH_FULL_PARTIES
 	db 2 ; RUN_CH_FEWER_REWARDS
 	db 2 ; RUN_CH_NO_GIFTS
+	db 1 ; RUN_CH_JOEY
 ASSERT @ - RunChallengeWeights == NUM_RUN_CHALLENGES
 
 ; ============================================================
@@ -444,6 +454,77 @@ RewardChallengeFlags::
 	ret z
 	set 0, e
 	ret
+
+; ============================================================
+; JoeyStarterOverride - Oak's Lab just rolled the three starters
+; (OaksLab_Script). Under JOEY every ball becomes RATTATA, one of them Alolan
+; when the Time Warp group is active this run, and each gets perfect DVs. They
+; are stored as the offers' own DVs (tag = species, so GetRogueOfferDVs reads
+; them instead of rolling), which the INFO screen shows and AddPartyMon gives.
+; Later Rattata offers roll their DVs as usual. The roll it replaces rejects
+; duplicate species, which is why this runs after it instead of inside it.
+; farcall only. Clobbers everything.
+; ============================================================
+DEF JOEY_ALOLAN_RATTATA_FORM EQU 1 ; rarity_mon RATTATA, 1 (WarpPokeball)
+
+JoeyStarterOverride::
+	run_challenge RUN_CH_JOEY
+	ret z
+	ld a, RATTATA
+	ld [wRoguePokemon1], a
+	ld [wRoguePokemon2], a
+	ld [wRoguePokemon3], a
+	xor a
+	ld [wRoguePokemonForm1], a
+	ld [wRoguePokemonForm2], a
+	ld [wRoguePokemonForm3], a
+	farcall RogueGetActiveGroupMaskFar ; e = active species groups
+	bit BIT_GROUP_WARP, e
+	jr z, .storeDVs
+	call Random
+.mod3
+	cp 3
+	jr c, .gotSlot
+	sub 3
+	jr .mod3
+.gotSlot
+	ld e, a
+	ld d, 0
+	ld hl, wRoguePokemonForm1
+	add hl, de
+	ld [hl], JOEY_ALOLAN_RATTATA_FORM
+.storeDVs
+	ld a, RAMG_SRAM_ENABLE
+	ld [rRAMG], a
+	ld a, BMODE_ADVANCED
+	ld [rBMODE], a
+	ld a, BANK(sRogueOfferDVs)
+	ld [rRAMB], a
+	ld hl, sRogueOfferDVs
+	ld a, $FF                     ; 15 in all four DVs
+	ld b, 3 * 2
+.dvLoop
+	ld [hli], a
+	dec b
+	jr nz, .dvLoop
+	ASSERT sRogueOfferDVTag == sRogueOfferDVs + 3 * 2
+	ld a, RATTATA                 ; the tag matches, so nothing re-rolls them
+	ld [hli], a
+	ld [hli], a
+	ld [hli], a
+	ASSERT sRogueOfferShiny == sRogueOfferDVTag + 3
+	ld b, 3                       ; shiny rolls as GetRogueOfferDVs would make them
+.shinyLoop
+	call Random                   ; keeps hl, bc; never switches banks
+	ld [hli], a
+	dec b
+	jr nz, .shinyLoop
+	xor a                         ; the ambient state: bank 0, SRAM off
+	ld [rRAMB], a
+	ld [rBMODE], a
+	ld [rRAMG], a
+	; the species changed: recolour the starter balls from them
+	farjp RefreshBallRarityCache
 
 ; ============================================================
 ; RunChallengesMenu - the Dorm PC's CHALLENGES list, farcalled from RoomPC
@@ -702,14 +783,14 @@ RunChallengeNames:
 	dw RunChallengeNameSame, RunChallengeNameTurns, RunChallengeNameHeal
 	dw RunChallengeNamePhys, RunChallengeNameSpec, RunChallengeNameMoney
 	dw RunChallengeNamePrice, RunChallengeNameFull, RunChallengeNameFewer
-	dw RunChallengeNameGifts
+	dw RunChallengeNameGifts, RunChallengeNameJoey
 RunChallengeDescs:
 	dw RunChallengeDescRarity, RunChallengeDescFoes, RunChallengeDescLevels
 	dw RunChallengeDescItem, RunChallengeDescSlowed, RunChallengeDescPP
 	dw RunChallengeDescSame, RunChallengeDescTurns, RunChallengeDescHeal
 	dw RunChallengeDescPhys, RunChallengeDescSpec, RunChallengeDescMoney
 	dw RunChallengeDescPrice, RunChallengeDescFull, RunChallengeDescFewer
-	dw RunChallengeDescGifts
+	dw RunChallengeDescGifts, RunChallengeDescJoey
 ASSERT (RunChallengeDescs - RunChallengeNames) == NUM_RUN_CHALLENGES * 2
 
 	run_challenge_text Rarity, "POOR REWARDS", "Rewards roll less<NEXT>rare Pokemon."
@@ -728,11 +809,13 @@ ASSERT (RunChallengeDescs - RunChallengeNames) == NUM_RUN_CHALLENGES * 2
 	run_challenge_text Full, "FULL PARTIES", "Trainers always<NEXT>field full teams."
 	run_challenge_text Fewer, "FEWER REWARDS", "No Pokemon rewards<NEXT>after gym 1 and 5."
 	run_challenge_text Gifts, "NO GIFTS", "No gift rooms<NEXT>open before gyms."
+	run_challenge_text Joey, "JOEY", "RATTATA starters<NEXT>with perfect DVs."
 
 ; ============================================================
 ; RunChallengesRecordsShow - RECORDS' CHALLENGES pages (RoomRecordsMenu):
 ; 1/2 each run challenge with + once cleared with it on, - if not (the same
-; bit in wChallengeBadges / Hi); 2/2 the badges with no toggle and BEST HEAT.
+; bit in wChallengeBadges / Hi); 2/2 the extras (badges with no toggle, and
+; those of RUN_CH_ 16 up, which have no wChallengeBadges/Hi bit) and BEST HEAT.
 ; A turns the page, B leaves. Clobbers everything.
 ; ============================================================
 RunChallengesRecordsShow::
@@ -790,7 +873,7 @@ RunChallengesRecordsShow::
 	ld hl, wBuffer + 2
 	inc [hl]
 	ld a, [hl]
-	cp NUM_RUN_CHALLENGES
+	cp NUM_RUN_CH_BADGE_ROWS      ; the rest are extras on page 2
 	jr c, .challengeRow
 	jr .wait
 .extras
@@ -871,10 +954,11 @@ RunChallengesRecordsShow::
 .BestHeat
 	db "BEST HEAT@"
 .ExtraNames
-	dw .Ironman, .SetStyle, .Three, .Six, .All
-	ASSERT 5 == NUM_CHBADGE_EXTRA
+	dw .Ironman, .SetStyle, .Three, .Six, .All, .Joey
+	ASSERT 6 == NUM_CHBADGE_EXTRA
 .Ironman:  db "IRONMAN@"
 .SetStyle: db "SET STYLE@"
 .Three:    db "3+ AT ONCE@"
 .Six:      db "6+ AT ONCE@"
 .All:      db "ALL AT ONCE@"
+.Joey:     db "JOEY@"
