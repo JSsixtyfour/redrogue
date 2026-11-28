@@ -889,11 +889,13 @@ PCGetDedicatedPokemonSprite::
 	db HITMONLEE, SPRITE_HITMONLEE
 	db HITMONCHAN, SPRITE_HITMONCHAN
 	db DRAGONITE, SPRITE_DRAGONITE
+	db RATICATE, SPRITE_RATICATE   ; 2026-11-27
 .speciesSpritesEnd
 
 ; Forms that share an overworld sheet: db species, form index, SPRITE_*.
 .formSprites
 	db MR_MIME, 1, SPRITE_MR_MIME  ; Galarian Mr. Mime
+	db RATICATE, 1, SPRITE_RATICATE ; Alolan Raticate
 .formSpritesEnd
 
 ; ============================================================

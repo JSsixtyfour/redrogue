@@ -129,6 +129,7 @@ DEF FIRST_EXTRA_WALKING_SPRITE EQU const_value
 	const SPRITE_HITMONLEE               ; $77
 	const SPRITE_HITMONCHAN              ; $78
 	const SPRITE_DRAGONITE               ; $79
+	const SPRITE_RATICATE                ; $7A full walking sheet (2026-11-27); also Alolan Raticate
 DEF NUM_SPRITES EQU const_value - 1
 
 ; SpriteSheetPointerTable bank byte, bit 7: a 12-tile sheet with standing poses

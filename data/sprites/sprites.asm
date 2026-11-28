@@ -145,4 +145,5 @@ SpriteSheetPointerTable:
 	overworld_sprite HitmonleeSprite, 12        ; SPRITE_HITMONLEE
 	overworld_sprite HitmonchanSprite, 12       ; SPRITE_HITMONCHAN
 	overworld_sprite DragoniteSprite, 12        ; SPRITE_DRAGONITE
+	overworld_sprite RaticateSprite, 12         ; SPRITE_RATICATE
 	assert_table_length NUM_SPRITES

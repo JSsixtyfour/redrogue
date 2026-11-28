@@ -292,3 +292,10 @@ HitmonchanSprite::
 DragoniteSprite::
 	INCBIN "gfx/sprites/dragonite.2bpp"
 	ASSERT @ - DragoniteSprite == 24 tiles
+
+; Own section (2026-11-27), pinned to $3E in layout.link so no first-fit floater
+; moves: reached only through SpriteSheetPointerTable, which carries BANK().
+SECTION "Pokemon Sprites 4", ROMX
+RaticateSprite:: ; full walking sheet; also Alolan Raticate (form 1)
+	INCBIN "gfx/sprites/raticate.2bpp"
+	ASSERT @ - RaticateSprite == 24 tiles

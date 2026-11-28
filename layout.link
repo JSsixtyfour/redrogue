@@ -529,6 +529,11 @@ ROMX $3E
 	; effect row pushed it past the room left in $2E. Reached only by farcall
 	; from MoveSelectionMenu; its own calls are HOME, predef or farcall.
 	"Battle Move Info"
+	; Raticate's walking sheet (2026-11-27). Pinned so it does not displace a
+	; first-fit floater (floating, it took "Trainer Pic Money"'s spot in $01 and
+	; moved five other sections). Reached only through SpriteSheetPointerTable,
+	; which carries BANK(), so any bank works.
+	"Pokemon Sprites 4"
 ROMX $3F
 	; "ProceduralCaveGen" relocated here 2026-09-16, out of ROMX $5.
 	;
